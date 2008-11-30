@@ -1,0 +1,20 @@
+SConscript( "../yield_platform/yield_platform.SConscript" )
+Import( "build_env" )
+
+# Find source files and tests
+import os
+files = os.walk("src").next()[2]
+
+tests = filter(lambda name: "_test.cpp" in name, files)
+sources = filter(lambda name: ".cpp" in name and not "_test." in name, files)
+
+tests_w_path = map(lambda name: "src/" + name, tests)
+sources_w_path = map(lambda name: "src/" + name, sources)
+
+# Here we go
+include_path=["include","../yield_platform/include"]
+
+build_env.Library( "lib/babudb", sources_w_path, CPPPATH=include_path) 
+build_env.Program( "bin/babudb_tests", tests_w_path, CPPPATH=include_path,
+                   LIBPATH=["../yield_platform/lib","lib"],
+                   LIBS=["babudb","yield_platform"] )

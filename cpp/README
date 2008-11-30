@@ -1,0 +1,25 @@
+Prerequisites/Dependencies
+--------------------------
+babudb depends on the platform classes of the Yield application server.
+
+- checkout yield_platform next to the babudb trunk directory
+  svn checkout http://yield.googlecode.com/svn/trunk/yield_platform yield_platform
+
+You should have the following layout now:
+  dir/yield_platform/src/..
+  dir/yield_platform/..
+  dir/babudb/src/..
+  dir/babudb/..  
+
+Building with Visual Studio
+---------------------------
+Create a .sln with yield_platform.vcproj and babudb.vcproj. Compile.
+
+Building on Linux
+------------------
+- build babudb from its trunk with
+  scons 
+
+- Run unit tests with
+  bin/babudb_tests
+
