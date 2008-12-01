@@ -10,7 +10,7 @@ using std::pair;
 #include "ImmutableIndexWriter.h"
 #include "ImmutableIndex.h"
 #include "yield/platform/memory_mapped_file.h"
-using namespace YIELD_NS;
+using namespace YIELD;
 using namespace babudb;
 
 #include "babudb/test.h"

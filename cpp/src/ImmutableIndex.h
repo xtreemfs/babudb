@@ -13,7 +13,7 @@ using namespace std;
 #include "babudb/KeyOrder.h"
 #include "SequentialFile.h"
 
-namespace YIELD_NS { class MemoryMappedFile; }
+namespace YIELD { class MemoryMappedFile; }
 
 namespace babudb {
 
@@ -22,7 +22,7 @@ class ImmutableIndexWriter;
 
 class ImmutableIndex {
 public:
-	ImmutableIndex(auto_ptr<YIELD_NS::MemoryMappedFile> mm, KeyOrder& order, lsn_t);
+	ImmutableIndex(auto_ptr<YIELD::MemoryMappedFile> mm, KeyOrder& order, lsn_t);
 
 	bool checkHealth();
 	void load();

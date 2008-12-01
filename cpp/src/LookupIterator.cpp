@@ -10,7 +10,7 @@
 
 #include <yield/platform/memory_mapped_file.h>
 #include <yield/platform/assert.h>
-using namespace YIELD_NS;
+using namespace YIELD;
 
 using namespace babudb;
 

@@ -14,7 +14,7 @@ using std::auto_ptr;
 #include "RecordFrame.h"
 #include "babudb/RecordIterator.h"
 
-namespace YIELD_NS { class MemoryMappedFile; }
+namespace YIELD { class MemoryMappedFile; }
 
 namespace babudb {
 
@@ -22,7 +22,7 @@ class RecordIterator;
 class LogStats;
 
 #define INVALID_OFFSET			0xFFFFffffFFFFffffULL
-typedef YIELD_NS::uint64		offset_t;
+typedef YIELD::uint64		offset_t;
 
 
 /** An append-only file of records.
@@ -36,7 +36,7 @@ public:
 	typedef class RecordFrame Record;
 	typedef class RecordIterator iterator;
 
-	SequentialFile(auto_ptr<YIELD_NS::MemoryMappedFile>, LogStats* = NULL);
+	SequentialFile(auto_ptr<YIELD::MemoryMappedFile>, LogStats* = NULL);
 
 	int repair();
 	bool wasGraceful();
@@ -85,7 +85,7 @@ private:
 
 	void copyRecord( Record*, void* );
 
-	auto_ptr<YIELD_NS::MemoryMappedFile> memory;
+	auto_ptr<YIELD::MemoryMappedFile> memory;
 	LogStats* stats;
 
 	offset_t next_write_offset;

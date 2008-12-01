@@ -6,7 +6,7 @@
 
 #include "yield/platform/debug.h"
 #include "yield/platform/platform_types.h"
-using namespace YIELD_NS;
+using namespace YIELD;
 
 #include <string>
 using std::string;

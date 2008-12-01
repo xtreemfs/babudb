@@ -16,7 +16,7 @@ using namespace std;
 
 #include "yield/platform/directory_walker.h"
 #include "yield/platform/memory_mapped_file.h"
-using namespace YIELD_NS;
+using namespace YIELD;
 
 Log::Log(const string& name_prefix) : tail(NULL), name_prefix(name_prefix) {}
 
@@ -33,21 +33,21 @@ void Log::close() {
 
 class LSNBefore {
 public:
-	typedef pair<YIELD_NS::DiskPath, lsn_t> vector_entry;
+	typedef pair<YIELD::DiskPath, lsn_t> vector_entry;
 	bool operator () (const vector_entry& l, const vector_entry& r) { return l.second < r.second; }
 };
 
-typedef vector< pair<YIELD_NS::DiskPath, lsn_t> > DiskSections;
+typedef vector< pair<YIELD::DiskPath, lsn_t> > DiskSections;
 
 static DiskSections scanAvailableLogSections(const string& name_prefix) {
 	DiskSections result;
 
-	pair<YIELD_NS::DiskPath,YIELD_NS::DiskPath> prefix_parts = YIELD_NS::DiskPath(name_prefix).split();
-	YIELD_NS::DirectoryWalker walker(prefix_parts.first);
+	pair<YIELD::DiskPath,YIELD::DiskPath> prefix_parts = YIELD::DiskPath(name_prefix).split();
+	YIELD::DirectoryWalker walker(prefix_parts.first);
 
 	while(walker.hasNext()) {
 		lsn_t lsn;
-		auto_ptr<YIELD_NS::DirectoryEntry> entry = walker.getNext();
+		auto_ptr<YIELD::DirectoryEntry> entry = walker.getNext();
 
 		if(matchFilename(entry->getPath(), prefix_parts.second.getHostCharsetPath(), "log", lsn))
 			result.push_back(make_pair(entry->getPath(), lsn));
@@ -65,8 +65,8 @@ void Log::cleanup(lsn_t from_lsn, const string& to) {
 		DiskSections::iterator next = i; next++;
 
 		if(next != disk_sections.end() && next->second <= from_lsn) {
-			pair<YIELD_NS::DiskPath,YIELD_NS::DiskPath> parts = i->first.split();
-			YIELD_NS::DiskOperations::rename(i->first, YIELD_NS::DiskPath(to) + parts.second);
+			pair<YIELD::DiskPath,YIELD::DiskPath> parts = i->first.split();
+			YIELD::DiskOperations::rename(i->first, YIELD::DiskPath(to) + parts.second);
 		}
 	}
 }
@@ -83,7 +83,7 @@ void Log::loadRequiredLogSections(lsn_t min_lsn) {
 		DiskSections::iterator next = i; next++;
 
 		if(next == disk_sections.end() || next->second > min_lsn) {
-			auto_ptr<YIELD_NS::MemoryMappedFile> file(new YIELD_NS::MemoryMappedFile(i->first, 4, DOOF_READ));
+			auto_ptr<YIELD::MemoryMappedFile> file(new YIELD::MemoryMappedFile(i->first, 4, DOOF_READ));
 
 			LogSection* section = new LogSection(file, i->second); // repairs if not graceful
 			sections.push_back(section);
@@ -136,7 +136,7 @@ LogSection* Log::getTail() {
 		std::ostringstream section_name;
 		section_name << name_prefix << "_" << next_lsn << ".log";
 
-		auto_ptr<YIELD_NS::MemoryMappedFile> file(new YIELD_NS::MemoryMappedFile(section_name.str(), 1024 * 1024, DOOF_CREATE|DOOF_READ|DOOF_WRITE|DOOF_SYNC));
+		auto_ptr<YIELD::MemoryMappedFile> file(new YIELD::MemoryMappedFile(section_name.str(), 1024 * 1024, DOOF_CREATE|DOOF_READ|DOOF_WRITE|DOOF_SYNC));
 
 		tail = new LogSection(file,next_lsn);
 		sections.push_back(tail);

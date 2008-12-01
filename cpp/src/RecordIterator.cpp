@@ -5,7 +5,7 @@
 #include "RecordFrame.h"
 
 #include <yield/platform/assert.h>
-using namespace YIELD_NS;
+using namespace YIELD;
 using namespace babudb;
 
 #define ASSERT_VALID_POS(x)		ASSERT_TRUE((char*)x >= (char*)region_start && (char*)x < ((char*)region_start + region_size))

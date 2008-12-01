@@ -6,7 +6,7 @@
 #include "babudb/test.h"
 
 #include "yield/platform/memory_mapped_file.h"
-using YIELD_NS::MemoryMappedFile;
+using YIELD::MemoryMappedFile;
 using namespace babudb;
 
 TEST_TMPDIR(Database,babudb)

@@ -4,7 +4,7 @@
 #include "RecordFrame.h"
 
 #include <yield/platform/assert.h>
-using namespace YIELD_NS;
+using namespace YIELD;
 using namespace babudb;
 
 void* RecordFrame::getPayload()					{ return (char*)this + RECORD_FRAME_SIZE_BYTES; }

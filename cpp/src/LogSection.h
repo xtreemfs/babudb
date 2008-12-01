@@ -10,7 +10,7 @@ using std::string;
 #include "SequentialFile.h"
 #include "babudb/Operation.h"
 
-namespace YIELD_NS { class MemoryMappedFile; }
+namespace YIELD { class MemoryMappedFile; }
 
 namespace babudb {
 
@@ -18,7 +18,7 @@ class Operation;
 
 class LogSection : public SequentialFile {
 public:
-	LogSection(auto_ptr<YIELD_NS::MemoryMappedFile>, lsn_t first);
+	LogSection(auto_ptr<YIELD::MemoryMappedFile>, lsn_t first);
 
 	lsn_t getFirstLSN();
 	lsn_t getLastLSN();

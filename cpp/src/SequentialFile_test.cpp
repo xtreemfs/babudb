@@ -5,7 +5,7 @@
 
 #include "SequentialFile.h"
 #include "yield/platform/memory_mapped_file.h"
-using namespace YIELD_NS;
+using namespace YIELD;
 using namespace babudb;
 
 TEST_TMPDIR(SequentialFile_iteration,babudb)

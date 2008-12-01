@@ -17,7 +17,7 @@ using namespace babudb;
 #include "yield/platform/disk_path.h"
 #include "yield/platform/directory_walker.h"
 #include "yield/platform/memory_mapped_file.h"
-using namespace YIELD_NS;
+using namespace YIELD;
 
 DataIndex::DataIndex(const string& name, KeyOrder& order)
 	: order(order), immutable_index(NULL), name_prefix(name), tail(NULL) {}
@@ -34,20 +34,20 @@ DataIndex::~DataIndex() {
 		delete *i;
 }
 
-typedef vector<pair<YIELD_NS::DiskPath,pair<lsn_t,bool> > > DiskIndices;
+typedef vector<pair<YIELD::DiskPath,pair<lsn_t,bool> > > DiskIndices;
 
 static DiskIndices scanAvailableImmutableIndices(string& name_prefix, KeyOrder& order) {
 	DiskIndices results;
 
-	pair<YIELD_NS::DiskPath,YIELD_NS::DiskPath> dir_prefix = YIELD_NS::DiskPath(name_prefix).split();
-	YIELD_NS::DirectoryWalker walker(dir_prefix.first);
+	pair<YIELD::DiskPath,YIELD::DiskPath> dir_prefix = YIELD::DiskPath(name_prefix).split();
+	YIELD::DirectoryWalker walker(dir_prefix.first);
 
 	while(walker.hasNext()) {
-		auto_ptr<YIELD_NS::DirectoryEntry> entry = walker.getNext();
+		auto_ptr<YIELD::DirectoryEntry> entry = walker.getNext();
 
 		lsn_t lsn;
 		if(matchFilename(entry->getPath(), dir_prefix.second.getHostCharsetPath(), "idx", lsn)) {
-			auto_ptr<YIELD_NS::MemoryMappedFile> file(new YIELD_NS::MemoryMappedFile(entry->getPath(), 1, DOOF_SYNC));
+			auto_ptr<YIELD::MemoryMappedFile> file(new YIELD::MemoryMappedFile(entry->getPath(), 1, DOOF_SYNC));
 			ImmutableIndex index(file,order,lsn);
 			results.push_back(make_pair(entry->getPath(),make_pair(lsn, index.checkHealth())));
 		}
@@ -56,10 +56,10 @@ static DiskIndices scanAvailableImmutableIndices(string& name_prefix, KeyOrder& 
 	return results;
 }
 
-static pair<YIELD_NS::DiskPath,lsn_t> findLatestIntactImmutableIndex(DiskIndices& on_disk) {
+static pair<YIELD::DiskPath,lsn_t> findLatestIntactImmutableIndex(DiskIndices& on_disk) {
 	// find latest intact ImmutableIndex
 	lsn_t latest_intact_lsn = 0;
-	YIELD_NS::DiskPath latest_intact_path("");
+	YIELD::DiskPath latest_intact_path("");
 
 	for(DiskIndices::iterator i = on_disk.begin(); i != on_disk.end(); ++i) {
 		if(i->second.second && i->second.first > latest_intact_lsn) {  // healthy and newer than the current latest
@@ -74,12 +74,12 @@ static pair<YIELD_NS::DiskPath,lsn_t> findLatestIntactImmutableIndex(DiskIndices
 lsn_t DataIndex::loadLatestIntactImmutableIndex() {
 	DiskIndices on_disk = scanAvailableImmutableIndices(name_prefix, order);
 
-	pair<YIELD_NS::DiskPath,lsn_t> latest = findLatestIntactImmutableIndex(on_disk);
+	pair<YIELD::DiskPath,lsn_t> latest = findLatestIntactImmutableIndex(on_disk);
 
 	// load it
 
 	if(latest.second > 0) {
-		auto_ptr<YIELD_NS::MemoryMappedFile> file(new YIELD_NS::MemoryMappedFile(latest.first, 1024 * 1024, DOOF_SYNC));
+		auto_ptr<YIELD::MemoryMappedFile> file(new YIELD::MemoryMappedFile(latest.first, 1024 * 1024, DOOF_SYNC));
 		immutable_index = new ImmutableIndex(file,order,latest.second);
 		immutable_index->load();
 	}
@@ -89,12 +89,12 @@ lsn_t DataIndex::loadLatestIntactImmutableIndex() {
 
 void DataIndex::cleanup(lsn_t from_lsn, const string& to) {
 	DiskIndices on_disk = scanAvailableImmutableIndices(name_prefix, order);
-	pair<YIELD_NS::DiskPath,lsn_t> latest = findLatestIntactImmutableIndex(on_disk);
+	pair<YIELD::DiskPath,lsn_t> latest = findLatestIntactImmutableIndex(on_disk);
 
 	for(DiskIndices::iterator i = on_disk.begin(); i != on_disk.end(); ++i) {
 		if(i->first != latest.first) {// not the latest intact index
-			pair<YIELD_NS::DiskPath,YIELD_NS::DiskPath> parts = i->first.split();
-			YIELD_NS::DiskOperations::rename(i->first, YIELD_NS::DiskPath(to) + parts.second);
+			pair<YIELD::DiskPath,YIELD::DiskPath> parts = i->first.split();
+			YIELD::DiskOperations::rename(i->first, YIELD::DiskPath(to) + parts.second);
 		}
 	}
 }

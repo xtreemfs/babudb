@@ -11,7 +11,7 @@ using std::pair;
 #include "IndexMerger.h"
 #include "babudb/StringConfiguration.h"
 #include "yield/platform/memory_mapped_file.h"
-using namespace YIELD_NS;
+using namespace YIELD;
 using namespace babudb;
 
 #include "babudb/test.h"

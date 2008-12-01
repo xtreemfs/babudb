@@ -13,7 +13,7 @@ using namespace babudb;
 
 #include <yield/platform/assert.h>
 #include <yield/platform/memory_mapped_file.h>
-using namespace YIELD_NS;
+using namespace YIELD;
 
 #define FIRST_RECORD_OFFSET		8
 #define FIRST_RECORD_ADDRESS	(void*)((unsigned char*)memory->getRegionStart() + FIRST_RECORD_OFFSET)

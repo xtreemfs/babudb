@@ -8,7 +8,7 @@
 #include "yield/platform/yunit.h"
 #include "yield/platform/memory_mapped_file.h"
 
-using namespace YIELD_NS;
+using namespace YIELD;
 using namespace babudb;
 
 #define LSN_RECORD_TYPE 0

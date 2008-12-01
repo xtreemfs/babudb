@@ -15,7 +15,7 @@ using namespace babudb;
 using std::pair;
 
 #include "yield/platform/memory_mapped_file.h"
-using namespace YIELD_NS;
+using namespace YIELD;
 
 Database::Database(const string& name, const OperationFactory& op_f)
 : name(name), factory(op_f), merger(NULL) {
@@ -97,7 +97,7 @@ bool Database::migrate(const string& index, int steps) {
 			merger = NULL;
 
 			// replace new section with old section
-			auto_ptr<YIELD_NS::MemoryMappedFile> mfile(new YIELD_NS::MemoryMappedFile(target_name, 1024*1024, DOOF_READ));
+			auto_ptr<YIELD::MemoryMappedFile> mfile(new YIELD::MemoryMappedFile(target_name, 1024*1024, DOOF_READ));
 			indices[index]->advanceImmutableIndex(new ImmutableIndex(mfile, indices[index]->getOrder(), target_last_lsn));
 			return true;
 		}
@@ -124,7 +124,7 @@ bool Database::migrate(const string& index, int steps) {
 
 		std::ostringstream pers_name;
 		pers_name << name << "-" << index << "_" << lsn << ".idx";
-		auto_ptr<YIELD_NS::MemoryMappedFile> mfile(new YIELD_NS::MemoryMappedFile(pers_name.str(), 1024*1024, DOOF_CREATE|DOOF_READ|DOOF_WRITE|DOOF_SYNC));
+		auto_ptr<YIELD::MemoryMappedFile> mfile(new YIELD::MemoryMappedFile(pers_name.str(), 1024*1024, DOOF_CREATE|DOOF_READ|DOOF_WRITE|DOOF_SYNC));
 		auto_ptr<ImmutableIndexWriter> target(new ImmutableIndexWriter(mfile, 64 * 1024));
 
 		if(base)

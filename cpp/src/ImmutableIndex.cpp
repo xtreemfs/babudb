@@ -11,7 +11,7 @@
 
 using namespace babudb;
 
-ImmutableIndex::ImmutableIndex(auto_ptr<YIELD_NS::MemoryMappedFile> mm, KeyOrder& order, lsn_t lsn)
+ImmutableIndex::ImmutableIndex(auto_ptr<YIELD::MemoryMappedFile> mm, KeyOrder& order, lsn_t lsn)
 : storage(mm), order(order), latest_lsn(lsn), index(MapCompare(order)) {}
 
 bool ImmutableIndex::checkHealth() {
