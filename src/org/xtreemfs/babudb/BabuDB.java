@@ -235,7 +235,7 @@ public class BabuDB {
      * @param indexId index id (0..NumIndices-1)
      * @param key the key
      * @param value the value
-     * @throws LSMDBException if the operation failed
+     * @throws BabuDBException if the operation failed
      */
     public void syncSingleInsert(String database, int indexId, byte[] key, byte[] value) throws BabuDBException {
         final LSMDatabase db = dbNames.get(database);
@@ -283,7 +283,7 @@ public class BabuDB {
     /**
      * Inserts a group of key value pair (synchronously)
      * @param irg the insert record group to execute
-     * @throws LSMDBException if the operation failed
+     * @throws BabuDBException if the operation failed
      */
     public void syncInsert(BabuDBInsertGroup irg) throws BabuDBException {
         //final LSMDatabase db = databases.get(irg.getDatabaseId());
@@ -332,7 +332,7 @@ public class BabuDB {
      * @param indexId index id (0..NumIndices-1)
      * @param key the key to look up
      * @return a view buffer to the result or null if there is no such entry
-     * @throws LSMDBException if the operation failed
+     * @throws BabuDBException if the operation failed
      */
     public byte[] syncLookup(String database, int indexId, byte[] key) throws BabuDBException {
 
@@ -375,12 +375,63 @@ public class BabuDB {
         }
         return result.value;
     }
+    
+    /**
+     * lookup a range starting with key
+     * @param database name of database
+     * @param indexId index id (0..NumIndices-1)
+     * @param key the key to start the iterator at
+     * @return an iterator to the database starting at the first matching key. Returns key/value pairs in ascending order.
+     * @throws BabuDBException if the operation failed
+     */
+    public Iterator<Entry<byte[], byte[]>> syncPrefixLookup(String database, int indexId, byte[] key) throws BabuDBException {
+
+        final AsyncResult result = new AsyncResult();
+
+        asyncLookup(database, indexId, key, new BabuDBRequestListener() {
+
+            public void insertFinished(Object context) {
+            }
+
+            public void lookupFinished(Object context, byte[] value) {
+                
+            }
+
+            public void prefixLookupFinished(Object context, Iterator<Entry<byte[], byte[]>> iterator) {
+                synchronized (result) {
+                    result.done = true;
+                    result.iterator = iterator;
+                    result.notify();
+                }
+            }
+
+            public void requestFailed(Object context, BabuDBException error) {
+                synchronized (result) {
+                    result.done = true;
+                    result.error = error;
+                    result.notify();
+                }
+            }
+        }, null);
+        synchronized (result) {
+            try {
+                if (!result.done) {
+                    result.wait();
+                }
+            } catch (InterruptedException ex) {
+            }
+        }
+        if (result.error != null) {
+            throw result.error;
+        }
+        return result.iterator;
+    }
 
     /**
      * Creates a database using the default comparator (bytewise/ASCII string comparator)
      * @param databaseName name of the database
      * @param numIndices number of indices in the database
-     * @throws org.xtreemfs.babudb.lsmdb.LSMDBException if the database directory cannot be created or the config cannot be saved
+     * @throws BabuDBException if the database directory cannot be created or the config cannot be saved
      */
     public void createDatabase(String databaseName, int numIndices) throws BabuDBException {
 
@@ -398,7 +449,7 @@ public class BabuDB {
      * @param databaseName name, must be unique
      * @param numIndices the number of indices (cannot be changed afterwards)
      * @param comparators an array of ByteRangeComparators for each index (use only one instance)
-     * @throws LSMDBException if the database directory cannot be created or the config cannot be saved
+     * @throws BabuDBException if the database directory cannot be created or the config cannot be saved
      */
     public void createDatabase(String databaseName, int numIndices, ByteRangeComparator[] comparators) throws BabuDBException {
 
@@ -419,7 +470,7 @@ public class BabuDB {
      * Deletes a database
      * @param databaseName name of database to delte
      * @param deleteFiles if true, all snapshots are deleted as well
-     * @throws org.xtreemfs.babudb.lsmdb.LSMDBException
+     * @throws BabuDBException
      */
     public void deleteDatabase(String databaseName, boolean deleteFiles) throws BabuDBException {
         synchronized (dbModificationLock) {
@@ -440,7 +491,7 @@ public class BabuDB {
     /**
      * Creates a checkpoint of all databases. The in-memory data is merged with the on-disk data and
      * is written to a new snapshot file. Database logs are truncated. This operation is thread-safe.
-     * @throws java.io.IOException if the checkpoint was not successful
+     * @throws BabuDBException if the checkpoint was not successful
      */
     public void checkpoint() throws BabuDBException, InterruptedException {
 
@@ -512,7 +563,7 @@ public class BabuDB {
 
     /**
      * Loads the configuration and each database from disk
-     * @throws java.io.IOException
+     * @throws BabuDBException
      */
     private void loadDBs() throws BabuDBException {
         try {
@@ -576,7 +627,7 @@ public class BabuDB {
     /**
      * Replay the database operations log.
      * @return the LSN to assign to the next operation
-     * @throws org.xtreemfs.babudb.lsmdb.LSMDBException
+     * @throws BabuDBException
      */
     private LSN replayLogs() throws BabuDBException {
         if (databases.size() == 0) {
@@ -643,7 +694,7 @@ public class BabuDB {
 
     /**
      * saves the current database config to disk
-     * @throws java.io.IOException
+     * @throws BabuDBException
      */
     private void saveDBconfig() throws BabuDBException {
         /*File f = new File(baseDir+DBCFG_FILE);
@@ -705,7 +756,7 @@ public class BabuDB {
      * @param ig the group of inserts
      * @param listener a callback for the result
      * @param context optional context object which is passed to the listener
-     * @throws org.xtreemfs.babudb.lsmdb.LSMDBException
+     * @throws BabuDBException
      */
     public void asyncInsert(BabuDBInsertGroup ig, BabuDBRequestListener listener,
             Object context) throws BabuDBException {
@@ -727,7 +778,7 @@ public class BabuDB {
      * Creates a new group of inserts.
      * @param databaseName the database to which the inserts are applied
      * @return a insert record group
-     * @throws org.xtreemfs.babudb.lsmdb.LSMDBException
+     * @throws BabuDBException
      */
     public BabuDBInsertGroup createInsertGroup(
             String databaseName) throws BabuDBException {
@@ -746,7 +797,7 @@ public class BabuDB {
      * @param key the key to lookup
      * @param listener a callback for the result
      * @param context optional context object which is passed to the listener
-     * @throws org.xtreemfs.babudb.lsmdb.LSMDBException
+     * @throws BabuDBException
      */
     public void asyncLookup(String databaseName, int indexId, byte[] key,
             BabuDBRequestListener listener, Object context) throws BabuDBException {
@@ -770,7 +821,7 @@ public class BabuDB {
      * @param key the key to lookup
      * @param listener a callback for the result
      * @param context optional context object which is passed to the listener
-     * @throws org.xtreemfs.babudb.lsmdb.LSMDBException
+     * @throws BabuDBException
      */
     public void asyncPrefixLookup(String databaseName, int indexId, byte[] key,
             BabuDBRequestListener listener, Object context) throws BabuDBException {
