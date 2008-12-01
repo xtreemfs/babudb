@@ -4,6 +4,8 @@
 #ifndef BABUDB_STRINGCONFIGURATION_H
 #define BABUDB_STRINGCONFIGURATION_H
 
+#include <cstring>
+
 #include "babudb/KeyOrder.h"
 #include "babudb/Operation.h"
 

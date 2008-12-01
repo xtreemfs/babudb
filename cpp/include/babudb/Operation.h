@@ -4,6 +4,8 @@
 #ifndef BABUDB_OPERATION_H
 #define BABUDB_OPERATION_H
 
+#include <cstring>
+
 #include <string>
 using std::string;
 
