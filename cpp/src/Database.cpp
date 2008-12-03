@@ -55,7 +55,7 @@ void Database::registerIndex(const string& index_name, KeyOrder& order) {
 void Database::execute(Operation& op) {
 	lsn_t current_lsn = log->getTail()->appendOperation(op);
 	DataIndexOperationTarget target(log,indices,current_lsn);
-	op.addYourself(target);
+	op.applyTo(target);
 }
 
 void Database::commit() {

@@ -45,16 +45,16 @@ TEST_TMPDIR(ImmutableIndexWriter,babudb)
 	DirectOperationTarget tgt(&log_index);
 
 	StringSetOperation op1("", "Key1","data1");
-	op1.addYourself(tgt);
+	op1.applyTo(tgt);
 
 	StringSetOperation op2("", "Key2","data2");
-	op2.addYourself(tgt);
+	op2.applyTo(tgt);
 
 	StringSetOperation op3("", "Key3","data3");
-	op3.addYourself(tgt);
+	op3.applyTo(tgt);
 
 	StringSetOperation op4("", "Key4","data4");
-	op4.addYourself(tgt);
+	op4.applyTo(tgt);
 
 	auto_ptr<MemoryMappedFile> file(new MemoryMappedFile(testPath("test.idx").getHostCharsetPath(), 1024 * 1024, mmap_flags));
 	auto_ptr<ImmutableIndexWriter> writer(new ImmutableIndexWriter(file,2));
@@ -80,16 +80,16 @@ TEST_TMPDIR(ImmutableIndexWriter,babudb)
 	DirectOperationTarget tgt2(&log_index2);
 
 	StringSetOperation op12("", "Key12","data21");
-	op12.addYourself(tgt2);
+	op12.applyTo(tgt2);
 
 	StringSetOperation op22("", "Key22","data22");
-	op22.addYourself(tgt2);
+	op22.applyTo(tgt2);
 
 	StringSetOperation op32("", "Key32","data32");
-	op32.addYourself(tgt2);
+	op32.applyTo(tgt2);
 
 	StringSetOperation op42("", "Key42","data42");
-	op42.addYourself(tgt2);
+	op42.applyTo(tgt2);
 
 	// and merge it
 

@@ -34,7 +34,7 @@ public:
 	StringSetOperation(const string& db, const string& key)
 		: db(db), key(key) {}
 
-	virtual void addYourself(OperationTarget& target) const {
+	virtual void applyTo(OperationTarget& target) const {
 		Data key_copy = Data::createFrom((void*)key.c_str(),key.size());
 		if(value.empty())
 			target.remove(db, key_copy);

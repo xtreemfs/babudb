@@ -176,9 +176,8 @@ public:
 
 class Operation {
 public:
-	virtual void addYourself(OperationTarget&) const = 0;
+	virtual void applyTo(OperationTarget&) const = 0;
 	virtual operation_type_t getType() const = 0;
-	virtual bool isMarked() const = 0;
 	virtual Data serialize(Data) const = 0;
 };
 

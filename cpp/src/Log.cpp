@@ -113,7 +113,7 @@ void Log::replayToLogIndices(DataIndexOperationTarget& indices, const OperationF
 				ASSERT_TRUE(last_lsn != 0);
 				Data data(rec.getRecord()->getPayload(),rec.getRecord()->getPayloadSize());
 				Operation* o = factory.createOperation(data,rec.getRecord()->getType());
-				o->addYourself(indices);
+				o->applyTo(indices);
 				delete o;
 			}
 		}

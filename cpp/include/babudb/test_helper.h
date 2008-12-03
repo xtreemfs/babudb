@@ -13,7 +13,7 @@ class DummyOperation : public babudb::Operation {
 public:
 	DummyOperation(int i) : value(i) {}
 
-	virtual void addYourself(babudb::OperationTarget& target) const {}
+	virtual void applyTo(babudb::OperationTarget& target) const {}
 
 	virtual babudb::operation_type_t getType() const { return 1; }
 	virtual bool isMarked() const { return value % 2 == 0; }
