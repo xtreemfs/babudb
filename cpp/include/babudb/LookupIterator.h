@@ -32,6 +32,7 @@ public:
 private:
 	void findMinimalIterator();
 	void advanceIterator(int);
+	void assureNonDeletedCursor();
 
 	int current_depth;
 	vector<map<Data,Data,MapCompare>::iterator> logi_it;		// MSI to LSI

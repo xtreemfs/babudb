@@ -14,6 +14,31 @@ using namespace YIELD;
 
 using namespace babudb;
 
+/** LookupIterator implements a parallel lookup on all overlay LogIndices and the current ImmutableIndex.
+
+	It maintains a list of cursors, and an index "current_depth" that points to the iterator that is the
+	current cursor position.
+
+	From that a view invariants result:
+	- all cursors are >= the cursor at current_depth
+	- all cursors are >= start_key and < end_key
+	- if there are multiple cursors at the current position, current_depth points to the most-significant
+	  one
+
+	The implementation has to make sure that Deleted entries are skipped. It also needs to advance any
+	"shadowed" cursors that point to the same key, but are less signifcant than the current_depth cursor.
+
+	Tree
+	3				2				1				0				-1
+									#				
+					|>|#							>#				
+	>#
+													#				#
+									
+
+
+*/
+
 LookupIterator::LookupIterator(const vector<LogIndex*>& idx, ImmutableIndex* iidx, const KeyOrder& order, const Data& start_key, const Data& end_key)
 	: iidx(iidx), order(order), end_key(end_key), iidx_it(NULL) {
 
@@ -34,9 +59,16 @@ LookupIterator::LookupIterator(const vector<LogIndex*>& idx, ImmutableIndex* iid
 			iidx_it = new ImmutableIndexIterator(c);
 	}
 
+	if(!hasMore())
+		return;
+
 	// each iterator is now pointing to a start_key <= key <= end_key
 
+	// find the smallest iterator
 	findMinimalIterator();
+
+	// if it is deleted advance it (and any iterators it may shadow)
+	assureNonDeletedCursor();
 }
 
 LookupIterator::~LookupIterator() {
@@ -108,6 +140,11 @@ void LookupIterator::operator ++ () {
 	findMinimalIterator();
 
 	// 4. Advance over deletor entries
+	assureNonDeletedCursor();
+}
+
+
+void LookupIterator::assureNonDeletedCursor() {
 	if(current_depth >= 0) {
 		if(logi_it[current_depth]->second.isDeleted())
 			this->operator ++();
