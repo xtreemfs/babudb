@@ -110,6 +110,10 @@ public class LSMDatabase {
         return array;
     }
     
+    public ByteRangeComparator[] getComparators() {
+        return comparators;
+    }
+    
     /**
      * Load the most recent snapshots of each tree.
      * @param numIndices the number of indices to read.
@@ -217,6 +221,14 @@ public class LSMDatabase {
         for (int index = 0; index < trees.size(); index++) {
             final LSMTree tree = trees.get(index);
             final String newFileName = databaseDir+getSnaphotFilename(index,viewId,sequenceNo);
+            tree.materializeSnapshot(newFileName, snapIds[index]);
+        }
+    }
+    
+    public void writeSnapshot(String directory, int[] snapIds) throws IOException {
+        for (int index = 0; index < trees.size(); index++) {
+            final LSMTree tree = trees.get(index);
+            final String newFileName = directory+"/"+getSnaphotFilename(index,0,0);
             tree.materializeSnapshot(newFileName, snapIds[index]);
         }
     }
