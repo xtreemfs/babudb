@@ -8,6 +8,8 @@
 
 package org.xtreemfs.babudb;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.xtreemfs.babudb.lsmdb.*;
 import java.io.File;
 import java.io.FileInputStream;
@@ -388,7 +390,7 @@ public class BabuDB {
 
         final AsyncResult result = new AsyncResult();
 
-        asyncLookup(database, indexId, key, new BabuDBRequestListener() {
+        asyncPrefixLookup(database, indexId, key, new BabuDBRequestListener() {
 
             public void insertFinished(Object context) {
             }
@@ -487,6 +489,50 @@ public class BabuDB {
 
         }
     }
+    
+    /**
+     * Creates a copy of database sourceDB by taking a snapshot, materializing it
+     * and loading it as destDB. This does not interrupt operations on sourceDB.
+     * @param sourceDB the database to copy
+     * @param destDB the new database's name
+     */
+    public void copyDatabase(String sourceDB, String destDB, byte[] rangeStart, byte[] rangeEnd) throws BabuDBException, IOException {
+        
+        final LSMDatabase sDB = dbNames.get(sourceDB);
+        if (sDB == null)
+            throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '"+sourceDB+"' does not exist");
+        
+        final int dbId;
+        synchronized (dbModificationLock) {
+            if (dbNames.containsKey(destDB)) {
+                throw new BabuDBException(ErrorCode.DB_EXISTS, "database '" + destDB + "' already exists");
+            }
+            dbId = nextDbId++;
+            //just "reserve" the name
+            dbNames.put(destDB,null);
+            saveDBconfig();
+            
+        }
+        //materializing the snapshot takes some time, we should not hold the lock meanwhile!
+        
+        int[] snaps = sDB.createSnapshot();
+        File dbDir = new File(baseDir+destDB);
+        if (!dbDir.exists()) {
+            dbDir.mkdirs();
+        }
+        sDB.writeSnapshot(baseDir+destDB+"/", snaps);
+        
+        //create new DB and load from snapshot
+        LSMDatabase dDB = new LSMDatabase(destDB, dbId, baseDir + destDB + "/", sDB.getIndexCount(), true, sDB.getComparators());
+        
+        //insert real database
+        synchronized (dbModificationLock) {
+            databases.put(dbId, dDB);
+            dbNames.put(destDB, dDB);
+            saveDBconfig();
+        }
+        
+    }
 
     /**
      * Creates a checkpoint of all databases. The in-memory data is merged with the on-disk data and
@@ -559,6 +605,49 @@ public class BabuDB {
             }
         }
 
+    }
+    
+    
+    /**
+     * Creates a snapshot of all indices in a single database. The snapshot is
+     * not materialized (use writeSnapshot)
+     * and will be removed upon next checkpointing or shutdown.
+     * @throws BabuDBException if the checkpoint was not successful
+     * @return an array with the snapshot ID for each index in the database
+     */
+    public int[] createSnapshot(String dbName) throws BabuDBException, InterruptedException {
+                
+        final LSMDatabase db = dbNames.get(dbName);
+        if (db == null)
+            throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '"+dbName+"' does not exist");
+
+        try {
+            //critical block...
+            logger.lockLogger();
+            return db.createSnapshot();
+        } finally {
+            logger.unlockLogger();
+        } 
+
+    }
+    
+    /**
+     * Writes a snapshot to disk.
+     * @param dbName the database name
+     * @param snapIds the snapshot IDs obtained from createSnapshot
+     * @param directory the directory in which the snapshots are written
+     * @throws org.xtreemfs.babudb.BabuDBException if the snapshot cannot be written
+     */
+    public void writeSnapshot(String dbName, int[] snapIds, String directory) throws BabuDBException {
+        try {
+            final LSMDatabase db = dbNames.get(dbName);
+            if (db == null) {
+                throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '" + dbName + "' does not exist");
+            }
+            db.writeSnapshot(directory, snapIds);
+        } catch (IOException ex) {
+            throw new BabuDBException(ErrorCode.IO_ERROR, "cannot write snapshot: "+ex,ex);
+        }
     }
 
     /**
@@ -767,8 +856,8 @@ public class BabuDB {
         }
 
         LSMDBWorker w = worker[dbId % worker.length];
-        if (Logging.isDebug()) {
-            Logging.logMessage(Logging.LEVEL_DEBUG, this, "prefix lookup request is sent to worker #" + dbId % worker.length);
+        if (Logging.tracingEnabled()) {
+            Logging.logMessage(Logging.LEVEL_TRACE, this, "insert request is sent to worker #" + dbId % worker.length);
         }
 
         w.addRequest(new LSMDBRequest(databases.get(dbId), listener, ins, context));
@@ -807,8 +896,8 @@ public class BabuDB {
         }
 
         LSMDBWorker w = worker[db.getDatabaseId() % worker.length];
-        if (Logging.isDebug()) {
-            Logging.logMessage(Logging.LEVEL_DEBUG, this, "prefix lookup request is sent to worker #" + db.getDatabaseId() % worker.length);
+        if (Logging.tracingEnabled()) {
+            Logging.logMessage(Logging.LEVEL_TRACE, this, "lookup request is sent to worker #" + db.getDatabaseId() % worker.length);
         }
 
         w.addRequest(new LSMDBRequest(db, indexId, listener, key, false, context));
@@ -831,8 +920,8 @@ public class BabuDB {
         }
 
         LSMDBWorker w = worker[db.getDatabaseId() % worker.length];
-        if (Logging.isDebug()) {
-            Logging.logMessage(Logging.LEVEL_DEBUG, this, "prefix lookup request is sent to worker #" + db.getDatabaseId() % worker.length);
+        if (Logging.tracingEnabled()) {
+            Logging.logMessage(Logging.LEVEL_TRACE, this, "lookup request is sent to worker #" + db.getDatabaseId() % worker.length);
         }
 
         w.addRequest(new LSMDBRequest(db, indexId, listener, key, true, context));

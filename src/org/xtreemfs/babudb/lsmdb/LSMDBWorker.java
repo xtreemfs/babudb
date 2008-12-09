@@ -88,6 +88,10 @@ public class LSMDBWorker extends Thread implements SyncListener {
                     case INSERT : doInsert(r); break;
                     case LOOKUP : doLookup(r); break;
                     case PREFIX_LOOKUP : doPrefixLookup(r); break;
+                    default : {
+                        Logging.logMessage(Logging.LEVEL_ERROR, this,"UNKNOWN OPERATION REQUESTED! PROGRAMMATIC ERROR!!!! PANIC!");
+                        System.exit(1);
+                    }
                 }
             } catch (InterruptedException ex) {
             }
