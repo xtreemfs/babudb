@@ -87,7 +87,12 @@ public class DiskLoggerTest {
                 e.wait(1000);    
         }
                 
-        l.switchLogFile();
+        try {
+            l.lockLogger();
+            l.switchLogFile();
+        } finally {
+            l.unlockLogger();
+        }
         
         for (int i = 0; i < 100; i++) {
             String pl = "Entry "+(i+100+1);
@@ -138,7 +143,12 @@ public class DiskLoggerTest {
         
         System.out.println("finished writing");
                 
-        l.switchLogFile();
+        try {
+            l.lockLogger();
+            l.switchLogFile();
+        } finally {
+            l.unlockLogger();
+        }
         
         DiskLogFile f = new DiskLogFile(testdir+"1.1.dbl");
         while (f.hasNext()) {
@@ -186,7 +196,12 @@ public class DiskLoggerTest {
         
         System.out.println("finished writing");
         
-        l.switchLogFile();
+        try {
+            l.lockLogger();
+            l.switchLogFile();
+        } finally {
+            l.unlockLogger();
+        }
         
         
         //write incorrect data...
