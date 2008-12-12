@@ -9,6 +9,7 @@
 package org.xtreemfs.babudb.lsmdb;
 
 import org.xtreemfs.babudb.BabuDBRequestListener;
+import org.xtreemfs.babudb.UserDefinedLookup;
 import org.xtreemfs.babudb.lsmdb.LSMDBWorker.RequestOperation;
 
 /**
@@ -24,6 +25,7 @@ public class LSMDBRequest {
     private final InsertRecordGroup insertData;
     private final byte[]            lookupKey;
     private final Object            context;
+    private final UserDefinedLookup udLookup;
 
     public LSMDBRequest(LSMDatabase database, BabuDBRequestListener listener,
             InsertRecordGroup insert, Object context) {
@@ -34,6 +36,7 @@ public class LSMDBRequest {
         this.lookupKey = null;
         this.listener = listener;
         this.context = context;
+        this.udLookup = null;
     }
 
     public LSMDBRequest(LSMDatabase database, int indexId, BabuDBRequestListener listener,
@@ -45,6 +48,18 @@ public class LSMDBRequest {
         this.insertData = null;
         this.listener = listener;
         this.context = context;
+        this.udLookup = null;
+    }
+    
+    public LSMDBRequest(LSMDatabase database, BabuDBRequestListener listener, UserDefinedLookup udLookup, Object context) {
+        this.operation = RequestOperation.USER_DEFINED_LOOKUP;
+        this.database = database;
+        this.indexId = 0;
+        this.lookupKey = null;
+        this.insertData = null;
+        this.listener = listener;
+        this.context = context;
+        this.udLookup = udLookup;
     }
 
     public LSMDatabase getDatabase() {
@@ -73,5 +88,9 @@ public class LSMDBRequest {
 
     public Object getContext() {
         return context;
+    }
+    
+    public UserDefinedLookup getUserDefinedLookup() {
+        return this.udLookup;
     }
 }

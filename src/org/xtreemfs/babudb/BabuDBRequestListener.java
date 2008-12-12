@@ -28,5 +28,7 @@ public interface BabuDBRequestListener {
     
     public void prefixLookupFinished(Object context, Iterator<Entry<byte[], byte[]>> iterator);
     
+    public void userDefinedLookupFinished(Object context, Object result);
+    
     public void requestFailed(Object context, BabuDBException error);
 }

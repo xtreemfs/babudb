@@ -11,6 +11,7 @@ package org.xtreemfs.babudb;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.xtreemfs.babudb.lsmdb.LSMLookupInterface;
 import org.xtreemfs.common.logging.Logging;
 
 import static org.junit.Assert.*;
@@ -181,5 +182,44 @@ public class BabuDBTest {
         System.out.println("shutting down database...");
         
         database.shutdown();
+    }
+    
+    @Test
+    public void testUserDefinedLookup() throws Exception {
+        
+        database = new BabuDB(baseDir,baseDir,1,0,0,false);
+        database.createDatabase("test", 3);
+        
+        BabuDBInsertGroup ir = database.createInsertGroup("test");
+        ir.addInsert(0, "Key1".getBytes(),
+                "Value1".getBytes());
+        ir.addInsert(1, "Key2".getBytes(),
+                "Value2".getBytes());
+        ir.addInsert(2, "Key3".getBytes(),
+                "Value3".getBytes());
+        database.syncInsert(ir);
+        
+        UserDefinedLookup lookup = new UserDefinedLookup() {
+
+            public Object execute(LSMLookupInterface database) throws BabuDBException {              
+                if ( (database.lookup(0, "Key1".getBytes()) != null) &&
+                     (database.lookup(1, "Key2".getBytes()) != null)) {
+                    return new Boolean(true);
+                } else {
+                    return new Boolean(false);
+                }
+            }
+        };
+        
+        Boolean result = (Boolean)database.syncUserDefinedLookup("test", lookup);
+        assertTrue(result);
+        
+        
+        System.out.println("shutting down database...");
+        
+        database.shutdown();
+        
+        
+        
     }
 }

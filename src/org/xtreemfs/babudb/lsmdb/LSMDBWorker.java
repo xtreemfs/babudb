@@ -8,6 +8,8 @@
 
 package org.xtreemfs.babudb.lsmdb;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -20,6 +22,7 @@ import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.UserDefinedLookup;
 import org.xtreemfs.common.buffer.BufferPool;
 import org.xtreemfs.common.buffer.ReusableBuffer;
 import org.xtreemfs.common.logging.Logging;
@@ -33,8 +36,11 @@ public class LSMDBWorker extends Thread implements SyncListener {
     public static enum RequestOperation {
         INSERT,
         LOOKUP,
-        PREFIX_LOOKUP
+        PREFIX_LOOKUP,
+        USER_DEFINED_LOOKUP
     };
+    
+    private final Map<LSMDatabase,LSMLookupInterface> lookupIfs;
     
     private final BlockingQueue<LSMDBRequest> requests;
     
@@ -50,6 +56,7 @@ public class LSMDBWorker extends Thread implements SyncListener {
         super("LSMDBWrkr#"+id);
         requests = new LinkedBlockingQueue<LSMDBRequest>();
         down = new AtomicBoolean(false);
+        this.lookupIfs = new HashMap();
         this.logger = logger;
         this.insertLock = insertLock;
     }
@@ -88,6 +95,7 @@ public class LSMDBWorker extends Thread implements SyncListener {
                     case INSERT : doInsert(r); break;
                     case LOOKUP : doLookup(r); break;
                     case PREFIX_LOOKUP : doPrefixLookup(r); break;
+                    case USER_DEFINED_LOOKUP : doUserLookup(r); break;
                     default : {
                         Logging.logMessage(Logging.LEVEL_ERROR, this,"UNKNOWN OPERATION REQUESTED! PROGRAMMATIC ERROR!!!! PANIC!");
                         System.exit(1);
@@ -101,6 +109,17 @@ public class LSMDBWorker extends Thread implements SyncListener {
         synchronized (down) {
             down.set(true);
             down.notifyAll();
+        }
+    }
+    
+    private void doUserLookup(final LSMDBRequest r) {
+        final UserDefinedLookup l = r.getUserDefinedLookup();
+        final LSMLookupInterface lif = new LSMLookupInterface(r.getDatabase());
+        try {
+            Object result = l.execute(lif);
+            r.getListener().userDefinedLookupFinished(r.getContext(), result);
+        } catch (BabuDBException ex) {
+            r.getListener().requestFailed(r.getContext(), ex);
         }
     }
     
