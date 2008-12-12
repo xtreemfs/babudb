@@ -268,6 +268,9 @@ public class BabuDB {
                     result.notify();
                 }
             }
+
+            public void userDefinedLookupFinished(Object context, Object result) {
+            }
         }, null);
         synchronized (result) {
             try {
@@ -313,6 +316,9 @@ public class BabuDB {
                     result.error = error;
                     result.notify();
                 }
+            }
+
+            public void userDefinedLookupFinished(Object context, Object result) {
             }
         }, null);
         synchronized (result) {
@@ -363,6 +369,9 @@ public class BabuDB {
                     result.notify();
                 }
             }
+
+            public void userDefinedLookupFinished(Object context, Object result) {
+            }
         }, null);
         synchronized (result) {
             try {
@@ -378,8 +387,63 @@ public class BabuDB {
         return result.value;
     }
     
+    
     /**
-     * lookup a range starting with key
+     * lookup a single key (synchronously)
+     * @param database name of database
+     * @param indexId index id (0..NumIndices-1)
+     * @param key the key to look up
+     * @return a view buffer to the result or null if there is no such entry
+     * @throws BabuDBException if the operation failed
+     */
+    public Object syncUserDefinedLookup(String database, UserDefinedLookup udl) throws BabuDBException {
+
+        final AsyncResult result = new AsyncResult();
+
+        asyncUserDefinedLookup(database, new BabuDBRequestListener() {
+
+            public void insertFinished(Object context) {
+            }
+
+            public void lookupFinished(Object context, byte[] value) {
+
+            }
+
+            public void prefixLookupFinished(Object context, Iterator<Entry<byte[], byte[]>> iterator) {
+            }
+
+            public void requestFailed(Object context, BabuDBException error) {
+                synchronized (result) {
+                    result.done = true;
+                    result.error = error;
+                    result.notify();
+                }
+            }
+
+            public void userDefinedLookupFinished(Object context, Object result2) {
+                synchronized (result) {
+                    result.done = true;
+                    result.udlresult = result2;
+                    result.notify();
+                }
+            }
+        }, udl, null);
+        synchronized (result) {
+            try {
+                if (!result.done) {
+                    result.wait();
+                }
+            } catch (InterruptedException ex) {
+            }
+        }
+        if (result.error != null) {
+            throw result.error;
+        }
+        return result.udlresult;
+    }
+    
+    /**
+     * executes a user defined lookup method
      * @param database name of database
      * @param indexId index id (0..NumIndices-1)
      * @param key the key to start the iterator at
@@ -396,7 +460,6 @@ public class BabuDB {
             }
 
             public void lookupFinished(Object context, byte[] value) {
-                
             }
 
             public void prefixLookupFinished(Object context, Iterator<Entry<byte[], byte[]>> iterator) {
@@ -413,6 +476,9 @@ public class BabuDB {
                     result.error = error;
                     result.notify();
                 }
+            }
+
+            public void userDefinedLookupFinished(Object context, Object result) {
             }
         }, null);
         synchronized (result) {
@@ -862,6 +928,28 @@ public class BabuDB {
 
         w.addRequest(new LSMDBRequest(databases.get(dbId), listener, ins, context));
     }
+    
+    /**
+     * Insert an group of inserts asynchronously.
+     * @param ig the group of inserts
+     * @param listener a callback for the result
+     * @param context optional context object which is passed to the listener
+     * @throws BabuDBException
+     */
+    public void asyncUserDefinedLookup(String databaseName, BabuDBRequestListener listener,
+            UserDefinedLookup udl, Object context) throws BabuDBException {
+        final LSMDatabase db = dbNames.get(databaseName);
+        if (db == null) {
+            throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database does not exist");
+        }
+
+        LSMDBWorker w = worker[db.getDatabaseId() % worker.length];
+        if (Logging.tracingEnabled()) {
+            Logging.logMessage(Logging.LEVEL_TRACE, this, "udl request is sent to worker #" + db.getDatabaseId() % worker.length);
+        }
+
+        w.addRequest(new LSMDBRequest(db, listener, udl,context));
+    }
 
     /**
      * Creates a new group of inserts.
@@ -932,6 +1020,8 @@ public class BabuDB {
         public boolean done = false;
 
         public byte[] value;
+        
+        public Object udlresult;
 
         public Iterator<Entry<byte[], byte[]>> iterator;
 
