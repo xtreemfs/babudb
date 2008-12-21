@@ -36,7 +36,7 @@ protected:
 	string name;
 	GlobalRegistries* global_registries;
 
-	uint64 last_sample_timestamp, next_sample_timestamp, first_timestamp;
+	uint64_t last_sample_timestamp, next_sample_timestamp, first_timestamp;
 
 };
 

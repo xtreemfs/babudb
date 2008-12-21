@@ -22,7 +22,7 @@ class RecordIterator;
 class LogStats;
 
 #define INVALID_OFFSET			0xFFFFffffFFFFffffULL
-typedef YIELD::uint64		offset_t;
+typedef uint64_t				offset_t;
 
 
 /** An append-only file of records.

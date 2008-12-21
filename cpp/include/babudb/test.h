@@ -26,7 +26,7 @@ public:
 		YIELD::DiskOperations::mkdir(YIELD::DiskPath(TEST_OUTPUT_DIR) + __short_description);
 	}
 
-	YIELD::DiskPath testPath(const std::string& filename) {
+	YIELD::DiskPath testPath(const std::string& filename = "") {
 		return YIELD::DiskPath(TEST_OUTPUT_DIR) + __short_description + filename;
 	}
 };
