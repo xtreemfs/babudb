@@ -2,6 +2,7 @@
 // Licensed under the BSD License, see LICENSE file for details.
 
 #include "babudb/RecordIterator.h"
+#include "babudb/Operation.h"
 #include "RecordFrame.h"
 
 #include <yield/platform/assert.h>
@@ -16,9 +17,14 @@ void* RecordIterator::operator * ()	const {
 	return current->getPayload();
 }
 
-RecordFrame* RecordIterator::getRecord()	const {
+RecordFrame* RecordIterator::getRecord() const {
 	ASSERT_VALID_POS(current);
 	return current;
+}
+
+Data RecordIterator::asData() const {
+	ASSERT_VALID_POS(current);
+	return Data(current->getPayload(), current->getPayloadSize());
 }
 
 void RecordIterator::reverse()							{ is_forward_iterator = !is_forward_iterator; }

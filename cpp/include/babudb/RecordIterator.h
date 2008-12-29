@@ -9,6 +9,7 @@
 namespace babudb {
 
 class RecordFrame;
+class Data;
 
 class RecordIterator
 {
@@ -53,6 +54,7 @@ public:
 	bool isType( unsigned char t ) const;
 
 	RecordFrame* getRecord() const;
+	Data asData() const;
 
 protected:
 	void plusplus();
