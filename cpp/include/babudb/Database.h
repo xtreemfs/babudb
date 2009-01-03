@@ -54,6 +54,8 @@ public:
 
 	bool migrate(const string& index, int steps);
 
+	const OperationFactory& getOperationFactory();
+
 private:
 	friend class OperationTarget;
 

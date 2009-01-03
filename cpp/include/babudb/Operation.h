@@ -105,6 +105,7 @@ public:
 
 	void free() {
 		delete [] (char*)data;
+		data = 0; size = 0;
 	}
 
 	Data clone() const {

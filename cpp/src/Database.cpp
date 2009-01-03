@@ -48,6 +48,10 @@ void Database::shutdown() {
 	log->close();
 }
 
+const OperationFactory& Database::getOperationFactory() {
+	return factory;
+}
+
 void Database::registerIndex(const string& index_name, KeyOrder& order) {
 	indices.insert(std::make_pair(index_name,new DataIndex(name + "-" + index_name,order)));
 }
