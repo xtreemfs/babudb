@@ -260,14 +260,18 @@ void SequentialFile::moveRecord( offset_t at, offset_t to )
 void SequentialFile::commit()
 {
 	record_frame_t* next_to_current_record = (record_frame_t*)offset2record(next_write_offset);
+
 	next_to_current_record--;
 	SequentialFile::Record* current_record = ((Record*)next_to_current_record)->getStartHeader();
 
-	ASSERT_TRUE(current_record->isValid());
+	if(current_record->isEndOfTransaction())	// no operations to commit
+		return;
 
-	current_record->setEndOfTransaction( true );
-
-	writeBack();
+	if(current_record->isValid()) {
+		current_record->setEndOfTransaction( true );
+		writeBack();
+	}
+	// else: no operations in database
 }
 
 void SequentialFile::rollback() {
