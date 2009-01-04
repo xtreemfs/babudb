@@ -64,6 +64,7 @@ private:
 	string name;
 	const OperationFactory& factory;
 	IndexCreator* merger;
+	bool is_running; // startup has been called
 };
 
 };

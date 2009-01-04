@@ -99,12 +99,12 @@ void SequentialFile::windToEnd()
 	{
 		record_frame_t* start = (record_frame_t*)offset2record( 0 );
 
-		if((memory->getFlags() & DOOF_WRITE) != 0)
+		if((memory->getFlags() & O_RDWR) != 0)
 			*start = SequentialFile_DB_VERSION;
 	}
 	else if(((unsigned int*)raw)[0] == SHUTDOWN_MARKER )
 	{
-		if((memory->getFlags() & DOOF_WRITE) != 0)
+		if((memory->getFlags() & O_RDWR) != 0)
 			((unsigned int*)raw)[0] = 0;
 
 		next_write_offset = record2offset((Record*)raw);
@@ -115,7 +115,7 @@ void SequentialFile::windToEnd()
 
 void SequentialFile::writeEndOfFile()
 {
-	if((memory->getFlags() & DOOF_WRITE) == 0)
+	if((memory->getFlags() & O_RDWR) == 0)
 		return;
 
 	unsigned int* raw = (unsigned int*)offset2record( next_write_offset );
@@ -209,7 +209,7 @@ int SequentialFile::repair()
 
 	// clean memory after first valid record
 
-	if((memory->getFlags() & DOOF_WRITE) != 0)
+	if((memory->getFlags() & O_RDWR) != 0)
 		for( raw = raw; (char*)raw < memory->getRegionEnd(); raw++ )
 			*raw = 0;
 
@@ -283,7 +283,7 @@ unsigned int SequentialFile::rollback() {
 		if(r.getRecord()->isEndOfTransaction())
 			break;
 
-		if((memory->getFlags() & DOOF_WRITE) != 0)
+		if((memory->getFlags() & O_RDWR) != 0)
 			erase( record2offset( r.getRecord() ) );		// works because prev skips 0's
 		rolledback_operations++;
 	}
@@ -298,7 +298,7 @@ unsigned int SequentialFile::rollback() {
 
 void SequentialFile::erase( offset_t offset )
 {
-	ASSERT_TRUE((memory->getFlags() & DOOF_WRITE) != 0);
+	ASSERT_TRUE((memory->getFlags() & O_RDWR) != 0);
 
 	Record* target = offset2record( offset );
 	ASSERT_TRUE(target->isValid());

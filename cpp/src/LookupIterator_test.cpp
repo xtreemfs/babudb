@@ -21,7 +21,7 @@ TEST_TMPDIR(LookupIterator,babudb)
 	DataHolder k1("key1"), v1("value1"), k2("key2"), v2("value2");
 	DataHolder k3("key3"), v3("value3"), k4("key4"), v4("value4");
 
-	unsigned long mmap_flags = DOOF_CREATE|DOOF_READ|DOOF_WRITE|DOOF_SYNC;
+	unsigned long mmap_flags = O_CREAT|O_RDWR|O_SYNC;
 
 	{	// Create an ImmutableIndex
 		auto_ptr<MemoryMappedFile> file(new MemoryMappedFile(testPath("test.idx").getHostCharsetPath(), 1024 * 1024, mmap_flags));

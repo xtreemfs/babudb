@@ -10,7 +10,8 @@ using namespace babudb;
 
 TEST_TMPDIR(SequentialFile_iteration,babudb)
 {
-	auto_ptr<MemoryMappedFile> file(new MemoryMappedFile(testPath("testfile").getHostCharsetPath(), 1024 * 1024, DOOF_CREATE|DOOF_READ|DOOF_WRITE|DOOF_SYNC));
+	unsigned long mmap_flags = O_CREAT|O_RDWR|O_SYNC;
+	auto_ptr<MemoryMappedFile> file(new MemoryMappedFile(testPath("testfile").getHostCharsetPath(), 1024 * 1024, mmap_flags));
 	SequentialFile sf(file, NULL);
 
 	EXPECT_TRUE(sf.begin() == sf.end());
@@ -23,7 +24,7 @@ TEST_TMPDIR(SequentialFile_iteration,babudb)
 
 	sf.close();
 
-	file.reset(new MemoryMappedFile(testPath("testfile").getHostCharsetPath(), 1024 * 1024, DOOF_READ));
+	file.reset(new MemoryMappedFile(testPath("testfile").getHostCharsetPath(), 1024 * 1024, O_RDONLY));
 	SequentialFile sf2(file, NULL);
 
 	SequentialFile::iterator i = sf2.begin();
@@ -63,7 +64,7 @@ TEST_TMPDIR(SequentialFile_iteration,babudb)
 
 TEST_TMPDIR(SequentialFile_rollback,babudb)
 {
-	auto_ptr<MemoryMappedFile> file(new MemoryMappedFile(testPath("testfile").getHostCharsetPath(), 1024 * 1024, DOOF_CREATE|DOOF_READ|DOOF_WRITE|DOOF_SYNC));
+	auto_ptr<MemoryMappedFile> file(new MemoryMappedFile(testPath("testfile").getHostCharsetPath(), 1024 * 1024, O_CREAT|O_RDWR|O_SYNC));
 	SequentialFile sf(file, NULL);
 
 	sf.append(1,1,false);
@@ -73,7 +74,7 @@ TEST_TMPDIR(SequentialFile_rollback,babudb)
 
 	sf.close();
 
-	file.reset(new MemoryMappedFile(testPath("testfile").getHostCharsetPath(), 1024 * 1024, DOOF_READ));
+	file.reset(new MemoryMappedFile(testPath("testfile").getHostCharsetPath(), 1024 * 1024, O_RDONLY));
 	SequentialFile sf2(file, NULL);
 
 	SequentialFile::iterator i = sf2.begin();

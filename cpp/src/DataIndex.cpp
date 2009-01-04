@@ -47,7 +47,7 @@ static DiskIndices scanAvailableImmutableIndices(string& name_prefix, KeyOrder& 
 
 		lsn_t lsn;
 		if(matchFilename(entry->getPath(), dir_prefix.second.getHostCharsetPath(), "idx", lsn)) {
-			auto_ptr<YIELD::MemoryMappedFile> file(new YIELD::MemoryMappedFile(entry->getPath(), 1, DOOF_SYNC));
+			auto_ptr<YIELD::MemoryMappedFile> file(new YIELD::MemoryMappedFile(entry->getPath(), 1, O_RDONLY|O_SYNC));
 			ImmutableIndex index(file,order,lsn);
 			results.push_back(make_pair(entry->getPath(),make_pair(lsn, index.checkHealth())));
 		}
@@ -79,7 +79,7 @@ lsn_t DataIndex::loadLatestIntactImmutableIndex() {
 	// load it
 
 	if(latest.second > 0) {
-		auto_ptr<YIELD::MemoryMappedFile> file(new YIELD::MemoryMappedFile(latest.first, 1024 * 1024, DOOF_SYNC));
+		auto_ptr<YIELD::MemoryMappedFile> file(new YIELD::MemoryMappedFile(latest.first, 1024 * 1024, O_RDONLY|O_SYNC));
 		immutable_index = new ImmutableIndex(file,order,latest.second);
 		immutable_index->load();
 	}

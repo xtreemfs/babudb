@@ -33,6 +33,30 @@ TEST_TMPDIR(Database,babudb)
 	delete db;
 }
 
+TEST_TMPDIR(Database_EmptyReopen,babudb)
+{
+	StringOrder myorder;
+	Database* db = new Database(testPath("test").getHostCharsetPath(),StringOperationFactory());
+	db->registerIndex("testidx",myorder);
+	db->startup();
+
+	StringSetOperation op("testidx", "Key1","data1");
+	db->execute(op);
+
+	db->shutdown();
+	delete db;
+
+	db = new Database(testPath("test").getHostCharsetPath(),StringOperationFactory());
+	db->registerIndex("testidx",myorder);
+	db->startup();
+
+	StringSetOperation op2("testidx", "Key1","data1");
+	db->execute(op2);
+
+	db->shutdown();
+	delete db;
+}
+
 TEST_TMPDIR(Database_Reopen,babudb)
 {
 	StringOrder myorder;

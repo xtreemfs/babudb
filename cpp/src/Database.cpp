@@ -18,7 +18,7 @@ using std::pair;
 using namespace YIELD;
 
 Database::Database(const string& name, const OperationFactory& op_f)
-: name(name), factory(op_f), merger(NULL) {
+: name(name), factory(op_f), merger(NULL), is_running(false) {
 	log = new Log(name);
 }
 
@@ -30,8 +30,9 @@ Database::~Database() {
 }
 
 void Database::startup() {
-	// load latest intact ImmutableIndex and find minimum LSN to recover from
+	ASSERT_FALSE(is_running);
 
+	// load latest intact ImmutableIndex and find minimum LSN to recover from
 	lsn_t min_lsn = MAX_LSN;
 	for(map<string,DataIndex*>::iterator i = indices.begin(); i != indices.end(); ++i) {
 		lsn_t last_persistent_lsn = i->second->loadLatestIntactImmutableIndex();
@@ -42,9 +43,12 @@ void Database::startup() {
 	log->loadRequiredLogSections(min_lsn);
 	DataIndexOperationTarget target(log,indices,-1);
 	log->replayToLogIndices(target, factory, min_lsn);
+
+	is_running = true;
 }
 
 void Database::shutdown() {
+	ASSERT_TRUE(is_running);
 	log->close();
 }
 
@@ -53,6 +57,7 @@ const OperationFactory& Database::getOperationFactory() {
 }
 
 void Database::registerIndex(const string& index_name, KeyOrder& order) {
+	ASSERT_FALSE(is_running);
 	indices.insert(std::make_pair(index_name,new DataIndex(name + "-" + index_name,order)));
 }
 
@@ -101,7 +106,7 @@ bool Database::migrate(const string& index, int steps) {
 			merger = NULL;
 
 			// replace new section with old section
-			auto_ptr<YIELD::MemoryMappedFile> mfile(new YIELD::MemoryMappedFile(target_name, 1024*1024, DOOF_READ));
+			auto_ptr<YIELD::MemoryMappedFile> mfile(new YIELD::MemoryMappedFile(target_name, 1024*1024, O_RDONLY));
 			indices[index]->advanceImmutableIndex(new ImmutableIndex(mfile, indices[index]->getOrder(), target_last_lsn));
 			return true;
 		}
@@ -128,7 +133,7 @@ bool Database::migrate(const string& index, int steps) {
 
 		std::ostringstream pers_name;
 		pers_name << name << "-" << index << "_" << lsn << ".idx";
-		auto_ptr<YIELD::MemoryMappedFile> mfile(new YIELD::MemoryMappedFile(pers_name.str(), 1024*1024, DOOF_CREATE|DOOF_READ|DOOF_WRITE|DOOF_SYNC));
+		auto_ptr<YIELD::MemoryMappedFile> mfile(new YIELD::MemoryMappedFile(pers_name.str(), 1024*1024, O_CREAT|O_RDWR|O_SYNC));
 		auto_ptr<ImmutableIndexWriter> target(new ImmutableIndexWriter(mfile, 64 * 1024));
 
 		if(base)

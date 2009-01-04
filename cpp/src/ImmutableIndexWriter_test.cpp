@@ -36,7 +36,7 @@ private:
 
 TEST_TMPDIR(ImmutableIndexWriter,babudb)
 {
-	unsigned long mmap_flags = DOOF_CREATE|DOOF_READ|DOOF_WRITE|DOOF_SYNC;
+	unsigned long mmap_flags = O_CREAT|O_RDWR|O_SYNC;
 
 	// create ImmutableIndex from LogIndex
 
@@ -64,7 +64,7 @@ TEST_TMPDIR(ImmutableIndexWriter,babudb)
 
 	// and load it again and check
 
-	auto_ptr<MemoryMappedFile> file2(new MemoryMappedFile(testPath("test.idx").getHostCharsetPath(), 1024 * 1024, DOOF_READ));
+	auto_ptr<MemoryMappedFile> file2(new MemoryMappedFile(testPath("test.idx").getHostCharsetPath(), 1024 * 1024, O_RDONLY));
 	ImmutableIndex loadedindex(file2,sorder,0);
 	loadedindex.load();
 
@@ -99,7 +99,7 @@ TEST_TMPDIR(ImmutableIndexWriter,babudb)
 	IndexMerger merger2(writer2, log_index2, loadedindex, sorder);
 	merger2.run();
 
-	auto_ptr<MemoryMappedFile> file3(new MemoryMappedFile(testPath("test_t.idx").getHostCharsetPath(), 1024 * 1024, DOOF_READ));
+	auto_ptr<MemoryMappedFile> file3(new MemoryMappedFile(testPath("test_t.idx").getHostCharsetPath(), 1024 * 1024, O_RDONLY));
 	ImmutableIndex idx(file3,sorder,0);
 	idx.load();
 

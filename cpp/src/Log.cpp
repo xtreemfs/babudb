@@ -77,16 +77,23 @@ void Log::cleanup(lsn_t from_lsn, const string& to) {
 */
 
 void Log::loadRequiredLogSections(lsn_t min_lsn) {
+	ASSERT_TRUE(sections.size() == 0); // otherwise somebody called startup() twice
 	DiskSections disk_sections = scanAvailableLogSections(name_prefix);
 
 	for(DiskSections::iterator i = disk_sections.begin(); i != disk_sections.end(); ++i) {
 		DiskSections::iterator next = i; next++;
 
 		if(next == disk_sections.end() || next->second > min_lsn) {
-			auto_ptr<YIELD::MemoryMappedFile> file(new YIELD::MemoryMappedFile(i->first, 4, DOOF_READ));
+			auto_ptr<YIELD::MemoryMappedFile> file(new YIELD::MemoryMappedFile(i->first, 4, O_RDONLY));
 
 			LogSection* section = new LogSection(file, i->second); // repairs if not graceful
-			sections.push_back(section);
+
+			if(section->getFirstLSN() <= section->getLastLSN()) // check if there is a LSN in this section
+				sections.push_back(section);
+			else {
+				ASSERT_TRUE(section->empty());
+				delete section;
+			}
 		}
 	}
 
@@ -136,7 +143,8 @@ LogSection* Log::getTail() {
 		std::ostringstream section_name;
 		section_name << name_prefix << "_" << next_lsn << ".log";
 
-		auto_ptr<YIELD::MemoryMappedFile> file(new YIELD::MemoryMappedFile(section_name.str(), 1024 * 1024, DOOF_CREATE|DOOF_READ|DOOF_WRITE|DOOF_SYNC));
+		auto_ptr<YIELD::MemoryMappedFile> file(new YIELD::MemoryMappedFile(section_name.str(), 1024 * 1024, O_CREAT|O_RDWR|O_SYNC));
+		ASSERT_TRUE(file.get()->isOpen());
 
 		tail = new LogSection(file,next_lsn);
 		sections.push_back(tail);
@@ -152,9 +160,15 @@ void Log::advanceTail() {
 }
 
 LogIterator Log::begin() {
-	return LogIterator(sections.begin(), sections.end(), sections.begin(), (*sections.begin())->begin());
+	if(sections.empty())
+		return end();
+	else
+		return LogIterator(sections.begin(), sections.end(), sections.begin(), (*sections.begin())->begin());
 }
 
 LogIterator Log::end(){
-	return LogIterator(sections.begin(), sections.end(), sections.end(), sections.back()->end());
+	if(sections.empty())
+		return LogIterator(sections.begin(), sections.end(), sections.end(), RecordIterator());
+	else
+		return LogIterator(sections.begin(), sections.end(), sections.end(), sections.back()->end());
 }

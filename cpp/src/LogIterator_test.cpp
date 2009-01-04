@@ -16,6 +16,9 @@ TEST_TMPDIR(LogIterator,babudb)
 {
 	auto_ptr<Log> log(new Log(testPath("testlog")));
 
+	LogIterator i = log->begin();	// try an empty log first
+	EXPECT_TRUE(i == log->end());
+
 	LogSection* tail = log->getTail();
 
 	tail->appendOperation(DummyOperation('A')); tail->commitOperations();
@@ -35,7 +38,7 @@ TEST_TMPDIR(LogIterator,babudb)
 	EXPECT_TRUE(log->getSections().size() == 2);
 	DummyOperation op(0);
 
-	LogIterator i = log->begin();
+	i = log->begin();
 	EXPECT_TRUE(i != log->end());
 	EXPECT_TRUE(i.getType() != 0);
 	EXPECT_TRUE(op.deserialize(*i).value == 'A');

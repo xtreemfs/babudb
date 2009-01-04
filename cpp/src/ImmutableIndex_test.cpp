@@ -17,7 +17,7 @@ using namespace babudb;
 
 TEST_TMPDIR(ImmutableIndex,babudb)
 {
-	unsigned long mmap_flags = DOOF_CREATE|DOOF_READ|DOOF_WRITE|DOOF_SYNC;
+	unsigned long mmap_flags = O_CREAT|O_RDWR|O_SYNC;
 
 	auto_ptr<MemoryMappedFile> file(new MemoryMappedFile(testPath("test.idx").getHostCharsetPath(), 1024 * 1024, mmap_flags));
 
