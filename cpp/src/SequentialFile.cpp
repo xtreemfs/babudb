@@ -274,7 +274,7 @@ void SequentialFile::commit()
 	// else: no operations in database
 }
 
-void SequentialFile::rollback() {
+unsigned int SequentialFile::rollback() {
 	unsigned int rolledback_operations = 0;
 
 	iterator r;
@@ -288,18 +288,12 @@ void SequentialFile::rollback() {
 		rolledback_operations++;
 	}
 
-#ifdef _DEBUG
-	if( rolledback_operations > 0 )
-	{
-		char str[400]; sprintf( str, "SequentialFile::rollback: removed %d operation(s)\n", rolledback_operations );
-//		DebugOut( str );
-	}
-#endif
-
 	if( r != rend() )
 		next_write_offset = record2offset((Record*)r.getRecord()->getEndOfRecord() );
 	else
 		next_write_offset = FIRST_RECORD_OFFSET;
+
+	return rolledback_operations;
 }
 
 void SequentialFile::erase( offset_t offset )

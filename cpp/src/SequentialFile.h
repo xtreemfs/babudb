@@ -64,7 +64,7 @@ public:
 	void erase( offset_t );
 
 	void commit();
-	void rollback();
+	unsigned int rollback();
 
 	void* offset2pointer( offset_t offset ) const;
 	offset_t pointer2offset( void* ) const;
