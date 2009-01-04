@@ -17,17 +17,17 @@ public:
 		: YIELD::TestCase(short_description, test_suite) {}
 
 	void setUp() {
-		if(YIELD::DiskOperations::exists(YIELD::DiskPath(TEST_OUTPUT_DIR) + __short_description))
-			YIELD::DiskOperations::rmtree(YIELD::DiskPath(TEST_OUTPUT_DIR) + __short_description);
+		if(YIELD::DiskOperations::exists(YIELD::Path(TEST_OUTPUT_DIR) + __short_description))
+			YIELD::DiskOperations::rmtree(YIELD::Path(TEST_OUTPUT_DIR) + __short_description);
 		try {
-			YIELD::DiskOperations::mkdir(YIELD::DiskPath(TEST_OUTPUT_DIR));
+			YIELD::DiskOperations::mkdir(YIELD::Path(TEST_OUTPUT_DIR));
 		} catch(YIELD::PlatformException& ) {}
 
-		YIELD::DiskOperations::mkdir(YIELD::DiskPath(TEST_OUTPUT_DIR) + __short_description);
+		YIELD::DiskOperations::mkdir(YIELD::Path(TEST_OUTPUT_DIR) + __short_description);
 	}
 
-	YIELD::DiskPath testPath(const std::string& filename = "") {
-		return YIELD::DiskPath(TEST_OUTPUT_DIR) + __short_description + filename;
+	YIELD::Path testPath(const std::string& filename = "") {
+		return YIELD::Path(TEST_OUTPUT_DIR) + __short_description + filename;
 	}
 };
 

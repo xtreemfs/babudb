@@ -7,10 +7,10 @@
 #include <string>
 using std::string;
 
-namespace yield { class DiskPath; }
+namespace yield { class Path; }
 
 namespace babudb {
-bool matchFilename(const yield::DiskPath& fullpath, const string& desired_prefix, const string& desired_ext, unsigned int& no);
+bool matchFilename(const yield::Path& fullpath, const string& desired_prefix, const string& desired_ext, unsigned int& no);
 };
 
 #endif

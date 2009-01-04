@@ -33,16 +33,16 @@ void Log::close() {
 
 class LSNBefore {
 public:
-	typedef pair<YIELD::DiskPath, lsn_t> vector_entry;
+	typedef pair<YIELD::Path, lsn_t> vector_entry;
 	bool operator () (const vector_entry& l, const vector_entry& r) { return l.second < r.second; }
 };
 
-typedef vector< pair<YIELD::DiskPath, lsn_t> > DiskSections;
+typedef vector< pair<YIELD::Path, lsn_t> > DiskSections;
 
 static DiskSections scanAvailableLogSections(const string& name_prefix) {
 	DiskSections result;
 
-	pair<YIELD::DiskPath,YIELD::DiskPath> prefix_parts = YIELD::DiskPath(name_prefix).split();
+	pair<YIELD::Path,YIELD::Path> prefix_parts = YIELD::Path(name_prefix).split();
 	YIELD::DirectoryWalker walker(prefix_parts.first);
 
 	while(walker.hasNext()) {
@@ -65,8 +65,8 @@ void Log::cleanup(lsn_t from_lsn, const string& to) {
 		DiskSections::iterator next = i; next++;
 
 		if(next != disk_sections.end() && next->second <= from_lsn) {
-			pair<YIELD::DiskPath,YIELD::DiskPath> parts = i->first.split();
-			YIELD::DiskOperations::rename(i->first, YIELD::DiskPath(to) + parts.second);
+			pair<YIELD::Path,YIELD::Path> parts = i->first.split();
+			YIELD::DiskOperations::rename(i->first, YIELD::Path(to) + parts.second);
 		}
 	}
 }

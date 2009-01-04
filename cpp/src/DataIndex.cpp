@@ -14,7 +14,7 @@ using namespace babudb;
 
 #include <algorithm>
 
-#include "yield/platform/disk_path.h"
+#include "yield/platform/path.h"
 #include "yield/platform/directory_walker.h"
 #include "yield/platform/memory_mapped_file.h"
 using namespace YIELD;
@@ -34,12 +34,12 @@ DataIndex::~DataIndex() {
 		delete *i;
 }
 
-typedef vector<pair<YIELD::DiskPath,pair<lsn_t,bool> > > DiskIndices;
+typedef vector<pair<YIELD::Path,pair<lsn_t,bool> > > DiskIndices;
 
 static DiskIndices scanAvailableImmutableIndices(string& name_prefix, KeyOrder& order) {
 	DiskIndices results;
 
-	pair<YIELD::DiskPath,YIELD::DiskPath> dir_prefix = YIELD::DiskPath(name_prefix).split();
+	pair<YIELD::Path,YIELD::Path> dir_prefix = YIELD::Path(name_prefix).split();
 	YIELD::DirectoryWalker walker(dir_prefix.first);
 
 	while(walker.hasNext()) {
@@ -56,10 +56,10 @@ static DiskIndices scanAvailableImmutableIndices(string& name_prefix, KeyOrder& 
 	return results;
 }
 
-static pair<YIELD::DiskPath,lsn_t> findLatestIntactImmutableIndex(DiskIndices& on_disk) {
+static pair<YIELD::Path,lsn_t> findLatestIntactImmutableIndex(DiskIndices& on_disk) {
 	// find latest intact ImmutableIndex
 	lsn_t latest_intact_lsn = 0;
-	YIELD::DiskPath latest_intact_path("");
+	YIELD::Path latest_intact_path("");
 
 	for(DiskIndices::iterator i = on_disk.begin(); i != on_disk.end(); ++i) {
 		if(i->second.second && i->second.first > latest_intact_lsn) {  // healthy and newer than the current latest
@@ -74,7 +74,7 @@ static pair<YIELD::DiskPath,lsn_t> findLatestIntactImmutableIndex(DiskIndices& o
 lsn_t DataIndex::loadLatestIntactImmutableIndex() {
 	DiskIndices on_disk = scanAvailableImmutableIndices(name_prefix, order);
 
-	pair<YIELD::DiskPath,lsn_t> latest = findLatestIntactImmutableIndex(on_disk);
+	pair<YIELD::Path,lsn_t> latest = findLatestIntactImmutableIndex(on_disk);
 
 	// load it
 
@@ -89,12 +89,12 @@ lsn_t DataIndex::loadLatestIntactImmutableIndex() {
 
 void DataIndex::cleanup(lsn_t from_lsn, const string& to) {
 	DiskIndices on_disk = scanAvailableImmutableIndices(name_prefix, order);
-	pair<YIELD::DiskPath,lsn_t> latest = findLatestIntactImmutableIndex(on_disk);
+	pair<YIELD::Path,lsn_t> latest = findLatestIntactImmutableIndex(on_disk);
 
 	for(DiskIndices::iterator i = on_disk.begin(); i != on_disk.end(); ++i) {
 		if(i->first != latest.first) {// not the latest intact index
-			pair<YIELD::DiskPath,YIELD::DiskPath> parts = i->first.split();
-			YIELD::DiskOperations::rename(i->first, YIELD::DiskPath(to) + parts.second);
+			pair<YIELD::Path,YIELD::Path> parts = i->first.split();
+			YIELD::DiskOperations::rename(i->first, YIELD::Path(to) + parts.second);
 		}
 	}
 }
