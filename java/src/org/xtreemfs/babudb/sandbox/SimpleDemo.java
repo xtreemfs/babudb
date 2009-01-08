@@ -8,13 +8,14 @@ package org.xtreemfs.babudb.sandbox;
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBInsertGroup;
+import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 
 public class SimpleDemo {
 
     public static void main(String[] args) {
         try {
             //start the database
-            BabuDB database = new BabuDB("myDatabase/", "myDatabase/", 2, 1024 * 1024 * 16, 5 * 60, false);
+            BabuDB database = new BabuDB("myDatabase/", "myDatabase/", 2, 1024 * 1024 * 16, 5 * 60, SyncMode.SYNC_WRITE,0,0);
 
             //create a new database called myDB
             database.createDatabase("myDB", 2);

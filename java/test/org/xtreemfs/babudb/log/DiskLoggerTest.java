@@ -19,6 +19,7 @@ import org.junit.Test;
 import org.xtreemfs.common.buffer.ReusableBuffer;
 import org.xtreemfs.common.logging.Logging;
 import org.junit.Assert;
+import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 
 /**
  *
@@ -44,7 +45,7 @@ public class DiskLoggerTest {
 
     @Before
     public void setUp() throws IOException {
-        l = new DiskLogger(testdir, 1, 1, false);
+        l = new DiskLogger(testdir, 1, 1, SyncMode.FSYNC,0,0);
         l.start();
     }
 
@@ -118,6 +119,7 @@ public class DiskLoggerTest {
                 synchronized (entry) {
                     count.incrementAndGet();
                     entry.notifyAll();
+                    System.out.println("wrote Entry: "+entry.getLogSequenceNo());
                 }
             } 
 

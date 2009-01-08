@@ -51,18 +51,25 @@ public class LSMDBWorker extends Thread implements SyncListener {
     private final DiskLogger    logger;
     
     private final ReadWriteLock insertLock;
+
+    private final boolean       pseudoSync;
     
-    public LSMDBWorker(DiskLogger logger, int id, ReadWriteLock insertLock) {
+    public LSMDBWorker(DiskLogger logger, int id, ReadWriteLock insertLock,
+            boolean pseudoSync, int maxQ) {
         super("LSMDBWrkr#"+id);
-        requests = new LinkedBlockingQueue<LSMDBRequest>();
+        if (maxQ > 0)
+            requests = new LinkedBlockingQueue<LSMDBRequest>(maxQ);
+        else
+            requests = new LinkedBlockingQueue<LSMDBRequest>();
         down = new AtomicBoolean(false);
         this.lookupIfs = new HashMap();
         this.logger = logger;
         this.insertLock = insertLock;
+        this.pseudoSync = pseudoSync;
     }
     
-    public void addRequest(LSMDBRequest request) {
-        requests.add(request);
+    public void addRequest(LSMDBRequest request) throws InterruptedException {
+        requests.put(request);
     }
     
     public void shutdown() {
@@ -123,7 +130,7 @@ public class LSMDBWorker extends Thread implements SyncListener {
         }
     }
     
-    private void doInsert(final LSMDBRequest r) {
+    private void doInsert(final LSMDBRequest r) throws InterruptedException {
         final InsertRecordGroup irec = r.getInsertData();
         int size = irec.getSize();
         ReusableBuffer buf = BufferPool.allocate(size);
@@ -132,6 +139,10 @@ public class LSMDBWorker extends Thread implements SyncListener {
         LogEntry e = new LogEntry(buf,this);
         e.setAttachment(r);
         logger.append(e);
+
+        if (pseudoSync) {
+            insertIntoIndex(r);
+        }
     }
     
     private void doLookup(final LSMDBRequest r) {
@@ -157,7 +168,13 @@ public class LSMDBWorker extends Thread implements SyncListener {
 
     public void synced(LogEntry entry) {
         entry.free();
-        final LSMDBRequest r = entry.getAttachment();
+        if (!pseudoSync) {
+            final LSMDBRequest r = entry.getAttachment();
+            insertIntoIndex(r);
+        }
+    }
+
+    private void insertIntoIndex(final LSMDBRequest r) {
         final InsertRecordGroup irg = r.getInsertData();
         final LSMDatabase db = r.getDatabase();
         final int numIndices = db.getIndexCount();
