@@ -13,11 +13,14 @@ import java.io.FileDescriptor;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.io.SyncFailedException;
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -36,6 +39,32 @@ import org.xtreemfs.common.logging.Logging;
 public class DiskLogger extends Thread {
 
     /**
+     * how to write log entries to disk
+     */
+    public static enum SyncMode {
+        /**
+         * asynchronously write log entries (data is lost when system crashes).
+         */
+        ASYNC,
+        /**
+         * executes an fsync on the logfile before acknowledging the operation.
+         */
+        FSYNC,
+
+        FDATASYNC,
+        /**
+         * synchronously writes the log entry to disk before ack. Does not
+         * update the metadata.
+         */
+        SYNC_WRITE,
+        /**
+         * synchronously writes the log entry to disk and updates
+         * the metadat before ack.
+         */
+        SYNC_WRITE_METADATA
+    };
+
+    /**
      * NIO FileChannel used to write ByteBuffers directly to file.
      */
     private FileChannel channel;
@@ -43,7 +72,7 @@ public class DiskLogger extends Thread {
     /**
      * Stream used to obtain the FileChannel and to flush file.
      */
-    private FileOutputStream fos;
+    private RandomAccessFile fos;
 
     /**
      * Used to sync file.
@@ -71,11 +100,6 @@ public class DiskLogger extends Thread {
     private String logfileDir;
 
     /**
-     *  if set to true, no fsync is executed after disk writes. DANGEROUS.
-     */
-    private final boolean noFsync;
-
-    /**
      * log sequence number to assign to assign to next log entry
      */
     private final AtomicLong nextLogSequenceNo;
@@ -95,10 +119,16 @@ public class DiskLogger extends Thread {
      */
     private ReentrantLock sync;
 
+    private final SyncMode syncMode;
+
+    private final int pseudoSyncWait;
+
+    private final boolean pseudoSyncModeEnabled;
+
     /**
      * Max number of LogEntries to write before sync.
      */
-    public static final int MAX_ENTRIES_PER_BLOCK = 100;
+    public static final int MAX_ENTRIES_PER_BLOCK = 500;
 
     /**
      * Creates a new instance of DiskLogger
@@ -106,7 +136,8 @@ public class DiskLogger extends Thread {
      * @throws java.io.FileNotFoundException If that file cannot be created.
      * @throws java.io.IOException If that file cannot be created.
      */
-    public DiskLogger(String logfileDir, int viewId, long nextLSN, boolean noFsync) throws FileNotFoundException, IOException {
+    public DiskLogger(String logfileDir, int viewId, long nextLSN, SyncMode syncMode,
+            int pseudoSyncWait, int maxQ) throws FileNotFoundException, IOException {
 
         super("DiskLogger thr.");
 
@@ -119,6 +150,9 @@ public class DiskLogger extends Thread {
             this.logfileDir = logfileDir + "/";
         }
 
+        this.pseudoSyncWait = pseudoSyncWait;
+        this.pseudoSyncModeEnabled = (pseudoSyncWait > 0);
+
         this.currentViewId = new AtomicInteger(viewId);
 
         assert (nextLSN > 0);
@@ -130,15 +164,34 @@ public class DiskLogger extends Thread {
         if (!lf.getParentFile().exists() && !lf.getParentFile().mkdirs()) {
             throw new IOException("could not create parent directory for database log file");
         }
-        fos = new FileOutputStream(lf, false);
+
+        this.syncMode = syncMode;
+        //fos = new FileOutputStream(lf, false);
+        String openMode = "";
+        switch (syncMode) {
+            case ASYNC:
+            case FSYNC:
+            case FDATASYNC: {openMode = "rw"; break;}
+            case SYNC_WRITE : {openMode = "rwd"; break;}
+            case SYNC_WRITE_METADATA : {openMode = "rws"; break;}
+        }
+        fos = new RandomAccessFile(lf, openMode);
+        fos.setLength(0);
         channel = fos.getChannel();
         fdes = fos.getFD();
-        entries = new LinkedBlockingQueue();
+        if (maxQ > 0)
+            entries = new LinkedBlockingQueue(maxQ);
+        else
+            entries = new LinkedBlockingQueue();
+        
         quit = false;
         this.down = new AtomicBoolean(false);
-        this.noFsync = noFsync;
 
         sync = new ReentrantLock();
+
+        final String sMode = (pseudoSyncWait == 0) ? "synchronous" : "asynchronous";
+        Logging.logMessage(Logging.LEVEL_INFO, this,"BabuDB disk logger is in "+sMode+" mode");
+        Logging.logMessage(Logging.LEVEL_INFO, this,"BabuDB disk logger writes log file with "+syncMode);
     }
 
     private String createLogFileName() {
@@ -157,9 +210,10 @@ public class DiskLogger extends Thread {
      * Appends an entry to the write queue.
      * @param entry entry to write
      */
-    public void append(LogEntry entry) {
+    public void append(LogEntry entry) throws InterruptedException {
         assert (entry != null);
-        entries.add(entry);
+        //entries.add(entry);
+        entries.put(entry);
     }
 
     public void lockLogger() throws InterruptedException {
@@ -176,13 +230,23 @@ public class DiskLogger extends Thread {
         }
         LSN lastSyncedLSN = new LSN(this.currentViewId.get(), this.nextLogSequenceNo.get() - 1);
         final String newFileName = createLogFileName();
-        fos.close();
         channel.close();
+        fos.close();   
 
         currentLogFileName = newFileName;
 
         File lf = new File(this.currentLogFileName);
-        fos = new FileOutputStream(lf, false);
+        String openMode = "";
+        switch (syncMode) {
+            case ASYNC:
+            case FSYNC:
+            case FDATASYNC: {openMode = "rw"; break;}
+            case SYNC_WRITE : {openMode = "rwd"; break;}
+            case SYNC_WRITE_METADATA : {openMode = "rws"; break;}
+        }
+        System.out.println("mode: "+openMode);
+        fos = new RandomAccessFile(lf, openMode);
+        fos.setLength(0);
         channel = fos.getChannel();
         fdes = fos.getFD();
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "switched log files... new name: " + currentLogFileName);
@@ -215,25 +279,37 @@ public class DiskLogger extends Thread {
                             tmpE.add(tmp);
                         }
                     }
+                    ByteBuffer[] bufs = new ByteBuffer[tmpE.size()];
+                    ReusableBuffer[] rbs = new ReusableBuffer[bufs.length];
+                    int i = 0;
                     for (LogEntry le : tmpE) {
                         assert (le != null) : "Entry must not be null";
                         le.assignId(this.currentViewId.get(), this.nextLogSequenceNo.getAndIncrement());
-                        ReusableBuffer buf = le.serialize(csumAlgo);
+                        rbs[i] = le.serialize(csumAlgo);
                         csumAlgo.reset();
-                        channel.write(buf.getBuffer());
+                        bufs[i] = rbs[i].getBuffer();
+                        i++;
+                    }
+                    channel.write(bufs);
+                    for (ReusableBuffer buf : rbs) {
                         BufferPool.free(buf);
                     }
-                    fos.flush();
-                    if (!noFsync) {
-                        fdes.sync();
-                    }
+                    //fos.flush();
+                    if (this.syncMode == SyncMode.FSYNC)
+                        channel.force(true);
+                    else if (this.syncMode == SyncMode.FDATASYNC)
+                        channel.force(false);
                     for (LogEntry le : tmpE) {
                         le.getListener().synced(le);
                     }
                     tmpE.clear();
+                    if (pseudoSyncWait > 0) {
+                        DiskLogger.sleep(pseudoSyncWait);
+                    }
                 } finally {
                     sync.unlock();
                 }
+                
             } catch (SyncFailedException ex) {
                 Logging.logMessage(Logging.LEVEL_ERROR, this, ex);
                 for (LogEntry le : tmpE) {
@@ -284,7 +360,6 @@ public class DiskLogger extends Thread {
      */
     protected void finalize() throws Throwable {
         try {
-            fos.flush();
             fdes.sync();
             fos.close();
         } catch (SyncFailedException ex) {
