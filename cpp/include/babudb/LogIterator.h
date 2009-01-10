@@ -27,6 +27,7 @@ public:
 	bool operator == (const LogIterator&) const;
 
 	Data operator * () const;
+	Data asData() const { return this->operator *(); }
 	Data getOperationWithFrame() const;
 
 	operation_type_t getType() const;
