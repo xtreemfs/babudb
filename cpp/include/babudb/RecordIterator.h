@@ -56,8 +56,8 @@ public:
 
 	void reverse();
 
-	bool operator != ( const RecordIterator& other ) const { return current != other.current; }
-	bool operator == ( const RecordIterator& other ) const { return current == other.current; }
+	bool operator != ( const RecordIterator& other ) const;
+	bool operator == ( const RecordIterator& other ) const;
 
 	void* operator * ()	const;
 	size_t getSize() const;

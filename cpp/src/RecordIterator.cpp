@@ -9,8 +9,9 @@
 using namespace YIELD;
 using namespace babudb;
 
-#define ASSERT_VALID_POS(x)		ASSERT_TRUE((char*)x >= (char*)region_start && (char*)x < ((char*)region_start + region_size))
-#define REGION_END				((char*)region_start + region_size)
+#define ASSERT_VALID_POS(x)			ASSERT_TRUE((char*)x >= (char*)region_start && (char*)x < ((char*)region_start + region_size))
+#define REGION_END					((char*)region_start + region_size)
+#define ASSERT_COMPATIBILITY(a,b)	ASSERT_TRUE((a).region_start == (b).region_start && (a).region_size == (b).region_size && (a).is_forward_iterator == (b).is_forward_iterator)
 
 void* RecordIterator::operator * ()	const {
 	ASSERT_VALID_POS(current);
@@ -25,6 +26,16 @@ RecordFrame* RecordIterator::getRecord() const {
 Data RecordIterator::asData() const {
 	ASSERT_VALID_POS(current);
 	return Data(current->getPayload(), current->getPayloadSize());
+}
+
+bool RecordIterator::operator != ( const RecordIterator& other ) const {
+	ASSERT_COMPATIBILITY(*this, other); 
+	return current != other.current; 
+}
+
+bool RecordIterator::operator == ( const RecordIterator& other ) const { 
+	ASSERT_COMPATIBILITY(*this, other);	// maybe you changed the database while iterating?
+	return current == other.current;
 }
 
 void RecordIterator::reverse()							{ is_forward_iterator = !is_forward_iterator; }
@@ -60,6 +71,7 @@ void RecordIterator::plusplus()	{
 	current = (RecordFrame*)peek;
 
 //	ASSERT_VALID_POS(current->getEndOfRecord()); // corner case, guh
+	ASSERT_VALID_POS(current);
 	ASSERT_TRUE(ISALIGNED(current, RECORD_FRAME_ALIGNMENT));
 }
 
