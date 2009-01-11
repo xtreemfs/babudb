@@ -57,7 +57,15 @@ public:
 		return Data(&data,sizeof(int));
 	}
 
+	static Data wrap(unsigned int& data) {
+		return Data(&data,sizeof(unsigned int));
+	}
+
 	static Data wrap(long long& data) {
+		return Data(&data,sizeof(long long));
+	}
+
+	static Data wrap(unsigned long long& data) {
 		return Data(&data,sizeof(long long));
 	}
 
