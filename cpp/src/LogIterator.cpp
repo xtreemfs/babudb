@@ -59,8 +59,9 @@ void LogIterator::operator -- () {
 	--current_record;
 
 	// skip LSN records
-	if(current_record != (*sections_begin)->begin() && current_record.isType(0)) {
-		this->operator --();
+	if(current_record.isType(0)) {
+		if(current_section != sections_begin || current_record != (*current_section)->begin())
+			this->operator --();
 	}
 }
 

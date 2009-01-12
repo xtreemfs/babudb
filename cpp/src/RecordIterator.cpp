@@ -43,15 +43,31 @@ unsigned char RecordIterator::getType() const			{ return current->getType(); }
 bool RecordIterator::isType( unsigned char t ) const	{ return current->getType() == t; }
 size_t RecordIterator::getSize() const					{ return current->getPayloadSize(); }
 
+RecordIterator RecordIterator::begin(void* start, size_t size) {
+	RecordIterator i = RecordIterator(start, size, (RecordFrame*)start, true);
+	i.windIteratorToStart(); return i;
+}
+
+RecordIterator RecordIterator::end(void* start, size_t size) {
+	return RecordIterator(start,size,(RecordFrame*)((char*)start+size),true);
+}
+
+RecordIterator RecordIterator::rbegin(void* start, size_t size) {
+	RecordIterator i = end(start, size);
+	i.reverse(); i.windIteratorToStart();  return i;
+}
+
+RecordIterator RecordIterator::rend(void* start, size_t size) {
+	return RecordIterator(start, size, 0, false);
+}
+
 void RecordIterator::plusplus()	{
 	record_frame_t* peek;
 
-	if(current == NULL) {
+	if(current == NULL) {	// if we are at rend() move to start
 		peek = (record_frame_t*)region_start;
-	} else {
-		if(current == (RecordFrame*)REGION_END && region_size == 0)
-			return;
-
+	} 
+	else { // check whether there is a next record
 		ASSERT_VALID_POS(current);
 
 		peek = (record_frame_t*)current->getEndOfRecord();
@@ -64,40 +80,66 @@ void RecordIterator::plusplus()	{
 		ASSERT_VALID_POS(peek); // should be still within region
 	}
 
-	while( (char*)peek < REGION_END && *peek == 0)
-		peek++;
+	current = windForwardToNextRecord((RecordFrame*)peek);
 
-	ASSERT_TRUE((char*)peek <= REGION_END);	 // can be end()
-	current = (RecordFrame*)peek;
-
-//	ASSERT_VALID_POS(current->getEndOfRecord()); // corner case, guh
-	ASSERT_VALID_POS(current);
 	ASSERT_TRUE(ISALIGNED(current, RECORD_FRAME_ALIGNMENT));
 }
 
+RecordFrame* RecordIterator::windForwardToNextRecord(RecordFrame* record) {
+	ASSERT_TRUE(record != NULL);
+
+	if(record == (RecordFrame*)REGION_END)
+		return record;
+
+	record_frame_t* peek = (record_frame_t*)record;
+
+	while((char*)peek < REGION_END && *peek == 0)
+		peek++;
+
+	ASSERT_TRUE((char*)peek <= REGION_END);
+
+	record = (RecordFrame*)peek;
+
+	if(peek != (record_frame_t*)REGION_END) {
+		ASSERT_VALID_POS(record);
+		ASSERT_TRUE(record->isValid());
+	}
+
+	return record;
+}
+
 void RecordIterator::minusminus() {
-	ASSERT_TRUE(current != NULL);
-
-	if(current == (RecordFrame*)region_start) {
-		current = NULL;
-		return;
-	}
-
-	record_frame_t* peek = (record_frame_t*)current - 1;
-	ASSERT_VALID_POS(peek);
-
-	while( *peek == 0 && peek > region_start )
-		peek--;
-
-	if(peek == region_start) {
-		current = NULL;
-		return;
-	}
-
-	RecordFrame* end = (RecordFrame*)peek;
-	current = end->getStartHeader();
-
-	ASSERT_VALID_POS(current); //otherwise the file is corrupt
+	current = windBackwardToNextRecord(current);
 
 	ASSERT_TRUE(ISALIGNED(current, RECORD_FRAME_ALIGNMENT));
+}
+
+RecordFrame* RecordIterator::windBackwardToNextRecord(RecordFrame* record) {
+	ASSERT_TRUE(record != NULL);
+
+	if(record == region_start)
+		return NULL;
+
+	record_frame_t* peek = (record_frame_t*)record - 1;
+	ASSERT_VALID_POS(peek);
+
+	while((char*)peek > region_start && *peek == 0)
+		peek--;
+
+	if(peek == region_start) 
+		return NULL;
+
+	RecordFrame* end = (RecordFrame*)peek;
+	record = end->getStartHeader();
+
+	ASSERT_VALID_POS(record);
+	ASSERT_TRUE(record->isValid());
+	return record;
+}
+
+void RecordIterator::windIteratorToStart() {
+	if(is_forward_iterator)
+		current = windForwardToNextRecord(current);
+	else
+		current = windBackwardToNextRecord(current);
 }

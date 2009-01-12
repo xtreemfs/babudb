@@ -49,7 +49,7 @@ static DiskIndices scanAvailableImmutableIndices(string& name_prefix, KeyOrder& 
 		if(matchFilename(entry->getPath(), dir_prefix.second.getHostCharsetPath(), "idx", lsn)) {
 			auto_ptr<YIELD::MemoryMappedFile> file(new YIELD::MemoryMappedFile(entry->getPath(), 1, O_RDONLY|O_SYNC));
 			ImmutableIndex index(file,order,lsn);
-			results.push_back(make_pair(entry->getPath(),make_pair(lsn, index.checkHealth())));
+			results.push_back(make_pair(entry->getPath(),make_pair(lsn, index.isIntact())));
 		}
 	}
 

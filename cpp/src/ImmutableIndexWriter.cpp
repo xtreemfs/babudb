@@ -88,6 +88,8 @@ void ImmutableIndexWriter::finalize() {
 		writeData(*i, RECORD_TYPE_INDEX_KEY);
 	}
 
+	writeData(Data::Empty(), RECORD_TYPE_FILE_FOOTER);
+
 	storage.commit();
 	storage.close();
 }

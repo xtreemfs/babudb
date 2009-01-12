@@ -19,17 +19,12 @@ using namespace YIELD;
 #define FIRST_RECORD_ADDRESS	(void*)((unsigned char*)memory->getRegionStart() + FIRST_RECORD_OFFSET)
 
 
-#define SHUTDOWN_MARKER 0xbad1d0ba
-
 SequentialFile::SequentialFile(auto_ptr<MemoryMappedFile> m, LogStats* stats ) : memory( m ), stats( stats )
 {
 	if(stats == NULL)
 		this->stats = new LogStats();
 
-	windToEnd();
-
-	if(wasGraceful())
-		rollback();
+	initialize();
 
 	database_version = *(unsigned int*)offset2record( 0 );
 
@@ -43,7 +38,6 @@ SequentialFile::SequentialFile(auto_ptr<MemoryMappedFile> m, LogStats* stats ) :
 }
 
 void SequentialFile::close() {
-	writeEndOfFile();
 	memory->close();
 }
 
@@ -73,64 +67,65 @@ void SequentialFile::compact()
 	stats->gaps_length = 0;
 }
 
-void SequentialFile::skipEmptyRegion()
+offset_t SequentialFile::findNextAllocatedWord(offset_t offset)
 {
-	record_frame_t* raw = (record_frame_t*)offset2record(next_write_offset) - 1;
+	record_frame_t* raw = (record_frame_t*)offset2record(offset) - 1;
 
-	while( *raw == 0 && (unsigned char*)raw > FIRST_RECORD_ADDRESS )
+	while( *raw == 0 && (unsigned char*)raw >= FIRST_RECORD_ADDRESS )
 		raw--;
 
-	next_write_offset = record2offset( (Record*)raw );
+	return record2offset( (Record*)raw );
 }
 
 bool SequentialFile::empty() {
 	return next_write_offset == FIRST_RECORD_OFFSET;
 }
 
-void SequentialFile::windToEnd()
+int SequentialFile::initialize()
 {
 	next_write_offset = (offset_t)memory->getRegionSize();
+	next_write_offset = findNextAllocatedWord(next_write_offset);
 
-	skipEmptyRegion();
+	record_frame_t* raw = (record_frame_t*)offset2record(next_write_offset);
 
-	record_frame_t* raw = (record_frame_t*)offset2record( next_write_offset - 2 );
-
-	if(next_write_offset == FIRST_RECORD_OFFSET)		// this is a new empty database, everything is fine
+	if(next_write_offset == FIRST_RECORD_OFFSET)		// this is a new empty file, everything is fine
 	{
 		record_frame_t* start = (record_frame_t*)offset2record( 0 );
 
 		if((memory->getFlags() & O_RDWR) != 0)
 			*start = SequentialFile_DB_VERSION;
+
+		return 0;
 	}
-	else if(((unsigned int*)raw)[0] == SHUTDOWN_MARKER )
+
+	// find the first valid record
+
+	int lost_records = 0;
+	while(raw > (record_frame_t*)FIRST_RECORD_ADDRESS)
 	{
-		if((memory->getFlags() & O_RDWR) != 0)
-			((unsigned int*)raw)[0] = 0;
+		if(assertValidRecordChain(raw))	// check whether at the current position could be a valid record
+			break;
 
-		next_write_offset = record2offset((Record*)raw);
-	}
-	else
-		next_write_offset = INVALID_OFFSET;
-}
-
-void SequentialFile::writeEndOfFile()
-{
-	if((memory->getFlags() & O_RDWR) == 0)
-		return;
-
-	unsigned int* raw = (unsigned int*)offset2record( next_write_offset );
-
-	if( raw + 1 > (unsigned int*)memory->getRegionEnd() )
-	{
-		enlarge();
-		raw = (unsigned int*)offset2record( next_write_offset );
+		raw--;
+		lost_records = 1;
 	}
 
-	raw[0] = SHUTDOWN_MARKER;
+	raw = raw + 1;
 
-	memory->writeBack();
+	next_write_offset = record2offset( (SequentialFile::Record*)raw );
+
+
+	// find end, wipe out half-written records, write end of file marker
+	// clean memory after first valid record
+
+	if((memory->getFlags() & O_RDWR) != 0)
+		for( raw = raw; (char*)raw < memory->getRegionEnd(); raw++ )
+			*raw = 0;
+
+	rollback();		// remove any non-finalized transactions
+
+	return lost_records;
 }
-
 
 /** Assert that the given position is the end of a valid record and that after it there is one
 	more valid record.
@@ -174,53 +169,7 @@ bool SequentialFile::assertValidRecordChain( void* raw )
 	return false;
 }
 
-/** After a non-graceful shutdown, bring the database back to a consistent state
 
-	\result Undefined
-*/
-
-int SequentialFile::repair()
-{
-	int lost_records = 0;
-
-	// find end, wipe out half-written records, write end of file marker
-
-	next_write_offset = (offset_t)memory->getRegionSize();
-
-	skipEmptyRegion();
-
-	record_frame_t* raw = (record_frame_t*)offset2record( next_write_offset );
-
-	while( (char*)raw > FIRST_RECORD_ADDRESS )
-	{
-		// check whether at the current position could be a valid record
-
-		if( assertValidRecordChain( raw ) )
-			break;
-
-		raw--;
-		lost_records = 1;
-	}
-
-	raw = raw + 1;
-
-	next_write_offset = record2offset( (SequentialFile::Record*)raw );
-
-
-	// clean memory after first valid record
-
-	if((memory->getFlags() & O_RDWR) != 0)
-		for( raw = raw; (char*)raw < memory->getRegionEnd(); raw++ )
-			*raw = 0;
-
-	rollback();		// remove any non-finalized transactions
-
-	return lost_records;
-}
-
-bool SequentialFile::wasGraceful() {
-	return next_write_offset != INVALID_OFFSET;
-}
 
 void SequentialFile::frameData(void* payload, size_t size, record_type_t type, bool marked ) {
 	ASSERT_TRUE(ISALIGNED(payload, RECORD_FRAME_ALIGNMENT));
@@ -278,17 +227,19 @@ unsigned int SequentialFile::rollback() {
 	unsigned int rolledback_operations = 0;
 
 	iterator r;
-	for(r = rbegin(); r != rend(); ++r)
+	iterator r_end = rend();	// may change due to erasing records
+	for(r = rbegin(); r != r_end; ++r)
 	{
 		if(r.getRecord()->isEndOfTransaction())
 			break;
 
 		if((memory->getFlags() & O_RDWR) != 0)
 			erase( record2offset( r.getRecord() ) );		// works because prev skips 0's
+
 		rolledback_operations++;
 	}
 
-	if( r != rend() )
+	if(r != r_end)
 		next_write_offset = record2offset((Record*)r.getRecord()->getEndOfRecord() );
 	else
 		next_write_offset = FIRST_RECORD_OFFSET;
@@ -406,32 +357,30 @@ void SequentialFile::writeBack()
 
 
 SequentialFile::iterator SequentialFile::begin() {
-	iterator i = iterator::rend(ACTUAL_START, ACTUAL_SIZE); i.reverse(); ++i;
-	return i;
-}
-
-SequentialFile::iterator SequentialFile::rend() {
-	return iterator::rend(ACTUAL_START, ACTUAL_SIZE);
-}
-
-SequentialFile::iterator SequentialFile::rbegin() {
-	iterator i = iterator::end(ACTUAL_START, ACTUAL_SIZE); --i; i.reverse();
-	return i;
+	return SequentialFile::iterator::begin(ACTUAL_START, ACTUAL_SIZE);
 }
 
 SequentialFile::iterator SequentialFile::end() {
-	return iterator::end(ACTUAL_START, ACTUAL_SIZE);
+	return SequentialFile::iterator::end(ACTUAL_START, ACTUAL_SIZE);
+}
+
+SequentialFile::iterator SequentialFile::rbegin() {
+	return SequentialFile::iterator::rbegin(ACTUAL_START, ACTUAL_SIZE);
+}
+
+SequentialFile::iterator SequentialFile::rend() {
+	return SequentialFile::iterator::rend(ACTUAL_START, ACTUAL_SIZE);
 }
 
 
 SequentialFile::iterator SequentialFile::at( void* payload ) {
-	return SequentialFile::iterator(ACTUAL_START, memory->getRegionSize() - FIRST_RECORD_OFFSET, (Record*)payload,true);
+	return SequentialFile::iterator(ACTUAL_START, ACTUAL_SIZE, (Record*)payload, true);
 }
 
 SequentialFile::iterator SequentialFile::at( Record* record ) {
-	return SequentialFile::iterator(ACTUAL_START, memory->getRegionSize() - FIRST_RECORD_OFFSET, record,true);
+	return SequentialFile::iterator(ACTUAL_START, ACTUAL_SIZE, record, true);
 }
 
 SequentialFile::iterator SequentialFile::at( offset_t offset ) {
-	return SequentialFile::iterator(ACTUAL_START, memory->getRegionSize() - FIRST_RECORD_OFFSET, offset2record(offset),true);
+	return SequentialFile::iterator(ACTUAL_START, ACTUAL_SIZE, offset2record(offset), true);
 }

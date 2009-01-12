@@ -6,8 +6,6 @@
 - change format from current set of key records to single record with (relative) offset array (saves record frames)
 - add gap compression for keys
 - add entropy compression for values
-- benchmark
 
 == LogIndex
 - Put keys in tree nodes (better cache locality)
-- benchmark

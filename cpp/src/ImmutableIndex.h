@@ -24,10 +24,10 @@ class ImmutableIndex {
 public:
 	ImmutableIndex(auto_ptr<YIELD::MemoryMappedFile> mm, KeyOrder& order, lsn_t);
 
-	bool checkHealth();
+	bool isIntact();
 	void load();
 
-	static void loadIndex(SequentialFile& storage, std::map<Data,offset_t,MapCompare>& index);
+	static bool loadIndex(SequentialFile& storage, std::map<Data,offset_t,MapCompare>& index);
 
 	typedef class ImmutableIndexIterator iterator;
 	Data lookup(Data search_key);

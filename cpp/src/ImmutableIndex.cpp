@@ -14,14 +14,14 @@ using namespace babudb;
 ImmutableIndex::ImmutableIndex(auto_ptr<YIELD::MemoryMappedFile> mm, KeyOrder& order, lsn_t lsn)
 : storage(mm), order(order), latest_lsn(lsn), index(MapCompare(order)) {}
 
-bool ImmutableIndex::checkHealth() {
-	return storage.wasGraceful();
+bool ImmutableIndex::isIntact() {
+	SequentialFile::iterator cursor = storage.rbegin();
+
+	return cursor != storage.rend() && cursor.getRecord()->getType() == RECORD_TYPE_FILE_FOOTER;
 }
 
 void ImmutableIndex::load() {
-	if(!storage.wasGraceful())
-		FAIL();
-
+	ASSERT_TRUE(isIntact());
 	loadIndex(storage, index);
 }
 
@@ -98,8 +98,13 @@ ImmutableIndexIterator ImmutableIndex::end() {
 	return ImmutableIndexIterator(storage,true);
 }
 
-void ImmutableIndex::loadIndex(SequentialFile& storage, std::map<Data,offset_t,MapCompare>&  index) {
+bool ImmutableIndex::loadIndex(SequentialFile& storage, std::map<Data,offset_t,MapCompare>&  index) {
 	SequentialFile::iterator cursor = storage.rbegin();
+
+	if(cursor.getRecord()->getType() != RECORD_TYPE_FILE_FOOTER)
+		return false;
+
+	++cursor; // skip footer
 
 	for(; cursor != storage.rend(); ++cursor) {
 		if(cursor.getRecord()->getType() == RECORD_TYPE_INDEX_OFFSETS)
@@ -114,13 +119,17 @@ void ImmutableIndex::loadIndex(SequentialFile& storage, std::map<Data,offset_t,M
 	ASSERT_TRUE(cursor.getRecord()->getType() == RECORD_TYPE_INDEX_KEY);
 
 	size_t record_count = 0;
-	for(; cursor != storage.end(); ++cursor) {
-		Data key(cursor.getRecord()->getPayload(),
-				 cursor.getRecord()->getPayloadSize());
+	for(; cursor != storage.end(); ++cursor) {	
+		if(cursor.getRecord()->getType() != RECORD_TYPE_FILE_FOOTER) {
+			Data key(cursor.getRecord()->getPayload(),
+					 cursor.getRecord()->getPayloadSize());
 
-		ASSERT_TRUE(record_count < no_offsets);
+			ASSERT_TRUE(record_count < no_offsets);
 
-		index.insert(pair<Data,offset_t>(key,offsets[record_count]));
-		record_count++;
+			index.insert(pair<Data,offset_t>(key,offsets[record_count]));
+			record_count++;
+		}
 	}
+
+	return true;
 }

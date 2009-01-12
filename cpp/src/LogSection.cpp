@@ -15,10 +15,6 @@ using namespace babudb;
 
 LogSection::LogSection(auto_ptr<MemoryMappedFile> mmfile, lsn_t first)
 : SequentialFile(mmfile, new LogStats()), in_transaction(false), first_lsn(first), next_lsn(0) {
-
-	if(!wasGraceful())
-		repair();
-
 	// set or retrieve last LSN
 	if(empty()) {
 		next_lsn = first;

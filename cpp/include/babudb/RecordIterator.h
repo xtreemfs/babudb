@@ -24,25 +24,10 @@ public:
 		: current(pos), region_start(start), region_size(size),
 		  is_forward_iterator(is_forward) {}
 
-	static RecordIterator begin(void* start, size_t size) {
-		RecordIterator it = rend(start, size);
-		it.reverse(); ++it;
-		return it;
-	}
-
-	static RecordIterator end(void* start, size_t size) {
-		return RecordIterator(start,size,(RecordFrame*)((char*)start+size),true);
-	}
-
-	static RecordIterator rbegin(void* start, size_t size) {
-		RecordIterator it = end(start, size);
-		--it; it.reverse(); 
-		return it;
-	}
-
-	static RecordIterator rend(void* start, size_t size) {
-		return RecordIterator(start,size,0,false);
-	}
+	static RecordIterator begin(void* start, size_t size);
+	static RecordIterator end(void* start, size_t size);
+	static RecordIterator rbegin(void* start, size_t size);
+	static RecordIterator rend(void* start, size_t size);
 
 	void operator ++ () {
 		if(is_forward_iterator) plusplus();
@@ -71,6 +56,9 @@ public:
 protected:
 	void plusplus();
 	void minusminus();
+	void windIteratorToStart();
+	RecordFrame* windForwardToNextRecord(RecordFrame*);
+	RecordFrame* windBackwardToNextRecord(RecordFrame*);
 
 	RecordFrame* current;
 	void* region_start;

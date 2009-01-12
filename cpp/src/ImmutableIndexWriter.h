@@ -21,6 +21,7 @@ namespace babudb {
 #define RECORD_TYPE_OFFSETS 3
 #define RECORD_TYPE_INDEX_KEY 4
 #define RECORD_TYPE_INDEX_OFFSETS 5
+#define RECORD_TYPE_FILE_FOOTER 6
 
 class LogIndex;
 class ImmutableIndex;

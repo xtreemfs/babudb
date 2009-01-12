@@ -38,8 +38,6 @@ public:
 
 	SequentialFile(auto_ptr<YIELD::MemoryMappedFile>, LogStats* = NULL);
 
-	int repair();
-	bool wasGraceful();
 	void close();
 	unsigned short getVersion()				{ return database_version; }
 	void writeBack( Record* );
@@ -77,10 +75,8 @@ public:
 	void compact();
 
 private:
-	void windToEnd();
-
-	void skipEmptyRegion();
-	void writeEndOfFile();
+	int initialize();
+	offset_t findNextAllocatedWord(offset_t);
 	bool assertValidRecordChain( void* );
 
 	void copyRecord( Record*, void* );
