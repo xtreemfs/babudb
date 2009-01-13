@@ -7,15 +7,44 @@
 
 #include "yield/platform/yunit.h"
 
+#include <vector>
+
 using namespace babudb;
 
-LogIterator::LogIterator(const LogIterator& o)
+template class LogIterator<std::vector<LogSection*>::iterator >;
+template class LogIterator<std::vector<LogSection*>::reverse_iterator >;
+
+template <>
+RecordIterator LogIterator<std::vector<LogSection*>::iterator>::section_begin(std::vector<LogSection*>::iterator& section) {
+	return (*section)->begin();
+}
+
+template <>
+RecordIterator LogIterator<std::vector<LogSection*>::reverse_iterator>::section_begin(std::vector<LogSection*>::reverse_iterator& section) {
+	return (*section)->rbegin();
+}
+
+template <>
+RecordIterator LogIterator<std::vector<LogSection*>::iterator>::section_end(std::vector<LogSection*>::iterator& section) {
+	return (*section)->end();
+}
+
+template <>
+RecordIterator LogIterator<std::vector<LogSection*>::reverse_iterator>::section_end(std::vector<LogSection*>::reverse_iterator& section) {
+	return (*section)->rend();
+}
+
+
+
+template <class T>
+LogIterator<T>::LogIterator(const LogIterator& o)
 	: sections_begin(o.sections_begin), sections_end(o.sections_end),
 	  current_section(o.current_section), current_record(o.current_record)  {}
 
-LogIterator::LogIterator(const std::vector<LogSection*>::iterator& b,
-						 const std::vector<LogSection*>::iterator& e,
-						 const std::vector<LogSection*>::iterator& c_s,
+template <class T>
+LogIterator<T>::LogIterator(const T& b,
+						 const T& e,
+						 const T& c_s,
 						 const RecordIterator& c)
 	: sections_begin(b), sections_end(e), current_section(c_s), current_record(c) {
 
@@ -23,70 +52,78 @@ LogIterator::LogIterator(const std::vector<LogSection*>::iterator& b,
 		this->operator ++();
 }
 
-void LogIterator::operator ++ () {
+template <class T>
+void LogIterator<T>::operator ++ () {
 	ASSERT_FALSE(current_section == sections_end);
 	++current_record;
 
-	if(current_record == (*current_section)->end()) {
+	if(current_record == section_end(current_section)) {
 		// at the end of the current section, proceed to the beginning of the next, if any
-		std::vector<LogSection*>::iterator next_section = current_section; ++next_section;
+		T next_section = current_section; ++next_section;
 
 		if(next_section == sections_end)
-			current_record = (*current_section)->end(); // back()->end()
+			current_record = section_end(current_section); // back()->end()
 		else
-			current_record = (*next_section)->begin();
+			current_record = section_begin(next_section);
 
 		current_section = next_section;
 	}
 
 	// skip LSN records
-	if(current_section != sections_end && current_record != (*current_section)->end() && current_record.isType(0)) {
+	if(current_section != sections_end && current_record != section_end(current_section) && current_record.isType(0)) {
 		this->operator ++();
 	}
 }
 
-void LogIterator::operator -- () {
+template <class T>
+void LogIterator<T>::operator -- () {
 	if(current_section == sections_end)
 		--current_section;
 
-	if(current_record == (*current_section)->begin()) {
+	if(current_record == section_begin(current_section)) {
 		// at the end of the current section, proceed to the beginning of the next, if any
 		ASSERT_TRUE(current_section != sections_begin);
 		--current_section;
-		current_record = (*current_section)->end();
+		current_record = section_end(current_section);
 	}
 
 	--current_record;
 
 	// skip LSN records
 	if(current_record.isType(0)) {
-		if(current_section != sections_begin || current_record != (*current_section)->begin())
+		if(current_section != sections_begin || current_record != section_begin(current_section))
 			this->operator --();
 	}
 }
 
-bool LogIterator::operator != (const LogIterator& other) const {
+template <class T>
+bool LogIterator<T>::operator != (const LogIterator& other) const {
 	return current_section != other.current_section || current_record != other.current_record;
 }
 
-bool LogIterator::operator == (const LogIterator& other) const {
+template <class T>
+bool LogIterator<T>::operator == (const LogIterator& other) const {
 	return current_section == other.current_section && current_record == other.current_record;
 }
 
-Data LogIterator::operator * () const {
+template <class T>
+Data LogIterator<T>::operator * () const {
 	ASSERT_TRUE(getType() != 0);
 	return Data(*current_record, current_record.getSize());
 }
 
-Data LogIterator::getOperationWithFrame() const {
+template <class T>
+Data LogIterator<T>::getOperationWithFrame() const {
 	ASSERT_TRUE(getType() != 0);
 	return Data(current_record.getRecord(), current_record.getRecord()->getRecordSize());
 }
 
-operation_type_t LogIterator::getType() const {
+template <class T>
+operation_type_t LogIterator<T>::getType() const {
 	return current_record.getType();
 }
 
-bool LogIterator::isMarked() const {
+template <class T>
+bool LogIterator<T>::isMarked() const {
 	return current_record.getRecord()->isMarked();
 }

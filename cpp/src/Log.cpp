@@ -159,16 +159,30 @@ void Log::advanceTail() {
 	tail = NULL;
 }
 
-LogIterator Log::begin() {
+Log::iterator Log::begin() {
 	if(sections.empty())
 		return end();
 	else
-		return LogIterator(sections.begin(), sections.end(), sections.begin(), (*sections.begin())->begin());
+		return Log::iterator(sections.begin(), sections.end(), sections.begin(), Log::iterator::section_begin(sections.begin()));
 }
 
-LogIterator Log::end(){
+Log::iterator Log::end(){
 	if(sections.empty())
-		return LogIterator(sections.begin(), sections.end(), sections.end(), RecordIterator());
+		return LogIterator<std::vector<LogSection*>::iterator>(sections.begin(), sections.end(), sections.end(), RecordIterator());
 	else
-		return LogIterator(sections.begin(), sections.end(), sections.end(), sections.back()->end());
+		return Log::iterator(sections.begin(), sections.end(), sections.end(), Log::iterator::section_end(sections.end() - 1));
+}
+
+Log::reverse_iterator Log::rbegin() {
+	if(sections.empty())
+		return rend();
+	else
+		return Log::reverse_iterator(sections.rbegin(), sections.rend(), sections.rbegin(), Log::reverse_iterator::section_begin(sections.rbegin()));
+}
+
+Log::reverse_iterator Log::rend(){
+	if(sections.empty())
+		return Log::reverse_iterator(sections.rbegin(), sections.rend(), sections.rend(), RecordIterator());
+	else
+		return Log::reverse_iterator(sections.rbegin(), sections.rend(), sections.rend(), Log::reverse_iterator::section_end(sections.rend() - 1));
 }

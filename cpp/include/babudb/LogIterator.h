@@ -4,21 +4,22 @@
 #ifndef BABUDB_LOGITERATOR_H
 #define BABUDB_LOGITERATOR_H
 
-#include <vector>
-
 #include "babudb/Operation.h"
 #include "babudb/RecordIterator.h"
+
+#include <vector>
 
 namespace babudb {
 class LogSection;
 
+template <class T>
 class LogIterator {
 public:
 	LogIterator(const LogIterator&);
-	LogIterator(const std::vector<LogSection*>::iterator&,
-				const std::vector<LogSection*>::iterator&,
-				const std::vector<LogSection*>::iterator&,
-				const RecordIterator&);
+	LogIterator(const T& sections_begin,
+				const T& sections_end,
+				const T& current_section,
+				const RecordIterator& current_record);
 
 	void operator ++ ();
 	void operator -- ();
@@ -33,12 +34,18 @@ public:
 	operation_type_t getType() const;
 	bool isMarked() const;
 
+	static RecordIterator section_begin(T& section);
+	static RecordIterator section_end(T& section);
+
 private:
-	std::vector<LogSection*>::iterator  sections_begin;
-	std::vector<LogSection*>::iterator  sections_end;
-	std::vector<LogSection*>::iterator  current_section;
-	RecordIterator						current_record;
+	T  sections_begin;
+	T  sections_end;
+	T  current_section;
+	RecordIterator current_record;
 };
+
+typedef class LogIterator<std::vector<LogSection*>::iterator> LogIteratorForward;
+typedef class LogIterator<std::vector<LogSection*>::reverse_iterator> LogIteratorBackward;
 
 };
 

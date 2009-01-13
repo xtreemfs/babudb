@@ -10,14 +10,15 @@
 #include <string>
 using std::string;
 
-#include "Operation.h"
+#include "babudb/Operation.h"
+#include "babudb/LogIterator.h"
 
 namespace babudb {
 
 class KeyOrder;
 class DataIndex;
 class Log;
-class LogIterator;
+template <class T> class LogIterator;
 class IndexCreator;
 class LookupIterator;
 
@@ -37,11 +38,12 @@ public:
 	Data lookup(const string& index, const Data& key);
 	LookupIterator lookup(const string& index, const Data& lower, const Data& upper);
 
-	typedef LogIterator iterator;
+	typedef LogIteratorForward iterator;
+	typedef LogIteratorBackward reverse_iterator;
 	iterator begin();
 	iterator end();
-	iterator rbegin();
-	iterator rend();
+	reverse_iterator rbegin();
+	reverse_iterator rend();
 
 	/** Allow the deletion all log entries < from_lsn from the log
 	*/

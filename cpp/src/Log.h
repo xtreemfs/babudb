@@ -7,18 +7,17 @@
 #include <string>
 using std::string;
 #include <vector>
-using std::vector;
 #include <map>
-using std::map;
 
 #include "LogSection.h"
+#include "babudb/LogIterator.h"
 
 namespace babudb {
 
 class DataIndex;
 class OperationFactory;
-class LogIterator;
 class DataIndexOperationTarget;
+template <class T> class LogIterator;
 
 class Log {
 public:
@@ -35,13 +34,19 @@ public:
 	void advanceTail();
 	lsn_t getLastLSN();
 
-	LogIterator begin();
-	LogIterator end();
+	typedef LogIteratorForward iterator;
+	typedef LogIteratorBackward reverse_iterator;
 
-	vector<LogSection*>& getSections() { return sections; }
+	iterator begin();
+	iterator end();
+
+	reverse_iterator rbegin();
+	reverse_iterator rend();
+
+	std::vector<LogSection*>& getSections() { return sections; }
 
 private:
-	vector<LogSection*> sections;
+	std::vector<LogSection*> sections;
 
 	LogSection* tail;
 	string name_prefix;

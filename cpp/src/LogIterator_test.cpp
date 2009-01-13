@@ -16,8 +16,10 @@ TEST_TMPDIR(LogIterator,babudb)
 {
 	auto_ptr<Log> log(new Log(testPath("testlog")));
 
-	LogIterator i = log->begin();	// try an empty log first
+	Log::iterator i = log->begin();	// try an empty log first
 	EXPECT_TRUE(i == log->end());
+	Log::reverse_iterator r = log->rbegin();	
+	EXPECT_TRUE(r == log->rend());
 
 	LogSection* tail = log->getTail();
 
@@ -82,6 +84,55 @@ TEST_TMPDIR(LogIterator,babudb)
 	EXPECT_TRUE(i == log->begin());
 	EXPECT_TRUE(i.getType() != 0);
 	EXPECT_TRUE(op.deserialize(*i).value == 'A');
+
+
+
+	// now reverse iterator
+
+	r = log->rbegin();
+	EXPECT_TRUE(r != log->rend());
+	EXPECT_TRUE(r.getType() != 0);
+	EXPECT_TRUE(op.deserialize(*r).value == 'D');
+
+	++r;
+	EXPECT_TRUE(r != log->rend());
+	EXPECT_TRUE(r.getType() != 0);
+	EXPECT_TRUE(op.deserialize(*r).value == 'C');
+
+	++r;
+	EXPECT_TRUE(r != log->rend());
+	EXPECT_TRUE(r.getType() != 0);
+	EXPECT_TRUE(op.deserialize(*r).value == 'B');
+
+	++r;
+	EXPECT_TRUE(r != log->rend());
+	EXPECT_TRUE(r.getType() != 0);
+	EXPECT_TRUE(op.deserialize(*r).value == 'A');
+
+	++r;
+	EXPECT_TRUE(r == log->rend());
+
+	// and reverse reverse
+	
+	r = log->rend(); --r;
+	EXPECT_TRUE(r != log->rend());
+	EXPECT_TRUE(r.getType() != 0);
+	EXPECT_TRUE(op.deserialize(*r).value == 'A');
+
+	--r;
+	EXPECT_TRUE(r != log->rend());
+	EXPECT_TRUE(r.getType() != 0);
+	EXPECT_TRUE(op.deserialize(*r).value == 'B');
+
+	--r;
+	EXPECT_TRUE(r != log->rend());
+	EXPECT_TRUE(r.getType() != 0);
+	EXPECT_TRUE(op.deserialize(*r).value == 'C');
+
+	--r;
+	EXPECT_TRUE(r == log->rbegin());
+	EXPECT_TRUE(r.getType() != 0);
+	EXPECT_TRUE(op.deserialize(*r).value == 'D');
 
 	log->close();
 }

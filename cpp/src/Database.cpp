@@ -79,12 +79,20 @@ LookupIterator Database::lookup(const string& index, const Data& lower, const Da
 	return indices[index]->lookup(lower, upper);
 }
 
-LogIterator Database::begin() {
+Database::iterator Database::begin() {
 	return log->begin();
 }
 
-LogIterator Database::end(){
+Database::iterator Database::end(){
 	return log->end();
+}
+
+Database::reverse_iterator Database::rbegin() {
+	return log->rbegin();
+}
+
+Database::reverse_iterator Database::rend(){
+	return log->rend();
 }
 
 void Database::cleanup(lsn_t from_lsn, const string& to) {
