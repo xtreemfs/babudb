@@ -25,14 +25,14 @@ public class LSMLookupInterface {
     public byte[] lookup(int indexId, byte[] key) throws BabuDBException {
         LSMTree tree = database.getIndex(indexId);
         if (tree == null)
-            throw new BabuDBException(BabuDBException.ErrorCode.NO_SUCH_INDEX, "index does not exist");
+            throw new BabuDBException(BabuDBException.ErrorCode.NO_SUCH_INDEX, "index " + indexId + " does not exist");
         return tree.lookup(key);
     }
     
     public byte[] lookup(int indexId, byte[] key, int snapId) throws BabuDBException {
         LSMTree tree = database.getIndex(indexId);
         if (tree == null)
-            throw new BabuDBException(BabuDBException.ErrorCode.NO_SUCH_INDEX, "index does not exist");
+            throw new BabuDBException(BabuDBException.ErrorCode.NO_SUCH_INDEX, "index " + indexId + " does not exist");
         return tree.lookup(key,snapId);
     }
     
