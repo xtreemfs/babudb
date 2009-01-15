@@ -921,7 +921,7 @@ public class BabuDB {
         for (InsertRecord ir : ins.getInserts()) {
             LSMTree tree = db.getIndex(ir.getIndexId());
             Logging.logMessage(Logging.LEVEL_DEBUG, this, "insert " + new String(ir.getKey()) + "=" +
-                    new String(ir.getValue()) + " into " + db.getDatabaseName() + " " + ir.getIndexId());
+                    (ir.getValue() == null? null: new String(ir.getValue())) + " into " + db.getDatabaseName() + " " + ir.getIndexId());
             tree.insert(ir.getKey(), ir.getValue());
         }
 
