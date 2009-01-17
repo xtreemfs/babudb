@@ -18,7 +18,7 @@
 		<Configuration
 			Name="Debug|Win32"
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
-			IntermediateDirectory="../build/$(ConfigurationName)/babudb"
+			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="4"
 			CharacterSet="1"
 			>
@@ -61,7 +61,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="lib\babudb.lib"
+				OutputFile="lib\babudb_d.lib"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -104,6 +104,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
+				AdditionalIncludeDirectories="..\yield_platform\include;include\"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
@@ -122,6 +123,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
+				OutputFile="lib\babudb.lib"
 			/>
 			<Tool
 				Name="VCALinkTool"

@@ -18,7 +18,7 @@
 		<Configuration
 			Name="Debug|Win32"
 			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
-			IntermediateDirectory="../build/$(ConfigurationName)/babudb_unittests"
+			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="1"
 			CharacterSet="1"
 			>
@@ -61,8 +61,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="&quot;$(ProjectDir)..\yield_platform\lib\yield_platform.lib&quot;"
+				AdditionalDependencies="&quot;$(ProjectDir)..\yield_platform\lib\yield_platform_d.lib&quot;"
+				OutputFile="bin\$(ProjectName)_d.exe"
 				LinkIncremental="2"
+				IgnoreAllDefaultLibraries="false"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				TargetMachine="1"
@@ -117,6 +119,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
+				AdditionalIncludeDirectories="..\yield_platform\include;include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
@@ -135,6 +138,8 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalDependencies="&quot;$(ProjectDir)..\yield_platform\lib\yield_platform.lib&quot;"
+				OutputFile="bin\$(ProjectName).exe"
 				LinkIncremental="1"
 				GenerateDebugInformation="true"
 				SubSystem="1"
