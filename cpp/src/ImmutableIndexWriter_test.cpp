@@ -21,12 +21,12 @@ public:
 	DirectOperationTarget(LogIndex* log_idx)
 		: log_index(log_idx) {}
 
-	void set(const string& index, const Data& key, const Data& value) {
-		log_index->add(key,value);
+	bool set(const string& index, const Data& key, const Data& value) {
+		return log_index->add(key,value);
 	}
 
-	void remove(const string& index, const Data& key) {
-		log_index->add(key,Data::Deleted());
+	bool remove(const string& index, const Data& key) {
+		return log_index->add(key,Data::Deleted());
 	}
 
 private:

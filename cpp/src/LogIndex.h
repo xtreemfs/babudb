@@ -28,7 +28,7 @@ public:
 	Data lookup(const Data& key);
 //	vector<std::pair<Data,Data> > search(Data value); // needs value comp. operator
 
-	void add(const Data&, const Data&);
+	bool add(const Data&, const Data&);
 
 	lsn_t getFirstLSN()			{ return first_lsn; }
 	void setLastLSN(lsn_t l)	{ last_lsn = l; }

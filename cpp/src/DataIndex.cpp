@@ -153,10 +153,10 @@ LogIndex* DataIndex::getTail() {
 	return tail;
 }
 
-void DataIndexOperationTarget::set(const string& index, const Data& key, const Data& value) {
-	idcs[index]->getTail()->add(key, value);
+bool DataIndexOperationTarget::set(const string& index, const Data& key, const Data& value) {
+	return idcs[index]->getTail()->add(key, value);
 }
 
-void DataIndexOperationTarget::remove(const string& index, const Data& key) {
-	idcs[index]->getTail()->add(key, Data::Deleted());
+bool DataIndexOperationTarget::remove(const string& index, const Data& key) {
+	return idcs[index]->getTail()->add(key, Data::Deleted());
 }

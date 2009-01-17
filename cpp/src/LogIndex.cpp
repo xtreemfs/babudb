@@ -22,7 +22,7 @@ Data LogIndex::lookup(const Data& search_key) {
 // Only add Data to the key. Removed keys are represented as Delete values because they
 // act as an overlay to less significant indices.
 
-void LogIndex::add(const Data& new_key, const Data& new_value) {
+bool LogIndex::add(const Data& new_key, const Data& new_value) {
 	Data tree_key = new_key.clone();
 	Data tree_value = new_value.clone();
 	// index in latest LogIndex
@@ -35,7 +35,9 @@ void LogIndex::add(const Data& new_key, const Data& new_value) {
 		old_key.free();
 		old_value.free();
 
-		old_entry = latest_value.insert(pair<Data,Data>(tree_key,tree_value));
-		ASSERT_TRUE(old_entry.second);
+		pair<Tree::iterator,bool> new_entry  = latest_value.insert(pair<Data,Data>(tree_key,tree_value));
+		ASSERT_TRUE(new_entry.second);
 	}
+
+	return !old_entry.second;
 }

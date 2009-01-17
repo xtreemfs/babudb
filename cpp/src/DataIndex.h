@@ -58,8 +58,8 @@ public:
 	DataIndexOperationTarget(Log* log, std::map<string,DataIndex*>& idcs, lsn_t l)
 		: log(log), idcs(idcs), lsn(l) {}
 
-	void set(const string& index, const Data& key, const Data& value);
-	void remove(const string& index, const Data& key);
+	bool set(const string& index, const Data& key, const Data& value);
+	bool remove(const string& index, const Data& key);
 	void setLSN(lsn_t l) { lsn = l; }
 
 private:

@@ -179,8 +179,8 @@ typedef unsigned char operation_type_t;
 
 class OperationTarget {
 public:
-	virtual void set(const string& index, const Data& key, const Data& value) = 0;
-	virtual void remove(const string& index, const Data& key) = 0;
+	virtual bool set(const string& index, const Data& key, const Data& value) = 0;
+	virtual bool remove(const string& index, const Data& key) = 0;
 };
 
 class Operation {
