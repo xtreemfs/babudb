@@ -154,8 +154,11 @@ LogSection* Log::getTail() {
 }
 
 void Log::advanceTail() {
-	if(tail)
+	if(tail) {
+		if(tail->isWritable())
+			tail->truncate();
 		tail->close();
+	}
 	tail = NULL;
 }
 

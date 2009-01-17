@@ -9,12 +9,11 @@ using std::string;
 #include <memory>
 using std::auto_ptr;
 
-#include "yield/platform/platform_types.h"
+#include <yield/platform/platform_types.h>
+#include <yield/platform/memory_mapped_file.h>
 
 #include "RecordFrame.h"
 #include "babudb/RecordIterator.h"
-
-namespace YIELD { class MemoryMappedFile; }
 
 namespace babudb {
 
@@ -37,6 +36,7 @@ public:
 	typedef class RecordIterator iterator;
 
 	SequentialFile(auto_ptr<YIELD::MemoryMappedFile>, LogStats* = NULL);
+	virtual ~SequentialFile() {}
 
 	void close();
 	unsigned short getVersion()				{ return database_version; }
@@ -45,6 +45,7 @@ public:
 
 	void* getFreeSpace(size_t);
 	void enlarge();
+	void truncate();
 
 	iterator begin();
 	iterator end();
@@ -55,6 +56,7 @@ public:
 	iterator at( offset_t );
 
 	bool empty();
+	bool isWritable();
 
 	void frameData(void* location, size_t size, record_type_t type, bool marked);
 	void* append(size_t size, record_type_t type, bool);

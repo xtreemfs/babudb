@@ -12,7 +12,6 @@ using namespace babudb;
 #include <string>
 
 #include <yield/platform/assert.h>
-#include <yield/platform/memory_mapped_file.h>
 using namespace YIELD;
 
 #define FIRST_RECORD_OFFSET		8
@@ -81,6 +80,10 @@ bool SequentialFile::empty() {
 	return next_write_offset == FIRST_RECORD_OFFSET;
 }
 
+bool SequentialFile::isWritable() {
+	return (memory->getFlags() & O_RDWR) != 0;
+}
+
 int SequentialFile::initialize()
 {
 	next_write_offset = (offset_t)memory->getRegionSize();
@@ -92,7 +95,7 @@ int SequentialFile::initialize()
 	{
 		record_frame_t* start = (record_frame_t*)offset2record( 0 );
 
-		if((memory->getFlags() & O_RDWR) != 0)
+		if(isWritable())
 			*start = SequentialFile_DB_VERSION;
 
 		return 0;
@@ -118,7 +121,7 @@ int SequentialFile::initialize()
 	// find end, wipe out half-written records, write end of file marker
 	// clean memory after first valid record
 
-	if((memory->getFlags() & O_RDWR) != 0)
+	if(isWritable())
 		for( raw = raw; (char*)raw < memory->getRegionEnd(); raw++ )
 			*raw = 0;
 
@@ -233,7 +236,7 @@ unsigned int SequentialFile::rollback() {
 		if(r.getRecord()->isEndOfTransaction())
 			break;
 
-		if((memory->getFlags() & O_RDWR) != 0)
+		if(isWritable())
 			erase( record2offset( r.getRecord() ) );		// works because prev skips 0's
 
 		rolledback_operations++;
@@ -249,7 +252,7 @@ unsigned int SequentialFile::rollback() {
 
 void SequentialFile::erase( offset_t offset )
 {
-	ASSERT_TRUE((memory->getFlags() & O_RDWR) != 0);
+	ASSERT_TRUE(isWritable());
 
 	Record* target = offset2record( offset );
 	ASSERT_TRUE(target->isValid());
@@ -296,6 +299,13 @@ void SequentialFile::enlarge()
 	stats->log_file_length = (unsigned int)new_size;
 }
 
+void SequentialFile::truncate()
+{
+	size_t new_size = (unsigned int)next_write_offset;
+	memory->resize( new_size );
+
+	stats->log_file_length = (unsigned int)new_size;
+}
 
 /** Create in iterator to advance from the given position
 
