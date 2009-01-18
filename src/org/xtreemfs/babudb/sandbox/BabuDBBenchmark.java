@@ -182,7 +182,7 @@ public class BabuDBBenchmark {
             options.put("payload", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,50));
             options.put("keymin", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,2));
             options.put("keymax", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,20));
-
+            options.put("h", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH, false));
 
             List<String> arguments = new ArrayList(1);
             CLIParser.parseCLI(args, options, arguments);
