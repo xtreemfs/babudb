@@ -14,7 +14,7 @@ class Data;
 class RecordIterator
 {
 public:
-	RecordIterator() {}
+	RecordIterator() : current(NULL), region_start(NULL), region_size(0), is_forward_iterator(true) {}
 
 	RecordIterator(const RecordIterator& other)
 		: current(other.current), region_start(other.region_start), region_size(other.region_size),
