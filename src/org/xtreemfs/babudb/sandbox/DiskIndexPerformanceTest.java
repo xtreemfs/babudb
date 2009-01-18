@@ -10,10 +10,12 @@ package org.xtreemfs.babudb.sandbox;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
@@ -27,6 +29,8 @@ public class DiskIndexPerformanceTest {
         Map<String,CLIParser.CliOption> options = new HashMap();
         options.put("path",new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.FILE,new File("/tmp/babudb_benchmark")));
         options.put("blocksize", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,16));
+        // hitrate in percent
+        options.put("hitrate", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,10));
         options.put("h", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH, false));
 
         List<String> arguments = new ArrayList(1);
@@ -40,6 +44,7 @@ public class DiskIndexPerformanceTest {
 
         final String path = arguments.get(0);
         final Long entriesPerBlock = options.get("blocksize").numValue;
+        final int hitrate = options.get("hitrate").numValue.intValue();
         
         final int minStrLen = 1;
         final int maxStrLen = 8;
@@ -48,8 +53,10 @@ public class DiskIndexPerformanceTest {
         
         final int size = Integer.parseInt(arguments.get(1));
         final int lookups = Integer.parseInt(arguments.get(2));
+        final Random generator = new Random();
         
         boolean verbose = false;
+        final ArrayList<byte[]> lookupHits = new ArrayList<byte[]>((int) (hitrate*size) + 1);
         
         if (size != 0) {
             // delete old index file
@@ -62,7 +69,7 @@ public class DiskIndexPerformanceTest {
             DiskIndexWriter index = new DiskIndexWriter(path, entriesPerBlock.intValue());
             index.writeIndex(new Iterator<Entry<byte[], byte[]>>() {
                 
-                private int    count;
+                private int    count = 0;
                 
                 private String next = minChar + "";
                 
@@ -76,6 +83,9 @@ public class DiskIndexPerformanceTest {
                     
                     count++;
                     next = createNextString(next, minStrLen, maxStrLen, minChar, maxChar);
+
+                    if(generator.nextInt() % hitrate == 0)
+                    	lookupHits.add(next.getBytes());
                     
                     return new Entry<byte[], byte[]>() {
                         
@@ -122,27 +132,41 @@ public class DiskIndexPerformanceTest {
         int hits = 0;
         long sumLookups = 0;
         
+        Collections.shuffle(lookupHits);
+        
         for (int i = 0; i < lookups; i++) {
+            byte[] key;
             
-            byte[] key = createRandomString(minChar, maxChar, minStrLen, maxStrLen).getBytes();
-
+            /* pick a random element that is in the index according to the given hitrate */
+        	if(generator.nextInt() % hitrate == 0) {
+        		key = lookupHits.get(Math.abs(generator.nextInt()) % lookupHits.size());
+        	} else {
+        		key = createRandomString(minChar, maxChar, maxStrLen+1, maxStrLen*2).getBytes();
+        	}
+        	
             long t0 = System.currentTimeMillis();
             byte[] result = diskIndex.lookup(key);
             sumLookups += System.currentTimeMillis() - t0;
             if (result != null)
                 hits++;
             
-            if (i % 100000 == 0 && verbose)
-                System.out.println(i);
+            //if (i % 100000 == 0 && verbose)
+            //    System.out.println(i);
         }
         
-        //long time = System.currentTimeMillis() - t0;
+        Iterator<Entry<byte[], byte[]>> it = diskIndex.rangeLookup(null, null);
+        
+        /* iterate over all data in the disk index to measure the prefix lookup throughput */
+        long iterStart = System.currentTimeMillis();
+        while(it.hasNext()) it.next();
+        long iterTime = System.currentTimeMillis() - iterStart;
         
         System.out.print(size + ", ");
         System.out.print(lookups + ", ");
+        System.out.print(hits + ", ");
         System.out.print(sumLookups + ", ");
-        System.out.println((long) lookups * 1000 / sumLookups);
-        //System.out.println(", " + hits + " / " + lookups);
+        System.out.print((int) Math.ceil(((double) lookups / (double) sumLookups) * 1000.0) + ", ");
+        System.out.println((int) Math.ceil(((double) size / (double) iterTime) * 1000.0));
         
         diskIndex.destroy();
     }
