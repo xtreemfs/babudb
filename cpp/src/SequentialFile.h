@@ -27,7 +27,7 @@ typedef uint64_t				offset_t;
 /** An append-only file of records.
 */
 
-#define SequentialFile_DB_VERSION 0x0001
+#define SEQUENTIALFILE_DB_VERSION 0x01
 
 class SequentialFile
 {
@@ -58,8 +58,8 @@ public:
 	bool empty();
 	bool isWritable();
 
-	void frameData(void* location, size_t size, record_type_t type, bool marked);
-	void* append(size_t size, record_type_t type, bool);
+	void frameData(void* location, size_t size, record_type_t type);
+	void* append(size_t size, record_type_t type);
 	void moveRecord( offset_t at, offset_t to );
 	void erase( offset_t );
 

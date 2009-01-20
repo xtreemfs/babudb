@@ -17,9 +17,9 @@ TEST_TMPDIR(SequentialFile_iteration,babudb)
 	EXPECT_TRUE(sf.begin() == sf.end());
 	EXPECT_TRUE(sf.rbegin() == sf.rend());
 
-	sf.append(1,1,false);
-	sf.append(2,2,false);
-	sf.append(3,3,false);
+	sf.append(1,1);
+	sf.append(2,2);
+	sf.append(3,3);
 	sf.commit();
 
 	sf.close();
@@ -67,10 +67,10 @@ TEST_TMPDIR(SequentialFile_rollback,babudb)
 	auto_ptr<MemoryMappedFile> file(new MemoryMappedFile(testPath("testfile").getHostCharsetPath(), 1024 * 1024, O_CREAT|O_RDWR|O_SYNC));
 	SequentialFile sf(file, NULL);
 
-	sf.append(1,1,false);
-	sf.append(2,2,false);
+	sf.append(1,1);
+	sf.append(2,2);
 	sf.commit();
-	sf.append(3,3,false);
+	sf.append(3,3);
 
 	sf.close();
 

@@ -93,10 +93,10 @@ int SequentialFile::initialize()
 
 	if(next_write_offset == FIRST_RECORD_OFFSET)		// this is a new empty file, everything is fine
 	{
-		record_frame_t* start = (record_frame_t*)offset2record( 0 );
+		unsigned char* start = (unsigned char*)offset2record( 0 );
 
 		if(isWritable())
-			*start = SequentialFile_DB_VERSION;
+			*start = SEQUENTIALFILE_DB_VERSION;
 
 		return 0;
 	}
@@ -174,19 +174,18 @@ bool SequentialFile::assertValidRecordChain( void* raw )
 
 
 
-void SequentialFile::frameData(void* payload, size_t size, record_type_t type, bool marked ) {
+void SequentialFile::frameData(void* payload, size_t size, record_type_t type) {
 	ASSERT_TRUE(ISALIGNED(payload, RECORD_FRAME_ALIGNMENT));
 	Record* record = Record::getRecord((char*)payload);
 
 	SequentialFile::Record* new_record = new (record)Record(type, size);
-	new_record->mark(marked);
 	next_write_offset = record2offset( (SequentialFile::Record*)new_record->getEndOfRecord() );
 	ASSERT_TRUE(ISALIGNED((void*)next_write_offset, RECORD_FRAME_ALIGNMENT));
 }
 
-void* SequentialFile::append(size_t size, record_type_t type,bool marked) {
+void* SequentialFile::append(size_t size, record_type_t type) {
 	void* location = getFreeSpace(size);
-	frameData(location,size,type,marked);
+	frameData(location, size, type);
 	return location;
 }
 

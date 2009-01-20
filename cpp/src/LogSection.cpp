@@ -43,13 +43,13 @@ lsn_t LogSection::appendOperation(const Operation& operation) {
 		in_transaction = true;
 		lsn_t* write_location = (lsn_t*)getFreeSpace(sizeof(lsn_t));
 		*write_location = next_lsn;
-		frameData(write_location, sizeof(lsn_t), LSN_RECORD_TYPE,false);
+		frameData(write_location, sizeof(lsn_t), LSN_RECORD_TYPE);
 		next_lsn++;
 	}
 
 	void* write_location = getFreeSpace(OPERATION_MAX_SIZE);
 	Data record_data = operation.serialize(Data(write_location, OPERATION_MAX_SIZE));
-	frameData(record_data.data, (unsigned int)record_data.size, operation.getType(), false);
+	frameData(record_data.data, (unsigned int)record_data.size, operation.getType());
 
 	return next_lsn - 1;
 }

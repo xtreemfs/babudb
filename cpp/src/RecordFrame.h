@@ -1,15 +1,15 @@
 // Copyright (c) 2008, Felix Hupfeld, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist, Zuse Institute Berlin.
 // Licensed under the BSD License, see LICENSE file for details.
 
-#ifndef ECORDFRAME_H
-#define ECORDFRAME_H
+#ifndef RECORDFRAME_H
+#define RECORDFRAME_H
 
 #include <cstddef>
 
 namespace babudb {
 
 typedef unsigned char			record_type_t;
-#define RECORD_TYPE_BITS		3
+#define RECORD_TYPE_BITS		4
 #define RECORD_MAX_TYPE			((1 << RECORD_TYPE_BITS) - 1)
 
 typedef unsigned short			record_frame_t; // the length of the frame header/footer
@@ -19,6 +19,20 @@ typedef unsigned short			record_frame_t; // the length of the frame header/foote
 #define RECORD_FRAME_ALIGNMENT	2	// align on shorts
 inline unsigned long long ALIGN(unsigned long long n,int a)		{ return (((n + (a-1)) / a) * a); }
 inline bool ISALIGNED(void* n, int a)							{ return (unsigned long long)n == (((unsigned long long)n)/a)*a; }
+
+#if defined(__i386__) || defined(_M_IX86) || defined(TARGET_RT_LITTLE_ENDIAN) // little endian
+inline record_frame_t fixEndianess(record_frame_t header ) {
+	return header;
+}
+#elif defined(__ppc__) || defined(TARGET_RT_BIG_ENDIAN) // big endian
+#pragma message( "You're entering untested territory with this big endian architecture " __FILE__) 
+inline record_frame_t fixEndianess(record_frame_t header ) {
+	return ((header >> 8) & 0xFF) | (header << 8);
+}
+#else
+#pragma message( "Endianness could not be detected " __FILE__) 
+#endif
+
 
 class RecordFrame
 {
@@ -31,41 +45,47 @@ public:
 
 	bool isValid();
 
-	record_type_t getType();
+	record_type_t getType()						{ return getHeader().structured_header.type; }
 	void setType(record_type_t t);
 
-	bool isMarked();
-	void mark( bool m );
-
-	bool isEndOfTransaction()					{ return structured_header.eot == 1; }
-	void setEndOfTransaction( bool e )			{ structured_header.eot = (e?1:0); getFooter()->header = header; }
+	bool isEndOfTransaction()					{ return getHeader().structured_header.eot == 1; }
+	void setEndOfTransaction( bool e )			{ record_header h = getHeader(); h.structured_header.eot = (e?1:0); setHeaderAndFooter(h); }
 
 	void* getEndOfRecord()						{ return (unsigned char*)this + getRecordSize(); }
 	RecordFrame *getStartHeader()				{ return (RecordFrame*)((unsigned char*)this - ALIGN(_getLengthField(), RECORD_FRAME_ALIGNMENT) - RECORD_FRAME_SIZE_BYTES); }
 
-	bool mightBeHeaderOf( RecordFrame* other )	{ return header == other->header; }
-	bool mightBeHeader()						{ return header != 0 && getRecordSize() != 0; }
+	bool mightBeHeaderOf(RecordFrame* other)	{ return header_data.plain_header == other->header_data.plain_header; }
+	bool mightBeHeader()						{ return header_data.plain_header != 0 && getRecordSize() != 0; }
 
 	RecordFrame( record_type_t type, size_t size_in_bytes );
 
 private:
-	void setLength( size_t size_in_bytes )		{ structured_header.size = (unsigned int)size_in_bytes; getFooter()->header = header; }
-	unsigned int _getLengthField()				{ return structured_header.size; }
+	void setLength( size_t size_in_bytes )		{ record_header h = getHeader(); h.structured_header.size = (unsigned int)size_in_bytes; setHeaderAndFooter(h); }
+	unsigned int _getLengthField()				{ return getHeader().structured_header.size; }
 
 	RecordFrame *getFooter()					{ return (RecordFrame*)((unsigned char*)this + ALIGN(_getLengthField(), RECORD_FRAME_ALIGNMENT) + RECORD_FRAME_SIZE_BYTES); }
 
-	union
+	union record_header
 	{
-		struct
+		struct sheader
 		{
 			unsigned int type		: RECORD_TYPE_BITS;
-			unsigned int eot		: 1;											// transaction commit bit
-			unsigned int marked		: 1;											// a marker, to be used for whatever
-			unsigned int size		: RECORD_FRAME_SIZE_BITS - RECORD_TYPE_BITS - 1 - 1;	// true size of the record in bytes
+			unsigned int eot		: 1;												// transaction commit bit
+			unsigned int size		: RECORD_FRAME_SIZE_BITS - RECORD_TYPE_BITS - 1;	// true size of the record in bytes
 		} structured_header;
 
-		record_frame_t header;
-	};
+		record_frame_t plain_header;
+	} header_data;
+
+	record_header getHeader() {
+		return header_data;
+	}
+
+	void setHeaderAndFooter(record_header h) {
+		record_frame_t fixed_header = fixEndianess(h.plain_header);
+		header_data.plain_header = fixed_header;
+		getFooter()->header_data.plain_header = fixed_header;
+	}
 };
 
 };

@@ -122,8 +122,3 @@ template <class T>
 operation_type_t LogIterator<T>::getType() const {
 	return current_record.getType();
 }
-
-template <class T>
-bool LogIterator<T>::isMarked() const {
-	return current_record.getRecord()->isMarked();
-}

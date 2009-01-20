@@ -74,7 +74,7 @@ void ImmutableIndexWriter::flushBuffer() {
 void* ImmutableIndexWriter::writeData(Data data, char type) {
 	void* location = storage.getFreeSpace(data.size);
 	memcpy(location, data.data, data.size);
-	storage.frameData(location, data.size, type,false);
+	storage.frameData(location, data.size, type);
 	return location;
 }
 

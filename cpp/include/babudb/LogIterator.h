@@ -32,7 +32,6 @@ public:
 	Data getOperationWithFrame() const;
 
 	operation_type_t getType() const;
-	bool isMarked() const;
 
 	static RecordIterator section_begin(T& section);
 	static RecordIterator section_end(T& section);
