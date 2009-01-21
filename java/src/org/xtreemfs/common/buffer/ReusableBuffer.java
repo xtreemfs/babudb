@@ -192,7 +192,7 @@ public final class ReusableBuffer {
         assert(!returned) : "Buffer was already freed and cannot be used anymore"+this.freeStack;
         byte [] array;
 
-        if (this.hasArray()) {
+        if (this.hasArray() && (viewParent == null)) {
             array = buffer.array();
         } else {
             array = new byte[this.limit()];
