@@ -45,4 +45,8 @@ public class BabuDBInsertGroup {
     public void addDelete(int indexId, byte[] key) {
         rec.addInsert(indexId, key, null);
     }
+    
+    public String toString() {
+        return rec.toString();
+    }
 }
