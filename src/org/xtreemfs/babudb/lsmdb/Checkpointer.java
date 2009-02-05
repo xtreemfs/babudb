@@ -9,9 +9,9 @@
 package org.xtreemfs.babudb.lsmdb;
 
 import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDB;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.common.logging.Logging;
 
@@ -37,6 +37,10 @@ public class Checkpointer extends Thread {
     
     private final BabuDB        master;
     
+    /**
+     * From the replication designated checkpoint.
+     */
+    private LSN                 recommended;
     
     /**
      * Creates a new database checkpointer
@@ -108,4 +112,14 @@ public class Checkpointer extends Thread {
         }
     }
 
+    /**
+     * <p>For replication purpose.</p>
+     * <p>A master can mark the LSN as recommended for the next checkpoint, if all slaves
+     * have acknowledged replicas until LSN.</p>
+     * 
+     * @param lsn
+     */
+    public synchronized void designateRecommendedCheckpoint(LSN lsn){
+            this.recommended = lsn;       
+    }
 }

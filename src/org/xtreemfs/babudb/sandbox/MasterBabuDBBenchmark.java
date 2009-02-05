@@ -9,21 +9,26 @@
 package org.xtreemfs.babudb.sandbox;
 
 import java.io.File;
+import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
+import org.xtreemfs.babudb.replication.Replication;
+import org.xtreemfs.babudb.replication.Replication.SYNC_MODUS;
 import org.xtreemfs.common.logging.Logging;
 
 /**
  *
  * @author bjko
  */
-public class BabuDBBenchmark {
+public class MasterBabuDBBenchmark {
 
     public static final String VER = "0.1";
 
@@ -50,8 +55,8 @@ public class BabuDBBenchmark {
 
     private final int numThreads;
 
-    public BabuDBBenchmark(String dbDir, SyncMode syncMode, int pseudoModeWait, int maxQ, int numThreads, int numDBWorkers,
-            int numKeys, int valueLength, int minKeyLength, int maxKeyLength) throws BabuDBException {
+    public MasterBabuDBBenchmark(String dbDir, SyncMode syncMode, int pseudoModeWait, int maxQ, int numThreads, int numDBWorkers,
+            int numKeys, int valueLength, int minKeyLength, int maxKeyLength, List<InetSocketAddress> slaves, int port) throws BabuDBException, IOException, InterruptedException {
         this.numKeys = numKeys;
         this.minKeyLength = minKeyLength;
         this.maxKeyLength = maxKeyLength;
@@ -64,8 +69,12 @@ public class BabuDBBenchmark {
         if (numKeys > Math.pow(CHARS.length, maxKeyLength))
             throw new IllegalArgumentException(maxKeyLength+" is too short to create enough unique keys for "+numKeys+" keys");
 
+        // delete existing files
+        Process p = Runtime.getRuntime().exec("rm -rf "+dbDir);
+        p.waitFor();
+        
         //use one worker because we use one database
-        database = BabuDBFactory.getBabuDB(dbDir, dbDir, numDBWorkers, 1, 0, syncMode, pseudoModeWait, maxQ);
+        database = BabuDBFactory.getMasterBabuDB(dbDir, dbDir, numDBWorkers, 1, 0, syncMode, pseudoModeWait, maxQ, slaves, port, null,SYNC_MODUS.ASYNC);
         for (int i = 1; i <= numThreads; i++)
         database.createDatabase(""+i, 1);
 
@@ -142,22 +151,35 @@ public class BabuDBBenchmark {
         return throughput;
     }
 
-    private byte[] createRandomKey() {
-        final int length = (int) (Math.random() * ((double)(maxKeyLength - minKeyLength)) + minKeyLength);
-        assert(length >= minKeyLength);
-        assert(length <= maxKeyLength);
-
-        byte[] key = new byte[length];
-        for (int i = 0; i < length; i++)
-            key[i] = CHARS[(int)(Math.random()*(CHARS.length-1))];
-        return key;
+    private static InetSocketAddress parseAddress (String adr){
+        String[] comp = adr.split(":");
+        if (comp.length!=2){
+            error("Address '"+adr+"' is illegal!");
+            return null;
+        }
+        
+        try {
+            int port = Integer.parseInt(comp[1]);
+            return new InetSocketAddress(comp[0],port);
+        } catch (NumberFormatException e) {
+            error("Address '"+adr+"' is illegal! Because: "+comp[1]+" is not a number.");
+            return null;
+        }      
     }
-
+    
+    private static void error(String message) {
+        System.err.println(message);
+        usage();
+    }
+    
     public static void usage() {
-        System.out.println("BabuDBBenchmark <options> <numKeysPerThread>");
+        System.out.println("BabuDBBenchmark <options> <numKeysPerThread> <slave_address:port>[,<slave_address:port>]");
         System.out.println("  "+"<numKeysPerThread> number of keys inserted/looked-up by");
         System.out.println("  "+"each thread");
-        System.out.println("  "+"-path directory in which to store the database, default is /tmp/babudb_benchmark");
+        System.out.println("  "+"<slave_address:port> same as for the master for all available ");
+        System.out.println("  "+"slaves seperated by ','");
+        System.out.println("  "+"-port where the slave should listen at (default is "+Replication.MASTER_PORT+")");
+        System.out.println("  "+"-path directory in which to store the database, default is /tmp/babudb_benchmark/master");
         System.out.println("  "+"-sync synchronization mode FSYNC");
         System.out.println("  "+"-wait ms between to bach writes, default is 0 for synchronous mode");
         System.out.println("  "+"-maxq maxmimum worker queue length, default is 0 for unlimited");
@@ -166,6 +188,7 @@ public class BabuDBBenchmark {
         System.out.println("  "+"-payload size of values, default is 50 bytes");
         System.out.println("  "+"-keymin minimum key length, default is 2");
         System.out.println("  "+"-keymax maximum key length, default is 20");
+        System.exit(1);
     }
 
 
@@ -174,7 +197,7 @@ public class BabuDBBenchmark {
             Logging.start(Logging.LEVEL_WARN);
 
             Map<String,CLIParser.CliOption> options = new HashMap();
-            options.put("path",new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.FILE,new File("/tmp/babudb_benchmark")));
+            options.put("path",new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.FILE,new File("/tmp/babudb_benchmark/master")));
             options.put("sync",new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.STRING,"FSYNC"));
             options.put("wait", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,0));
             options.put("maxq", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,0));
@@ -183,20 +206,27 @@ public class BabuDBBenchmark {
             options.put("payload", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,50));
             options.put("keymin", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,2));
             options.put("keymax", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,20));
+            options.put("port", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,0));
             options.put("h", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH, false));
 
-            List<String> arguments = new ArrayList(1);
+            List<String> arguments = new ArrayList(2);
             CLIParser.parseCLI(args, options, arguments);
 
-            if ((arguments.size() != 1) || (options.get("h").switchValue)) {
+            if ((arguments.size() != 2) || (options.get("h").switchValue))
                 usage();
-                System.exit(1);
-            }
 
             int numKeys = Integer.valueOf(arguments.get(0));
+            
+            List<InetSocketAddress> slaves = new LinkedList<InetSocketAddress>();
+            
+            if (arguments.get(1).indexOf(",")==-1)
+                slaves.add(parseAddress(arguments.get(1)));
+            else
+                for (String adr : arguments.get(1).split(","))
+                    slaves.add(parseAddress(adr));
 
 
-            BabuDBBenchmark benchmark = new BabuDBBenchmark(options.get("path").fileValue.getAbsolutePath(),
+            MasterBabuDBBenchmark benchmark = new MasterBabuDBBenchmark(options.get("path").fileValue.getAbsolutePath(),
                     SyncMode.valueOf(options.get("sync").stringValue),
                     options.get("wait").numValue.intValue(),
                     options.get("maxq").numValue.intValue(),
@@ -205,7 +235,10 @@ public class BabuDBBenchmark {
                     numKeys,
                     options.get("payload").numValue.intValue(),
                     options.get("keymin").numValue.intValue(),
-                    options.get("keymax").numValue.intValue());
+                    options.get("keymax").numValue.intValue(),
+                    slaves,
+                    options.get("port").numValue.intValue());
+            
             double tpIns =benchmark.benchmarkInserts();
             double tpIter = benchmark.benchmarkIterate();
             double durCP = benchmark.checkpoint();
@@ -219,6 +252,9 @@ public class BabuDBBenchmark {
 
             System.out.format("CHECKPOINTING took          : %12.4f s\n", durCP);
 
+            // time buffer for remaining RQs
+            Thread.sleep(10000);
+            
             benchmark.shutdown();
         } catch (Exception ex) {
             System.out.println("FAILED!!!");

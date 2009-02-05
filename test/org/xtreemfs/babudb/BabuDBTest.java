@@ -11,6 +11,7 @@ package org.xtreemfs.babudb;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.xtreemfs.babudb.BabuDBFactory.BabuDBImpl;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.LSMLookupInterface;
 import org.xtreemfs.common.logging.Logging;
@@ -25,7 +26,7 @@ public class BabuDBTest {
     
     public static final String baseDir = "/tmp/lsmdb-test/";
 
-    private BabuDB database;
+    private BabuDBImpl database;
     
     public BabuDBTest() {
         Logging.start(Logging.LEVEL_DEBUG);
@@ -49,7 +50,7 @@ public class BabuDBTest {
     // public void hello() {}
     @Test
     public void testReplayAfterCrash() throws Exception {
-        database = new BabuDB(baseDir,baseDir,1,0,0,SyncMode.SYNC_WRITE,0,0);
+        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir,baseDir,1,0,0,SyncMode.SYNC_WRITE,0,0);
         database.createDatabase("test", 2);
         database.syncSingleInsert("test", 0, "Yagga".getBytes(), "Brabbel".getBytes());
         database.checkpoint();
@@ -71,7 +72,7 @@ public class BabuDBTest {
         database.__test_killDB_dangerous();
         Thread.sleep(500);
         
-        database = new BabuDB(baseDir,baseDir,2,0,0,SyncMode.SYNC_WRITE,0,0);
+        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir,baseDir,2,0,0,SyncMode.SYNC_WRITE,0,0);
         result = database.syncLookup("test", 0, "Yagga".getBytes());
         assertNotNull(result);
         value = new String(result);
@@ -96,7 +97,7 @@ public class BabuDBTest {
     
     @Test
     public void testShutdownAfterCheckpoint() throws Exception {
-        database = new BabuDB(baseDir,baseDir,1,0,0,SyncMode.SYNC_WRITE,0,0);
+        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir,baseDir,1,0,0,SyncMode.SYNC_WRITE,0,0);
         database.createDatabase("test", 2);
         database.syncSingleInsert("test", 0, "Yagga".getBytes(), "Brabbel".getBytes());
         
@@ -119,7 +120,7 @@ public class BabuDBTest {
         database.shutdown();
                 
         
-        database = new BabuDB(baseDir,baseDir,2,0,0,SyncMode.SYNC_WRITE,0,0);
+        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir,baseDir,2,0,0,SyncMode.SYNC_WRITE,0,0);
         result = database.syncLookup("test", 0, "Yagga".getBytes());
         assertNotNull(result);
         value = new String(result);
@@ -144,7 +145,7 @@ public class BabuDBTest {
     
     @Test
     public void testMultipleIndices() throws Exception {
-        database = new BabuDB(baseDir,baseDir,1,0,0,SyncMode.SYNC_WRITE,0,0);
+        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir,baseDir,1,0,0,SyncMode.SYNC_WRITE,0,0);
         database.createDatabase("test", 3);
         
         BabuDBInsertGroup ir = database.createInsertGroup("test");
@@ -161,7 +162,7 @@ public class BabuDBTest {
         database.shutdown();
                 
         
-        database = new BabuDB(baseDir,baseDir,2,0,0,SyncMode.SYNC_WRITE,0,0);
+        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir,baseDir,2,0,0,SyncMode.SYNC_WRITE,0,0);
         
         byte[] result = database.syncLookup("test", 0, "Key1".getBytes());
         assertNotNull(result);
@@ -188,7 +189,7 @@ public class BabuDBTest {
     @Test
     public void testUserDefinedLookup() throws Exception {
         
-        database = new BabuDB(baseDir,baseDir,1,0,0,SyncMode.SYNC_WRITE,0,0);
+        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir,baseDir,1,0,0,SyncMode.SYNC_WRITE,0,0);
         database.createDatabase("test", 3);
         
         BabuDBInsertGroup ir = database.createInsertGroup("test");

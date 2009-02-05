@@ -17,6 +17,7 @@ import java.util.TreeMap;
 
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.BabuDBInsertGroup;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.common.buffer.BufferPool;
@@ -64,7 +65,7 @@ public class longruntest {
         this.numIndices = numIndices;
 
         //checkpoint every 1m and check every 1 min
-        database = new BabuDB(basedir, basedir, 2, 1024 * 128 , 60 * 1, SyncMode.SYNC_WRITE,0,0);
+        database = BabuDBFactory.getBabuDB(basedir, basedir, 2, 1024 * 128 , 60 * 1, SyncMode.SYNC_WRITE,0,0);
 
         database.createDatabase(dbname, numIndices);
 

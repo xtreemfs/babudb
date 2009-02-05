@@ -108,6 +108,7 @@ public final class ReusableBuffer {
     /**
      * Creates a new view buffer. This view buffer shares the same data (i.e.
      * backing byte buffer) but has independet position, limit etc.
+     * Sets the position of buffer to 0.
      */
     public ReusableBuffer createViewBuffer() {
         

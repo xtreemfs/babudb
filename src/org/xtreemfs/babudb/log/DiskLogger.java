@@ -11,7 +11,6 @@ package org.xtreemfs.babudb.log;
 import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.io.SyncFailedException;
@@ -20,7 +19,6 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -97,7 +95,7 @@ public class DiskLogger extends Thread {
     /**
      * LogFile name
      */
-    private String logfileDir;
+    private volatile String logfileDir;
 
     /**
      * log sequence number to assign to assign to next log entry
@@ -112,7 +110,7 @@ public class DiskLogger extends Thread {
     /**
      * current log file name
      */
-    private String currentLogFileName;
+    private volatile String currentLogFileName;
 
     /**
      * Lock for switching log files atomically
@@ -371,5 +369,23 @@ public class DiskLogger extends Thread {
 
     public int getQLength() {
         return this.entries.size();
+    }
+    
+    /**
+     * <p>Function is used by the Replication.</p>
+     * 
+     * @return the LSN of the latest inserted {@link LogEntry}.
+     */
+    public LSN getLatestLSN(){
+        return new LSN(this.currentViewId.get(),this.nextLogSequenceNo.get()-1L);
+    }
+    
+    /**
+     * <p>Function is used by the Replication.</p>
+     * 
+     * @return the actual logFile.
+     */
+    public String getLatestLogFileName(){
+        return currentLogFileName;
     }
 }
