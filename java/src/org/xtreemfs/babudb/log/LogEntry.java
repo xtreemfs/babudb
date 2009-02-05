@@ -36,7 +36,7 @@ public class LogEntry {
      */
     protected int             viewId;
     
-    protected long             logSequenceNo;
+    protected long            logSequenceNo;
     
     protected int             checksum;
     
@@ -44,7 +44,7 @@ public class LogEntry {
     
     protected SyncListener    listener;
     
-    private LSMDBRequest    attachment;
+    private   LSMDBRequest    attachment;
     
     
     private LogEntry() {
@@ -73,10 +73,16 @@ public class LogEntry {
         buf.putInt(viewId);
         buf.putLong(logSequenceNo);
         buf.put(payload);
+        payload.flip(); // otherwise payload is not reusable
         buf.putInt(bufSize);
         buf.flip();
         
         if (USE_CHECKSUMS) {
+            // reset the old checksum to 0, before calculating a new one
+            buf.position(Integer.SIZE/8);
+            buf.putInt(0);
+            buf.position(0);
+            
             csumAlgo.update(buf.array(),0,buf.limit());
             int cPos = buf.position();
             buf.position(Integer.SIZE/8);
@@ -143,8 +149,9 @@ public class LogEntry {
         e.viewId = data.getInt();
         e.logSequenceNo = data.getLong();
         final int payloadSize = bufSize - headerLength;
+        int payloadPosition = data.position();
         ReusableBuffer payload = data.createViewBuffer();
-        payload.range(data.position(), payloadSize);
+        payload.range(payloadPosition, payloadSize);
         e.payload = payload;
         
         if (USE_CHECKSUMS) {
@@ -166,6 +173,7 @@ public class LogEntry {
     
     public void free() {
         BufferPool.free(payload);
+        payload = null;
     }
 
     public LSMDBRequest getAttachment() {
@@ -176,4 +184,12 @@ public class LogEntry {
         this.attachment = attachment;
     }
     
+    /**
+     * <p>Just for slaves with replication issues.</p>
+     * 
+     * @param listener
+     */
+    public void setListener(SyncListener listener){
+        this.listener = listener;
+    }
 }

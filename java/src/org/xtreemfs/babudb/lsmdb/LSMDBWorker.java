@@ -21,6 +21,7 @@ import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
+import org.xtreemfs.babudb.replication.Replication;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.UserDefinedLookup;
 import org.xtreemfs.common.buffer.BufferPool;
@@ -54,15 +55,18 @@ public class LSMDBWorker extends Thread implements SyncListener {
 
     private final boolean       pseudoSync;
     
+    private final Replication   replicationApproach;
+    
     public LSMDBWorker(DiskLogger logger, int id, ReadWriteLock insertLock,
-            boolean pseudoSync, int maxQ) {
-        super("LSMDBWrkr#"+id);
+            boolean pseudoSync, int maxQ,Replication replication) {
+        super("LSMDBWrkr#"+id);        
+        this.replicationApproach = replication;        
         if (maxQ > 0)
             requests = new LinkedBlockingQueue<LSMDBRequest>(maxQ);
         else
             requests = new LinkedBlockingQueue<LSMDBRequest>();
         down = new AtomicBoolean(false);
-        this.lookupIfs = new HashMap();
+        this.lookupIfs = new HashMap<LSMDatabase, LSMLookupInterface>();
         this.logger = logger;
         this.insertLock = insertLock;
         this.pseudoSync = pseudoSync;
@@ -118,7 +122,7 @@ public class LSMDBWorker extends Thread implements SyncListener {
             down.notifyAll();
         }
     }
-    
+
     private void doUserLookup(final LSMDBRequest r) {
         final UserDefinedLookup l = r.getUserDefinedLookup();
         final LSMLookupInterface lif = new LSMLookupInterface(r.getDatabase());
@@ -142,6 +146,7 @@ public class LSMDBWorker extends Thread implements SyncListener {
 
         if (pseudoSync) {
             insertIntoIndex(r);
+            finish(e);
         }
     }
     
@@ -166,12 +171,15 @@ public class LSMDBWorker extends Thread implements SyncListener {
         r.getListener().prefixLookupFinished(r.getContext(), db.getIndex(r.getIndexId()).prefixLookup(r.getLookupKey()));
     }
 
-    public void synced(LogEntry entry) {
-        entry.free();
+    public void synced(LogEntry entry) {       
+        
         if (!pseudoSync) {
             final LSMDBRequest r = entry.getAttachment();
             insertIntoIndex(r);
+            finish(entry);
         }
+        
+        entry.free();
     }
 
     private void insertIntoIndex(final LSMDBRequest r) {
@@ -191,11 +199,24 @@ public class LSMDBWorker extends Thread implements SyncListener {
         } catch (Exception ex) {
             r.getListener().requestFailed(r.getContext(), new BabuDBException(ErrorCode.NO_SUCH_INDEX, "cannot insert because of unexpected error",ex));
         }
-        r.getListener().insertFinished(r.getContext());
+    }
+    
+    /**
+     * Replicate the logEntry, if replication is enabled.
+     * 
+     * @param le
+     */
+    private void finish(LogEntry le){
+        final LSMDBRequest r = le.getAttachment();
+        
+        if (replicationApproach!=null && replicationApproach.isMaster()){
+            replicationApproach.replicateInsert(le);
+        }else{
+            r.getListener().insertFinished(r.getContext());
+        }        
     }
 
     public void failed(LogEntry entry, Exception ex) {
         entry.getAttachment().getListener().requestFailed(entry.getAttachment().getContext(), new BabuDBException(ErrorCode.IO_ERROR, "could not execute insert because of IO problem",ex));
-    }
-    
+    }   
 }
