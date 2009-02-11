@@ -4,8 +4,7 @@
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
-*/
-
+ */
 package org.xtreemfs.babudb;
 
 import java.io.File;
@@ -40,6 +39,7 @@ import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
+import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.Checkpointer;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
@@ -49,6 +49,7 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
 import org.xtreemfs.babudb.replication.Replication;
 import org.xtreemfs.babudb.replication.Replication.SYNC_MODUS;
+import org.xtreemfs.common.buffer.BufferPool;
 import org.xtreemfs.common.buffer.ReusableBuffer;
 import org.xtreemfs.common.logging.Logging;
 import org.xtreemfs.foundation.pinky.SSLOptions;
@@ -59,13 +60,13 @@ import org.xtreemfs.foundation.pinky.SSLOptions;
  * 
  * @author flangner
  */
-
 public class BabuDBFactory {
+
     /**
      * <p>A Single static object for creating instances of the enclosing type {@link RequestImpl}.</p>
      */
-    private final static BabuDBFactory THIS = new BabuDBFactory();  
-    
+    private final static BabuDBFactory THIS = new BabuDBFactory();
+
     /**
      * The BabuDB main class.
      * 
@@ -77,7 +78,7 @@ public class BabuDBFactory {
         public boolean done = false;
 
         public byte[] value;
-        
+
         public Object udlresult;
 
         public Iterator<Entry<byte[], byte[]>> iterator;
@@ -85,13 +86,13 @@ public class BabuDBFactory {
         public BabuDBException error;
 
     }
-    
+
     /**
      * @author bjko
      *
      */
     public class BabuDBImpl implements BabuDB {
-        
+
         /**
          * The database configuration file.
          * Contains the names and number of indices for the databases.
@@ -143,7 +144,7 @@ public class BabuDBFactory {
         private final LSMDBWorker[] worker;
 
         public final Replication replicationApproach;
-        
+
         /**
          * ID to assign to next database create
          */
@@ -164,23 +165,23 @@ public class BabuDBFactory {
          * increase performance and emulate PostgreSQL behaviour
          */
         private final int pseudoSyncWait;
-        
+
         /**
          * Needed for MasterSlave failOver in case of Replication.
          */
         private List<InetSocketAddress> slaves = null;
-        
+
         /**
          * Needed for MasterSlave failOver in case of Replication.
          */
         private InetSocketAddress master = null;
-        
+
         /**
          * Error message.
          */
         private static final String slaveProtection = "You are not allowed to proceed this operation, " +
-        		"because this DB is running as a slave!";
-        
+                "because this DB is running as a slave!";
+
         /**
          * Starts the BabuDB database (with replication).
          * Hidden main constructor.
@@ -206,24 +207,27 @@ public class BabuDBFactory {
          */
         private BabuDBImpl(String baseDir, String dbLogDir, int numThreads,
                 long maxLogfileSize, int checkInterval, SyncMode syncMode, int pseudoSyncWait,
-                int maxQ,InetSocketAddress master,List<InetSocketAddress> slaves,int port,
-                SSLOptions ssl,boolean isMaster,SYNC_MODUS repMode) 
-        throws BabuDBException {  
+                int maxQ, InetSocketAddress master, List<InetSocketAddress> slaves, int port,
+                SSLOptions ssl, boolean isMaster, SYNC_MODUS repMode)
+                throws BabuDBException {
             // start the replication service
-            if (master!=null && slaves!=null){
+            if (master != null && slaves != null) {
                 this.slaves = slaves;
                 this.master = master;
                 try {
-                    if (isMaster) 
-                        replicationApproach = new Replication(slaves,ssl,port,this,repMode);
-                    else 
-                        replicationApproach = new Replication(master,ssl,port,this,repMode);
-                    
+                    if (isMaster) {
+                        replicationApproach = new Replication(slaves, ssl, port, this, repMode);
+                    } else {
+                        replicationApproach = new Replication(master, ssl, port, this, repMode);
+                    }
+
                 } catch (Exception e) {
-                    throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,"Replication could not be initialized! Because: "+e.getMessage(),e.getCause());
+                    throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "Replication could not be initialized! Because: " + e.getMessage(), e.getCause());
                 }
-            } else replicationApproach = null;
-            
+            } else {
+                replicationApproach = null;
+            }
+
             if (baseDir.endsWith(File.separator)) {
                 this.baseDir = baseDir;
             } else {
@@ -255,7 +259,7 @@ public class BabuDBFactory {
             this.pseudoSyncWait = pseudoSyncWait;
             try {
                 logger = new DiskLogger(dbLogDir, nextLSN.getViewId(), nextLSN.getSequenceNo(), syncMode, pseudoSyncWait,
-                        maxQ*numThreads);
+                        maxQ * numThreads);
                 logger.start();
             } catch (IOException ex) {
                 throw new BabuDBException(ErrorCode.IO_ERROR, "cannot start database operations logger", ex);
@@ -267,7 +271,7 @@ public class BabuDBFactory {
 
             worker = new LSMDBWorker[numThreads];
             for (int i = 0; i < numThreads; i++) {
-                worker[i] = new LSMDBWorker(logger, i, overlaySwitchLock, (pseudoSyncWait>0),maxQ,replicationApproach);
+                worker[i] = new LSMDBWorker(logger, i, overlaySwitchLock, (pseudoSyncWait > 0), maxQ, replicationApproach);
                 worker[i].start();
             }
 
@@ -278,7 +282,7 @@ public class BabuDBFactory {
                 dbCheckptr = null;
             }
 
-            Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running (version "+BABUDB_VERSION+")");
+            Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running (version " + BABUDB_VERSION + ")");
         }
 
         /*
@@ -289,14 +293,16 @@ public class BabuDBFactory {
             for (LSMDBWorker w : worker) {
                 w.shutdown();
             }
-            
-           // stop the replication
-            try{
-                if (replicationApproach!=null) replicationApproach.stop();
-            }catch (BabuDBException e){
-                Logging.logMessage(Logging.LEVEL_ERROR, this,"Replication could not be stopped properly. Because: "+e.getMessage());
+
+            // stop the replication
+            try {
+                if (replicationApproach != null) {
+                    replicationApproach.stop();
+                }
+            } catch (BabuDBException e) {
+                Logging.logMessage(Logging.LEVEL_ERROR, this, "Replication could not be stopped properly. Because: " + e.getMessage());
             }
-            
+
             logger.shutdown();
             if (dbCheckptr != null) {
                 dbCheckptr.shutdown();
@@ -311,7 +317,7 @@ public class BabuDBFactory {
                 }
             } catch (InterruptedException ex) {
             }
-            Logging.logMessage(Logging.LEVEL_INFO, this,"BabuDB shutdown complete.");
+            Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB shutdown complete.");
         }
 
         /**
@@ -334,8 +340,10 @@ public class BabuDBFactory {
          * @see org.xtreemfs.babudb.BabuDBInterface#syncSingleInsert(java.lang.String, int, byte[], byte[])
          */
         public void syncSingleInsert(String database, int indexId, byte[] key, byte[] value) throws BabuDBException {
-            if (isSlave()) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,slaveProtection);
-            
+            if (isSlave()) {
+                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
+            }
+
             final LSMDatabase db = dbNames.get(database);
             BabuDBInsertGroup irec = new BabuDBInsertGroup(db);
             irec.addInsert(indexId, key, value);
@@ -386,7 +394,9 @@ public class BabuDBFactory {
          * @see org.xtreemfs.babudb.BabuDBInterface#syncInsert(org.xtreemfs.babudb.BabuDBInsertGroup)
          */
         public void syncInsert(BabuDBInsertGroup irg) throws BabuDBException {
-            if (isSlave()) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,slaveProtection);
+            if (isSlave()) {
+                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
+            }
             //final LSMDatabase db = databases.get(irg.getDatabaseId());
 
             final AsyncResult result = new AsyncResult();
@@ -435,7 +445,9 @@ public class BabuDBFactory {
          * @see org.xtreemfs.babudb.BabuDBInterface#syncLookup(java.lang.String, int, byte[])
          */
         public byte[] syncLookup(String database, int indexId, byte[] key) throws BabuDBException {
-            if (isSlave()) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,slaveProtection);
+            if (isSlave()) {
+                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
+            }
 
             final AsyncResult result = new AsyncResult();
 
@@ -479,15 +491,16 @@ public class BabuDBFactory {
             }
             return result.value;
         }
-        
-        
+
         /*
          * (non-Javadoc)
          * @see org.xtreemfs.babudb.BabuDBInterface#syncUserDefinedLookup(java.lang.String, org.xtreemfs.babudb.UserDefinedLookup)
          */
         public Object syncUserDefinedLookup(String database, UserDefinedLookup udl) throws BabuDBException {
-            if (isSlave()) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,slaveProtection);
-            
+            if (isSlave()) {
+                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
+            }
+
             final AsyncResult result = new AsyncResult();
 
             asyncUserDefinedLookup(database, new BabuDBRequestListener() {
@@ -496,7 +509,6 @@ public class BabuDBFactory {
                 }
 
                 public void lookupFinished(Object context, byte[] value) {
-
                 }
 
                 public void prefixLookupFinished(Object context, Iterator<Entry<byte[], byte[]>> iterator) {
@@ -531,14 +543,16 @@ public class BabuDBFactory {
             }
             return result.udlresult;
         }
-        
+
         /*
          * (non-Javadoc)
          * @see org.xtreemfs.babudb.BabuDBInterface#syncPrefixLookup(java.lang.String, int, byte[])
          */
         public Iterator<Entry<byte[], byte[]>> syncPrefixLookup(String database, int indexId, byte[] key) throws BabuDBException {
-            if (isSlave()) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,slaveProtection);
-            
+            if (isSlave()) {
+                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
+            }
+
             final AsyncResult result = new AsyncResult();
 
             asyncPrefixLookup(database, indexId, key, new BabuDBRequestListener() {
@@ -603,21 +617,25 @@ public class BabuDBFactory {
                 LSMDatabase db = new LSMDatabase(databaseName, dbId, baseDir + databaseName + "/", numIndices, false, comps);
                 databases.put(dbId, db);
                 dbNames.put(databaseName, db);
-                saveDBconfig();   
+                saveDBconfig();
             }
-            
-           // if this is a master it sends the create-details to all slaves. otherwise nothing happens
-            if (replicationApproach!=null) replicationApproach.create(databaseName,numIndices);
+
+            // if this is a master it sends the create-details to all slaves. otherwise nothing happens
+            if (replicationApproach != null) {
+                replicationApproach.create(databaseName, numIndices);
+            }
         }
-        
+
         /*
          * (non-Javadoc)
          * @see org.xtreemfs.babudb.BabuDBInterface#createDatabase(java.lang.String, int)
          */
         public void createDatabase(String databaseName, int numIndices) throws BabuDBException {
-            if (isSlave()) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,slaveProtection);
-            
-            proceedCreate(databaseName,numIndices);
+            if (isSlave()) {
+                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
+            }
+
+            proceedCreate(databaseName, numIndices);
         }
 
         /*
@@ -625,8 +643,10 @@ public class BabuDBFactory {
          * @see org.xtreemfs.babudb.BabuDBInterface#createDatabase(java.lang.String, int, org.xtreemfs.babudb.index.ByteRangeComparator[])
          */
         public void createDatabase(String databaseName, int numIndices, ByteRangeComparator[] comparators) throws BabuDBException {
-            if (isSlave()) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,slaveProtection);
-            
+            if (isSlave()) {
+                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
+            }
+
             synchronized (dbModificationLock) {
                 if (dbNames.containsKey(databaseName)) {
                     throw new BabuDBException(ErrorCode.DB_EXISTS, "database '" + databaseName + "' already exists");
@@ -635,11 +655,13 @@ public class BabuDBFactory {
                 LSMDatabase db = new LSMDatabase(databaseName, dbId, baseDir + databaseName + "/", numIndices, false, comparators);
                 databases.put(dbId, db);
                 dbNames.put(databaseName, db);
-                saveDBconfig();   
+                saveDBconfig();
             }
-            
-           // if this is a master it sends the create-details to all slaves. otherwise nothing happens
-            if (replicationApproach!=null) replicationApproach.create(databaseName,numIndices);
+
+            // if this is a master it sends the create-details to all slaves. otherwise nothing happens
+            if (replicationApproach != null) {
+                replicationApproach.create(databaseName, numIndices);
+            }
         }
 
         /**
@@ -662,21 +684,25 @@ public class BabuDBFactory {
                     //FIXME:
                 }
             }
-            
-           // if this is a master it sends the delete-details to all slaves. otherwise nothing happens 
-            if (replicationApproach!=null) replicationApproach.delete(databaseName,deleteFiles);
+
+            // if this is a master it sends the delete-details to all slaves. otherwise nothing happens
+            if (replicationApproach != null) {
+                replicationApproach.delete(databaseName, deleteFiles);
+            }
         }
-        
+
         /*
          * (non-Javadoc)
          * @see org.xtreemfs.babudb.BabuDBInterface#deleteDatabase(java.lang.String, boolean)
          */
         public void deleteDatabase(String databaseName, boolean deleteFiles) throws BabuDBException {
-            if (isSlave()) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,slaveProtection);
-            
+            if (isSlave()) {
+                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
+            }
+
             proceedDelete(databaseName, deleteFiles);
         }
-        
+
         /**
          * Proceeds a Copy, without isSlaveCheck. Replication Approach!
          * 
@@ -687,11 +713,12 @@ public class BabuDBFactory {
          * @throws BabuDBException
          * @throws IOException
          */
-        public void proceedCopy(String sourceDB, String destDB, byte[] rangeStart, byte[] rangeEnd) throws BabuDBException, IOException{
+        public void proceedCopy(String sourceDB, String destDB, byte[] rangeStart, byte[] rangeEnd) throws BabuDBException, IOException {
             final LSMDatabase sDB = dbNames.get(sourceDB);
-            if (sDB == null)
-                throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '"+sourceDB+"' does not exist");
-            
+            if (sDB == null) {
+                throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '" + sourceDB + "' does not exist");
+            }
+
             final int dbId;
             synchronized (dbModificationLock) {
                 if (dbNames.containsKey(destDB)) {
@@ -699,40 +726,44 @@ public class BabuDBFactory {
                 }
                 dbId = nextDbId++;
                 //just "reserve" the name
-                dbNames.put(destDB,null);
+                dbNames.put(destDB, null);
                 saveDBconfig();
-                
+
             }
             //materializing the snapshot takes some time, we should not hold the lock meanwhile!
-            
+
             int[] snaps = sDB.createSnapshot();
-            File dbDir = new File(baseDir+destDB);
+            File dbDir = new File(baseDir + destDB);
             if (!dbDir.exists()) {
                 dbDir.mkdirs();
             }
-            sDB.writeSnapshot(baseDir+destDB+"/", snaps);
-            
+            sDB.writeSnapshot(baseDir + destDB + "/", snaps);
+
             //create new DB and load from snapshot
             LSMDatabase dDB = new LSMDatabase(destDB, dbId, baseDir + destDB + "/", sDB.getIndexCount(), true, sDB.getComparators());
-            
+
             //insert real database
             synchronized (dbModificationLock) {
                 databases.put(dbId, dDB);
                 dbNames.put(destDB, dDB);
-                saveDBconfig();          
+                saveDBconfig();
             }
-            
-           // if this is a master it sends the copy-details to all slaves. otherwise nothing happens  
-            if (replicationApproach!=null) replicationApproach.copy(sourceDB,destDB);
+
+            // if this is a master it sends the copy-details to all slaves. otherwise nothing happens
+            if (replicationApproach != null) {
+                replicationApproach.copy(sourceDB, destDB);
+            }
         }
-        
+
         /*
          * (non-Javadoc)
          * @see org.xtreemfs.babudb.BabuDBInterface#copyDatabase(java.lang.String, java.lang.String, byte[], byte[])
          */
         public void copyDatabase(String sourceDB, String destDB, byte[] rangeStart, byte[] rangeEnd) throws BabuDBException, IOException {
-            if (isSlave()) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,slaveProtection);
-            
+            if (isSlave()) {
+                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
+            }
+
             proceedCopy(sourceDB, destDB, rangeStart, rangeEnd);
         }
 
@@ -741,8 +772,10 @@ public class BabuDBFactory {
          * @see org.xtreemfs.babudb.BabuDBInterface#checkpoint()
          */
         public void checkpoint() throws BabuDBException, InterruptedException {
-            if (isSlave()) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,slaveProtection);
-            
+            if (isSlave()) {
+                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
+            }
+
             List<LSMDatabase> dbListCopy;
 
             synchronized (dbModificationLock) {
@@ -768,8 +801,8 @@ public class BabuDBFactory {
                     } finally {
                         logger.unlockLogger();
                     }
-                    
-                    
+
+
                     i = 0;
                     for (LSMDatabase db : dbListCopy) {
                         db.writeSnapshot(lastWrittenLSN.getViewId(), lastWrittenLSN.getSequenceNo(), snapIds[i++]);
@@ -808,18 +841,20 @@ public class BabuDBFactory {
             }
 
         }
-        
-        
+
         /*
          * (non-Javadoc)
          * @see org.xtreemfs.babudb.BabuDBInterface#createSnapshot(java.lang.String)
          */
         public int[] createSnapshot(String dbName) throws BabuDBException, InterruptedException {
-            if (isSlave()) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,slaveProtection);
-                    
+            if (isSlave()) {
+                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
+            }
+
             final LSMDatabase db = dbNames.get(dbName);
-            if (db == null)
-                throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '"+dbName+"' does not exist");
+            if (db == null) {
+                throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '" + dbName + "' does not exist");
+            }
 
             try {
                 //critical block...
@@ -827,17 +862,19 @@ public class BabuDBFactory {
                 return db.createSnapshot();
             } finally {
                 logger.unlockLogger();
-            } 
+            }
 
         }
-        
+
         /*
          * (non-Javadoc)
          * @see org.xtreemfs.babudb.BabuDBInterface#writeSnapshot(java.lang.String, int[], java.lang.String)
          */
         public void writeSnapshot(String dbName, int[] snapIds, String directory) throws BabuDBException {
-            if (isSlave()) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,slaveProtection);
-            
+            if (isSlave()) {
+                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
+            }
+
             try {
                 final LSMDatabase db = dbNames.get(dbName);
                 if (db == null) {
@@ -845,7 +882,7 @@ public class BabuDBFactory {
                 }
                 db.writeSnapshot(directory, snapIds);
             } catch (IOException ex) {
-                throw new BabuDBException(ErrorCode.IO_ERROR, "cannot write snapshot: "+ex,ex);
+                throw new BabuDBException(ErrorCode.IO_ERROR, "cannot write snapshot: " + ex, ex);
             }
         }
 
@@ -860,9 +897,9 @@ public class BabuDBFactory {
                     ObjectInputStream ois = new ObjectInputStream(new FileInputStream(f));
                     final int dbFormatVer = ois.readInt();
                     if (dbFormatVer != BABUDB_DB_FORMAT_VERSION) {
-                        throw new BabuDBException(ErrorCode.IO_ERROR,"on-disk format (version "+
-                                dbFormatVer+") is incompatible with this BabuDB release "+
-                                "(uses on-disk format version "+BABUDB_DB_FORMAT_VERSION+")");
+                        throw new BabuDBException(ErrorCode.IO_ERROR, "on-disk format (version " +
+                                dbFormatVer + ") is incompatible with this BabuDB release " +
+                                "(uses on-disk format version " + BABUDB_DB_FORMAT_VERSION + ")");
                     }
                     final int numDB = ois.readInt();
                     nextDbId =
@@ -944,7 +981,7 @@ public class BabuDBFactory {
                         int seqNo = Integer.valueOf(tmp);
                         orderedLogList.add(new LSN(viewId, seqNo));
                     }
-    //apply log entries to databases...
+                    //apply log entries to databases...
                     for (LSN logLSN : orderedLogList) {
                         DiskLogFile dlf = new DiskLogFile(this.dbLogDir, logLSN);
                         LogEntry le = null;
@@ -956,7 +993,7 @@ public class BabuDBFactory {
                             insert(ai);
                             le.free();
                         }
-    //set lsn'
+                        //set lsn'
                         if (le != null) {
                             nextLSN = new LSN(le.getViewId(), le.getLogSequenceNo() + 1);
                         }
@@ -1032,7 +1069,7 @@ public class BabuDBFactory {
             for (InsertRecord ir : ins.getInserts()) {
                 LSMTree tree = db.getIndex(ir.getIndexId());
                 Logging.logMessage(Logging.LEVEL_DEBUG, this, "insert " + new String(ir.getKey()) + "=" +
-                        (ir.getValue() == null? null: new String(ir.getValue())) + " into " + db.getDatabaseName() + " " + ir.getIndexId());
+                        (ir.getValue() == null ? null : new String(ir.getValue())) + " into " + db.getDatabaseName() + " " + ir.getIndexId());
                 tree.insert(ir.getKey(), ir.getValue());
             }
 
@@ -1044,8 +1081,10 @@ public class BabuDBFactory {
          */
         public void asyncInsert(BabuDBInsertGroup ig, BabuDBRequestListener listener,
                 Object context) throws BabuDBException {
-            if (isSlave()) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,slaveProtection);
-            
+            if (isSlave()) {
+                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
+            }
+
             final InsertRecordGroup ins = ig.getRecord();
             final int dbId = ins.getDatabaseId();
             if (!databases.containsKey(dbId)) {
@@ -1060,18 +1099,20 @@ public class BabuDBFactory {
             try {
                 w.addRequest(new LSMDBRequest(databases.get(dbId), listener, ins, context));
             } catch (InterruptedException ex) {
-                throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "operation was interrupted",ex);
+                throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "operation was interrupted", ex);
             }
         }
-        
+
         /*
          * (non-Javadoc)
          * @see org.xtreemfs.babudb.BabuDBInterface#asyncUserDefinedLookup(java.lang.String, org.xtreemfs.babudb.BabuDBRequestListener, org.xtreemfs.babudb.UserDefinedLookup, java.lang.Object)
          */
         public void asyncUserDefinedLookup(String databaseName, BabuDBRequestListener listener,
                 UserDefinedLookup udl, Object context) throws BabuDBException {
-            if (isSlave()) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,slaveProtection);
-            
+            if (isSlave()) {
+                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
+            }
+
             final LSMDatabase db = dbNames.get(databaseName);
             if (db == null) {
                 throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database does not exist");
@@ -1083,9 +1124,9 @@ public class BabuDBFactory {
             }
 
             try {
-                w.addRequest(new LSMDBRequest(db, listener, udl,context));
+                w.addRequest(new LSMDBRequest(db, listener, udl, context));
             } catch (InterruptedException ex) {
-                throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "operation was interrupted",ex);
+                throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "operation was interrupted", ex);
             }
         }
 
@@ -1095,8 +1136,10 @@ public class BabuDBFactory {
          */
         public BabuDBInsertGroup createInsertGroup(
                 String databaseName) throws BabuDBException {
-            if (isSlave()) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,slaveProtection);
-            
+            if (isSlave()) {
+                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
+            }
+
             final LSMDatabase db = dbNames.get(databaseName);
             if (db == null) {
                 throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database does not exist");
@@ -1111,8 +1154,10 @@ public class BabuDBFactory {
          */
         public void asyncLookup(String databaseName, int indexId, byte[] key,
                 BabuDBRequestListener listener, Object context) throws BabuDBException {
-            if (isSlave()) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,slaveProtection);
-            
+            if (isSlave()) {
+                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
+            }
+
             final LSMDatabase db = dbNames.get(databaseName);
             if (db == null) {
                 throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database does not exist");
@@ -1126,7 +1171,7 @@ public class BabuDBFactory {
             try {
                 w.addRequest(new LSMDBRequest(db, indexId, listener, key, false, context));
             } catch (InterruptedException ex) {
-                throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "operation was interrupted",ex);
+                throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "operation was interrupted", ex);
             }
         }
 
@@ -1136,8 +1181,10 @@ public class BabuDBFactory {
          */
         public void asyncPrefixLookup(String databaseName, int indexId, byte[] key,
                 BabuDBRequestListener listener, Object context) throws BabuDBException {
-            if (isSlave()) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,slaveProtection);
-            
+            if (isSlave()) {
+                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
+            }
+
             final LSMDatabase db = dbNames.get(databaseName);
             if (db == null) {
                 throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database does not exist");
@@ -1151,10 +1198,99 @@ public class BabuDBFactory {
             try {
                 w.addRequest(new LSMDBRequest(db, indexId, listener, key, true, context));
             } catch (InterruptedException ex) {
-                throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "operation was interrupted",ex);
+                throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "operation was interrupted", ex);
             }
         }
-        
+
+        public byte[] directLookup(String databaseName, int indexId, byte[] key) throws BabuDBException {
+            final LSMDatabase db = dbNames.get(databaseName);
+            if (db == null) {
+                throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database does not exist");
+            }
+            if ((indexId >= db.getIndexCount()) || (indexId < 0)) {
+                throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
+            }
+            return db.getIndex(indexId).lookup(key);
+        }
+
+        public Iterator<Entry<byte[], byte[]>> directPrefixLookup(String databaseName, int indexId, byte[] key) throws BabuDBException {
+            final LSMDatabase db = dbNames.get(databaseName);
+            if (db == null) {
+                throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database does not exist");
+            }
+            if ((indexId >= db.getIndexCount()) || (indexId < 0)) {
+                throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
+            }
+            return db.getIndex(indexId).prefixLookup(key);
+        }
+
+        public void directInsert(String databaseName, InsertRecordGroup irg) throws BabuDBException {
+            final LSMDatabase db = dbNames.get(databaseName);
+            if (db == null) {
+                throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database does not exist");
+            }
+            final int numIndices = db.getIndexCount();
+
+            for (InsertRecord ir : irg.getInserts()) {
+                if ((ir.getIndexId() >= numIndices) || (ir.getIndexId() < 0)) {
+                    throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + ir.getIndexId() + " does not exist");
+                }
+            }
+
+            int size = irg.getSize();
+            ReusableBuffer buf = BufferPool.allocate(size);
+            irg.serialize(buf);
+            buf.flip();
+
+            final AsyncResult result = new AsyncResult();
+
+            LogEntry e = new LogEntry(buf, new SyncListener() {
+
+                public void synced(LogEntry entry) {
+                    synchronized (result) {
+                        result.done = true;
+                        result.notifyAll();
+                    }
+                }
+
+                public void failed(LogEntry entry, Exception ex) {
+                    synchronized (result) {
+                        result.done = true;
+                        result.error = new BabuDBException(ErrorCode.IO_ERROR, "could not execute insert because of IO problem", ex);
+                        result.notifyAll();
+                    }
+                }
+            });
+            try {
+                logger.append(e);
+            } catch (InterruptedException ex) {
+                throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "cannt write update to disk log", ex);
+            }
+
+            synchronized (result) {
+                if (!result.done) {
+                    try {
+                        result.wait();
+                    } catch (InterruptedException ex) {
+                        throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "cannt write update to disk log", ex);
+                    }
+                }
+            }
+
+            if (result.error != null) {
+                throw result.error;
+            }
+
+            for (InsertRecord ir : irg.getInserts()) {
+                final LSMTree index = db.getIndex(ir.getIndexId());
+                if (ir.getValue() != null) {
+                    index.insert(ir.getKey(), ir.getValue());
+                } else {
+                    index.delete(ir.getKey());
+                }
+            }
+        }
+
         /**
          * 
          * @param dbId
@@ -1163,13 +1299,15 @@ public class BabuDBFactory {
         public LSMDBWorker getWorker(int dbId) {
             return worker[dbId % worker.length];
         }
-        
-        private boolean isSlave(){
-            if (replicationApproach==null) return false;
+
+        private boolean isSlave() {
+            if (replicationApproach == null) {
+                return false;
+            }
             return !replicationApproach.isMaster();
         }
     }
-    
+
     /**
      * Starts the BabuDB database.
      * 
@@ -1185,13 +1323,12 @@ public class BabuDBFactory {
 
      * @throws BabuDBException
      */
-    
     public static BabuDB getBabuDB(String baseDir, String dbLogDir, int numThreads,
             long maxLogfileSize, int checkInterval, SyncMode syncMode, int pseudoSyncWait,
-            int maxQ) throws BabuDBException{
-        return THIS.new BabuDBImpl(baseDir,dbLogDir,numThreads,maxLogfileSize,checkInterval,syncMode,pseudoSyncWait,maxQ,null,null,0,null,false,SYNC_MODUS.SYNC);
+            int maxQ) throws BabuDBException {
+        return THIS.new BabuDBImpl(baseDir, dbLogDir, numThreads, maxLogfileSize, checkInterval, syncMode, pseudoSyncWait, maxQ, null, null, 0, null, false, SYNC_MODUS.SYNC);
     }
-    
+
     /**
      * Starts the BabuDB database as Master (with Replication enabled).
      * 
@@ -1212,14 +1349,14 @@ public class BabuDBFactory {
      */
     public static BabuDB getMasterBabuDB(String baseDir, String dbLogDir, int numThreads,
             long maxLogfileSize, int checkInterval, SyncMode syncMode, int pseudoSyncWait,
-            int maxQ,List<InetSocketAddress> slaves,int port,SSLOptions ssl, SYNC_MODUS repMode) throws BabuDBException{
+            int maxQ, List<InetSocketAddress> slaves, int port, SSLOptions ssl, SYNC_MODUS repMode) throws BabuDBException {
         try {
-            return THIS.new BabuDBImpl(baseDir,dbLogDir,numThreads,maxLogfileSize,checkInterval,syncMode,pseudoSyncWait,maxQ,new InetSocketAddress(InetAddress.getLocalHost(),port),slaves,port,ssl,true,repMode);
+            return THIS.new BabuDBImpl(baseDir, dbLogDir, numThreads, maxLogfileSize, checkInterval, syncMode, pseudoSyncWait, maxQ, new InetSocketAddress(InetAddress.getLocalHost(), port), slaves, port, ssl, true, repMode);
         } catch (UnknownHostException e) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,"Localhost could not be resolved. Please check your network adapter, or your JAVA configuration.");
+            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "Localhost could not be resolved. Please check your network adapter, or your JAVA configuration.");
         }
     }
-    
+
     /**
      * Starts the BabuDB database as Slave (with Replication enabled).
      * 
@@ -1241,7 +1378,7 @@ public class BabuDBFactory {
      */
     public static BabuDB getSlaveBabuDB(String baseDir, String dbLogDir, int numThreads,
             long maxLogfileSize, int checkInterval, SyncMode syncMode, int pseudoSyncWait,
-            int maxQ,InetSocketAddress master,List<InetSocketAddress> slaves,int port,SSLOptions ssl) throws BabuDBException{
-        return THIS.new BabuDBImpl(baseDir,dbLogDir,numThreads,maxLogfileSize,checkInterval,syncMode,pseudoSyncWait,maxQ,master,slaves,port,ssl,false,SYNC_MODUS.SYNC);
+            int maxQ, InetSocketAddress master, List<InetSocketAddress> slaves, int port, SSLOptions ssl) throws BabuDBException {
+        return THIS.new BabuDBImpl(baseDir, dbLogDir, numThreads, maxLogfileSize, checkInterval, syncMode, pseudoSyncWait, maxQ, master, slaves, port, ssl, false, SYNC_MODUS.SYNC);
     }
 }
