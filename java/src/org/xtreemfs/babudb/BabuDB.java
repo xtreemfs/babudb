@@ -5,6 +5,7 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.index.ByteRangeComparator;
+import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 
 public interface BabuDB {
 
@@ -203,5 +204,22 @@ public interface BabuDB {
     public void asyncPrefixLookup(String databaseName, int indexId, byte[] key,
             BabuDBRequestListener listener, Object context)
             throws BabuDBException;
+
+    /**
+     * Looks up a key in the database. Similar to syncLookup but executes in the
+     * context of the calling thread.
+     * @attention direct... methods should not be mixed with the other sync/async... operations
+     *            and developers must make sure that readers and writers are synchronized correctly!
+     * @param databaseName
+     * @param indexId
+     * @param key
+     * @return
+     * @throws org.xtreemfs.babudb.BabuDBException
+     */
+    public byte[] directLookup(String databaseName, int indexId, byte[] key) throws BabuDBException;
+
+    public Iterator<Entry<byte[], byte[]>> directPrefixLookup(String databaseName, int indexId, byte[] key) throws BabuDBException;
+
+    public void directInsert(String databaseName, InsertRecordGroup irg) throws BabuDBException;
 
 }
