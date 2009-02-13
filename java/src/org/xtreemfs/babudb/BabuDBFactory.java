@@ -1224,8 +1224,8 @@ public class BabuDBFactory {
             return db.getIndex(indexId).prefixLookup(key);
         }
 
-        public void directInsert(String databaseName, InsertRecordGroup irg) throws BabuDBException {
-            final LSMDatabase db = dbNames.get(databaseName);
+        public void directInsert(InsertRecordGroup irg) throws BabuDBException {
+            final LSMDatabase db = databases.get(irg.getDatabaseId());
             if (db == null) {
                 throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database does not exist");
             }
