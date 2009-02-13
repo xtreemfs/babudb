@@ -220,6 +220,6 @@ public interface BabuDB {
 
     public Iterator<Entry<byte[], byte[]>> directPrefixLookup(String databaseName, int indexId, byte[] key) throws BabuDBException;
 
-    public void directInsert(InsertRecordGroup irg) throws BabuDBException;
+    public void directInsert(BabuDBInsertGroup ig) throws BabuDBException;
 
 }
