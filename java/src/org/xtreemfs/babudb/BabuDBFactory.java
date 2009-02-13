@@ -1224,22 +1224,22 @@ public class BabuDBFactory {
             return db.getIndex(indexId).prefixLookup(key);
         }
 
-        public void directInsert(InsertRecordGroup irg) throws BabuDBException {
-            final LSMDatabase db = databases.get(irg.getDatabaseId());
+        public void directInsert(BabuDBInsertGroup irg) throws BabuDBException {
+            final LSMDatabase db = databases.get(irg.getRecord().getDatabaseId());
             if (db == null) {
                 throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database does not exist");
             }
             final int numIndices = db.getIndexCount();
 
-            for (InsertRecord ir : irg.getInserts()) {
+            for (InsertRecord ir : irg.getRecord().getInserts()) {
                 if ((ir.getIndexId() >= numIndices) || (ir.getIndexId() < 0)) {
                     throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + ir.getIndexId() + " does not exist");
                 }
             }
 
-            int size = irg.getSize();
+            int size = irg.getRecord().getSize();
             ReusableBuffer buf = BufferPool.allocate(size);
-            irg.serialize(buf);
+            irg.getRecord().serialize(buf);
             buf.flip();
 
             final AsyncResult result = new AsyncResult();
@@ -1281,7 +1281,7 @@ public class BabuDBFactory {
                 throw result.error;
             }
 
-            for (InsertRecord ir : irg.getInserts()) {
+            for (InsertRecord ir : irg.getRecord().getInserts()) {
                 final LSMTree index = db.getIndex(ir.getIndexId());
                 if (ir.getValue() != null) {
                     index.insert(ir.getKey(), ir.getValue());
