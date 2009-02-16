@@ -242,7 +242,6 @@ public class DiskLogger extends Thread {
             case SYNC_WRITE : {openMode = "rwd"; break;}
             case SYNC_WRITE_METADATA : {openMode = "rws"; break;}
         }
-        System.out.println("mode: "+openMode);
         fos = new RandomAccessFile(lf, openMode);
         fos.setLength(0);
         channel = fos.getChannel();
@@ -277,22 +276,14 @@ public class DiskLogger extends Thread {
                             tmpE.add(tmp);
                         }
                     }
-                    ByteBuffer[] bufs = new ByteBuffer[tmpE.size()];
-                    ReusableBuffer[] rbs = new ReusableBuffer[bufs.length];
-                    int i = 0;
                     for (LogEntry le : tmpE) {
                         assert (le != null) : "Entry must not be null";
                         le.assignId(this.currentViewId.get(), this.nextLogSequenceNo.getAndIncrement());
-                        rbs[i] = le.serialize(csumAlgo);
+                        ReusableBuffer buf = le.serialize(csumAlgo);
                         csumAlgo.reset();
-                        bufs[i] = rbs[i].getBuffer();
-                        i++;
-                    }
-                    channel.write(bufs);
-                    for (ReusableBuffer buf : rbs) {
+                        channel.write(buf.getBuffer());
                         BufferPool.free(buf);
                     }
-                    //fos.flush();
                     if (this.syncMode == SyncMode.FSYNC)
                         channel.force(true);
                     else if (this.syncMode == SyncMode.FDATASYNC)

@@ -12,6 +12,8 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.UserDefinedLookup;
+import org.xtreemfs.babudb.lsmdb.LSMLookupInterface;
 
 /**
  *
@@ -22,7 +24,9 @@ public class BenchmarkWorkerThread extends Thread {
     public static enum BenchmarkOperation {
         INSERT,
         ITERATE,
-        LOOKUP
+        LOOKUP,
+        UDL,
+        DIRECT_LOOKUP
     };
 
     private final int numKeys;
@@ -39,11 +43,11 @@ public class BenchmarkWorkerThread extends Thread {
 
     private final BenchmarkOperation operation;
 
-    private transient boolean done;
+    private volatile boolean done;
 
-    private transient Exception error;
+    private volatile Exception error;
 
-    private transient double    throughput;
+    private volatile double    throughput;
 
     private final String dbName;
 
@@ -66,7 +70,9 @@ public class BenchmarkWorkerThread extends Thread {
             switch (operation) {
                 case INSERT : performInserts(); break;
                 case LOOKUP : performLookups(); break;
+                case DIRECT_LOOKUP : performDirectLookups(); break;
                 case ITERATE : countKeys(); break;
+                case UDL : performUserDefinedLookups(); break;
             }
         } catch (Exception ex) {
             error = ex;
@@ -142,6 +148,59 @@ public class BenchmarkWorkerThread extends Thread {
         String output = String.format("   thread #%3d: lookup of %d keys took %.4f seconds\n",id,numKeys,dur/1000.0);
         output += String.format("   thread #%3d:       = %10.4f s/key\n",id,(dur/1000.0)/((double)numKeys));
         output += String.format("   thread #%3d:       = %10.4f keys/s\n",id,((double)numKeys)/(dur/1000.0));
+        output += String.format("   thread #%3d: hit-rate %6.2f%%\n\n",id,(hits*100.0)/(double)numKeys);
+
+        throughput = ((double)numKeys)/(dur/1000.0);
+
+        System.out.print(output);
+    }
+
+    public void performDirectLookups() throws BabuDBException {
+        long tStart = System.currentTimeMillis();
+        byte[] key = null;
+        int hits = 0;
+        for (int i = 0; i < numKeys; i++) {
+            key = createRandomKey();
+            byte[] value = database.directLookup(dbName, 0, key);
+            if (value != null)
+                hits++;
+        }
+        long tEnd = System.currentTimeMillis();
+        double dur = (tEnd-tStart);
+
+        String output = String.format("   thread #%3d: direct lookup of %d keys took %.4f seconds\n",id,numKeys,dur/1000.0);
+        output += String.format("   thread #%3d:       = %10.4f s/key\n",id,(dur/1000.0)/((double)numKeys));
+        output += String.format("   thread #%3d:       = %10.4f keys/s\n",id,((double)numKeys)/(dur/1000.0));
+        output += String.format("   thread #%3d: hit-rate %6.2f%%\n\n",id,(hits*100.0)/(double)numKeys);
+
+        throughput = ((double)numKeys)/(dur/1000.0);
+
+        System.out.print(output);
+    }
+
+    public void performUserDefinedLookups() throws BabuDBException {
+        long tStart = System.currentTimeMillis();
+        int hits = 0;
+        for (int i = 0; i < numKeys; i++) {
+            final byte[] key = createRandomKey();
+            byte[] value = (byte[]) database.syncUserDefinedLookup(dbName, new UserDefinedLookup() {
+
+                public Object execute(LSMLookupInterface database) throws BabuDBException {
+                    byte[] result = null;
+                    for (int i = 0; i < 20; i++)
+                        result = database.lookup(0, key);
+                    return result;
+                }
+            });
+            if (value != null)
+                hits++;
+        }
+        long tEnd = System.currentTimeMillis();
+        double dur = (tEnd-tStart);
+
+        String output = String.format("   thread #%3d: exec   of %d UDLs took %.4f seconds\n",id,numKeys,dur/1000.0);
+        output += String.format("   thread #%3d:       = %10.4f s/UDL\n",id,(dur/1000.0)/((double)numKeys));
+        output += String.format("   thread #%3d:       = %10.4f UDLs/s\n",id,((double)numKeys)/(dur/1000.0));
         output += String.format("   thread #%3d: hit-rate %6.2f%%\n\n",id,(hits*100.0)/(double)numKeys);
 
         throughput = ((double)numKeys)/(dur/1000.0);

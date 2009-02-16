@@ -38,7 +38,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import org.xtreemfs.common.TimeSync;
 import org.xtreemfs.common.buffer.BufferPool;
 import org.xtreemfs.common.logging.Logging;
 import org.xtreemfs.foundation.LifeCycleThread;
@@ -294,7 +293,7 @@ public class MultiSpeedy extends LifeCycleThread {
                                         + server);
                     reconnect(con);
                 }
-                con.lastUsed = TimeSync.getLocalSystemTime();
+                con.lastUsed = System.currentTimeMillis();//TimeSync.getLocalSystemTime();
                 rq.registerConnection(con);
                 rq.status = SpeedyRequest.RequestStatus.PENDING;
                 con.sendQ.add(rq);
@@ -338,7 +337,8 @@ public class MultiSpeedy extends LifeCycleThread {
                 while (conIter.hasNext()) {
                     ConnectionState con = conIter.next();
                     
-                    if (con.lastUsed < (TimeSync.getLocalSystemTime()-CONNECTION_REMOVE_TIMEOUT)) {
+                    //if (con.lastUsed < (TimeSync.getLocalSystemTime()-CONNECTION_REMOVE_TIMEOUT)) {
+                    if (con.lastUsed < (System.currentTimeMillis()-CONNECTION_REMOVE_TIMEOUT)) {
                         Logging.logMessage(Logging.LEVEL_DEBUG, this,"removing idle connection from speedy: "+con.endpoint);
                         try {
                             conIter.remove();

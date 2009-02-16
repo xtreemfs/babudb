@@ -1250,7 +1250,7 @@ public class BabuDBFactory {
                     synchronized (result) {
                         result.done = true;
                         result.notifyAll();
-                    }
+                    }               
                 }
 
                 public void failed(LogEntry entry, Exception ex) {
@@ -1280,6 +1280,8 @@ public class BabuDBFactory {
             if (result.error != null) {
                 throw result.error;
             }
+
+            e.free();
 
             for (InsertRecord ir : irg.getRecord().getInserts()) {
                 final LSMTree index = db.getIndex(ir.getIndexId());

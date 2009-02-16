@@ -243,7 +243,9 @@ public class LSMDatabase {
     public void cleanupSnapshot(final int viewId, final long sequenceNo) throws IOException {
         for (int index = 0; index < trees.size(); index++) {
             final LSMTree tree = trees.get(index);
-            System.out.println("linking to snapshot "+databaseDir+getSnaphotFilename(index,viewId,sequenceNo));
+            if (Logging.isDebug())
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, "linking to snapshot "+databaseDir+getSnaphotFilename(index,viewId,sequenceNo));
+            
             tree.linkToSnapshot(databaseDir+getSnaphotFilename(index,viewId,sequenceNo));
             ondiskLSN = new LSN(viewId,sequenceNo);
             
