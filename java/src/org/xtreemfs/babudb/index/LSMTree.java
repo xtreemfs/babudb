@@ -147,7 +147,9 @@ public class LSMTree {
      *            the key
      */
     public void delete(byte[] key) {
-        overlay.insert(key, null);
+        synchronized (lock) {
+            overlay.insert(key, null);
+        }
     }
     
     /**

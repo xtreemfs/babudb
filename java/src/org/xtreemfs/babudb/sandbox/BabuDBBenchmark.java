@@ -142,6 +142,36 @@ public class BabuDBBenchmark {
         return throughput;
     }
 
+    public double benchmarkDirectLookup() throws Exception {
+        BenchmarkWorkerThread[] threads = new BenchmarkWorkerThread[numThreads];
+        for (int i = 0; i < numThreads; i++) {
+            threads[i] = new BenchmarkWorkerThread(i+1, numKeys, minKeyLength, maxKeyLength, payload, database, BenchmarkWorkerThread.BenchmarkOperation.DIRECT_LOOKUP);
+        }
+        for (int i = 0; i < numThreads; i++) {
+            threads[i].start();
+        }
+        double throughput = 0.0;
+        for (int i = 0; i < numThreads; i++) {
+            throughput += threads[i].waitForResult();
+        }
+        return throughput;
+    }
+
+    public double benchmarkUDL() throws Exception {
+        BenchmarkWorkerThread[] threads = new BenchmarkWorkerThread[numThreads];
+        for (int i = 0; i < numThreads; i++) {
+            threads[i] = new BenchmarkWorkerThread(i+1, numKeys, minKeyLength, maxKeyLength, payload, database, BenchmarkWorkerThread.BenchmarkOperation.UDL);
+        }
+        for (int i = 0; i < numThreads; i++) {
+            threads[i].start();
+        }
+        double throughput = 0.0;
+        for (int i = 0; i < numThreads; i++) {
+            throughput += threads[i].waitForResult();
+        }
+        return throughput;
+    }
+
     private byte[] createRandomKey() {
         final int length = (int) (Math.random() * ((double)(maxKeyLength - minKeyLength)) + minKeyLength);
         assert(length >= minKeyLength);
@@ -158,7 +188,12 @@ public class BabuDBBenchmark {
         System.out.println("  "+"<numKeysPerThread> number of keys inserted/looked-up by");
         System.out.println("  "+"each thread");
         System.out.println("  "+"-path directory in which to store the database, default is /tmp/babudb_benchmark");
-        System.out.println("  "+"-sync synchronization mode FSYNC");
+        System.out.println("  "+"-sync synchronization mode, default is FSYNC");
+        System.out.print("       possible values: ");
+        for (SyncMode tmp : SyncMode.values()) {
+            System.out.print(tmp.name()+" ");
+        }
+        System.out.println("");
         System.out.println("  "+"-wait ms between to bach writes, default is 0 for synchronous mode");
         System.out.println("  "+"-maxq maxmimum worker queue length, default is 0 for unlimited");
         System.out.println("  "+"-workers number of database worker threads, default is 1");
@@ -175,7 +210,7 @@ public class BabuDBBenchmark {
 
             Map<String,CLIParser.CliOption> options = new HashMap();
             options.put("path",new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.FILE,new File("/tmp/babudb_benchmark")));
-            options.put("sync",new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.STRING,"FSYNC"));
+            options.put("sync",new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.STRING,SyncMode.FSYNC.name()));
             options.put("wait", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,0));
             options.put("maxq", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,0));
             options.put("workers", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,1));
@@ -183,7 +218,9 @@ public class BabuDBBenchmark {
             options.put("payload", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,50));
             options.put("keymin", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,2));
             options.put("keymax", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,20));
-            options.put("h", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH, false));
+            options.put("nocp", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH,false));
+            options.put("h", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH,false));
+            options.put("warmcache", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH,false));
 
             List<String> arguments = new ArrayList(1);
             CLIParser.parseCLI(args, options, arguments);
@@ -208,16 +245,35 @@ public class BabuDBBenchmark {
                     options.get("keymax").numValue.intValue());
             double tpIns =benchmark.benchmarkInserts();
             double tpIter = benchmark.benchmarkIterate();
-            double durCP = benchmark.checkpoint();
+
+            double durCP = 0;
+            if (options.get("nocp").switchValue == false)
+                durCP = benchmark.checkpoint();
             double tpLookup = benchmark.benchmarkLookup();
+
+            double tpDLookup = benchmark.benchmarkDirectLookup();
+
+            double tpUDL = benchmark.benchmarkUDL();
+
+            double tpSecondLookup = 0;
+            if (options.get("warmcache").switchValue)
+                tpSecondLookup = benchmark.benchmarkLookup();
 
             System.out.println("RESULTS -----------------------------------------\n");
             
-            System.out.format("total throughput for INSERT : %12.4f keys/s\n", tpIns);
-            System.out.format("total throughput for ITERATE: %12.4f keys/s\n", tpIter);
-            System.out.format("total throughput for LOOKUP : %12.4f keys/s\n\n", tpLookup);
+            System.out.format("total throughput for INSERT     : %12.4f keys/s\n", tpIns);
+            System.out.format("total throughput for ITERATE    : %12.4f keys/s\n", tpIter);
+            System.out.format("total throughput for LOOKUP     : %12.4f keys/s\n\n", tpLookup);
+            System.out.format("total throughput for D.LOOKUP   : %12.4f keys/s\n\n", tpDLookup);
+            System.out.format("total throughput for UDL        : %12.4f keys/s\n\n", tpUDL*10.0);
 
-            System.out.format("CHECKPOINTING took          : %12.4f s\n", durCP);
+            if (options.get("warmcache").switchValue)
+                System.out.format("total throughput for 2nd LOOKUP : %12.4f keys/s\n\n", tpSecondLookup);
+
+            if (options.get("nocp").switchValue == false)
+                System.out.format("CHECKPOINTING took               : %12.4f s\n", durCP);
+            else
+                System.out.println("CHECKPOINTING disabled");
 
             benchmark.shutdown();
         } catch (Exception ex) {

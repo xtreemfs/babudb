@@ -30,7 +30,6 @@ import java.util.LinkedList;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.xtreemfs.common.TimeSync;
 import org.xtreemfs.common.buffer.BufferPool;
 import org.xtreemfs.common.buffer.ReusableBuffer;
 import org.xtreemfs.common.logging.Logging;
@@ -211,7 +210,7 @@ public class ConnectionState {
 
         this.numReconnectCycles = 0;
         
-        this.lastUsed = TimeSync.getLocalSystemTime();
+        this.lastUsed = System.currentTimeMillis();//TimeSync.getLocalSystemTime();
     }
 
     public void successfulConnect() {
@@ -226,7 +225,7 @@ public class ConnectionState {
             waitt = MAX_RETRY_WAIT;
         Logging.logMessage(Logging.LEVEL_DEBUG,this,"next reconnect possible after "+(waitt/1000)+" s, "+this.numReconnectCycles);
         this.nextReconnectTime = System.currentTimeMillis()+waitt;
-        this.lastUsed = TimeSync.getLocalSystemTime();
+        this.lastUsed = System.currentTimeMillis();//TimeSync.getLocalSystemTime();
     }
 
     public boolean canReconnect() {

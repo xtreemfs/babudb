@@ -24,7 +24,7 @@ public final class BufferPool {
 
     /** max pool size for each class
      */
-    public static final int[] MAX_POOL_SIZES = { 2000, 6, 10, 5 };
+    public static final int[] MAX_POOL_SIZES = { 4000, 6, 10, 5 };
 
     /** queues to store buffers in
      */
