@@ -4,7 +4,7 @@
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
-*/
+ */
 
 package org.xtreemfs.babudb.index.reader;
 
@@ -166,7 +166,7 @@ public class DiskIndex {
             
             private void getNextBlockData() {
                 
-                if(blockIndexStart == -1 && blockIndexEnd == -1)
+                if (blockIndexStart == -1 && blockIndexEnd == -1)
                     return;
                 
                 if (currentBlockIndex > blockIndexEnd) {
