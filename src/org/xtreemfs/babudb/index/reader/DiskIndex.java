@@ -166,6 +166,9 @@ public class DiskIndex {
             
             private void getNextBlockData() {
                 
+                if(blockIndexStart == -1 && blockIndexEnd == -1)
+                    return;
+                
                 if (currentBlockIndex > blockIndexEnd) {
                     currentBlock = null;
                     currentBlockIterator = null;
