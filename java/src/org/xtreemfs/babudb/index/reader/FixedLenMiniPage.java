@@ -4,7 +4,7 @@
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
-*/
+ */
 
 package org.xtreemfs.babudb.index.reader;
 
@@ -32,7 +32,9 @@ public class FixedLenMiniPage extends MiniPage {
     }
     
     public ByteRange getEntry(int n) {
-        return new ByteRange(buf, offset + n * entrySize, offset + (n + 1) * entrySize);
+        assert (offset < buf.limit()) : "offset == " + offset + ", buf.limit == " + buf.limit()
+            + ", entrySize == " + entrySize + ", n == " + n;
+        return new ByteRange(buf, offset + n * entrySize, offset + (n + 1) * entrySize - 1);
     }
     
     public String toString() {
