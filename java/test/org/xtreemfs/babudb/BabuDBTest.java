@@ -8,6 +8,8 @@
 
 package org.xtreemfs.babudb;
 
+import java.util.Iterator;
+import java.util.Map.Entry;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -180,9 +182,53 @@ public class BabuDBTest {
         assertNotNull(result);
         value = new String(result);
         assertEquals(value, "Value3");
-        
+
         System.out.println("shutting down database...");
         
+        database.shutdown();
+    }
+
+    @Test
+    public void testMultipleIndicesAndCheckpoint() throws Exception {
+        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir,baseDir,1,0,0,SyncMode.SYNC_WRITE,0,0);
+        database.createDatabase("test", 4);
+
+        BabuDBInsertGroup ir = database.createInsertGroup("test");
+        ir.addInsert(0, "Key1".getBytes(),
+                "Value1".getBytes());
+        ir.addInsert(1, "Key2".getBytes(),
+                "Value2".getBytes());
+        ir.addInsert(2, "Key3".getBytes(),
+                "Value3".getBytes());
+        database.syncInsert(ir);
+
+
+        database.checkpoint();
+
+        byte[] result = database.syncLookup("test", 0, "Key1".getBytes());
+        assertNotNull(result);
+        String value = new String(result);
+        assertEquals(value, "Value1");
+
+        System.out.println("");
+
+        result = database.syncLookup("test", 1, "Key2".getBytes());
+        assertNotNull(result);
+        value = new String(result);
+        assertEquals(value, "Value2");
+
+        result = database.syncLookup("test", 2, "Key3".getBytes());
+        assertNotNull(result);
+        value = new String(result);
+        assertEquals(value, "Value3");
+
+        Iterator<Entry<byte[],byte[]>> iter = database.syncPrefixLookup("test", 3, "Key3".getBytes());
+        assertNotNull(iter);
+
+        
+
+        System.out.println("shutting down database...");
+
         database.shutdown();
     }
     
