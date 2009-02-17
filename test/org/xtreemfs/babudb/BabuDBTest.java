@@ -4,7 +4,7 @@
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
-*/
+ */
 
 package org.xtreemfs.babudb;
 
@@ -21,30 +21,30 @@ import org.xtreemfs.common.logging.Logging;
 import static org.junit.Assert.*;
 
 /**
- *
+ * 
  * @author bjko
  */
 public class BabuDBTest {
     
     public static final String baseDir = "/tmp/lsmdb-test/";
-
-    private BabuDBImpl database;
+    
+    private BabuDBImpl         database;
     
     public BabuDBTest() {
         Logging.start(Logging.LEVEL_DEBUG);
     }
-
+    
     @Before
     public void setUp() throws Exception {
-        Process p = Runtime.getRuntime().exec("rm -rf "+baseDir);
+        Process p = Runtime.getRuntime().exec("rm -rf " + baseDir);
         p.waitFor();
-
+        
     }
-
+    
     @After
     public void tearDown() {
     }
-
+    
     // TODO add test methods here.
     // The methods must be annotated with annotation @Test. For example:
     //
@@ -52,7 +52,8 @@ public class BabuDBTest {
     // public void hello() {}
     @Test
     public void testReplayAfterCrash() throws Exception {
-        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir,baseDir,1,0,0,SyncMode.SYNC_WRITE,0,0);
+        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir, baseDir, 1, 0, 0,
+            SyncMode.SYNC_WRITE, 0, 0);
         database.createDatabase("test", 2);
         database.syncSingleInsert("test", 0, "Yagga".getBytes(), "Brabbel".getBytes());
         database.checkpoint();
@@ -70,11 +71,11 @@ public class BabuDBTest {
         value = new String(result);
         assertEquals(value, "Blahh");
         
-        
         database.__test_killDB_dangerous();
         Thread.sleep(500);
         
-        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir,baseDir,2,0,0,SyncMode.SYNC_WRITE,0,0);
+        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir, baseDir, 2, 0, 0,
+            SyncMode.SYNC_WRITE, 0, 0);
         result = database.syncLookup("test", 0, "Yagga".getBytes());
         assertNotNull(result);
         value = new String(result);
@@ -99,7 +100,8 @@ public class BabuDBTest {
     
     @Test
     public void testShutdownAfterCheckpoint() throws Exception {
-        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir,baseDir,1,0,0,SyncMode.SYNC_WRITE,0,0);
+        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir, baseDir, 1, 0, 0,
+            SyncMode.SYNC_WRITE, 0, 0);
         database.createDatabase("test", 2);
         database.syncSingleInsert("test", 0, "Yagga".getBytes(), "Brabbel".getBytes());
         
@@ -117,12 +119,11 @@ public class BabuDBTest {
         value = new String(result);
         assertEquals(value, "Blahh");
         
-        
         database.checkpoint();
         database.shutdown();
-                
         
-        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir,baseDir,2,0,0,SyncMode.SYNC_WRITE,0,0);
+        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir, baseDir, 2, 0, 0,
+            SyncMode.SYNC_WRITE, 0, 0);
         result = database.syncLookup("test", 0, "Yagga".getBytes());
         assertNotNull(result);
         value = new String(result);
@@ -147,24 +148,21 @@ public class BabuDBTest {
     
     @Test
     public void testMultipleIndices() throws Exception {
-        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir,baseDir,1,0,0,SyncMode.SYNC_WRITE,0,0);
+        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir, baseDir, 1, 0, 0,
+            SyncMode.SYNC_WRITE, 0, 0);
         database.createDatabase("test", 3);
         
         BabuDBInsertGroup ir = database.createInsertGroup("test");
-        ir.addInsert(0, "Key1".getBytes(),
-                "Value1".getBytes());
-        ir.addInsert(1, "Key2".getBytes(),
-                "Value2".getBytes());
-        ir.addInsert(2, "Key3".getBytes(),
-                "Value3".getBytes());
+        ir.addInsert(0, "Key1".getBytes(), "Value1".getBytes());
+        ir.addInsert(1, "Key2".getBytes(), "Value2".getBytes());
+        ir.addInsert(2, "Key3".getBytes(), "Value3".getBytes());
         database.syncInsert(ir);
-        
         
         database.checkpoint();
         database.shutdown();
-                
         
-        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir,baseDir,2,0,0,SyncMode.SYNC_WRITE,0,0);
+        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir, baseDir, 2, 0, 0,
+            SyncMode.SYNC_WRITE, 0, 0);
         
         byte[] result = database.syncLookup("test", 0, "Key1".getBytes());
         assertNotNull(result);
@@ -182,76 +180,70 @@ public class BabuDBTest {
         assertNotNull(result);
         value = new String(result);
         assertEquals(value, "Value3");
-
+        
         System.out.println("shutting down database...");
         
         database.shutdown();
     }
-
+    
     @Test
     public void testMultipleIndicesAndCheckpoint() throws Exception {
-        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir,baseDir,1,0,0,SyncMode.SYNC_WRITE,0,0);
+        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir, baseDir, 1, 0, 0,
+            SyncMode.SYNC_WRITE, 0, 0);
         database.createDatabase("test", 4);
-
+        
         BabuDBInsertGroup ir = database.createInsertGroup("test");
-        ir.addInsert(0, "Key1".getBytes(),
-                "Value1".getBytes());
-        ir.addInsert(1, "Key2".getBytes(),
-                "Value2".getBytes());
-        ir.addInsert(2, "Key3".getBytes(),
-                "Value3".getBytes());
+        ir.addInsert(0, "Key1".getBytes(), "Value1".getBytes());
+        ir.addInsert(1, "Key2".getBytes(), "Value2".getBytes());
+        ir.addInsert(2, "Key3".getBytes(), "Value3".getBytes());
         database.syncInsert(ir);
-
-
+        
         database.checkpoint();
-
+        
         byte[] result = database.syncLookup("test", 0, "Key1".getBytes());
         assertNotNull(result);
         String value = new String(result);
         assertEquals(value, "Value1");
-
+        
         System.out.println("");
-
+        
         result = database.syncLookup("test", 1, "Key2".getBytes());
         assertNotNull(result);
         value = new String(result);
         assertEquals(value, "Value2");
-
+        
         result = database.syncLookup("test", 2, "Key3".getBytes());
         assertNotNull(result);
         value = new String(result);
         assertEquals(value, "Value3");
-
-        Iterator<Entry<byte[],byte[]>> iter = database.syncPrefixLookup("test", 3, "Key3".getBytes());
-        assertNotNull(iter);
-
         
-
+        Iterator<Entry<byte[], byte[]>> iter = database.syncPrefixLookup("test", 3, "Key3"
+                .getBytes());
+        assertNotNull(iter);
+        
         System.out.println("shutting down database...");
-
+        
         database.shutdown();
     }
     
     @Test
     public void testUserDefinedLookup() throws Exception {
         
-        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir,baseDir,1,0,0,SyncMode.SYNC_WRITE,0,0);
+        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir, baseDir, 1, 0, 0,
+            SyncMode.SYNC_WRITE, 0, 0);
         database.createDatabase("test", 3);
         
         BabuDBInsertGroup ir = database.createInsertGroup("test");
-        ir.addInsert(0, "Key1".getBytes(),
-                "Value1".getBytes());
-        ir.addInsert(1, "Key2".getBytes(),
-                "Value2".getBytes());
-        ir.addInsert(2, "Key3".getBytes(),
-                "Value3".getBytes());
+        ir.addInsert(0, "Key1".getBytes(), "Value1".getBytes());
+        ir.addInsert(1, "Key2".getBytes(), "Value2".getBytes());
+        ir.addInsert(2, "Key3".getBytes(), "Value3".getBytes());
         database.syncInsert(ir);
         
         UserDefinedLookup lookup = new UserDefinedLookup() {
-
-            public Object execute(LSMLookupInterface database) throws BabuDBException {              
-                if ( (database.lookup(0, "Key1".getBytes()) != null) &&
-                     (database.lookup(1, "Key2".getBytes()) != null)) {
+            
+            public Object execute(LSMLookupInterface database) throws BabuDBException {
+                if ((database.lookup(0, "Key1".getBytes()) != null)
+                    && (database.lookup(1, "Key2".getBytes()) != null)) {
                     return new Boolean(true);
                 } else {
                     return new Boolean(false);
@@ -259,15 +251,39 @@ public class BabuDBTest {
             }
         };
         
-        Boolean result = (Boolean)database.syncUserDefinedLookup("test", lookup);
+        Boolean result = (Boolean) database.syncUserDefinedLookup("test", lookup);
         assertTrue(result);
-        
         
         System.out.println("shutting down database...");
         
         database.shutdown();
         
-        
-        
     }
+    
+    @Test
+    public void testDirectAccess() throws Exception {
+        
+        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir, baseDir, 1, 0, 0, SyncMode.ASYNC,
+            0, 0);
+        database.createDatabase("test", 2);
+        
+        for (int i = 0; i < 100000; i++) {
+            BabuDBInsertGroup ir = database.createInsertGroup("test");
+            ir.addInsert(0, (i + "").getBytes(), "bla".getBytes());
+            ir.addInsert(1, (i + "").getBytes(), "bla".getBytes());
+            database.directInsert(ir);
+        }
+        
+        database.checkpoint();
+        
+        for (int i = 0; i < 100000; i++) {
+            
+            byte[] v0 = database.directLookup("test", 0, (i + "").getBytes());
+            byte[] v1 = database.directLookup("test", 1, (i + "").getBytes());
+            
+            assertEquals("bla", new String(v0));
+            assertEquals("bla", new String(v1));
+        }
+    }
+    
 }

@@ -35,8 +35,8 @@ public class ByteRange {
         this.endOffset = endOffset;
         this.size = endOffset - startOffset;
         
-        assert (endOffset >= buf.limit()) : "buffer.limit() == " + buf.limit() + ", endOffset = "
-            + endOffset;
+        assert (endOffset < buf.limit()) : "buf.limit() == " + buf.limit() + ", endOffset == "
+            + endOffset + ", startOffset == " + startOffset + ", buf.capacity == " + buf.capacity();
     }
     
     public ByteBuffer getBuf() {
