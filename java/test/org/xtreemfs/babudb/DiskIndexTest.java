@@ -4,11 +4,12 @@
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
-*/
+ */
 
 package org.xtreemfs.babudb;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -134,6 +135,35 @@ public class DiskIndexTest extends TestCase {
             assertEquals(vals[i], new String(entry.getValue()));
         }
         
+        assertFalse(it.hasNext());
+        
+        // check ranges outside the boundaries; should be empty
+        it = diskIndex.rangeLookup("A".getBytes(), "Z".getBytes());
+        assertFalse(it.hasNext());
+        
+        it = diskIndex.rangeLookup("1".getBytes(), "2".getBytes());
+        assertFalse(it.hasNext());
+        
+        // create a disk index from an empty index file
+        index = new DiskIndexWriter(PATH1, 4);
+        index.writeIndex(new HashMap().entrySet().iterator());
+        
+        diskIndex = new DiskIndex(PATH1, new DefaultByteRangeComparator());
+        
+        // check ranges; should all be empty
+        it = diskIndex.rangeLookup(new byte[0], new byte[0]);
+        assertFalse(it.hasNext());
+        
+        it = diskIndex.rangeLookup(null, null);
+        assertFalse(it.hasNext());
+        
+        it = diskIndex.rangeLookup("b".getBytes(), null);
+        assertFalse(it.hasNext());
+        
+        it = diskIndex.rangeLookup(null, "x".getBytes());
+        assertFalse(it.hasNext());
+        
+        it = diskIndex.rangeLookup("b".getBytes(), "x".getBytes());
         assertFalse(it.hasNext());
     }
     

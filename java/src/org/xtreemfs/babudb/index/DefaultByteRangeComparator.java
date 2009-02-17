@@ -4,10 +4,9 @@
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
-*/
+ */
 
 package org.xtreemfs.babudb.index;
-
 
 public class DefaultByteRangeComparator implements ByteRangeComparator {
     
@@ -37,6 +36,7 @@ public class DefaultByteRangeComparator implements ByteRangeComparator {
         int n = rng.getStartOffset() + Math.min(rng.getSize(), buf.length);
         int j = 0;
         for (int i = rng.getStartOffset(); i < n; i++, j++) {
+            assert (i < rng.getEndOffset()) : "i == " + i + ", endOffset == " + rng.getEndOffset();
             byte v1 = rng.getBuf().get(i);
             byte v2 = buf[j];
             if (v1 == v2)

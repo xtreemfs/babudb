@@ -4,7 +4,7 @@
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
-*/
+ */
 
 package org.xtreemfs.babudb.index;
 
@@ -29,10 +29,14 @@ public class ByteRange {
     private int        size;
     
     public ByteRange(ByteBuffer buf, int startOffset, int endOffset) {
+        
         this.buf = buf;
         this.startOffset = startOffset;
         this.endOffset = endOffset;
         this.size = endOffset - startOffset;
+        
+        assert (endOffset >= buf.limit()) : "buffer.limit() == " + buf.limit() + ", endOffset = "
+            + endOffset;
     }
     
     public ByteBuffer getBuf() {
