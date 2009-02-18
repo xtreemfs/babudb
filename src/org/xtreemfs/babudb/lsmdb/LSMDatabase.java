@@ -218,11 +218,15 @@ public class LSMDatabase {
      * @throws java.io.IOException if a snapshot cannot be written to disk
      */
     public void writeSnapshot(int viewId, long sequenceNo, int[] snapIds) throws IOException {
+        Logging.logMessage(Logging.LEVEL_INFO, this, "writing snapshot, database = " + databaseName + "...");
         for (int index = 0; index < trees.size(); index++) {
             final LSMTree tree = trees.get(index);
             final String newFileName = databaseDir+getSnaphotFilename(index,viewId,sequenceNo);
+            Logging.logMessage(Logging.LEVEL_INFO, this, "snapshotting index " + index + "(dbName = " + databaseName + ")...");
             tree.materializeSnapshot(newFileName, snapIds[index]);
+            Logging.logMessage(Logging.LEVEL_INFO, this, "... done (index = " + index + ", dbName = " + databaseName + ")");
         }
+        Logging.logMessage(Logging.LEVEL_INFO, this, "snapshot written, database = " + databaseName);
     }
     
     public void writeSnapshot(String directory, int[] snapIds) throws IOException {
@@ -243,10 +247,11 @@ public class LSMDatabase {
     public void cleanupSnapshot(final int viewId, final long sequenceNo) throws IOException {
         for (int index = 0; index < trees.size(); index++) {
             final LSMTree tree = trees.get(index);
-            if (Logging.isDebug())
-                Logging.logMessage(Logging.LEVEL_DEBUG, this, "linking to snapshot "+databaseDir+getSnaphotFilename(index,viewId,sequenceNo));
-            
+
+            Logging.logMessage(Logging.LEVEL_INFO, this, "linking to snapshot "+databaseDir+getSnaphotFilename(index,viewId,sequenceNo) + ", dbName=" + databaseName + ", index=" + index);
             tree.linkToSnapshot(databaseDir+getSnaphotFilename(index,viewId,sequenceNo));
+            Logging.logMessage(Logging.LEVEL_INFO, this, "...done");
+            
             ondiskLSN = new LSN(viewId,sequenceNo);
             
             File f = new File(databaseDir);

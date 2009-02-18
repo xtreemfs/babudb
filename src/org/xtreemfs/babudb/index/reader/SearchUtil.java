@@ -4,17 +4,19 @@
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
-*/
+ */
 
 package org.xtreemfs.babudb.index.reader;
 
 import org.xtreemfs.babudb.index.ByteRange;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
 
-
 public class SearchUtil {
     
     public static int getInclBottomOffset(MiniPage page, byte[] entry, ByteRangeComparator comp) {
+        
+        assert (page.getNumEntries() >= 0) : "invalid number of page entries: "
+            + page.getNumEntries();
         
         int low = 0;
         int high = page.getNumEntries() - 1;
@@ -42,6 +44,9 @@ public class SearchUtil {
     
     public static int getExclBottomOffset(MiniPage page, byte[] entry, ByteRangeComparator comp) {
         
+        assert (page.getNumEntries() >= 0) : "invalid number of page entries: "
+            + page.getNumEntries();
+        
         int low = 0;
         int high = page.getNumEntries() - 1;
         
@@ -68,6 +73,9 @@ public class SearchUtil {
     
     public static int getInclTopOffset(MiniPage page, byte[] entry, ByteRangeComparator comp) {
         
+        assert (page.getNumEntries() >= 0) : "invalid number of page entries: "
+            + page.getNumEntries();
+        
         int low = 0;
         int high = page.getNumEntries() - 1;
         
@@ -93,6 +101,9 @@ public class SearchUtil {
     }
     
     public static int getOffset(MiniPage page, byte[] entry, ByteRangeComparator comp) {
+        
+        assert (page.getNumEntries() >= 0) : "invalid number of page entries: "
+            + page.getNumEntries();
         
         int low = 0;
         int high = page.getNumEntries() - 1;

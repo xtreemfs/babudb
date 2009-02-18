@@ -4,7 +4,7 @@
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
-*/
+ */
 
 package org.xtreemfs.babudb.index.reader;
 
@@ -24,6 +24,15 @@ public abstract class MiniPage {
     protected final ByteRangeComparator comp;
     
     public MiniPage(int numEntries, ByteBuffer buf, int offset, ByteRangeComparator comp) {
+        
+        // ensure that offs > limit
+        assert (offset <= buf.limit()) : "invalid mini page offset: offset == " + offset
+            + ", buf.limit() == " + buf.limit();
+        
+        // if offs == limit, numEntries must be 0 (empty page)
+        assert (offset != buf.limit() || numEntries == 0) : "invalid mini page offset: offset == "
+            + offset + ", buf.limit() == " + buf.limit();
+        
         this.numEntries = numEntries;
         this.buf = buf;
         this.offset = offset;

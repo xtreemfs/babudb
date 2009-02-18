@@ -19,6 +19,7 @@ import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.index.ByteRange;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
+import org.xtreemfs.common.logging.Logging;
 
 public class DiskIndex {
     
@@ -37,6 +38,8 @@ public class DiskIndex {
     public DiskIndex(String path, ByteRangeComparator comp) throws IOException {
         
         this.comp = comp;
+        
+        Logging.logMessage(Logging.LEVEL_INFO, this, "loading index ...");
         
         // First, read the block index into a buffer. For performance reasons,
         // the block index has to remain in memory all the time, so it cannot be
@@ -58,6 +61,9 @@ public class DiskIndex {
         
         mappedFile = channel.map(MapMode.READ_ONLY, 0, blockIndexOffset);
         assert (channel.size() <= Integer.MAX_VALUE);
+        
+        Logging.logMessage(Logging.LEVEL_INFO, this, "index size: " + channel.size());
+        Logging.logMessage(Logging.LEVEL_INFO, this, "block index offset: " + blockIndexOffset);
     }
     
     public byte[] lookup(byte[] key) {
@@ -91,9 +97,20 @@ public class DiskIndex {
         mappedFile.position(0);
         final ByteBuffer map = mappedFile.slice();
         
-        final int blockIndexStart = from == null ? 0 : getBlockIndexPosition(from, itBlockIndex);
-        final int blockIndexEnd = to == null ? itBlockIndex.getNumEntries() - 1
-            : getBlockIndexPosition(to, itBlockIndex);
+        // determine the first potential block containing entries w/ keys in the
+        // range
+        int tmp = from == null ? 0 : getBlockIndexPosition(from, itBlockIndex);
+        if (tmp < 0)
+            tmp = 0;
+        final int blockIndexStart = tmp;
+        
+        // determine the last potential block containing entries w/ keys in the
+        // range
+        tmp = to == null ? itBlockIndex.getNumEntries() - 1 : getBlockIndexPosition(to,
+            itBlockIndex);
+        if (tmp > itBlockIndex.getNumEntries() - 1)
+            tmp = itBlockIndex.getNumEntries() - 1;
+        final int blockIndexEnd = tmp;
         
         return new Iterator<Entry<byte[], byte[]>>() {
             

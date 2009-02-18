@@ -19,6 +19,7 @@ import org.xtreemfs.babudb.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.index.reader.DiskIndex;
 import org.xtreemfs.babudb.index.writer.DiskIndexWriter;
+import org.xtreemfs.common.logging.Logging;
 
 import junit.framework.TestCase;
 import junit.textui.TestRunner;
@@ -36,6 +37,7 @@ public class DiskIndexTest extends TestCase {
     private static final ByteRangeComparator COMP              = new DefaultByteRangeComparator();
     
     public void setUp() throws Exception {
+        Logging.start(Logging.LEVEL_ERROR);
     }
     
     public void tearDown() throws Exception {
