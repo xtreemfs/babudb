@@ -75,7 +75,10 @@ public class BlockReader {
         
         {
             startIndex = keys.getTopPosition(from);
+            assert(startIndex >= -1): "invalid block start offset: " + startIndex;
+            
             endIndex = keys.getBottomPosition(to);
+            assert(endIndex >= -1): "invalid block end offset: " + endIndex;
         }
         
         return new Iterator<Entry<ByteRange, ByteRange>>() {
