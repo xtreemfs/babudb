@@ -18,15 +18,14 @@ import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.Replication.SYNC_MODUS;
-import org.xtreemfs.common.buffer.ReusableBuffer;
-import org.xtreemfs.common.logging.Logging;
-import org.xtreemfs.foundation.json.JSONException;
-import org.xtreemfs.foundation.json.JSONParser;
-import org.xtreemfs.foundation.json.JSONString;
-import org.xtreemfs.foundation.pinky.HTTPUtils;
-import org.xtreemfs.foundation.pinky.PinkyRequest;
-import org.xtreemfs.foundation.speedy.SpeedyRequest;
+import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.include.foundation.json.JSONException;
+import org.xtreemfs.include.foundation.json.JSONParser;
+import org.xtreemfs.include.foundation.json.JSONString;
+import org.xtreemfs.include.foundation.pinky.HTTPUtils;
+import org.xtreemfs.include.foundation.pinky.PinkyRequest;
+import org.xtreemfs.include.foundation.speedy.SpeedyRequest;
 
 import static org.xtreemfs.babudb.replication.Token.*;
 import static org.xtreemfs.babudb.replication.Status.STATUS.*;
@@ -313,12 +312,10 @@ class RequestPreProcessor {
         case REPLICA:                                         
             try{
                 Status<Request> rq = (Status<Request>) theResponse.genericAttatchment;
-                if (!frontEnd.syncModus.equals(SYNC_MODUS.ASYNC)){
-                    if (rq.getValue().decreaseACKSExpected(frontEnd.n)) {                   
-                        rq.getValue().getContext().getListener().insertFinished(rq.getValue().getContext());
-                        rq.getValue().free();
-                    }
-                }                   
+                if (rq.getValue().decreaseMinExpectableACKs()) {                  
+                    rq.getValue().getContext().getListener().insertFinished(rq.getValue().getContext());
+                    rq.getValue().free();
+                }                 
                 theResponse.freeBuffer();
                 
                 // ACK as sub request 
@@ -353,15 +350,20 @@ class RequestPreProcessor {
                 Request rq = (Request) theResponse.genericAttatchment;
                 
                 if (theResponse.statusCode!=HTTPUtils.SC_OKAY) {
-                    ((RequestImpl) rq).failed.set(true);
+                    if (!rq.decreaseMaxReceivableACKs(1)){
+                        synchronized(rq){
+                            rq.notify();
+                        }
+                    }
                     
                     msg = "Slave '"+result.source.toString()+"' did not confirm replication, because: ";
                     if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
                     else msg += theResponse.statusCode;
-                }               
-                if (rq.decreaseACKSExpected(0)) {
-                    synchronized(rq){
-                        rq.notify();
+                } else {
+                    if (rq.decreaseMinExpectableACKs()) {
+                        synchronized(rq){
+                            rq.notify();
+                        }
                     }
                 }
                 
@@ -383,15 +385,20 @@ class RequestPreProcessor {
                 Request rq = (Request) theResponse.genericAttatchment;
                 
                 if (theResponse.statusCode!=HTTPUtils.SC_OKAY) {
-                    ((RequestImpl) rq).failed.set(true);
+                    if (!rq.decreaseMaxReceivableACKs(1)){
+                        synchronized(rq){
+                            rq.notify();
+                        }
+                    }
                     
                     msg = "Slave '"+result.source.toString()+"' did not confirm replication, because: ";
                     if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
                     else msg += theResponse.statusCode;
-                }               
-                if (rq.decreaseACKSExpected(0)) {
-                    synchronized(rq){
-                        rq.notify();
+                } else {              
+                    if (rq.decreaseMinExpectableACKs()) {
+                        synchronized(rq){
+                            rq.notify();
+                        }
                     }
                 }
                 
@@ -413,15 +420,20 @@ class RequestPreProcessor {
                 Request rq = (Request) theResponse.genericAttatchment;
                 
                 if (theResponse.statusCode!=HTTPUtils.SC_OKAY) {
-                    ((RequestImpl) rq).failed.set(true);
+                    if (!rq.decreaseMaxReceivableACKs(1)){
+                        synchronized(rq){
+                            rq.notify();
+                        }
+                    }
                     
                     msg = "Slave '"+result.source.toString()+"' did not confirm replication, because: ";
                     if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
                     else msg += theResponse.statusCode;
-                }               
-                if (rq.decreaseACKSExpected(0)) {
-                    synchronized(rq){
-                        rq.notify();
+                } else {              
+                    if (rq.decreaseMinExpectableACKs()) {
+                        synchronized(rq){
+                            rq.notify();
+                        }
                     }
                 }
                 

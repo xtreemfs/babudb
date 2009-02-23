@@ -19,7 +19,7 @@ import org.xtreemfs.babudb.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.index.reader.DiskIndex;
 import org.xtreemfs.babudb.index.writer.DiskIndexWriter;
-import org.xtreemfs.common.logging.Logging;
+import org.xtreemfs.include.common.logging.Logging;
 
 import junit.framework.TestCase;
 import junit.textui.TestRunner;

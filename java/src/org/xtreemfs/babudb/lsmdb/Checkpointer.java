@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.log.DiskLogger;
-import org.xtreemfs.common.logging.Logging;
+import org.xtreemfs.include.common.logging.Logging;
 
 /**
  * This thread regularly checks the size of the database operations log

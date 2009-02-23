@@ -21,8 +21,7 @@ import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.replication.Replication;
-import org.xtreemfs.babudb.replication.Replication.SYNC_MODUS;
-import org.xtreemfs.common.logging.Logging;
+import org.xtreemfs.include.common.logging.Logging;
 
 /**
  *
@@ -74,7 +73,7 @@ public class MasterBabuDBBenchmark {
         p.waitFor();
         
         //use one worker because we use one database
-        database = BabuDBFactory.getMasterBabuDB(dbDir, dbDir, numDBWorkers, 1, 0, syncMode, pseudoModeWait, maxQ, slaves, port, null,SYNC_MODUS.ASYNC);
+        database = BabuDBFactory.getMasterBabuDB(dbDir, dbDir, numDBWorkers, 1, 0, syncMode, pseudoModeWait, maxQ, slaves, port, null,0);
         for (int i = 1; i <= numThreads; i++)
         database.createDatabase(""+i, 1);
 

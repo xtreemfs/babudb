@@ -15,8 +15,8 @@ import java.nio.channels.FileChannel;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import org.xtreemfs.common.buffer.BufferPool;
-import org.xtreemfs.common.buffer.ReusableBuffer;
+import org.xtreemfs.include.common.buffer.BufferPool;
+import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 /**
  * Writes an index to a file on disk.

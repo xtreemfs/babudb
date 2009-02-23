@@ -19,7 +19,7 @@ import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.index.ByteRange;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
-import org.xtreemfs.common.logging.Logging;
+import org.xtreemfs.include.common.logging.Logging;
 
 public class DiskIndex {
     

@@ -29,19 +29,19 @@ import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
 import org.xtreemfs.babudb.lsmdb.LSMDBWorker;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.Replication.SYNC_MODUS;
-import org.xtreemfs.common.buffer.ReusableBuffer;
-import org.xtreemfs.common.logging.Logging;
-import org.xtreemfs.foundation.LifeCycleListener;
-import org.xtreemfs.foundation.LifeCycleThread;
-import org.xtreemfs.foundation.json.JSONParser;
-import org.xtreemfs.foundation.pinky.HTTPUtils;
-import org.xtreemfs.foundation.pinky.PinkyRequest;
-import org.xtreemfs.foundation.pinky.PipelinedPinky;
-import org.xtreemfs.foundation.pinky.SSLOptions;
-import org.xtreemfs.foundation.pinky.HTTPUtils.DATA_TYPE;
-import org.xtreemfs.foundation.speedy.MultiSpeedy;
-import org.xtreemfs.foundation.speedy.SpeedyRequest;
+// import org.xtreemfs.babudb.replication.Replication.SYNC_MODUS;
+import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.include.foundation.LifeCycleListener;
+import org.xtreemfs.include.foundation.LifeCycleThread;
+import org.xtreemfs.include.foundation.json.JSONParser;
+import org.xtreemfs.include.foundation.pinky.HTTPUtils;
+import org.xtreemfs.include.foundation.pinky.PinkyRequest;
+import org.xtreemfs.include.foundation.pinky.PipelinedPinky;
+import org.xtreemfs.include.foundation.pinky.SSLOptions;
+import org.xtreemfs.include.foundation.pinky.HTTPUtils.DATA_TYPE;
+import org.xtreemfs.include.foundation.speedy.MultiSpeedy;
+import org.xtreemfs.include.foundation.speedy.SpeedyRequest;
 
 import static org.xtreemfs.babudb.replication.Status.STATUS.*;
 
@@ -265,7 +265,9 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                         int replicasFailed = 0;
                         synchronized (frontEnd.slaves) {
                             final int slaveCount = frontEnd.slaves.size();
-                            newRequest.getValue().setACKsExpected(slaveCount);
+                            newRequest.getValue().setMaxReceivableACKs(slaveCount);
+                            newRequest.getValue().setMinExpectableACKs(frontEnd.syncN);
+                            
                             for (InetSocketAddress slave : frontEnd.slaves) {
                                 // build the request
                                 SpeedyRequest rq = new SpeedyRequest(HTTPUtils.POST_TOKEN,
@@ -283,26 +285,18 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                                     Logging.logMessage(Logging.LEVEL_ERROR, this, "REPLICA could not be send to slave: '"+slave.toString()+"', because: "+e.getMessage());
                                 }
                             }
-                            
-                         // shall not hang, if slave was not available
-                            if (replicasFailed!=0 && !frontEnd.syncModus.equals(SYNC_MODUS.ASYNC)) {                            
-                                for (int i=0;i<replicasFailed;i++)
-                                    newRequest.getValue().decreaseACKSExpected(frontEnd.n);
-                                
-                                 // less than n slaves available for NSYNC mode, or one slave not available in SYNC mode
-                                if (frontEnd.syncModus.equals(SYNC_MODUS.SYNC) || 
-                                   (frontEnd.syncModus.equals(SYNC_MODUS.NSYNC) && 
-                                   (slaveCount-replicasFailed)<frontEnd.n))
-                                    throw new ReplicationException("The replication was not fully successful. '"+replicasFailed+"' of '"+slaveCount+"' slaves could not be reached.");
-                            
-                             
+                                      
+                            if (!newRequest.getValue().decreaseMaxReceivableACKs(replicasFailed)){
+                                newRequest.setStatus(FAILED);
+                                pending.add(newRequest);
+                                throw new ReplicationException("The replication was not fully successful. '"+replicasFailed+"' of '"+slaveCount+"' slaves could not be reached.");
                             }
                             
-                         // ASYNC mode unavailable slaves will be ignored for the response   
-                            if(frontEnd.syncModus.equals(SYNC_MODUS.ASYNC)){                               
+                             // ASYNC mode unavailable slaves will be ignored for the response   
+                            if(frontEnd.syncN == 0){ 
                                 context.getListener().insertFinished(context);
                                 newRequest.getValue().free();
-                            } else {                           
+                            } else {                                                          
                                 newRequest.setStatus(PENDING);
                                 pending.add(newRequest);
                             }
@@ -669,7 +663,9 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
     void sendSynchronousRequest(Request rq) throws ReplicationException{
         try {
             synchronized (frontEnd.slaves) {
-                rq.setACKsExpected(frontEnd.slaves.size());
+                int count = frontEnd.slaves.size();
+                rq.setMaxReceivableACKs(count);
+                rq.setMinExpectableACKs(count);
                 for (InetSocketAddress slave : frontEnd.slaves){
                     SpeedyRequest sReq = new SpeedyRequest(HTTPUtils.POST_TOKEN,rq.getToken().toString(),null,null,rq.getData(),DATA_TYPE.JSON);
                     sReq.genericAttatchment = rq;

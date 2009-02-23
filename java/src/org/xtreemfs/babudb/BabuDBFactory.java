@@ -14,8 +14,7 @@ import java.util.List;
 
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
-import org.xtreemfs.babudb.replication.Replication.SYNC_MODUS;
-import org.xtreemfs.foundation.pinky.SSLOptions;
+import org.xtreemfs.include.foundation.pinky.SSLOptions;
 
 /**
  * 
@@ -43,7 +42,7 @@ public class BabuDBFactory {
     public static BabuDB getBabuDB(String baseDir, String dbLogDir, int numThreads,
             long maxLogfileSize, int checkInterval, SyncMode syncMode, int pseudoSyncWait,
             int maxQ) throws BabuDBException {
-        return new BabuDBImpl(baseDir, dbLogDir, numThreads, maxLogfileSize, checkInterval, syncMode, pseudoSyncWait, maxQ, null, null, 0, null, false, SYNC_MODUS.SYNC);
+        return new BabuDBImpl(baseDir, dbLogDir, numThreads, maxLogfileSize, checkInterval, syncMode, pseudoSyncWait, maxQ, null, null, 0, null, false, 0);
     }
 
     /**
@@ -61,12 +60,15 @@ public class BabuDBFactory {
      * @param slaves hosts, where the replicas should be send to.
      * @param port where the application listens at. (use 0 for default configuration)
      * @param ssl if set SSL will be used while replication.
+     * @param repMode <p>repMode == 0: asynchronous replication mode</br>
+     *                   repMode == slaves.size(): synchronous replication mode</br>
+     *                   repMode > 0 && repMode < slaves.size(): N -sync replication mode with N = repMode</p>
      * 
      * @throws BabuDBException
      */
     public static BabuDB getMasterBabuDB(String baseDir, String dbLogDir, int numThreads,
             long maxLogfileSize, int checkInterval, SyncMode syncMode, int pseudoSyncWait,
-            int maxQ, List<InetSocketAddress> slaves, int port, SSLOptions ssl, SYNC_MODUS repMode) throws BabuDBException {
+            int maxQ, List<InetSocketAddress> slaves, int port, SSLOptions ssl, int repMode) throws BabuDBException {
         try {
             return new BabuDBImpl(baseDir, dbLogDir, numThreads, maxLogfileSize, checkInterval, syncMode, pseudoSyncWait, maxQ, new InetSocketAddress(InetAddress.getLocalHost(), port), slaves, port, ssl, true, repMode);
         } catch (UnknownHostException e) {
@@ -96,6 +98,6 @@ public class BabuDBFactory {
     public static BabuDB getSlaveBabuDB(String baseDir, String dbLogDir, int numThreads,
             long maxLogfileSize, int checkInterval, SyncMode syncMode, int pseudoSyncWait,
             int maxQ, InetSocketAddress master, List<InetSocketAddress> slaves, int port, SSLOptions ssl) throws BabuDBException {
-        return new BabuDBImpl(baseDir, dbLogDir, numThreads, maxLogfileSize, checkInterval, syncMode, pseudoSyncWait, maxQ, master, slaves, port, ssl, false, SYNC_MODUS.SYNC);
+        return new BabuDBImpl(baseDir, dbLogDir, numThreads, maxLogfileSize, checkInterval, syncMode, pseudoSyncWait, maxQ, master, slaves, port, ssl, false, slaves.size());
     }
 }

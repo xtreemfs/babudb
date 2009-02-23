@@ -20,7 +20,7 @@ import org.xtreemfs.babudb.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
-import org.xtreemfs.common.logging.Logging;
+import org.xtreemfs.include.common.logging.Logging;
 
 /**
  * A LSMDatabase contains up to MAX_INDICES LSMTrees.

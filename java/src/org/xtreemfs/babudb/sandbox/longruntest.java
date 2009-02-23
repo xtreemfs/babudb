@@ -20,8 +20,8 @@ import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.BabuDBInsertGroup;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
-import org.xtreemfs.common.buffer.BufferPool;
-import org.xtreemfs.common.logging.Logging;
+import org.xtreemfs.include.common.buffer.BufferPool;
+import org.xtreemfs.include.common.logging.Logging;
 
 /**
  *

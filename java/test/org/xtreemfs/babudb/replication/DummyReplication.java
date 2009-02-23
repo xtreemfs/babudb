@@ -15,7 +15,7 @@ import org.xtreemfs.babudb.BabuDBImpl;
 public class DummyReplication extends Replication {
     
     public DummyReplication(BabuDBImpl  babu, int Port) throws BabuDBException{
-        super(new InetSocketAddress(0), null, Port, babu,SYNC_MODUS.SYNC);
+        super(new InetSocketAddress(0), null, Port, babu,0);
     }
     
     @Override
