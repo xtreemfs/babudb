@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
+ * 
+ * Licensed under the BSD License, see LICENSE file for details.
+ * 
+ */
 package org.xtreemfs.babudb.replication;
 
 import static org.junit.Assert.*;
@@ -39,7 +46,7 @@ import java.util.HashMap;
 public class RequestPreProcessorTest {
     private LSMDBRequest context;
     
-    private DummyReplication replicationApproach;
+    private DummyReplication replicationFacade;
     
     public RequestPreProcessorTest() {
         Logging.start(Logging.LEVEL_ERROR);
@@ -67,12 +74,12 @@ public class RequestPreProcessorTest {
             public void insertFinished(Object context) {}
         },null,false,null);
         
-        replicationApproach = new DummyReplication(null,35666);
+        replicationFacade = new DummyReplication(null,35666);
     }
 
     @After
     public void tearDown() throws Exception {
-        replicationApproach.stop();
+        replicationFacade.stop();
     }
 
     @Test
@@ -120,8 +127,8 @@ public class RequestPreProcessorTest {
          */
         
         SpeedyRequest testREPLICAResponse = new SpeedyRequest(HTTPUtils.POST_TOKEN,Token.REPLICA.toString(),null,null,testLogEntry.serialize(new CRC32()),DATA_TYPE.BINARY);        
-        testREPLICAResponse.genericAttatchment = broadcastRQ;
-        Request rq = RequestPreProcessor.getReplicationRequest(testREPLICAResponse,replicationApproach);
+        testREPLICAResponse.genericAttatchment = new Status<Request>(broadcastRQ);
+        Request rq = RequestPreProcessor.getReplicationRequest(testREPLICAResponse,replicationFacade);
         assertEquals(Token.ACK, rq.getToken());
         assertEquals(testLSN,rq.getLSN()); 
         
@@ -250,7 +257,7 @@ public class RequestPreProcessorTest {
         
         PinkyRequest testDefectToken = new PinkyRequest(HTTPUtils.POST_TOKEN,"defectToken",null,null,null);
         try {
-            rq = RequestPreProcessor.getReplicationRequest(testDefectToken,replicationApproach);
+            rq = RequestPreProcessor.getReplicationRequest(testDefectToken,replicationFacade);
             fail("Defect Token should cast an exception.");
         }catch(PreProcessException e){
             assertTrue(true);
@@ -258,7 +265,7 @@ public class RequestPreProcessorTest {
         
         PinkyRequest testFalseToken = new PinkyRequest(HTTPUtils.POST_TOKEN,Token.REPLICA_BROADCAST.toString(),null,null,null);
         try {
-            rq = RequestPreProcessor.getReplicationRequest(testFalseToken,replicationApproach);
+            rq = RequestPreProcessor.getReplicationRequest(testFalseToken,replicationFacade);
             fail("Defect Token should cast an exception.");
         }catch(PreProcessException e){
             assertTrue(true);
@@ -270,7 +277,7 @@ public class RequestPreProcessorTest {
         
         SpeedyRequest testDefectTokenS = new SpeedyRequest(HTTPUtils.POST_TOKEN,"defectToken",null,null,null,DATA_TYPE.BINARY);
         try {
-            rq = RequestPreProcessor.getReplicationRequest(testDefectTokenS,replicationApproach);
+            rq = RequestPreProcessor.getReplicationRequest(testDefectTokenS,replicationFacade);
             fail("Defect Token should cast an exception.");
         }catch(PreProcessException e){
             assertTrue(true);
@@ -278,7 +285,7 @@ public class RequestPreProcessorTest {
         
         SpeedyRequest testFalseTokenS = new SpeedyRequest(HTTPUtils.POST_TOKEN,Token.REPLICA_BROADCAST.toString(),null,null,null,DATA_TYPE.BINARY);
         try {
-            rq = RequestPreProcessor.getReplicationRequest(testFalseTokenS,replicationApproach);
+            rq = RequestPreProcessor.getReplicationRequest(testFalseTokenS,replicationFacade);
             fail("Defect Token should cast an exception.");
         }catch(PreProcessException e){
             assertTrue(true);

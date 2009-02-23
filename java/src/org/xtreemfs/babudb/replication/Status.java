@@ -8,15 +8,15 @@
 package org.xtreemfs.babudb.replication;
 
 /**
- * <p>Wrapper for an {@link Comparable}, that is missing and has to be requested.</p>
- * <p>The is ordered by status.</p>
+ * <p>Wrapper that adds a state to an {@link Comparable} <T>, that has to be requested.</p>
+ * <p>Method compareTo first orders by status and if equal by <T>.</p>
  * 
  * @author flangner
- *
+ * @param <T>
  */
-class Missing<T> implements Comparable<Missing<Comparable<T>>>{
+class Status<T extends Comparable<T>> implements Comparable<Status<T>>{
     /**
-     * <p>Status options for a missing {@link LSN}.</p>
+     * <p>Status options.</p>
      * 
      * @author flangner
      *
@@ -39,9 +39,19 @@ class Missing<T> implements Comparable<Missing<Comparable<T>>>{
         PENDING
         };
     
-    STATUS stat = null;
+    private STATUS stat = STATUS.OPEN;
     
-    Comparable<T> c = null;
+    private T c = null;
+    
+    /**
+     * <p>Saves a the given {@link Comparable} <code>c</code>.</p>
+     * <p>Status will be OPEN.</p>
+     * 
+     * @param c
+     */
+    Status(T c) {
+        this.c = c;
+    }
     
     /**
      * <p>Saves a the given {@link Comparable} <code>c</code> and the {@link STATUS} <code>stat</code>.</p>
@@ -49,19 +59,38 @@ class Missing<T> implements Comparable<Missing<Comparable<T>>>{
      * @param c
      * @param stat
      */
-    Missing(Comparable<T> c, STATUS stat) {
-        this.c = c;
+    Status(T c, STATUS stat) {
+        this(c);
         this.stat = stat;
+    }
+
+/*
+ * getter/setter    
+ */   
+    STATUS getStatus(){
+        return stat;
+    }
+    
+    T getValue(){
+        return c;
+    }
+    
+    void setStatus(STATUS s){
+        this.stat = s;
+    }
+    
+    void setValue(T v){
+        this.c = v;
     }
     
     /*
      * (non-Javadoc)
      * @see org.xtreemfs.babudb.lsmdb.LSN#equals(java.lang.Object)
      */
-    @SuppressWarnings("unchecked")
     @Override
     public boolean equals(Object obj) {
-        Missing<T> o = (Missing<T>) obj;
+        Status<T> o = (Status<T>) obj;
+        if (obj == null) return false;
         return c.equals(o.c);
     }
 
@@ -69,11 +98,10 @@ class Missing<T> implements Comparable<Missing<Comparable<T>>>{
      * (non-Javadoc)
      * @see java.lang.Comparable#compareTo(java.lang.Object)
      */
-    @SuppressWarnings("unchecked")
     @Override
-    public int compareTo(Missing<Comparable<T>> o) {        
+    public int compareTo(Status<T> o) {        
         if (stat.compareTo(o.stat)==0) {
-            return c.compareTo((T) o.c);
+            return c.compareTo(o.c);
         }else 
             return stat.compareTo(o.stat);
     }

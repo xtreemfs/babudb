@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
+ * 
+ * Licensed under the BSD License, see LICENSE file for details.
+ * 
+ */
 package org.xtreemfs.babudb.replication;
 
 import static org.junit.Assert.*;
@@ -16,7 +23,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
-import org.xtreemfs.babudb.BabuDBFactory.BabuDBImpl;
+import org.xtreemfs.babudb.BabuDBImpl;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
@@ -62,9 +69,9 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
     private PinkyRequest pRq = null;
     
     private final Object testLock = new Object();  
-
+    
     @BeforeClass
-    public static void setUpBeforeClass() throws Exception {
+    public static void setUpBeforeClass() throws Exception {   
         Logging.start(Logging.LEVEL_ERROR);
         
         Process p = Runtime.getRuntime().exec("rm -rf "+master_baseDir);
@@ -322,13 +329,13 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
         final String lostData = "lostValue";
         final int testIndexId = 0;
         
-        List<InetSocketAddress> reset = master.replicationApproach.getSlaves();
+        List<InetSocketAddress> reset = master.replicationFacade.getSlaves();
         
         final List<InetSocketAddress> testDummySlave = new LinkedList<InetSocketAddress>();
         testDummySlave.add(slave1_address);
         testDummySlave.add(new InetSocketAddress("unknownHost",12345));
         
-        master.replicationApproach.setSlaves(testDummySlave);
+        master.replicationFacade.setSlaves(testDummySlave);
         
         /*
          * INSERT the lost entry
@@ -341,7 +348,7 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
         
         Thread.sleep(500);
       
-        master.replicationApproach.setSlaves(reset);
+        master.replicationFacade.setSlaves(reset);
         actual = new LSN(actual.getViewId(),actual.getSequenceNo()+1L);
     }
     

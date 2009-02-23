@@ -13,7 +13,7 @@ import java.util.Map.Entry;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.xtreemfs.babudb.BabuDBFactory.BabuDBImpl;
+import org.xtreemfs.babudb.BabuDBImpl;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.LSMLookupInterface;
 import org.xtreemfs.common.logging.Logging;

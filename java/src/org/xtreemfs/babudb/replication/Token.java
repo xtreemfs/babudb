@@ -4,8 +4,7 @@
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
-*/
-
+ */
 package org.xtreemfs.babudb.replication;
 
 /**
