@@ -286,11 +286,8 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                                 }
                             }
                                       
-                            if (!newRequest.getValue().decreaseMaxReceivableACKs(replicasFailed)){
-                                newRequest.setStatus(FAILED);
-                                pending.add(newRequest);
+                            if (replicasFailed > 0 && !newRequest.getValue().decreaseMaxReceivableACKs(replicasFailed))
                                 throw new ReplicationException("The replication was not fully successful. '"+replicasFailed+"' of '"+slaveCount+"' slaves could not be reached.");
-                            }
                             
                              // ASYNC mode unavailable slaves will be ignored for the response   
                             if(frontEnd.syncN == 0){ 

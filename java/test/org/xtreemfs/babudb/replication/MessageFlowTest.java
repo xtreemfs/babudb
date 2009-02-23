@@ -97,7 +97,7 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
         
         System.out.println("starting up databases...");
         
-        // start the master       
+        // start the master - SYNC replication mode       
         master = (BabuDBImpl) BabuDBFactory.getMasterBabuDB(master_baseDir,master_baseDir,1,0,0,SyncMode.SYNC_WRITE,0,0,slaves,0,null,slaves.size());
         
         // start the slave
@@ -320,7 +320,7 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
     }
     
     @Test
-    public void unavailableSlaveTest() throws InterruptedException{
+    public void unavailableSlaveTest() throws InterruptedException, BabuDBException{
         pinky.registerListener(this);
         speedy.registerSingleListener(this);
         
@@ -336,6 +336,9 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
         testDummySlave.add(new InetSocketAddress("unknownHost",12345));
         
         master.replicationFacade.setSlaves(testDummySlave);
+        
+        // apply the replication mode (SYNC)
+        master.replicationFacade.setSyncModus(testDummySlave.size());
         
         /*
          * INSERT the lost entry
