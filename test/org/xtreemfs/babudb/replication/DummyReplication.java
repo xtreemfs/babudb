@@ -1,9 +1,16 @@
+/*
+ * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
+ * 
+ * Licensed under the BSD License, see LICENSE file for details.
+ * 
+ */
 package org.xtreemfs.babudb.replication;
 
 import java.net.InetSocketAddress;
 
 import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBFactory.BabuDBImpl;
+import org.xtreemfs.babudb.BabuDBImpl;
 
 public class DummyReplication extends Replication {
     

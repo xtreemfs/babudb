@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
+ * 
+ * Licensed under the BSD License, see LICENSE file for details.
+ * 
+ */
 package org.xtreemfs.babudb;
 
 import java.io.IOException;
@@ -5,8 +12,15 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.index.ByteRangeComparator;
-import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 
+/**
+ * <p>Interface for an instance of the BabuDB.</p>
+ * 
+ * 
+ * @author bjko
+ * @author flangner
+ *
+ */
 public interface BabuDB {
 
     /**

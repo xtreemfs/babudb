@@ -4,7 +4,7 @@
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
-*/
+ */
 
 package org.xtreemfs.babudb.lsmdb;
 
@@ -55,12 +55,12 @@ public class LSMDBWorker extends Thread implements SyncListener {
 
     private final boolean       pseudoSync;
     
-    private final Replication   replicationApproach;
+    private final Replication   replicationFacade;
     
     public LSMDBWorker(DiskLogger logger, int id, ReadWriteLock insertLock,
             boolean pseudoSync, int maxQ,Replication replication) {
         super("LSMDBWrkr#"+id);        
-        this.replicationApproach = replication;        
+        this.replicationFacade = replication;        
         if (maxQ > 0)
             requests = new LinkedBlockingQueue<LSMDBRequest>(maxQ);
         else
@@ -209,8 +209,8 @@ public class LSMDBWorker extends Thread implements SyncListener {
     private void finish(LogEntry le){
         final LSMDBRequest r = le.getAttachment();
         
-        if (replicationApproach!=null && replicationApproach.isMaster()){
-            replicationApproach.replicateInsert(le);
+        if (replicationFacade!=null && replicationFacade.isMaster()){
+            replicationFacade.replicateInsert(le);
         }else{
             r.getListener().insertFinished(r.getContext());
         }        

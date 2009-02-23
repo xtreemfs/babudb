@@ -17,10 +17,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBRequestListener;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
-import org.xtreemfs.babudb.BabuDBFactory.BabuDBImpl;
+import org.xtreemfs.babudb.BabuDBImpl;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.replication.ReplicationThread.ReplicationException;
 import org.xtreemfs.babudb.replication.RequestPreProcessor.PreProcessException;
+import org.xtreemfs.babudb.replication.Status.STATUS;
 import org.xtreemfs.common.logging.Logging;
 import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.pinky.HTTPUtils;
@@ -230,8 +231,8 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
         Logging.logMessage(Logging.LEVEL_TRACE, this, "LogEntry with LSN '"+le.getLSN().toString()+"' is requested to be replicated...");       
         
         try {
-            Request request = RequestPreProcessor.getReplicationRequest(le);
-            replication.pending.add(request); 
+            Request rq = RequestPreProcessor.getReplicationRequest(le);
+            replication.enqueueRequest(rq); 
         } catch (PreProcessException e) {
             Logging.logMessage(Logging.LEVEL_TRACE, this, "A LogEntry could not be replicated because: "+e.getMessage());
             le.getAttachment().getListener().requestFailed(le.getAttachment().getContext(), new BabuDBException(ErrorCode.REPLICATION_FAILURE,
@@ -380,7 +381,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
         try {
             Request rq = RequestPreProcessor.getReplicationRequest(theRequest,this);   
            // if rq==null it was already proceeded and will just be responded
-            if (rq!=null) replication.pending.add(rq);
+            if (rq!=null) replication.enqueueRequest(rq);
             else replication.sendResponse(theRequest);
         }catch (PreProcessException e){
            // if a request could not be parsed for any reason
@@ -401,7 +402,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
         try {
             Request rq = RequestPreProcessor.getReplicationRequest(theRequest,this);
            // if rq is null than it was already responded
-            if (rq!=null) replication.pending.add(rq);
+            if (rq!=null) replication.enqueueRequest(rq);
         }catch (PreProcessException e){
             Logging.logMessage(Logging.LEVEL_ERROR, this, e.getMessage());
         }       
@@ -414,21 +415,21 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
     @Override
     public void insertFinished(Object context) {
         // answer the REPLICA request
-        Request rq = (Request) context;
-        PinkyRequest orgReq = (PinkyRequest) rq.getOriginal();
+        Status<Request> rq = (Status<Request>) context;
+        PinkyRequest orgReq = (PinkyRequest) rq.getValue().getOriginal();
         if (orgReq!=null){
             orgReq.setResponse(HTTPUtils.SC_OKAY);
             replication.sendResponse(orgReq);
        // send an ACK for the replicated entry & free the request-buffers
         } else {
-            rq.free();
+            rq.getValue().free();
             try {
-                replication.sendACK(RequestPreProcessor.getACKRequest(rq.getLSN(),rq.getSource()));
+                replication.sendACK(new Status(RequestPreProcessor.getACKRequest(rq.getValue().getLSN(),rq.getValue().getSource())));
             } catch (ReplicationException e) {
                 Logging.logMessage(Logging.LEVEL_WARN, this, "ACK could not be send to the master.");
             }    
         }
-        rq.free();
+        rq.getValue().free();
         replication.removeMissing(rq);
     }
 
@@ -439,14 +440,15 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
     @Override
     public void requestFailed(Object context, BabuDBException error) {
         // answer the REPLICA request
-        Request rq = (Request) context;
-        PinkyRequest orgReq = (PinkyRequest) rq.getOriginal();
+        Status<Request> rq = (Status<Request>) context;
+        PinkyRequest orgReq = (PinkyRequest) rq.getValue().getOriginal();
         if (orgReq!=null){
             orgReq.setResponse(HTTPUtils.SC_SERVER_ERROR,"LogEntry could not be replicated due a diskLogger failure: "+error.getMessage());
             replication.sendResponse(orgReq);
         } 
        // give up, or retry? retry!
-        replication.pending.add(rq);
+        rq.setStatus(STATUS.FAILED);
+        replication.enqueueRequest(rq);
     }
 
     /*

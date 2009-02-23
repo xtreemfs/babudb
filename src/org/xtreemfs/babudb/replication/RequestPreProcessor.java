@@ -4,15 +4,13 @@
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
-*/
+ */
 package org.xtreemfs.babudb.replication;
 
 import java.net.InetSocketAddress;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
@@ -20,9 +18,7 @@ import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.Missing.STATUS;
 import org.xtreemfs.babudb.replication.Replication.SYNC_MODUS;
-import org.xtreemfs.common.buffer.BufferPool;
 import org.xtreemfs.common.buffer.ReusableBuffer;
 import org.xtreemfs.common.logging.Logging;
 import org.xtreemfs.foundation.json.JSONException;
@@ -33,6 +29,7 @@ import org.xtreemfs.foundation.pinky.PinkyRequest;
 import org.xtreemfs.foundation.speedy.SpeedyRequest;
 
 import static org.xtreemfs.babudb.replication.Token.*;
+import static org.xtreemfs.babudb.replication.Status.STATUS.*;
 
 /**
  * <p>Static methods for parsing different requests into the replication abstraction.</p>
@@ -44,274 +41,10 @@ import static org.xtreemfs.babudb.replication.Token.*;
  */
 class RequestPreProcessor {    
     /**
-     * <p>A Single static object for creating instances of the enclosing type {@link RequestImpl}.</p>
+     * <p>A Single static object for creating instances of the enclosing type {@link PreProcessException}.</p>
      */
     private final static RequestPreProcessor THIS = new RequestPreProcessor();
     
-    /**
-     * <p>Wrapper for the different requests the {@link ReplicationThread} has to
-     * handle.</p>
-     * 
-     * @author flangner
-     *
-     */
-    class RequestImpl implements Request {
-        /** the identifier for this request */
-        private Token                   token           = null;
- 
-        /** the source, where the request comes from */
-        private InetSocketAddress       source          = null;
-        
-        /** the identification of a {@link LogEntry} */
-        private LSN                     lsn             = null;
-      
-        /** the identifier for a {@link Chunk} */
-        private Chunk                   chunkDetails    = null;
-        
-        /** the {@link LogEntry} received as answer of an request */
-        private LogEntry                logEntry        = null;
-        
-        /** {@link Chunk} data or a serialized {@link LogEntry} to send */
-        private ReusableBuffer          data            = null;
-
-        /** for response issues and to be checked into the DB */
-        private LSMDBRequest            context         = null;
-        
-        /** for response issues too */
-        private PinkyRequest            original        = null;
-        
-        /** for requesting the initial load by pieces */
-        private Map<String, List<Long>> lsmDbMetaData   = null;
-                
-        /** status of an broadCast request - the expected ACKs */
-        private final AtomicInteger     acksExpected    = new AtomicInteger(0);
-        
-        /** the received ACKs */
-        private final AtomicInteger     succeeded       = new AtomicInteger(0);
-        
-        private RequestImpl(Token t,InetSocketAddress s){
-            token = t;
-            source = s;
-        }
-        
-        private final AtomicBoolean     failed          = new AtomicBoolean(false);
-        
-        /*
-         * (non-Javadoc)
-         * @see org.xtreemfs.babudb.replication.Request#free()
-         */
-        public void free() {
-            if (data!=null){
-                BufferPool.free(data);
-                data = null;
-            }
-            
-            if (logEntry!=null){
-                logEntry.free();
-                logEntry = null;
-            }
-        }
-     
-    /*
-     * getter/setter    
-     */      
-        
-        /*
-         * (non-Javadoc)
-         * @see org.xtreemfs.babudb.replication.Request#getToken()
-         */
-        public Token getToken() {
-            return token;
-        }
-
-
-        /*
-         * (non-Javadoc)
-         * @see org.xtreemfs.babudb.replication.Request#getLSN()
-         */
-        public LSN getLSN() {
-            return lsn;
-        }
-
-        /*
-         * (non-Javadoc)
-         * @see org.xtreemfs.babudb.replication.Request#getSource()
-         */
-        public InetSocketAddress getSource() {
-            return source;
-        }
-          
-        /*
-         * (non-Javadoc)
-         * @see org.xtreemfs.babudb.replication.Request#getChunkDetails()
-         */
-        public Chunk getChunkDetails() {
-            return chunkDetails;
-        }
-       
-        /*
-         * (non-Javadoc)
-         * @see org.xtreemfs.babudb.replication.Request#getData()
-         */
-        public ReusableBuffer getData() {
-            return data;
-        }
-
-        /*
-         * (non-Javadoc)
-         * @see org.xtreemfs.babudb.replication.Request#getContext()
-         */
-        public LSMDBRequest getContext() {
-            return context;
-        }
-        
-        /*
-         * (non-Javadoc)
-         * @see org.xtreemfs.babudb.replication.Request#getOriginal()
-         */
-        public PinkyRequest getOriginal() {
-            return original;
-        }
-        
-
-        /*
-         * (non-Javadoc)
-         * @see org.xtreemfs.babudb.replication.Request#getLsmDbMetaInformation()
-         */
-        public Map<String, List<Long>> getLsmDbMetaData() {
-            return lsmDbMetaData;
-        }
-        
-        /*
-         * (non-Javadoc)
-         * @see org.xtreemfs.babudb.replication.Request#getLogEntry()
-         */
-        public LogEntry getLogEntry(){
-            return logEntry;
-        }
-        
-        /*
-         * (non-Javadoc)
-         * @see org.xtreemfs.babudb.replication.Request#setACKsExpected(int)
-         */
-        public void setACKsExpected(int count) {
-            acksExpected.set(count);
-        }
-        
-        /*
-         * (non-Javadoc)
-         * @see org.xtreemfs.babudb.replication.Request#decreaseACKSExpected(int)
-         */
-        public boolean decreaseACKSExpected(int n) {
-            int remaining = acksExpected.decrementAndGet();  
-            int received = succeeded.incrementAndGet();
-            if (n==0) return remaining == 0;
-            else return received == n; 
-        }
-
-        /*
-         * (non-Javadoc)
-         * @see org.xtreemfs.babudb.replication.Request#failed()
-         */
-        public boolean failed() {
-            return this.failed.get();
-        }
-        
-        /*
-         * (non-Javadoc)
-         * @see java.lang.Object#toString()
-         */
-        @Override
-        public String toString() {
-            String string = new String();
-            if (token!=null)            string+="Token: '"+token.toString()+"',";
-            if (source!=null)           string+="Source: '"+source.toString()+"',";
-            if (lsn!=null)              string+="LSN: '"+lsn.toString()+"',";  
-            if (logEntry!=null)         string+="LogEntry: '"+logEntry.toString()+"',"; 
-            if (chunkDetails!=null)     string+="ChunkDetails: '"+chunkDetails.toString()+"',";
-            if (data!=null)             string+="there is some data on the buffer,";
-            if (lsmDbMetaData!=null)    string+="LSM DB metaData: "+lsmDbMetaData.toString()+"',";
-            if (context!=null)          string+="context is set,";
-            if (original!=null)         string+="the original PinkyRequest: "+original.toString()+"',";            
-            string+="Object's id: "+super.toString();
-            return string;
-        }
-
-        @Override
-        /*
-         * (non-Javadoc)
-         * @see java.lang.Comparable#compareTo(java.lang.Object)
-         */      
-        public int compareTo(Request o) {
-            /*
-             * Order for the pending queue in ReplicationThread.
-             */
-            
-            if (token.compareTo(o.getToken())==0){
-                if (lsn!=null) {
-                    if (o.getLSN()!=null)
-                        return lsn.compareTo(o.getLSN());
-                    else
-                        return +1;
-                }else if (chunkDetails!=null){
-                    if (o.getChunkDetails()!=null)
-                        return chunkDetails.compareTo(o.getChunkDetails());
-                    else
-                        return +1;
-                }
-                return 0;
-            }else return token.compareTo(o.getToken());
-        }
-        
-        /*
-         * (non-Javadoc)
-         * @see java.lang.Object#equals(java.lang.Object)
-         */
-        @Override
-        public boolean equals(Object o) {
-            if (o == null) return false;
-            Request rq = (Request) o;
-            
-            if (token.equals(rq.getToken())){
-                switch (rq.getToken()){
-                case ACK:
-                    return (source.equals(rq.getSource())
-                            && lsn.equals(rq.getLSN()));
-                    
-                case CHUNK:
-                    return (source.equals(rq.getSource())
-                            && chunkDetails.equals(rq.getChunkDetails()));
-                    
-                case CHUNK_RP:
-                    return (source.equals(rq.getSource())
-                            && chunkDetails.equals(rq.getChunkDetails()))
-                            && data.equals(rq.getData());
-                    
-                case LOAD:
-                    return source.equals(rq.getSource());
-                    
-                case LOAD_RP:
-                    return (source.equals(rq.getSource())
-                            && lsmDbMetaData.equals(rq.getLsmDbMetaData()));
-                    
-                case REPLICA:
-                    return (lsn.equals(rq.getLSN()));
-                    
-                case REPLICA_BROADCAST:
-                    return (lsn.equals(rq.getLSN())
-                            && data.equals(rq.getData())
-                            && context.equals(rq.getContext()));
-                    
-                case RQ:
-                    return (source.equals(rq.getSource())
-                            && lsn.equals(rq.getLSN()));
-                    
-                default: return false;                
-                }
-            }return false;
-        }
-    }
-
     /**
      * <p>Exception that is thrown due an error while the preprocessing of a request.</p>
      * 
@@ -361,7 +94,7 @@ class RequestPreProcessor {
          */
         final Checksum checksum = new CRC32();
         
-        RequestImpl result = THIS.new RequestImpl(REPLICA_BROADCAST,null);
+        RequestImpl result = new RequestImpl(REPLICA_BROADCAST,null);
         result.lsn = le.getLSN();
         result.context  = le.getAttachment();
         try {
@@ -389,7 +122,6 @@ class RequestPreProcessor {
      * 
      * @return the {@link Request} in replication abstraction.
      */
-    @SuppressWarnings("unchecked")
     static Request getReplicationRequest(PinkyRequest theRequest,Replication frontEnd) throws PreProcessException {
         /**
          * <p>Object for generating check sums</p>
@@ -403,7 +135,7 @@ class RequestPreProcessor {
             throw THIS.new PreProcessException("Request had an illegal Token: "+theRequest.requestURI);
         }
         
-        RequestImpl result = THIS.new RequestImpl(token,theRequest.getClientAddress());
+        RequestImpl result = new RequestImpl(token,theRequest.getClientAddress());
         result.original = theRequest;
         
         String masterSecurityMsg = null;
@@ -473,7 +205,7 @@ class RequestPreProcessor {
                 result.logEntry = LogEntry.deserialize(ReusableBuffer.wrap(theRequest.getBody()), checksum);
                 checksum.reset();
                 result.lsn = result.logEntry.getLSN();                
-                result.context = retrieveRequest(result, frontEnd);              
+                result.context = retrieveRequest(new Status<Request>(result), frontEnd);              
             } catch (Exception e) {
                 checksum.reset();
                 result.free();
@@ -548,7 +280,6 @@ class RequestPreProcessor {
      * 
      * @return the {@link Request} in replication abstraction. Or null, if it was already handled.
      */
-    @SuppressWarnings("unchecked")
     static Request getReplicationRequest(SpeedyRequest theResponse,Replication frontEnd) throws PreProcessException{
         Token token = null;
         try {
@@ -562,7 +293,7 @@ class RequestPreProcessor {
          */
         final Checksum checksum = new CRC32();
         
-        RequestImpl result = THIS.new RequestImpl(token,theResponse.getServer());
+        RequestImpl result = new RequestImpl(token,theResponse.getServer());
         
         String masterSecurityMsg = null;
         String slaveSecurityMsg = null;
@@ -581,18 +312,18 @@ class RequestPreProcessor {
        // for master:       
         case REPLICA:                                         
             try{
-                Request rq = (Request) theResponse.genericAttatchment;
+                Status<Request> rq = (Status<Request>) theResponse.genericAttatchment;
                 if (!frontEnd.syncModus.equals(SYNC_MODUS.ASYNC)){
-                    if (rq.decreaseACKSExpected(frontEnd.n)) {                   
-                        rq.getContext().getListener().insertFinished(rq.getContext());
-                        rq.free();
+                    if (rq.getValue().decreaseACKSExpected(frontEnd.n)) {                   
+                        rq.getValue().getContext().getListener().insertFinished(rq.getValue().getContext());
+                        rq.getValue().free();
                     }
                 }                   
                 theResponse.freeBuffer();
                 
                 // ACK as sub request 
                 result.token = ACK;
-                result.lsn = rq.getLSN();
+                result.lsn = rq.getValue().getLSN();
                 result.source = theResponse.getServer();
             }catch (Exception e){
                 theResponse.freeBuffer();
@@ -715,17 +446,17 @@ class RequestPreProcessor {
                 throw THIS.new PreProcessException(slaveSecurityMsg);
             }
            // get the lsn
-            Missing<LSN> mLSN = null;
+            Status<LSN> mLSN = null;
             try {                
                // make a subRequest
-                mLSN = (Missing<LSN>) theResponse.genericAttatchment;
+                mLSN = (Status<LSN>) theResponse.genericAttatchment;
                 result.source = theResponse.getServer();
-                result.lsn = (LSN) mLSN.c;
+                result.lsn = mLSN.getValue();
                 result.logEntry = LogEntry.deserialize(ReusableBuffer.wrap(theResponse.getResponseBody()), checksum);
                 checksum.reset();
                 result.token = REPLICA;
 
-                result.context = retrieveRequest(result, frontEnd);
+                result.context = retrieveRequest(new Status<Request>(result), frontEnd);
             }catch (Exception e){
                 result.free();
                 if (theResponse.statusCode!=HTTPUtils.SC_OKAY){
@@ -741,7 +472,7 @@ class RequestPreProcessor {
             }
             
             if (theResponse.statusCode!=HTTPUtils.SC_OKAY) {
-                if (mLSN!=null) mLSN.stat = STATUS.FAILED;
+                if (mLSN!=null) mLSN.setStatus(FAILED);
                 result.free();
                 
                 String msg = "RQ ("+result.lsn.toString()+") could not be answered by master: "+result.source.toString()+
@@ -759,11 +490,11 @@ class RequestPreProcessor {
                 throw THIS.new PreProcessException(slaveSecurityMsg,HTTPUtils.SC_UNAUTHORIZED);
             }
             
-            Missing<Chunk> chunk = null;
+            Status<Chunk> chunk = null;
             try {      
                // make a subRequest
-                chunk = (Missing<Chunk>) theResponse.genericAttatchment;
-                result.chunkDetails = (Chunk) chunk.c;
+                chunk = (Status<Chunk>) theResponse.genericAttatchment;
+                result.chunkDetails = chunk.getValue();
                 result.data = ReusableBuffer.wrap(theResponse.getResponseBody());
                 result.token = CHUNK_RP;
             } catch (ClassCastException e) {
@@ -772,7 +503,7 @@ class RequestPreProcessor {
             }
             
             if (theResponse.statusCode!=HTTPUtils.SC_OKAY) {
-                if (chunk!=null) chunk.stat = STATUS.FAILED;
+                if (chunk!=null) chunk.setStatus(FAILED);
                 result.free();
                 
                 String msg = "Could not get CHUNK_RP, because: ";               
@@ -830,9 +561,9 @@ class RequestPreProcessor {
      * @return the LSMDBRequest retrieved from the logEntry
      * @throws Exception
      */
-    private static LSMDBRequest retrieveRequest (Request rq,Replication frontEnd) throws Exception{
+    private static LSMDBRequest retrieveRequest (Status<Request> rq,Replication frontEnd) throws Exception{
         // build a LSMDBRequest
-        InsertRecordGroup irg = InsertRecordGroup.deserialize(rq.getLogEntry().getPayload());
+        InsertRecordGroup irg = InsertRecordGroup.deserialize(rq.getValue().getLogEntry().getPayload());
         
         if (!frontEnd.dbInterface.databases.containsKey(irg.getDatabaseId()))
             throw THIS.new PreProcessException("Database does not exist.Load DB!");
@@ -849,7 +580,7 @@ class RequestPreProcessor {
      */
     static Request getReplicationRequest(String databaseName,
             int numIndices) throws PreProcessException {
-        RequestImpl result = THIS.new RequestImpl(CREATE,null);
+        RequestImpl result = new RequestImpl(CREATE,null);
         List<Object> data = new LinkedList<Object>();
         data.add(databaseName);
         data.add(String.valueOf(numIndices));
@@ -868,7 +599,7 @@ class RequestPreProcessor {
      * @return a copy {@link Request}.
      */
     static Request getReplicationRequest(String sourceDB, String destDB) throws PreProcessException {
-        RequestImpl result = THIS.new RequestImpl(COPY,null);
+        RequestImpl result = new RequestImpl(COPY,null);
         List<Object> data = new LinkedList<Object>();
         data.add(sourceDB);
         data.add(destDB);
@@ -888,7 +619,7 @@ class RequestPreProcessor {
      */
     static Request getReplicationRequest(String databaseName,
             boolean deleteFiles) throws PreProcessException {
-        RequestImpl result = THIS.new RequestImpl(DELETE,null);
+        RequestImpl result = new RequestImpl(DELETE,null);
         List<Object> data = new LinkedList<Object>();
         data.add(databaseName);
         data.add(String.valueOf(deleteFiles));
@@ -909,7 +640,7 @@ class RequestPreProcessor {
      * @return an ACK-request for the specified LSN with the specified destination.
      */
     static Request getACKRequest(LSN lsn, InetSocketAddress destination) {
-        RequestImpl result = THIS.new RequestImpl(ACK,destination);
+        RequestImpl result = new RequestImpl(ACK,destination);
         result.lsn = lsn;
         return result;
     }  
@@ -922,7 +653,7 @@ class RequestPreProcessor {
      * @return dummy REPLICA request for testing against the pending queue.
      */
     static Request getProbeREPLICA(LSN lsn) {
-        RequestImpl result = THIS.new RequestImpl(REPLICA,null);
+        RequestImpl result = new RequestImpl(REPLICA,null);
         result.lsn = lsn;
         return result;
     }
