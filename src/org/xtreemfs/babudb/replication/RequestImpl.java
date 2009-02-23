@@ -172,6 +172,8 @@ class RequestImpl implements Request {
      * @see org.xtreemfs.babudb.replication.Request#decreaseMaxReceivableACKs(int)
      */
     public boolean decreaseMaxReceivableACKs(int count) {
+        assert (count > 0);
+        
         int newMax = 0;
         for (int i=0;i<count;i++)
             newMax = maxReceivableACKs.decrementAndGet();
