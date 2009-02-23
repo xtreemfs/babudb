@@ -22,14 +22,14 @@ import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.replication.ReplicationThread.ReplicationException;
 import org.xtreemfs.babudb.replication.RequestPreProcessor.PreProcessException;
 import org.xtreemfs.babudb.replication.Status.STATUS;
-import org.xtreemfs.common.logging.Logging;
-import org.xtreemfs.foundation.LifeCycleListener;
-import org.xtreemfs.foundation.pinky.HTTPUtils;
-import org.xtreemfs.foundation.pinky.PinkyRequest;
-import org.xtreemfs.foundation.pinky.PinkyRequestListener;
-import org.xtreemfs.foundation.pinky.SSLOptions;
-import org.xtreemfs.foundation.speedy.SpeedyRequest;
-import org.xtreemfs.foundation.speedy.SpeedyResponseListener;
+import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.include.foundation.LifeCycleListener;
+import org.xtreemfs.include.foundation.pinky.HTTPUtils;
+import org.xtreemfs.include.foundation.pinky.PinkyRequest;
+import org.xtreemfs.include.foundation.pinky.PinkyRequestListener;
+import org.xtreemfs.include.foundation.pinky.SSLOptions;
+import org.xtreemfs.include.foundation.speedy.SpeedyRequest;
+import org.xtreemfs.include.foundation.speedy.SpeedyResponseListener;
 
 /**
  * <p>Configurable settings and default approach for the {@link ReplicationThread}.</p>
@@ -39,35 +39,7 @@ import org.xtreemfs.foundation.speedy.SpeedyResponseListener;
  * @author flangner
  */
 
-public class Replication implements PinkyRequestListener,SpeedyResponseListener,LifeCycleListener,BabuDBRequestListener {   
-    /**
-     * <p>Describes, how to handle failed or lost REPLICA requests.</p>
-     * 
-     * @author flangner
-     */
-    public static enum SYNC_MODUS { 
-        /**
-         * <p>Fully synchronized. An insert will be acknowledged, if all slaves acknowledged the insert.
-         * Could be >never< if a slave is not responding.</p>
-         * <p>Otherwise it will fail.</p>
-         */
-        SYNC, 
-        /**
-         * <p>Asynchronous. The Insert is acknowledged, when REPLICA_BROADCAST attempt was finished.</p>
-         * <p>There is no information about, whether the attempt was successful, or not.</p>
-         */
-        ASYNC, 
-        /** // TODO make it ready
-         * Function is not stable!
-         * 
-         * <p>N synchronized. An insert will be acknowledged, if at minimum >n< slaves acknowledged the insert.
-         * Could be >never< if a slave is not responding.</p>
-         * <p>Otherwise it will fail.</p>
-         */
-        NSYNC 
-         
-    };
-    
+public class Replication implements PinkyRequestListener,SpeedyResponseListener,LifeCycleListener,BabuDBRequestListener {       
     /**
      * <p>Default Port, where all {@link ReplicationThread}s designated as master are listening at.</p> 
      */  
@@ -115,12 +87,14 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
     
     /**
      * <p>Actual chosen synchronization modus.</p>
+     * <p>syncN == 0: asynchronous mode</br>
+     * syncN == slaves.size(): synchronous mode</br>
+     * syncN > 0 && syncN < slaves.size(): N -sync mode with N = syncN</p>
      */
-    volatile SYNC_MODUS                 syncModus       = SYNC_MODUS.SYNC;
-    volatile int                        n;
+    volatile int                        syncN;
     
     /**
-     * <p>Starts the {@link ReplicationThread} with {@link org.xtreemfs.foundation.pinky.PipelinedPinky} listening on default port.
+     * <p>Starts the {@link ReplicationThread} with {@link org.xtreemfs.include.foundation.pinky.PipelinedPinky} listening on default port.
      * 
      * <p>Is a Master with <code>slaves</code>.</p>
      * 
@@ -133,12 +107,12 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      * 
      * @throws BabuDBException - if replication could not be initialized.
      */
-    public Replication(List<InetSocketAddress> slaves, SSLOptions sslOptions, BabuDBImpl babu, SYNC_MODUS mode) throws BabuDBException {
+    public Replication(List<InetSocketAddress> slaves, SSLOptions sslOptions, BabuDBImpl babu, int mode) throws BabuDBException {
         this(slaves,sslOptions,MASTER_PORT,babu,mode);
     }
     
     /**
-     * <p>Starts the {@link ReplicationThread} with {@link org.xtreemfs.foundation.pinky.PipelinedPinky} listening on <code>port</code>.
+     * <p>Starts the {@link ReplicationThread} with {@link org.xtreemfs.include.foundation.pinky.PipelinedPinky} listening on <code>port</code>.
      * 
      * <p>Is a Master with <code>slaves</code>.</p>
      * 
@@ -151,11 +125,12 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      * 
      * @throws BabuDBException - if replication could not be initialized.
      */
-    public Replication(List<InetSocketAddress> slaves, SSLOptions sslOptions,int port,BabuDBImpl babu, SYNC_MODUS mode) throws BabuDBException {
+    public Replication(List<InetSocketAddress> slaves, SSLOptions sslOptions,int port,BabuDBImpl babu, int mode) throws BabuDBException {
         assert (slaves!=null);
         assert (babu!=null);
         
-        this.syncModus = mode;
+//        this.syncModus = mode;
+        this.syncN = mode;
         this.slaves = slaves;
         this.isMaster.set(true);
         dbInterface = babu;
@@ -164,7 +139,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
     }
 
     /**
-     * <p>Starts the {@link ReplicationThread} with {@link org.xtreemfs.foundation.pinky.PipelinedPinky} listening on default port.
+     * <p>Starts the {@link ReplicationThread} with {@link org.xtreemfs.include.foundation.pinky.PipelinedPinky} listening on default port.
      * 
      * <p>Is a Slave with a <code>master</code>.</p>
      * 
@@ -175,14 +150,14 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      * @param babu
      * @param mode
      * 
-     * @throws BabuDBException - if replication could not be initialised.
+     * @throws BabuDBException - if replication could not be initialized.
      */
-    public Replication(InetSocketAddress master, SSLOptions sslOptions,BabuDBImpl babu,SYNC_MODUS mode) throws BabuDBException {
+    public Replication(InetSocketAddress master, SSLOptions sslOptions,BabuDBImpl babu,int mode) throws BabuDBException {
         this(master,sslOptions,SLAVE_PORT,babu,mode);
     }
     
     /**
-     * <p>Starts the {@link ReplicationThread} with {@link org.xtreemfs.foundation.pinky.PipelinedPinky} listening on <code>port</code>.
+     * <p>Starts the {@link ReplicationThread} with {@link org.xtreemfs.include.foundation.pinky.PipelinedPinky} listening on <code>port</code>.
      * 
      * <p>Is a Slave with a <code>master</code>.</p>
      * 
@@ -196,10 +171,11 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      * 
      * @throws BabuDBException - if replication could not be initialised.
      */
-    public Replication(InetSocketAddress master, SSLOptions sslOptions,int port,BabuDBImpl babu,SYNC_MODUS mode) throws BabuDBException {
+    public Replication(InetSocketAddress master, SSLOptions sslOptions,int port,BabuDBImpl babu,int mode) throws BabuDBException {
         assert (master!=null);
         
-        this.syncModus = mode;
+//        this.syncModus = mode;
+        this.syncN = mode;
         this.master = master;
         this.isMaster.set(false);
         dbInterface = babu;
@@ -571,9 +547,18 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      * @param slaves the slaves to set
      */
     public void setSlaves(List<InetSocketAddress> slaves) throws InterruptedException {
+        int mode = syncN;
+        
+        if (slaves.size() < mode){
+            Logging.logMessage(Logging.LEVEL_WARN, this, "Replication mode has been adjusted automatically to fit the new slaves count.");
+            mode = slaves.size();
+        }
+        
+        
         synchronized (lock) {
             if (!replication.isAlive()){
-                this.slaves = slaves;  
+                this.slaves = slaves;
+                this.syncN = mode;
                 this.master = null;
                 this.isMaster.set(true);
                 replication.toMaster();
@@ -583,6 +568,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
                     replication.halt.wait();
                     
                     this.slaves = slaves;  
+                    this.syncN = mode;
                     this.master = null;
                     this.isMaster.set(true);
                     replication.toMaster();
@@ -603,29 +589,27 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
     }
     
     /**
+     * <p>mode == 0: asynchronous mode</br>
+     * mode == slaves.size(): synchronous mode</br>
+     * mode > 0 && mode < slaves.size(): N-sync mode with N = mode</p>
      * 
-     * @param m
-     * @param n
+     * @param mode
      * @throws InterruptedException
      */
-    public void setSyncModus(SYNC_MODUS m,int n) throws InterruptedException{  
+    public void setSyncModus(int mode) throws BabuDBException,InterruptedException{  
+        if (mode<0 || mode>slaves.size()) throw new BabuDBException(
+                ErrorCode.REPLICATION_FAILURE,"The attempt to set an illegal replication-mode ("+mode+") was denied. " +
+        	"Legal modes lie between 0 and "+slaves.size());
+        
         synchronized (lock) {
             if (!replication.isAlive()){
-                this.syncModus = m;
-                if (m==SYNC_MODUS.NSYNC)
-                    this.n = n;
-                else
-                    this.n = 0;
+                this.syncN = mode;
             } else {
                 synchronized (replication.halt) {
                     replication.halt.set(true);
                     replication.halt.wait();
                     
-                    this.syncModus = m;
-                    if (m==SYNC_MODUS.NSYNC)
-                        this.n = n;
-                    else
-                        this.n = 0;
+                    this.syncN = mode;
                     
                     replication.halt.set(false);
                     replication.halt.notify();

@@ -14,8 +14,8 @@ import java.util.Map;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.common.buffer.ReusableBuffer;
-import org.xtreemfs.foundation.pinky.PinkyRequest;
+import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import org.xtreemfs.include.foundation.pinky.PinkyRequest;
 
 /**
  * <p>Interface for a replication request.</p>
@@ -82,23 +82,37 @@ interface Request extends Comparable<Request>{
     Map<String, List<Long>> getLsmDbMetaData();
     
     /**
-     * sets the number of ACKs expected to a broad cast request
+     * sets the maximal number of ACKs receivable by slaves
+     * 
+     * @param count
+     */
+    void setMaxReceivableACKs(int count);
+    
+    /**
+     * Decreases the counter for receivable sub-requests by <code>count</code>.
+     * 
+     * @param count
+     * @return true, if the maximal number of receivable ACKs is GE than the minimal number of ACKs expected by the application. false otherwise 
+     */
+    boolean decreaseMaxReceivableACKs(int count);
+    
+    /**
+     * sets the number of minimal amount of expectable ACKs for a broad cast request to be successful
      *  
      * @param count
      */
-    void setACKsExpected(int count);
+    void setMinExpectableACKs(int count);
     
     /**
-     * Decreases the sub-request-counter
+     * Decreases the counter for expectable sub-requests.
      * 
-     * @param n - parameter of the NSync mode.
-     * @return true, if counter was decreased to 0, or n equals the number of succeeded requests, false otherwise.
+     * @return true, if counter was decreased to 0, false otherwise.
      */
-    boolean decreaseACKSExpected(int n);
+    boolean decreaseMinExpectableACKs();
     
     /**
      * 
-     * @return true if a broadCast request failed
+     * @return true if there are still some open expected ACKs which have not been received.
      */
     boolean failed();
     

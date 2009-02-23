@@ -20,7 +20,7 @@ import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.index.overlay.MultiOverlayBufferTree;
 import org.xtreemfs.babudb.index.overlay.MultiOverlayStringTree;
 import org.xtreemfs.babudb.index.overlay.MultiOverlayTree;
-import org.xtreemfs.common.buffer.ReusableBuffer;
+import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class MultiOverlayTreeTest extends TestCase {
     

@@ -29,19 +29,19 @@ import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.common.buffer.ReusableBuffer;
-import org.xtreemfs.common.logging.Logging;
-import org.xtreemfs.foundation.json.JSONException;
-import org.xtreemfs.foundation.json.JSONParser;
-import org.xtreemfs.foundation.json.JSONString;
-import org.xtreemfs.foundation.pinky.HTTPUtils;
-import org.xtreemfs.foundation.pinky.PinkyRequest;
-import org.xtreemfs.foundation.pinky.PinkyRequestListener;
-import org.xtreemfs.foundation.pinky.PipelinedPinky;
-import org.xtreemfs.foundation.pinky.HTTPUtils.DATA_TYPE;
-import org.xtreemfs.foundation.speedy.MultiSpeedy;
-import org.xtreemfs.foundation.speedy.SpeedyRequest;
-import org.xtreemfs.foundation.speedy.SpeedyResponseListener;
+import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.include.foundation.json.JSONException;
+import org.xtreemfs.include.foundation.json.JSONParser;
+import org.xtreemfs.include.foundation.json.JSONString;
+import org.xtreemfs.include.foundation.pinky.HTTPUtils;
+import org.xtreemfs.include.foundation.pinky.PinkyRequest;
+import org.xtreemfs.include.foundation.pinky.PinkyRequestListener;
+import org.xtreemfs.include.foundation.pinky.PipelinedPinky;
+import org.xtreemfs.include.foundation.pinky.HTTPUtils.DATA_TYPE;
+import org.xtreemfs.include.foundation.speedy.MultiSpeedy;
+import org.xtreemfs.include.foundation.speedy.SpeedyRequest;
+import org.xtreemfs.include.foundation.speedy.SpeedyResponseListener;
 
 public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListener{        
     public static final int PORT = 34567;
@@ -98,7 +98,7 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
         System.out.println("starting up databases...");
         
         // start the master       
-        master = (BabuDBImpl) BabuDBFactory.getMasterBabuDB(master_baseDir,master_baseDir,1,0,0,SyncMode.SYNC_WRITE,0,0,slaves,0,null,SYNC_MODUS.SYNC);
+        master = (BabuDBImpl) BabuDBFactory.getMasterBabuDB(master_baseDir,master_baseDir,1,0,0,SyncMode.SYNC_WRITE,0,0,slaves,0,null,slaves.size());
         
         // start the slave
         slave = (BabuDBImpl) BabuDBFactory.getSlaveBabuDB(slave1_baseDir,slave1_baseDir,1,0,0,SyncMode.SYNC_WRITE,0,0,snifferAddress,slaves,0,null);

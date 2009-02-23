@@ -26,15 +26,15 @@ import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.RequestPreProcessor.PreProcessException;
-import org.xtreemfs.common.buffer.ReusableBuffer;
-import org.xtreemfs.common.logging.Logging;
-import org.xtreemfs.foundation.json.JSONException;
-import org.xtreemfs.foundation.json.JSONParser;
-import org.xtreemfs.foundation.json.JSONString;
-import org.xtreemfs.foundation.pinky.HTTPUtils;
-import org.xtreemfs.foundation.pinky.PinkyRequest;
-import org.xtreemfs.foundation.pinky.HTTPUtils.DATA_TYPE;
-import org.xtreemfs.foundation.speedy.SpeedyRequest;
+import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.include.foundation.json.JSONException;
+import org.xtreemfs.include.foundation.json.JSONParser;
+import org.xtreemfs.include.foundation.json.JSONString;
+import org.xtreemfs.include.foundation.pinky.HTTPUtils;
+import org.xtreemfs.include.foundation.pinky.PinkyRequest;
+import org.xtreemfs.include.foundation.pinky.HTTPUtils.DATA_TYPE;
+import org.xtreemfs.include.foundation.speedy.SpeedyRequest;
 
 /*
 import java.util.Map;

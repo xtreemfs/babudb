@@ -12,9 +12,9 @@ import java.nio.ByteBuffer;
 
 import org.xtreemfs.babudb.index.ByteRange;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
-import org.xtreemfs.common.buffer.BufferPool;
-import org.xtreemfs.common.buffer.ReusableBuffer;
-import org.xtreemfs.common.util.OutputUtils;
+import org.xtreemfs.include.common.buffer.BufferPool;
+import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import org.xtreemfs.include.common.util.OutputUtils;
 
 public class FixedLenMiniPage extends MiniPage {
     

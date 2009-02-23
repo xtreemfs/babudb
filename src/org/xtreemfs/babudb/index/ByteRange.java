@@ -10,8 +10,8 @@ package org.xtreemfs.babudb.index;
 
 import java.nio.ByteBuffer;
 
-import org.xtreemfs.common.buffer.ReusableBuffer;
-import org.xtreemfs.common.util.OutputUtils;
+import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import org.xtreemfs.include.common.util.OutputUtils;
 
 /**
  * A range of bytes in a buffer.

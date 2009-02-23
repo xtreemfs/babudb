@@ -9,7 +9,7 @@ package org.xtreemfs.babudb.replication;
 
 import java.io.File;
 
-import org.xtreemfs.common.buffer.ReusableBuffer;
+import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class LSMDatabaseMOCK {
 

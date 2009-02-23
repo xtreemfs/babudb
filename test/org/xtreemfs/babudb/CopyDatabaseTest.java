@@ -12,7 +12,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
-import org.xtreemfs.common.logging.Logging;
+import org.xtreemfs.include.common.logging.Logging;
+
 import static org.junit.Assert.*;
 
 /**

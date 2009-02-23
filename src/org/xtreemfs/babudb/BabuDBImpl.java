@@ -46,11 +46,10 @@ import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
 import org.xtreemfs.babudb.replication.Replication;
-import org.xtreemfs.babudb.replication.Replication.SYNC_MODUS;
-import org.xtreemfs.common.buffer.BufferPool;
-import org.xtreemfs.common.buffer.ReusableBuffer;
-import org.xtreemfs.common.logging.Logging;
-import org.xtreemfs.foundation.pinky.SSLOptions;
+import org.xtreemfs.include.common.buffer.BufferPool;
+import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.include.foundation.pinky.SSLOptions;
 
 /**
  * <p><b>Please use the {@link BabuDBFactory} for retrieving an instance of {@link BabuDB}.</b></p>
@@ -169,14 +168,16 @@ public class BabuDBImpl implements BabuDB {
      *        But if the <code>slaves</code> or <code>master</code> are set to null it will be started without replication.</p>
      * @param port where the application listens at. (use 0 for default configuration)
      * @param ssl if set SSL will be used while replication.
-     * @param repMode synchronization mode of the replication
+     * @param repMode <p>repMode == 0: asynchronous replication mode</br>
+     *                   repMode == slaves.size(): synchronous replication mode</br>
+     *                   repMode > 0 && repMode < slaves.size(): N -sync replication mode with N = repMode</p>
      * 
      * @throws BabuDBException
      */
     BabuDBImpl(String baseDir, String dbLogDir, int numThreads,
             long maxLogfileSize, int checkInterval, SyncMode syncMode, int pseudoSyncWait,
             int maxQ, InetSocketAddress master, List<InetSocketAddress> slaves, int port,
-            SSLOptions ssl, boolean isMaster, SYNC_MODUS repMode)
+            SSLOptions ssl, boolean isMaster, int repMode)
             throws BabuDBException {
         // start the replication service
         if (master != null && slaves != null) {

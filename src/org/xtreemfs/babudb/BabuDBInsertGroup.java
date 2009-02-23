@@ -9,9 +9,7 @@
 package org.xtreemfs.babudb;
 
 import org.xtreemfs.babudb.lsmdb.*;
-import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
-import org.xtreemfs.babudb.lsmdb.LSMDatabase;
-import org.xtreemfs.common.buffer.ReusableBuffer;
+import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 /**
  *

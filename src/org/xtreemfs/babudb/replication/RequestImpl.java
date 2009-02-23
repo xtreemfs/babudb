@@ -10,15 +10,14 @@ package org.xtreemfs.babudb.replication;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.common.buffer.BufferPool;
-import org.xtreemfs.common.buffer.ReusableBuffer;
-import org.xtreemfs.foundation.pinky.PinkyRequest;
+import org.xtreemfs.include.common.buffer.BufferPool;
+import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import org.xtreemfs.include.foundation.pinky.PinkyRequest;
 
 /**
  * <p><b>To get instances of that use the {@link RequestPreProcessor}!</b></p>
@@ -31,38 +30,35 @@ import org.xtreemfs.foundation.pinky.PinkyRequest;
  */
 class RequestImpl implements Request {
     /** the identifier for this request */
-    Token                   token           = null;
+    Token                       token                   = null;
 
     /** the source, where the request comes from */
-    InetSocketAddress       source          = null;
+    InetSocketAddress           source                  = null;
     
     /** the identification of a {@link LogEntry} */
-    LSN                     lsn             = null;
+    LSN                         lsn                     = null;
   
     /** the identifier for a {@link Chunk} */
-    Chunk                   chunkDetails    = null;
+    Chunk                       chunkDetails            = null;
     
     /** the {@link LogEntry} received as answer of an request */
-    LogEntry                logEntry        = null;
+    LogEntry                    logEntry                = null;
     
     /** {@link Chunk} data or a serialized {@link LogEntry} to send */
-    ReusableBuffer          data            = null;
+    ReusableBuffer              data                    = null;
 
     /** for response issues and to be checked into the DB */
-    LSMDBRequest            context         = null;
+    LSMDBRequest                context                 = null;
     
     /** for response issues too */
-    PinkyRequest            original        = null;
+    PinkyRequest                original                = null;
     
     /** for requesting the initial load by pieces */
-    Map<String, List<Long>> lsmDbMetaData   = null;
+    Map<String, List<Long>>     lsmDbMetaData           = null;
             
     /** status of an broadCast request - the expected ACKs */
-    final AtomicInteger     acksExpected    = new AtomicInteger(0);
-    
-    /** the received ACKs */
-    final AtomicInteger     succeeded       = new AtomicInteger(0);    
-    final AtomicBoolean     failed          = new AtomicBoolean(false);
+    private final AtomicInteger maxReceivableACKs       = new AtomicInteger(0);
+    private final AtomicInteger minExpectableACKs       = new AtomicInteger(0);
     
     RequestImpl(Token t,InetSocketAddress s){
         token = t;
@@ -165,29 +161,50 @@ class RequestImpl implements Request {
     
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.Request#setACKsExpected(int)
+     * @see org.xtreemfs.babudb.replication.Request#setMaxReceivableACKs(int)
      */
-    public void setACKsExpected(int count) {
-        acksExpected.set(count);
-    }
-    
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.Request#decreaseACKSExpected(int)
-     */
-    public boolean decreaseACKSExpected(int n) {
-        int remaining = acksExpected.decrementAndGet();  
-        int received = succeeded.incrementAndGet();
-        if (n==0) return remaining == 0;
-        else return received == n; 
+    public void setMaxReceivableACKs(int count) {
+        maxReceivableACKs.set(count);
     }
 
     /*
      * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.Request#decreaseMaxReceivableACKs(int)
+     */
+    public boolean decreaseMaxReceivableACKs(int count) {
+        int newMax = 0;
+        for (int i=0;i<count;i++)
+            newMax = maxReceivableACKs.decrementAndGet();
+        
+        assert (newMax >= 0);
+        
+        return newMax >= minExpectableACKs.get();
+    }
+    
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.Request#setMinExpectableACKs(int)
+     */
+    public void setMinExpectableACKs(int count) {
+        minExpectableACKs.set(count);
+    }
+
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.Request#decreaseMinExpectableACKs()
+     */
+    public boolean decreaseMinExpectableACKs() {
+        int remaining = minExpectableACKs.decrementAndGet();
+        maxReceivableACKs.decrementAndGet();        
+        return remaining == 0;
+    }
+    
+    /*
+     * (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.Request#failed()
      */
-    public boolean failed() {
-        return this.failed.get();
+    public boolean failed(){
+        return minExpectableACKs.get()!=0;
     }
     
     /*

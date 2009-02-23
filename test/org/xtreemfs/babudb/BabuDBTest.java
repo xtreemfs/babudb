@@ -16,7 +16,7 @@ import org.junit.Test;
 import org.xtreemfs.babudb.BabuDBImpl;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.LSMLookupInterface;
-import org.xtreemfs.common.logging.Logging;
+import org.xtreemfs.include.common.logging.Logging;
 
 import static org.junit.Assert.*;
 

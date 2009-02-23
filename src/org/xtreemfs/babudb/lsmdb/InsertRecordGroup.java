@@ -11,7 +11,8 @@ package org.xtreemfs.babudb.lsmdb;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
-import org.xtreemfs.common.buffer.ReusableBuffer;
+
+import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 /**
  * 
