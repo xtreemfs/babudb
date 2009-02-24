@@ -114,7 +114,7 @@ public class OverlayMergeIterator<K, V> implements Iterator<Entry<K, V>> {
             if (entry == null)
                 return null;
             
-            if (entry.getValue() != nullValue)
+            if (nullValue == null || entry.getValue() != nullValue)
                 return entry;
         }
     }

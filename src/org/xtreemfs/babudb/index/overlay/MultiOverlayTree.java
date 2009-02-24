@@ -4,7 +4,7 @@
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
-*/
+ */
 
 package org.xtreemfs.babudb.index.overlay;
 
@@ -123,6 +123,7 @@ public class MultiOverlayTree<K, V> {
     public void cleanup() {
         overlayMap.clear();
         treeList.next = null;
+        overlayId = 0;
     }
     
     /**
@@ -136,12 +137,12 @@ public class MultiOverlayTree<K, V> {
      */
     public void insert(K key, V value) {
         
-        if (value == null) {
-            if (overlayId == 0 || lookup(key, overlayId - 1) == null) {
-                treeList.tree.remove(key);
-            } else
-                treeList.tree.put(key, nullValue);
-        } else
+        // delete ...
+        if (value == null)
+            treeList.tree.put(key, nullValue);
+        
+        // insert ...
+        else
             treeList.tree.put(key, value);
     }
     
@@ -180,10 +181,15 @@ public class MultiOverlayTree<K, V> {
      * @param to
      *            the last key (exclusively); if <code>null</code>, the last key
      *            in the map will be used (inclusively)
+     * @param includeDeletedEntries
+     *            If <code>true</code>, entries that have been marked as deleted
+     *            will be included in the iterator. The value of such entries
+     *            will be the <code>nullValue</code> specified in the
+     *            constructor method.
      * @return an iterator with values
      */
-    public Iterator<Entry<K, V>> rangeLookup(K from, K to) {
-        return rangeLookup(from, to, treeList);
+    public Iterator<Entry<K, V>> rangeLookup(K from, K to, boolean includeDeletedEntries) {
+        return rangeLookup(from, to, treeList, includeDeletedEntries);
     }
     
     /**
@@ -199,10 +205,16 @@ public class MultiOverlayTree<K, V> {
      *            in the map will be used (inclusively)
      * @param overlayId
      *            the ID of the overlay
+     * @param includeDeletedEntries
+     *            If <code>true</code>, entries that have been marked as deleted
+     *            will be included in the iterator. The value of such entries
+     *            will be the <code>nullValue</code> specified in the
+     *            constructor method.
      * @return an iterator with key-value pairs
      */
-    public Iterator<Entry<K, V>> rangeLookup(K from, K to, int overlayId) {
-        return rangeLookup(from, to, overlayMap.get(overlayId));
+    public Iterator<Entry<K, V>> rangeLookup(K from, K to, int overlayId,
+        boolean includeDeletedEntries) {
+        return rangeLookup(from, to, overlayMap.get(overlayId), includeDeletedEntries);
     }
     
     /**
@@ -275,7 +287,8 @@ public class MultiOverlayTree<K, V> {
         return null;
     }
     
-    private Iterator<Entry<K, V>> rangeLookup(K from, K to, OverlayTreeList treeList) {
+    private Iterator<Entry<K, V>> rangeLookup(K from, K to, OverlayTreeList treeList,
+        boolean includeDeletedEntries) {
         
         // initialize a final list w/ submap iterators of all overlays
         final List<Iterator<Entry<K, V>>> itList = new ArrayList<Iterator<Entry<K, V>>>();
@@ -290,6 +303,7 @@ public class MultiOverlayTree<K, V> {
                 itList.add(list.tree.headMap(to).entrySet().iterator());
         }
         
-        return new OverlayMergeIterator<K, V>(itList, comparator, nullValue);
+        return new OverlayMergeIterator<K, V>(itList, comparator, includeDeletedEntries ? null
+            : nullValue);
     }
 }

@@ -27,11 +27,11 @@ public class CopyDatabaseTest {
     private BabuDB database;
     
     public CopyDatabaseTest() {
-        Logging.start(Logging.LEVEL_DEBUG);
     }
 
     @Before
     public void setUp() throws Exception {
+        Logging.start(Logging.LEVEL_DEBUG);
         Process p = Runtime.getRuntime().exec("rm -rf "+baseDir);
         p.waitFor();
     }
