@@ -17,6 +17,7 @@ import junit.textui.TestRunner;
 
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
+import org.xtreemfs.include.common.logging.Logging;
 
 public class LSMTreeTest extends TestCase {
     
@@ -28,6 +29,7 @@ public class LSMTreeTest extends TestCase {
     }
     
     public void setUp() {
+        Logging.start(Logging.LEVEL_ERROR);
         new File(SNAP_FILE).delete();
         new File(SNAP_FILE2).delete();
     }

@@ -4,7 +4,7 @@
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
-*/
+ */
 
 package org.xtreemfs.babudb.index;
 
@@ -51,6 +51,10 @@ public class LSMTree {
     public byte[] lookup(byte[] key) {
         
         byte[] result = overlay.lookup(key);
+        
+        if (result == NULL_ELEMENT)
+            return null;
+        
         if (result != null)
             return result;
         
@@ -69,6 +73,10 @@ public class LSMTree {
     public byte[] lookup(byte[] key, int snapId) {
         
         byte[] result = overlay.lookup(key, snapId);
+        
+        if (result == NULL_ELEMENT)
+            return null;
+        
         if (result != null)
             return result;
         
@@ -91,13 +99,13 @@ public class LSMTree {
         
         List<Iterator<Entry<byte[], byte[]>>> list = new ArrayList<Iterator<Entry<byte[], byte[]>>>(
             2);
-        list.add(overlay.prefixLookup(prefix));
+        list.add(overlay.prefixLookup(prefix, true));
         if (index != null) {
             byte[][] rng = comp.prefixToRange(prefix);
             list.add(index.rangeLookup(rng[0], rng[1]));
         }
         
-        return new OverlayMergeIterator<byte[], byte[]>(list, comp, null);
+        return new OverlayMergeIterator<byte[], byte[]>(list, comp, NULL_ELEMENT);
     }
     
     /**
@@ -116,7 +124,7 @@ public class LSMTree {
         
         List<Iterator<Entry<byte[], byte[]>>> list = new ArrayList<Iterator<Entry<byte[], byte[]>>>(
             2);
-        list.add(overlay.prefixLookup(prefix, snapId));
+        list.add(overlay.prefixLookup(prefix, snapId, true));
         if (index != null) {
             byte[][] rng = comp.prefixToRange(prefix);
             list.add(index.rangeLookup(rng[0], rng[1]));

@@ -59,6 +59,12 @@ import org.xtreemfs.include.foundation.pinky.SSLOptions;
  *
  */
 public class BabuDBImpl implements BabuDB {
+    
+    public static final int DEBUG_LEVEL = Logging.LEVEL_WARN;
+    
+    static {
+        Logging.start(DEBUG_LEVEL);
+    }
 
     /**
      * The database configuration file.

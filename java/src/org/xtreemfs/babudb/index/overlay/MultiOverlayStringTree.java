@@ -4,7 +4,7 @@
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
-*/
+ */
 
 package org.xtreemfs.babudb.index.overlay;
 
@@ -17,12 +17,13 @@ public class MultiOverlayStringTree<V> extends MultiOverlayTree<String, V> {
         super(markerElement);
     }
     
-    public Iterator<Entry<String, V>> prefixLookup(String prefix) {
-        return rangeLookup(prefix, getNextPrefix(prefix));
+    public Iterator<Entry<String, V>> prefixLookup(String prefix, boolean includeDeletedEntries) {
+        return rangeLookup(prefix, getNextPrefix(prefix), includeDeletedEntries);
     }
     
-    public Iterator<Entry<String, V>> prefixLookup(String prefix, int overlayId) {
-        return rangeLookup(prefix, getNextPrefix(prefix), overlayId);
+    public Iterator<Entry<String, V>> prefixLookup(String prefix, int overlayId,
+        boolean includeDeletedEntries) {
+        return rangeLookup(prefix, getNextPrefix(prefix), overlayId, includeDeletedEntries);
     }
     
     private String getNextPrefix(String prefix) {

@@ -4,7 +4,7 @@
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
-*/
+ */
 
 package org.xtreemfs.babudb.index.overlay;
 
@@ -22,20 +22,21 @@ public class MultiOverlayBufferTree extends MultiOverlayTree<byte[], byte[]> {
         this.comp = comp;
     }
     
-    public Iterator<Entry<byte[], byte[]>> prefixLookup(byte[] prefix) {
+    public Iterator<Entry<byte[], byte[]>> prefixLookup(byte[] prefix, boolean includeDeletedEntries) {
         
         byte[][] keyRange = comp.prefixToRange(prefix);
         assert (keyRange.length == 2);
         
-        return rangeLookup(keyRange[0], keyRange[1]);
+        return rangeLookup(keyRange[0], keyRange[1], includeDeletedEntries);
     }
     
-    public Iterator<Entry<byte[], byte[]>> prefixLookup(byte[] prefix, int overlayId) {
+    public Iterator<Entry<byte[], byte[]>> prefixLookup(byte[] prefix, int overlayId,
+        boolean includeDeletedEntries) {
         
         byte[][] keyRange = comp.prefixToRange(prefix);
         assert (keyRange.length == 2);
         
-        return rangeLookup(keyRange[0], keyRange[1], overlayId);
+        return rangeLookup(keyRange[0], keyRange[1], overlayId, includeDeletedEntries);
     }
     
 }
