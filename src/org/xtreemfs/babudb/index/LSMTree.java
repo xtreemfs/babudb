@@ -130,7 +130,7 @@ public class LSMTree {
             list.add(index.rangeLookup(rng[0], rng[1]));
         }
         
-        return new OverlayMergeIterator<byte[], byte[]>(list, comp, null);
+        return new OverlayMergeIterator<byte[], byte[]>(list, comp, NULL_ELEMENT);
     }
     
     /**
