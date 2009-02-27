@@ -174,16 +174,17 @@ public class BabuDBImpl implements BabuDB {
      *        But if the <code>slaves</code> or <code>master</code> are set to null it will be started without replication.</p>
      * @param port where the application listens at. (use 0 for default configuration)
      * @param ssl if set SSL will be used while replication.
-     * @param repMode <p>repMode == 0: asynchronous replication mode</br>
-     *                   repMode == slaves.size(): synchronous replication mode</br>
-     *                   repMode > 0 && repMode < slaves.size(): N -sync replication mode with N = repMode</p>
+     * @param repMode repMode == 0: asynchronous replication mode</br>
+     *                repMode == slaves.size(): synchronous replication mode</br>
+     *                repMode > 0 && repMode < slaves.size(): N -sync replication mode with N = repMode
+     * @param qLimit if > 0, the queue for the replication-requests is limited to qLimit
      * 
      * @throws BabuDBException
      */
     BabuDBImpl(String baseDir, String dbLogDir, int numThreads,
             long maxLogfileSize, int checkInterval, SyncMode syncMode, int pseudoSyncWait,
             int maxQ, InetSocketAddress master, List<InetSocketAddress> slaves, int port,
-            SSLOptions ssl, boolean isMaster, int repMode)
+            SSLOptions ssl, boolean isMaster, int repMode, int qLimit)
             throws BabuDBException {
         // start the replication service
         if (master != null && slaves != null) {
@@ -191,9 +192,9 @@ public class BabuDBImpl implements BabuDB {
             this.master = master;
             try {
                 if (isMaster) {
-                    replicationFacade = new Replication(slaves, ssl, port, this, repMode);
+                    replicationFacade = new Replication(slaves, ssl, port, this, repMode, qLimit);
                 } else {
-                    replicationFacade = new Replication(master, ssl, port, this, repMode);
+                    replicationFacade = new Replication(master, ssl, port, this, repMode, qLimit);
                 }
 
             } catch (Exception e) {

@@ -86,7 +86,7 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
      * <p>Milliseconds idle-time, if the pending and the missing queues are empty.</p>
      */
     final static int TIMEOUT_GRANULARITY = 250;
-
+    
     /**
      * <p>Requests that are waiting to be done.</p>
      */
@@ -133,24 +133,38 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
     AtomicBoolean halt = new AtomicBoolean(false);
     
     /**
-     * Lazy holder for the diskLogFile.
+     * <p>Lazy holder for the diskLogFile.</p>
      */
     private DiskLogFile diskLogFile = null;
     
     /**
-     * If a request could not be processed it will be noticed to wait for newer entries for example.
-     * With that polling on the same Request is avoided. 
+     * <p>A request dummy with the lowest priority for the pending queue.</p>
      */
-    private Status<Request> firstWaiting = null;
+    private static final Status<Request> LOWEST_PRIORITY_REQUEST = new Status<Request>(null,FAILED);
+    
+    /**
+     * <p>If a request could not be processed it will be noticed to wait for newer entries for example.
+     * With that polling on the same Request is avoided.</p> 
+     * <p>If the pendingQueueLimit is reached, requests with a lower priority than the nextExpected will be aborted.</p>
+     */
+    private Status<Request> nextExpected = LOWEST_PRIORITY_REQUEST;
+    
+    /**
+     * <p>Maximal number of {@link Request} to store in the pending queue.</p> 
+     */
+    private final int pendingQueueLimit;
     
     /**
      * <p>Default constructor. Synchronous startup for pinky and speedy component.</p>
      * 
      * @param frontEnd 
      * @param port 
+     * @param pendingLimit
+     * @param sslOptions
      */
-    ReplicationThread(Replication frontEnd, int port, SSLOptions sslOptions) throws ReplicationException{
+    ReplicationThread(Replication frontEnd, int port, int pendingLimit, SSLOptions sslOptions) throws ReplicationException{
         super((frontEnd.isMaster()) ? "Master" : "Slave");
+        this.pendingQueueLimit = pendingLimit;       
         this.frontEnd = frontEnd;
         pending = new PriorityBlockingQueue<Status<Request>>();
         missing = (!frontEnd.isMaster()) ? new PriorityBlockingQueue<Status<LSN>>() : null;
@@ -243,9 +257,9 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
             }  
           // get a new request 
             Status<Request> newRequest = pending.peek();     
-            if (newRequest != null && !newRequest.equals(getFirstWaiting()) && !newRequest.getStatus().equals(PENDING)) { 
+            if (newRequest != null && hasHighPriority(newRequest) && !newRequest.getStatus().equals(PENDING)) { 
                 pending.remove(newRequest);
-                setFirstWaiting(null);
+                resetNextExpected();
                 
                 try{
                     chunk = newRequest.getValue().getChunkDetails();
@@ -434,20 +448,18 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                                 LSN missingLSN = new LSN (latestLSN.getViewId(),latestLSN.getSequenceNo()+1L);
                                 do {
                                     mLSN =  new Status<LSN>(missingLSN,OPEN);
-                                    if (!missing.contains(mLSN) && !pending.contains(RequestPreProcessor.getProbeREPLICA(missingLSN)))
+                                    if (!missing.contains(mLSN) && !pending.contains(RequestPreProcessor.getExpectedREPLICA(missingLSN)))
                                         missing.add(mLSN);
                                     
                                     missingLSN = new LSN (missingLSN.getViewId(),missingLSN.getSequenceNo()+1L);
                                 } while (missingLSN.compareTo(lsn)<0);
                                 pending.add(newRequest);
-                                setFirstWaiting(newRequest);
                                 continue; // don't send a response at the end of the progress
                             }
                         // get an initial copy from the master    
                         } else if (latestLSN.getViewId() < lsn.getViewId()){
                             sendLOAD(lsn);
                             pending.add(newRequest);
-                            setFirstWaiting(newRequest);
                             continue; // don't send a response at the end of the progress
                         } else {
                             if (orgReq!=null) orgReq.setResponse(HTTPUtils.SC_OKAY);
@@ -562,6 +574,7 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
       
     /**
      * <p>Sends an {@link Token}.RQ for the given {@link Status} <code>lsn</code> to the master.<p>
+     * <p>Sets the nextExpected flag to a higher priority, if necessary.</p>
      * 
      * @param lsn
      * @throws ReplicationException - if an error occurs.
@@ -581,10 +594,15 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
         // reorder the missing lsn
         if (missing.remove(lsn))
             missing.add(lsn);
+        
+        // make a better restriction for the nextExpected request
+        Request dummy = RequestPreProcessor.getExpectedREPLICA(lsn.getValue());
+        if (hasHighPriority(new Status<Request>(dummy,OPEN))) setNextExpected(dummy);
     } 
     
     /**
      * <p>Sends an {@link Token}.CHUNK_RQ for the given <code>chunk</code> to the master.</p>
+     * <p>Sets the nextExpected flag to a higher priority, if necessary.</p>
      * 
      * @param chunk
      * @throws ReplicationException - if an error occurs.
@@ -595,18 +613,26 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                     Token.CHUNK.toString(),null,null,
                     ReusableBuffer.wrap(JSONParser.writeJSON(chunk.getValue().toJSON()).getBytes()),DATA_TYPE.JSON);
             sReq.genericAttatchment = chunk;
-            speedy.sendRequest(sReq, frontEnd.master);            
+            speedy.sendRequest(sReq, frontEnd.master);    
+            chunk.setStatus(PENDING);
         } catch (Exception e) {   
             chunk.setStatus(FAILED);
             missingChunks.add(chunk);
             throw new ReplicationException("CHUNK ("+chunk.toString()+") could not be send to master: '"+frontEnd.master.toString()+"', because: "+e.getLocalizedMessage());           
         } 
-        chunk.setStatus(PENDING);
-        missingChunks.add(chunk);
+        
+        // reorder the missing chunks
+        if (missingChunks.remove(chunk))
+            missingChunks.add(chunk);
+        
+        // make a better restriction for the nextExpected request
+        Request dummy = RequestPreProcessor.getExpectedCHUNK_RP(chunk.getValue());
+        if (hasHighPriority(new Status<Request>(dummy,OPEN))) setNextExpected(dummy);
     }
     
     /**
      * <p>Sends an {@link Token}.LOAD to the given {@link LSN} <code>lsn</code> to the master.</p>
+     * <p>Sets the nextExpected flag to a higher priority.</p>
      * 
      * @param lsn
      * @throws ReplicationException - if an error occurs.
@@ -618,6 +644,9 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
         } catch (Exception e) {
             throw new ReplicationException("LOAD till ("+lsn.toString()+") could not be send to master: '"+frontEnd.master.toString()+"', because: "+e.getLocalizedMessage());
         } 
+        
+        // make a better restriction for the nextExpected request
+        setNextExpected(RequestPreProcessor.getExpectedLOAD_RP());
     }
     
     /**
@@ -635,18 +664,30 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
     
     /**
      * <p>Wraps a Status around this request and enqueues it to the pending queue.</p>
+     * 
+     * @throws ReplicationException if the pending queue is full and the received request does not match the nextExpected request. 
      * @param rq - the request to enqueue.
      */
-    void enqueueRequest(Request rq){
+    void enqueueRequest(Request rq) throws ReplicationException{
         enqueueRequest(new Status(rq));
     }
     
     /**
      * <p>Enqueues an already wrapped request.</p>
      * 
+     * @throws ReplicationException if the pending queue is full and the received request does not match the nextExpected request. 
      * @param rq - the request to enqueue
      */
-    void enqueueRequest(Status<Request> rq){
+    void enqueueRequest(Status<Request> rq) throws ReplicationException{
+        // queue limit is reached
+        if (pendingQueueLimit != 0 && pending.size()>pendingQueueLimit) {
+            // if replication mechanism is >master< --> deny all requests
+            if (frontEnd.isMaster()) 
+                throw new ReplicationException("The pending queue is full. Master is too busy.");
+            // if replication mechanism is >slave< --> deny all requests, but those which have a higher priority than or equal to the nextExpected
+            else if (!hasHighPriority(rq))
+                throw new ReplicationException("The pending queue is full. Next expected request to received will be: "+nextExpected.toString());
+        }
         pending.add(rq);
     }
     
@@ -710,15 +751,18 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
     }
     
     /**
-     * <p>Approach to remove missing LSNs if the given rq was written to the BabuDB.</p>
+     * <p>Approach to remove missing LSNs if the given <code>rq</code> was written to the BabuDB.</p>
      * 
      * @param rq
      */
     void removeMissing(Status<Request> rq){
         missing.remove(new Status<LSN>(rq.getValue().getLSN()));
-        setFirstWaiting(rq);
+        if (hasHighPriority(rq)) resetNextExpected();
     }
     
+    /**
+     * <p>Changes the replication mechanism behavior to master.</p>
+     */
     void toMaster(){
         missing = null;
         missingChunks = null;
@@ -726,6 +770,9 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
             slavesStatus = new SlavesStatus(frontEnd.slaves);
     }
     
+    /**
+     * <p>Changes the replication mechanism behavior to slave.</p>
+     */
     void toSlave(){
         if (missing == null)
             missing = new PriorityBlockingQueue<Status<LSN>>();
@@ -805,14 +852,28 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
     }  
     
 /*
- * Getter/Setter for the 'first waiting' flag
+ * Getter/Setter for the 'nextExpected' flag
  */
     
-    private synchronized Status<Request> getFirstWaiting(){       
-        return firstWaiting;
+    /**
+     * @return true, if the given request has a higher, or equal priority than the nextExpected request, false otherwise.
+     */
+    private synchronized boolean hasHighPriority(Status<Request> rq) {
+        assert (rq!=null);
+        return rq.compareTo(nextExpected) <= 0;
     }
     
-    private synchronized void setFirstWaiting(Status<Request> rq){
-        firstWaiting = rq;
+    /**
+     * @param rq - wraps Status around the request and sets it as nextExpected.
+     */
+    private synchronized void setNextExpected(Request rq) {
+        this.nextExpected = new Status<Request>(rq);
+    }
+    
+    /**
+     * <p>Sets the nextExpected to the lowest priority.</p>
+     */
+    private synchronized void resetNextExpected() {
+        this.nextExpected = LOWEST_PRIORITY_REQUEST;
     }
 }

@@ -17,6 +17,7 @@ package org.xtreemfs.babudb.replication;
 class Status<T extends Comparable<T>> implements Comparable<Status<T>>{
     /**
      * <p>Status options.</p>
+     * <p>Tokens are ordered by the priority, with which they will be processed in the ReplicationThread.</p>
      * 
      * @author flangner
      *
@@ -100,9 +101,18 @@ class Status<T extends Comparable<T>> implements Comparable<Status<T>>{
      */
     @Override
     public int compareTo(Status<T> o) {        
-        if (stat.compareTo(o.stat)==0) {
+        if (stat.compareTo(o.stat) == 0) {
             return c.compareTo(o.c);
         }else 
             return stat.compareTo(o.stat);
+    }
+    
+    /*
+     * (non-Javadoc)
+     * @see java.lang.Object#toString()
+     */
+    @Override
+    public String toString() {  
+        return stat.toString()+": "+((c!=null) ? c.toString() : "n.a.");
     }
 }

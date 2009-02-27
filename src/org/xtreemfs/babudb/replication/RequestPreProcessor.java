@@ -642,9 +642,46 @@ class RequestPreProcessor {
         }        
         return result;
     }
-
+    
     /**
-     * dangerous architecture break-through
+     * <b>WARNING: dangerous architecture break-through</b></br>
+     * do not use this!
+     * 
+     * @return dummy LOAD_RP request for testing against the pending queue.
+     */
+    static Request getExpectedLOAD_RP() {
+        RequestImpl result = new RequestImpl(LOAD_RP,null);
+        return result;
+    }
+    
+    /**
+     * <b>WARNING: dangerous architecture break-through</b></br>
+     * do not use this!
+     * 
+     * @param chunk
+     * @return dummy CHUNK_RP request for testing against the pending queue.
+     */
+    static Request getExpectedCHUNK_RP(Chunk chunk) {
+        RequestImpl result = new RequestImpl(CHUNK_RP,null);
+        result.chunkDetails = chunk;
+        return result;
+    }
+    
+    /**
+     * <b>WARNING: dangerous architecture break-through</b></br>
+     * do not use this!
+     * 
+     * @param lsn
+     * @return dummy REPLICA request for testing against the pending queue.
+     */
+    static Request getExpectedREPLICA(LSN lsn) {
+        RequestImpl result = new RequestImpl(REPLICA,null);
+        result.lsn = lsn;
+        return result;
+    }
+    
+    /**
+     * <b>WARNING: dangerous architecture break-through</b></br>
      * do not use this!
      * 
      * @param lsn
@@ -656,17 +693,4 @@ class RequestPreProcessor {
         result.lsn = lsn;
         return result;
     }  
-    
-    /**
-     * dangerous architecture break-through
-     * do not use this!
-     * 
-     * @param lsn
-     * @return dummy REPLICA request for testing against the pending queue.
-     */
-    static Request getProbeREPLICA(LSN lsn) {
-        RequestImpl result = new RequestImpl(REPLICA,null);
-        result.lsn = lsn;
-        return result;
-    }
 }
