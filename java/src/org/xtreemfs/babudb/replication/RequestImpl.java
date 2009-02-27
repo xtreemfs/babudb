@@ -93,7 +93,6 @@ class RequestImpl implements Request {
         return token;
     }
 
-
     /*
      * (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.Request#getLSN()
@@ -140,8 +139,7 @@ class RequestImpl implements Request {
      */
     public PinkyRequest getOriginal() {
         return original;
-    }
-    
+    }   
 
     /*
      * (non-Javadoc)
@@ -208,51 +206,34 @@ class RequestImpl implements Request {
     public boolean failed(){
         return minExpectableACKs.get()!=0;
     }
-    
+ 
     /*
      * (non-Javadoc)
-     * @see java.lang.Object#toString()
+     * @see org.xtreemfs.babudb.replication.Request#compareTo(org.xtreemfs.babudb.replication.Request)
      */
     @Override
-    public String toString() {
-        String string = new String();
-        if (token!=null)            string+="Token: '"+token.toString()+"',";
-        if (source!=null)           string+="Source: '"+source.toString()+"',";
-        if (lsn!=null)              string+="LSN: '"+lsn.toString()+"',";  
-        if (logEntry!=null)         string+="LogEntry: '"+logEntry.toString()+"',"; 
-        if (chunkDetails!=null)     string+="ChunkDetails: '"+chunkDetails.toString()+"',";
-        if (data!=null)             string+="there is some data on the buffer,";
-        if (lsmDbMetaData!=null)    string+="LSM DB metaData: "+lsmDbMetaData.toString()+"',";
-        if (context!=null)          string+="context is set,";
-        if (original!=null)         string+="the original PinkyRequest: "+original.toString()+"',";            
-        string+="Object's id: "+super.toString();
-        return string;
-    }
-
-    @Override
-    /*
-     * (non-Javadoc)
-     * @see java.lang.Comparable#compareTo(java.lang.Object)
-     */      
     public int compareTo(Request o) {
+        // lowest priority
+        if (o==null) return +1;
         /*
          * Order for the pending queue in ReplicationThread.
-         */
-        
+         */        
         if (token.compareTo(o.getToken())==0){
-            if (lsn!=null) {
-                if (o.getLSN()!=null)
-                    return lsn.compareTo(o.getLSN());
-                else
-                    return +1;
-            }else if (chunkDetails!=null){
-                if (o.getChunkDetails()!=null)
-                    return chunkDetails.compareTo(o.getChunkDetails());
-                else
-                    return +1;
+            switch (token) {
+            // master
+            case ACK:                   return o.getLSN().compareTo(lsn);
+            case RQ:                    return lsn.compareTo(o.getLSN());
+            case REPLICA_BROADCAST:     return lsn.compareTo(o.getLSN());
+            case CHUNK:                 return chunkDetails.compareTo(o.getChunkDetails());
+            
+            // slave
+            case REPLICA:               return lsn.compareTo(o.getLSN());
+            case CHUNK_RP:              return chunkDetails.compareTo(o.getChunkDetails());
+            
+            default:                    return 0;
             }
-            return 0;
-        }else return token.compareTo(o.getToken());
+        }
+        return token.compareTo(o.getToken());
     }
     
     /*
@@ -276,8 +257,7 @@ class RequestImpl implements Request {
                 
             case CHUNK_RP:
                 return (source.equals(rq.getSource())
-                        && chunkDetails.equals(rq.getChunkDetails()))
-                        && data.equals(rq.getData());
+                        && chunkDetails.equals(rq.getChunkDetails()));
                 
             case LOAD:
                 return source.equals(rq.getSource());
@@ -290,9 +270,7 @@ class RequestImpl implements Request {
                 return (lsn.equals(rq.getLSN()));
                 
             case REPLICA_BROADCAST:
-                return (lsn.equals(rq.getLSN())
-                        && data.equals(rq.getData())
-                        && context.equals(rq.getContext()));
+                return lsn.equals(rq.getLSN());
                 
             case RQ:
                 return (source.equals(rq.getSource())
@@ -301,5 +279,25 @@ class RequestImpl implements Request {
             default: return false;                
             }
         }return false;
+    }
+    
+    /*
+     * (non-Javadoc)
+     * @see java.lang.Object#toString()
+     */
+    @Override
+    public String toString() {
+        String string = new String();
+        if (token!=null)            string+="Token: '"+token.toString()+"',";
+        if (source!=null)           string+="Source: '"+source.toString()+"',";
+        if (lsn!=null)              string+="LSN: '"+lsn.toString()+"',";  
+        if (logEntry!=null)         string+="LogEntry: '"+logEntry.toString()+"',"; 
+        if (chunkDetails!=null)     string+="ChunkDetails: '"+chunkDetails.toString()+"',";
+        if (data!=null)             string+="there is some data on the buffer,";
+        if (lsmDbMetaData!=null)    string+="LSM DB metaData: "+lsmDbMetaData.toString()+"',";
+        if (context!=null)          string+="context is set,";
+        if (original!=null)         string+="the original PinkyRequest: "+original.toString()+"',";            
+        string+="Object's id: "+super.toString();
+        return string;
     }
 }

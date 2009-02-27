@@ -42,7 +42,7 @@ public class BabuDBFactory {
     public static BabuDB getBabuDB(String baseDir, String dbLogDir, int numThreads,
             long maxLogfileSize, int checkInterval, SyncMode syncMode, int pseudoSyncWait,
             int maxQ) throws BabuDBException {
-        return new BabuDBImpl(baseDir, dbLogDir, numThreads, maxLogfileSize, checkInterval, syncMode, pseudoSyncWait, maxQ, null, null, 0, null, false, 0);
+        return new BabuDBImpl(baseDir, dbLogDir, numThreads, maxLogfileSize, checkInterval, syncMode, pseudoSyncWait, maxQ, null, null, 0, null, false, 0, 0);
     }
 
     /**
@@ -63,14 +63,15 @@ public class BabuDBFactory {
      * @param repMode <p>repMode == 0: asynchronous replication mode</br>
      *                   repMode == slaves.size(): synchronous replication mode</br>
      *                   repMode > 0 && repMode < slaves.size(): N -sync replication mode with N = repMode</p>
+     * @param qLimit if > 0, the queue for the replication-requests is limited to qLimit
      * 
      * @throws BabuDBException
      */
     public static BabuDB getMasterBabuDB(String baseDir, String dbLogDir, int numThreads,
             long maxLogfileSize, int checkInterval, SyncMode syncMode, int pseudoSyncWait,
-            int maxQ, List<InetSocketAddress> slaves, int port, SSLOptions ssl, int repMode) throws BabuDBException {
+            int maxQ, List<InetSocketAddress> slaves, int port, SSLOptions ssl, int repMode, int qLimit) throws BabuDBException {
         try {
-            return new BabuDBImpl(baseDir, dbLogDir, numThreads, maxLogfileSize, checkInterval, syncMode, pseudoSyncWait, maxQ, new InetSocketAddress(InetAddress.getLocalHost(), port), slaves, port, ssl, true, repMode);
+            return new BabuDBImpl(baseDir, dbLogDir, numThreads, maxLogfileSize, checkInterval, syncMode, pseudoSyncWait, maxQ, new InetSocketAddress(InetAddress.getLocalHost(), port), slaves, port, ssl, true, repMode, qLimit);
         } catch (UnknownHostException e) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "Localhost could not be resolved. Please check your network adapter, or your JAVA configuration.");
         }
@@ -92,12 +93,13 @@ public class BabuDBFactory {
      * @param slaves hosts, where the replicas should be send to.
      * @param port where the application listens at. (use 0 for default configuration)
      * @param ssl if set SSL will be used while replication.
+     * @param qLimit if > 0, the queue for the replication-requests is limited to qLimit
      * 
      * @throws BabuDBException
      */
     public static BabuDB getSlaveBabuDB(String baseDir, String dbLogDir, int numThreads,
             long maxLogfileSize, int checkInterval, SyncMode syncMode, int pseudoSyncWait,
-            int maxQ, InetSocketAddress master, List<InetSocketAddress> slaves, int port, SSLOptions ssl) throws BabuDBException {
-        return new BabuDBImpl(baseDir, dbLogDir, numThreads, maxLogfileSize, checkInterval, syncMode, pseudoSyncWait, maxQ, master, slaves, port, ssl, false, slaves.size());
+            int maxQ, InetSocketAddress master, List<InetSocketAddress> slaves, int port, SSLOptions ssl, int qLimit) throws BabuDBException {
+        return new BabuDBImpl(baseDir, dbLogDir, numThreads, maxLogfileSize, checkInterval, syncMode, pseudoSyncWait, maxQ, master, slaves, port, ssl, false, slaves.size(), qLimit);
     }
 }

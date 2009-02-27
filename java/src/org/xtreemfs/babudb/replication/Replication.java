@@ -94,24 +94,6 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
     volatile int                        syncN;
     
     /**
-     * <p>Starts the {@link ReplicationThread} with {@link org.xtreemfs.include.foundation.pinky.PipelinedPinky} listening on default port.
-     * 
-     * <p>Is a Master with <code>slaves</code>.</p>
-     * 
-     * <p>If the <code>sslOption</code> is not <code>null</code> SSL will be used for all connections.</p>
-     * 
-     * @param slaves
-     * @param sslOptions
-     * @param babu
-     * @param mode
-     * 
-     * @throws BabuDBException - if replication could not be initialized.
-     */
-    public Replication(List<InetSocketAddress> slaves, SSLOptions sslOptions, BabuDBImpl babu, int mode) throws BabuDBException {
-        this(slaves,sslOptions,MASTER_PORT,babu,mode);
-    }
-    
-    /**
      * <p>Starts the {@link ReplicationThread} with {@link org.xtreemfs.include.foundation.pinky.PipelinedPinky} listening on <code>port</code>.
      * 
      * <p>Is a Master with <code>slaves</code>.</p>
@@ -125,35 +107,16 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      * 
      * @throws BabuDBException - if replication could not be initialized.
      */
-    public Replication(List<InetSocketAddress> slaves, SSLOptions sslOptions,int port,BabuDBImpl babu, int mode) throws BabuDBException {
+    public Replication(List<InetSocketAddress> slaves, SSLOptions sslOptions,int port,BabuDBImpl babu, int mode, int qLimit) throws BabuDBException {
         assert (slaves!=null);
         assert (babu!=null);
         
-//        this.syncModus = mode;
         this.syncN = mode;
         this.slaves = slaves;
         this.isMaster.set(true);
         dbInterface = babu;
         
-        initReplication((port==0) ? MASTER_PORT : port,sslOptions);
-    }
-
-    /**
-     * <p>Starts the {@link ReplicationThread} with {@link org.xtreemfs.include.foundation.pinky.PipelinedPinky} listening on default port.
-     * 
-     * <p>Is a Slave with a <code>master</code>.</p>
-     * 
-     * <p>If the <code>sslOption</code> is not <code>null</code> SSL will be used for all connections.</p>
-     * 
-     * @param master
-     * @param sslOptions
-     * @param babu
-     * @param mode
-     * 
-     * @throws BabuDBException - if replication could not be initialized.
-     */
-    public Replication(InetSocketAddress master, SSLOptions sslOptions,BabuDBImpl babu,int mode) throws BabuDBException {
-        this(master,sslOptions,SLAVE_PORT,babu,mode);
+        initReplication((port==0) ? MASTER_PORT : port, sslOptions, qLimit);
     }
     
     /**
@@ -168,23 +131,23 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      * @param sslOptions
      * @param babu
      * @param mode
+     * @param qLimit
      * 
-     * @throws BabuDBException - if replication could not be initialised.
+     * @throws BabuDBException - if replication could not be initialized.
      */
-    public Replication(InetSocketAddress master, SSLOptions sslOptions,int port,BabuDBImpl babu,int mode) throws BabuDBException {
+    public Replication(InetSocketAddress master, SSLOptions sslOptions, int port, BabuDBImpl babu, int mode, int qLimit) throws BabuDBException {
         assert (master!=null);
         
-//        this.syncModus = mode;
         this.syncN = mode;
         this.master = master;
         this.isMaster.set(false);
         dbInterface = babu;
-        initReplication((port==0) ? SLAVE_PORT : port,sslOptions);
+        initReplication((port==0) ? SLAVE_PORT : port,sslOptions, qLimit);
     }
     
-    private void initReplication(int port,SSLOptions sslOptions) throws BabuDBException{        
+    private void initReplication(int port,SSLOptions sslOptions, int queueLimit) throws BabuDBException{        
         try {
-            replication = new ReplicationThread(this, port,sslOptions);
+            replication = new ReplicationThread(this, port, queueLimit, sslOptions);
             replication.setLifeCycleListener(this);
             
             synchronized (lock) {
@@ -209,7 +172,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
         try {
             Request rq = RequestPreProcessor.getReplicationRequest(le);
             replication.enqueueRequest(rq); 
-        } catch (PreProcessException e) {
+        } catch (Exception e) {
             Logging.logMessage(Logging.LEVEL_TRACE, this, "A LogEntry could not be replicated because: "+e.getMessage());
             le.getAttachment().getListener().requestFailed(le.getAttachment().getContext(), new BabuDBException(ErrorCode.REPLICATION_FAILURE,
                     "A LogEntry could not be replicated because: "+e.getMessage()));
@@ -363,7 +326,14 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
            // if a request could not be parsed for any reason
             Logging.logMessage(Logging.LEVEL_ERROR, this, e.getMessage());
             if (!theRequest.responseSet) theRequest.setResponse(e.status,e.getMessage());
-            else assert(false) : "This request must not have already a response: "+theRequest.toString();
+            else assert(false) : "This request must not have already set a response: "+theRequest.toString();
+            theRequest.setClose(true); // close the connection, if an error occurred
+            replication.sendResponse(theRequest);
+        }catch (ReplicationException re){
+            // if a request could not be parsed because the queue limit was reached
+            Logging.logMessage(Logging.LEVEL_ERROR, this, re.getMessage());
+            if (!theRequest.responseSet) theRequest.setResponse(HTTPUtils.SC_SERV_UNAVAIL, re.getMessage());
+            else assert(false) : "This request must not have already set a response: "+theRequest.toString();
             theRequest.setClose(true); // close the connection, if an error occurred
             replication.sendResponse(theRequest);
         }
@@ -379,7 +349,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
             Request rq = RequestPreProcessor.getReplicationRequest(theRequest,this);
            // if rq is null than it was already responded
             if (rq!=null) replication.enqueueRequest(rq);
-        }catch (PreProcessException e){
+        }catch (Exception e){
             Logging.logMessage(Logging.LEVEL_ERROR, this, e.getMessage());
         }       
     }
@@ -422,9 +392,13 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
             orgReq.setResponse(HTTPUtils.SC_SERVER_ERROR,"LogEntry could not be replicated due a diskLogger failure: "+error.getMessage());
             replication.sendResponse(orgReq);
         } 
-       // give up, or retry? retry!
-        rq.setStatus(STATUS.FAILED);
-        replication.enqueueRequest(rq);
+       // retry, if the queue isn't full
+        try {
+            rq.setStatus(STATUS.FAILED);
+            replication.enqueueRequest(rq);
+        } catch (ReplicationException e) {
+            Logging.logMessage(Logging.LEVEL_WARN, this, "No retry for the failed request because: "+e.getMessage());
+        }
     }
 
     /*

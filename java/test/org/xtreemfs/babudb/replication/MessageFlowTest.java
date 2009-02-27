@@ -98,10 +98,10 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
         System.out.println("starting up databases...");
         
         // start the master - SYNC replication mode       
-        master = (BabuDBImpl) BabuDBFactory.getMasterBabuDB(master_baseDir,master_baseDir,1,0,0,SyncMode.SYNC_WRITE,0,0,slaves,0,null,slaves.size());
+        master = (BabuDBImpl) BabuDBFactory.getMasterBabuDB(master_baseDir,master_baseDir,1,0,0,SyncMode.SYNC_WRITE,0,0,slaves,0,null,slaves.size(),0);
         
         // start the slave
-        slave = (BabuDBImpl) BabuDBFactory.getSlaveBabuDB(slave1_baseDir,slave1_baseDir,1,0,0,SyncMode.SYNC_WRITE,0,0,snifferAddress,slaves,0,null);
+        slave = (BabuDBImpl) BabuDBFactory.getSlaveBabuDB(slave1_baseDir,slave1_baseDir,1,0,0,SyncMode.SYNC_WRITE,0,0,snifferAddress,slaves,0,null,0);
     }
 
     @AfterClass

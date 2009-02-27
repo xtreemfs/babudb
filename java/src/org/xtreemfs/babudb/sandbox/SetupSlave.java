@@ -77,7 +77,7 @@ public class SetupSlave {
                 options.get("wait").numValue.intValue(), 
                 options.get("maxq").numValue.intValue(), 
                 master, slaves, 
-                options.get("port").numValue.intValue(), null);
+                options.get("port").numValue.intValue(), null, 0);
         
         
         while(true);

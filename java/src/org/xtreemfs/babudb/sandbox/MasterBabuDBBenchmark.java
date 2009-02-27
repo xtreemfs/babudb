@@ -73,7 +73,7 @@ public class MasterBabuDBBenchmark {
         p.waitFor();
         
         //use one worker because we use one database
-        database = BabuDBFactory.getMasterBabuDB(dbDir, dbDir, numDBWorkers, 1, 0, syncMode, pseudoModeWait, maxQ, slaves, port, null,0);
+        database = BabuDBFactory.getMasterBabuDB(dbDir, dbDir, numDBWorkers, 1, 0, syncMode, pseudoModeWait, maxQ, slaves, port, null, 0, 0);
         for (int i = 1; i <= numThreads; i++)
         database.createDatabase(""+i, 1);
 
