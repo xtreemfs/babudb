@@ -8,7 +8,7 @@
 package org.xtreemfs.babudb.replication;
 
 import static org.junit.Assert.*;
-import static org.xtreemfs.babudb.replication.Replication.*;
+import static org.xtreemfs.babudb.replication.TestConfiguration.*;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -44,15 +44,7 @@ import org.xtreemfs.include.foundation.speedy.SpeedyRequest;
 import org.xtreemfs.include.foundation.speedy.SpeedyResponseListener;
 
 public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListener{        
-    public static final int PORT = 34567;
-    
-    public static final InetSocketAddress master_address = new InetSocketAddress("localhost",MASTER_PORT);
-    
-    public static final InetSocketAddress slave1_address = new InetSocketAddress("localhost",SLAVE_PORT);
-    
-    public static final String master_baseDir = "/tmp/lsmdb-test/master/";
-    
-    public static final String slave1_baseDir = "/tmp/lsmdb-test/slave1/";
+
     
     private static LSN actual = new LSN(1,0L);
     
@@ -95,7 +87,7 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
         List<InetSocketAddress> slaves = new LinkedList<InetSocketAddress>();
         slaves.add(snifferAddress);
         
-        System.out.println("starting up databases...");
+        Logging.logMessage(Logging.LEVEL_TRACE, slave, "starting up databases...");
         
         // start the master - SYNC replication mode       
         master = (BabuDBImpl) BabuDBFactory.getMasterBabuDB(master_baseDir,master_baseDir,1,0,0,SyncMode.SYNC_WRITE,0,0,slaves,0,null,slaves.size(),0);
@@ -106,7 +98,7 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
 
     @AfterClass
     public static void tearDownAfterClass() throws Exception {
-        System.out.println("shutting down databases...");
+        Logging.logMessage(Logging.LEVEL_TRACE, slave, "shutting down databases...");
         pinky.shutdown();
         speedy.shutdown();
         master.shutdown();
