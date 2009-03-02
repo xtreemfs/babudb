@@ -14,6 +14,8 @@ import java.util.Map;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
+import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
@@ -260,6 +262,12 @@ class RequestPreProcessor {
             }
             return null;
             
+       // shared     
+        case STATE: 
+            if (!frontEnd.isDesignatedMaster(result.source) && !frontEnd.isDesignatedSlave(result.source))
+                throw THIS.new PreProcessException(masterSecurityMsg+"\nAND\n"+slaveSecurityMsg,HTTPUtils.SC_UNAUTHORIZED);
+            break;
+            
         default:
             result.free();
             throw THIS.new PreProcessException("Unknown Request received: "+result.toString(),HTTPUtils.SC_BAD_REQUEST);
@@ -309,42 +317,59 @@ class RequestPreProcessor {
         switch (result.token) {
         
        // for master:       
-        case REPLICA:                                         
-            try{
-                Status<Request> rq = (Status<Request>) theResponse.genericAttatchment;
-                if (rq.getValue().decreaseMinExpectableACKs()) {                  
-                    rq.getValue().getContext().getListener().insertFinished(rq.getValue().getContext());
-                    rq.getValue().free();
-                }                 
-                theResponse.freeBuffer();
-                
-                // ACK as sub request 
-                result.token = ACK;
-                result.lsn = rq.getValue().getLSN();
-                result.source = theResponse.getServer();
-            }catch (Exception e){
-                theResponse.freeBuffer();
-                throw THIS.new PreProcessException("The answer to a REPLICA by slave: "+result.source.toString()+" was not well formed: "+e.getMessage());
-            }     
+        case REPLICA:   
             if (!frontEnd.isDesignatedSlave(result.source)) {
                 theResponse.freeBuffer();
                 throw THIS.new PreProcessException(masterSecurityMsg);
             } 
-            if (theResponse.statusCode!=HTTPUtils.SC_OKAY) {
-                // TODO count these failed for the NSYNC
-                result.free();
+            try{
+                if (theResponse.genericAttatchment!=null) {
+                    Status<Request> rq = (Status<Request>) theResponse.genericAttatchment;
+                    
+                   // replication was not successful
+                    if (theResponse.statusCode!=HTTPUtils.SC_OKAY) {
+                        String msg = "Slave '"+result.source.toString()+"' did not confirm replication, because: ";
+                        if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
+                        else msg += theResponse.statusCode;
+                        
+                        if (!rq.getValue().decreaseMaxReceivableACKs(1)) 
+                            rq.getValue().getContext().getListener().requestFailed(rq.getValue().getContext(), 
+                                    new BabuDBException(ErrorCode.REPLICATION_FAILURE,msg));
+                        result.free();
+                        theResponse.freeBuffer();                   
+                        throw THIS.new PreProcessException(msg);
+                        
+                   // replication was successful
+                    } else {                     
+                        if (rq.getValue().decreaseMinExpectableACKs()) {                  
+                            rq.getValue().getContext().getListener().insertFinished(rq.getValue().getContext());
+                            rq.getValue().free();
+                        } 
+                        
+                        theResponse.freeBuffer();
+                        
+                        // ACK as sub request 
+                        result.token = ACK;
+                        result.lsn = rq.getValue().getLSN();
+                        result.source = theResponse.getServer();
+                    }
+                } else {
+                    theResponse.freeBuffer();
+                    return null;
+                }
+            }catch (PreProcessException ppe){
+                throw ppe;
+            }catch (Exception e){
                 theResponse.freeBuffer();
-                
-                String msg = "Slave '"+result.source.toString()+"' did not confirm replication, because: ";
-                if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
-                else msg += theResponse.statusCode;
-               
-                throw THIS.new PreProcessException(msg);
-            }  
-
+                throw THIS.new PreProcessException("The answer to a REPLICA by slave: "+result.source.toString()+" was not well formed: "+e.getMessage());
+            }     
             break;
             
         case CREATE:
+            if (!frontEnd.isDesignatedSlave(result.source)){
+                theResponse.freeBuffer();
+                throw THIS.new PreProcessException(masterSecurityMsg); 
+            }      
             try{
                 String msg = null;
                 Request rq = (Request) theResponse.genericAttatchment;
@@ -371,15 +396,19 @@ class RequestPreProcessor {
                 
                 if (msg!=null)
                     throw THIS.new PreProcessException(msg);
+            }catch (PreProcessException ppe){
+                throw ppe;
             }catch (Exception e){
                 theResponse.freeBuffer();
                 throw THIS.new PreProcessException("The answer to a CREATE by slave: "+result.source.toString()+" was not well formed: "+e.getMessage());
-            }    
-            if (!frontEnd.isDesignatedSlave(result.source)) 
-                throw THIS.new PreProcessException(masterSecurityMsg);  
+            }     
             return null;
             
         case COPY: 
+            if (!frontEnd.isDesignatedSlave(result.source)){
+                theResponse.freeBuffer();
+                throw THIS.new PreProcessException(masterSecurityMsg); 
+            } 
             try{
                 String msg = null;
                 Request rq = (Request) theResponse.genericAttatchment;
@@ -406,15 +435,19 @@ class RequestPreProcessor {
                 
                 if (msg!=null)
                     throw THIS.new PreProcessException(msg);
+            }catch (PreProcessException ppe){
+                throw ppe;
             }catch (Exception e){
                 theResponse.freeBuffer();
                 throw THIS.new PreProcessException("The answer to a COPY by slave: "+result.source.toString()+" was not well formed: "+e.getMessage());
-            }    
-            if (!frontEnd.isDesignatedSlave(result.source)) 
-                throw THIS.new PreProcessException(masterSecurityMsg);  
+            }     
             return null;
             
         case DELETE:
+            if (!frontEnd.isDesignatedSlave(result.source)){
+                theResponse.freeBuffer();
+                throw THIS.new PreProcessException(masterSecurityMsg); 
+            } 
             try{
                 String msg = null;
                 Request rq = (Request) theResponse.genericAttatchment;
@@ -441,12 +474,12 @@ class RequestPreProcessor {
                 
                 if (msg!=null)
                     throw THIS.new PreProcessException(msg);
+            }catch (PreProcessException ppe){
+                throw ppe;
             }catch (Exception e){
                 theResponse.freeBuffer();
                 throw THIS.new PreProcessException("The answer to a DELETE by slave: "+result.source.toString()+" was not well formed: "+e.getMessage());
             }    
-            if (!frontEnd.isDesignatedSlave(result.source)) 
-                throw THIS.new PreProcessException(masterSecurityMsg);  
             return null;
             
        // for slave:    
@@ -455,6 +488,7 @@ class RequestPreProcessor {
             
         case RQ:
             if (!frontEnd.isDesignatedMaster(result.source)) {
+                theResponse.freeBuffer();
                 throw THIS.new PreProcessException(slaveSecurityMsg);
             }
            // get the lsn
@@ -499,6 +533,7 @@ class RequestPreProcessor {
            
         case CHUNK:
             if (!frontEnd.isDesignatedMaster(result.source)) {
+                theResponse.freeBuffer();
                 throw THIS.new PreProcessException(slaveSecurityMsg,HTTPUtils.SC_UNAUTHORIZED);
             }
             
@@ -529,7 +564,7 @@ class RequestPreProcessor {
             
         case LOAD:
             if (!frontEnd.isDesignatedMaster(result.source)) {
-                result.free();
+                theResponse.freeBuffer();
                 throw THIS.new PreProcessException(slaveSecurityMsg,HTTPUtils.SC_UNAUTHORIZED);
             }
             
@@ -550,6 +585,54 @@ class RequestPreProcessor {
                 throw THIS.new PreProcessException("Files details of a LOAD_RP could not be decoded because: "+e.getLocalizedMessage());
             }
             theResponse.freeBuffer();
+            break;
+       
+       // shared:
+        case STATE:
+            if (!frontEnd.isDesignatedSlave(result.source) && !frontEnd.isDesignatedMaster(result.source)){
+                theResponse.freeBuffer();
+                throw THIS.new PreProcessException(masterSecurityMsg+"/nAND/n"+slaveSecurityMsg); 
+            } 
+            try{
+                String msg = null;
+                RequestImpl rq = (RequestImpl) theResponse.genericAttatchment;
+                
+                // retrieve the information
+                rq.lsn = new LSN(new String(theResponse.getResponseBody()));
+                
+                if (theResponse.statusCode!=HTTPUtils.SC_OKAY) {
+                    if (!rq.decreaseMaxReceivableACKs(1)){
+                        synchronized(rq){
+                            rq.notify();
+                        }
+                    }
+                    
+                    msg = "Slave '"+result.source.toString()+"' did not send it's state, because: ";
+                    if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
+                    else msg += theResponse.statusCode;
+                } else {              
+                    if (rq.decreaseMinExpectableACKs()) {
+                        synchronized(rq){
+                            rq.notify();
+                        }
+                    }
+                    
+                    // ACK as sub request 
+                    result.token = ACK;
+                    result.lsn = rq.getLSN();
+                    result.source = theResponse.getServer();
+                }
+                
+                theResponse.freeBuffer();
+                
+                if (msg!=null)
+                    throw THIS.new PreProcessException(msg);
+            }catch (PreProcessException ppe){
+                throw ppe;
+            }catch (Exception e){
+                theResponse.freeBuffer();
+                throw THIS.new PreProcessException("The answer to a STATE by slave: "+result.source.toString()+" was not well formed: "+e.getMessage());
+            }    
             break;
             
         default:
@@ -592,7 +675,7 @@ class RequestPreProcessor {
      */
     static Request getReplicationRequest(String databaseName,
             int numIndices) throws PreProcessException {
-        RequestImpl result = new RequestImpl(CREATE,null);
+        RequestImpl result = new RequestImpl(CREATE);
         List<Object> data = new LinkedList<Object>();
         data.add(databaseName);
         data.add(String.valueOf(numIndices));
@@ -611,7 +694,7 @@ class RequestPreProcessor {
      * @return a copy {@link Request}.
      */
     static Request getReplicationRequest(String sourceDB, String destDB) throws PreProcessException {
-        RequestImpl result = new RequestImpl(COPY,null);
+        RequestImpl result = new RequestImpl(COPY);
         List<Object> data = new LinkedList<Object>();
         data.add(sourceDB);
         data.add(destDB);
@@ -631,7 +714,7 @@ class RequestPreProcessor {
      */
     static Request getReplicationRequest(String databaseName,
             boolean deleteFiles) throws PreProcessException {
-        RequestImpl result = new RequestImpl(DELETE,null);
+        RequestImpl result = new RequestImpl(DELETE);
         List<Object> data = new LinkedList<Object>();
         data.add(databaseName);
         data.add(String.valueOf(deleteFiles));
@@ -644,13 +727,20 @@ class RequestPreProcessor {
     }
     
     /**
+     * @return a state {@link Request}.
+     */
+    static Request getStateRequest(){
+        return new RequestImpl(STATE);
+    }
+    
+    /**
      * <b>WARNING: dangerous architecture break-through</b></br>
      * do not use this!
      * 
      * @return dummy LOAD_RP request for testing against the pending queue.
      */
     static Request getExpectedLOAD_RP() {
-        RequestImpl result = new RequestImpl(LOAD_RP,null);
+        RequestImpl result = new RequestImpl(LOAD_RP);
         return result;
     }
     
@@ -662,7 +752,7 @@ class RequestPreProcessor {
      * @return dummy CHUNK_RP request for testing against the pending queue.
      */
     static Request getExpectedCHUNK_RP(Chunk chunk) {
-        RequestImpl result = new RequestImpl(CHUNK_RP,null);
+        RequestImpl result = new RequestImpl(CHUNK_RP);
         result.chunkDetails = chunk;
         return result;
     }
@@ -675,7 +765,7 @@ class RequestPreProcessor {
      * @return dummy REPLICA request for testing against the pending queue.
      */
     static Request getExpectedREPLICA(LSN lsn) {
-        RequestImpl result = new RequestImpl(REPLICA,null);
+        RequestImpl result = new RequestImpl(REPLICA);
         result.lsn = lsn;
         return result;
     }

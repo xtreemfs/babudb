@@ -11,6 +11,7 @@ package org.xtreemfs.babudb.replication;
 import java.net.InetSocketAddress;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -19,6 +20,7 @@ import org.xtreemfs.babudb.BabuDBRequestListener;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.BabuDBImpl;
 import org.xtreemfs.babudb.log.LogEntry;
+import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.ReplicationThread.ReplicationException;
 import org.xtreemfs.babudb.replication.RequestPreProcessor.PreProcessException;
 import org.xtreemfs.babudb.replication.Status.STATUS;
@@ -92,6 +94,11 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      * syncN > 0 && syncN < slaves.size(): N -sync mode with N = syncN</p>
      */
     volatile int                        syncN;
+    
+    /**
+     * <p>Holds the identifier of the last written LogEntry.</p>>
+     */
+    private LSN                         lastWrittenLSN  = new LSN("0:0");
     
     /**
      * <p>Starts the {@link ReplicationThread} with {@link org.xtreemfs.include.foundation.pinky.PipelinedPinky} listening on <code>port</code>.
@@ -203,7 +210,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      * @throws BabuDBException - if create request could not be replicated.
      */
     public void create(String databaseName, int numIndices) throws BabuDBException {
-        Logging.logMessage(Logging.LEVEL_TRACE, this, "Request received: CREATE ("+databaseName+"|"+numIndices+")");
+        Logging.logMessage(Logging.LEVEL_TRACE, this, "Performing request: CREATE ("+databaseName+"|"+numIndices+")");
         if (isMaster.get()){
             try {
                 Request rq = RequestPreProcessor.getReplicationRequest(databaseName,numIndices);
@@ -225,7 +232,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      * @throws BabuDBException - if create request could not be replicated.
      */
     public void copy(String sourceDB, String destDB) throws BabuDBException {
-        Logging.logMessage(Logging.LEVEL_TRACE, this, "Request received: COPY ("+sourceDB+"|"+destDB+")");
+        Logging.logMessage(Logging.LEVEL_TRACE, this, "Performing request: COPY ("+sourceDB+"|"+destDB+")");
         if (isMaster.get()){
             try {
                 Request rq = RequestPreProcessor.getReplicationRequest(sourceDB,destDB);
@@ -247,7 +254,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      * @throws BabuDBException - if create request could not be replicated.
      */
     public void delete(String databaseName, boolean deleteFiles) throws BabuDBException {
-        Logging.logMessage(Logging.LEVEL_TRACE, this, "Request received: DELETE ("+databaseName+"|"+deleteFiles+")");
+        Logging.logMessage(Logging.LEVEL_TRACE, this, "Performing request: DELETE ("+databaseName+"|"+deleteFiles+")");
         if (isMaster.get()){
             try {
                 Request rq = RequestPreProcessor.getReplicationRequest(databaseName,deleteFiles);
@@ -258,7 +265,18 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
                 throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,re.getMessage(),re.getCause());
             }   
         }
-    }   
+    }  
+    
+    /**
+     * <p>Performs a network broadcast.</p>
+     * 
+     * @param babuDBs
+     * @return the LSNs of the latest written LogEntries for all given <code>babuDBs</code>
+     */
+    public Map<InetSocketAddress,LSN> getStates(List<InetSocketAddress> babuDBs){
+        Logging.logMessage(Logging.LEVEL_TRACE, this, "Performing request: STATE");
+        return replication.sendStateBroadCast(babuDBs);
+    }
  
 /*
  * for the replication package
@@ -375,6 +393,10 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
                 Logging.logMessage(Logging.LEVEL_WARN, this, "ACK could not be send to the master.");
             }    
         }
+       // save it if it has the last LSN
+        synchronized (lock) {
+            lastWrittenLSN = (lastWrittenLSN.compareTo(rq.getValue().getLSN())<0) ? rq.getValue().getLSN() : lastWrittenLSN;
+        }
         rq.getValue().free();
         replication.removeMissing(rq);
     }
@@ -478,6 +500,15 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
 /*
  * getter/setter   
  */
+    
+    /**
+     * @return the LSN of the last locally written LogEntry
+     */
+    public LSN getLastWrittenLSN(){
+        synchronized (lock){
+            return lastWrittenLSN;
+        }
+    }
     
     /**
      * @return the master

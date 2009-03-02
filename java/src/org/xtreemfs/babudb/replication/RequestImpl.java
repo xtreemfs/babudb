@@ -60,6 +60,10 @@ class RequestImpl implements Request {
     private final AtomicInteger maxReceivableACKs       = new AtomicInteger(0);
     private final AtomicInteger minExpectableACKs       = new AtomicInteger(0);
     
+    RequestImpl(Token t){
+        token = t;
+    }
+    
     RequestImpl(Token t,InetSocketAddress s){
         token = t;
         source = s;

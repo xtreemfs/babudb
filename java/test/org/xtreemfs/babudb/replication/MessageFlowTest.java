@@ -379,9 +379,9 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
                 @Override
                 public void run() {                    
                     try {
-                        master.syncSingleInsert(testDBName2, testIndexId, lostKey.getBytes(), lostData.getBytes());                      
+                        master.syncSingleInsert(testDBName2, testIndexId, lostKey.getBytes(), lostData.getBytes()); 
+                        fail("REPLICA should have got lost!"); // depends on replication mode (SYNC in this case)
                     } catch (BabuDBException e) {
-                        fail("REPLICA should be send properly!");
                     }                     
                 }
             });
