@@ -70,6 +70,7 @@ public class BabuDBFactory {
     public static BabuDB getMasterBabuDB(String baseDir, String dbLogDir, int numThreads,
             long maxLogfileSize, int checkInterval, SyncMode syncMode, int pseudoSyncWait,
             int maxQ, List<InetSocketAddress> slaves, int port, SSLOptions ssl, int repMode, int qLimit) throws BabuDBException {
+        assert(slaves!=null);
         try {
             return new BabuDBImpl(baseDir, dbLogDir, numThreads, maxLogfileSize, checkInterval, syncMode, pseudoSyncWait, maxQ, new InetSocketAddress(InetAddress.getLocalHost(), port), slaves, port, ssl, true, repMode, qLimit);
         } catch (UnknownHostException e) {
@@ -100,6 +101,8 @@ public class BabuDBFactory {
     public static BabuDB getSlaveBabuDB(String baseDir, String dbLogDir, int numThreads,
             long maxLogfileSize, int checkInterval, SyncMode syncMode, int pseudoSyncWait,
             int maxQ, InetSocketAddress master, List<InetSocketAddress> slaves, int port, SSLOptions ssl, int qLimit) throws BabuDBException {
+        assert(master!=null);
+        assert(slaves!=null);
         return new BabuDBImpl(baseDir, dbLogDir, numThreads, maxLogfileSize, checkInterval, syncMode, pseudoSyncWait, maxQ, master, slaves, port, ssl, false, slaves.size(), qLimit);
     }
 }
