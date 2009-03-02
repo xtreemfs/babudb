@@ -29,7 +29,6 @@ import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
 import org.xtreemfs.babudb.lsmdb.LSMDBWorker;
 import org.xtreemfs.babudb.lsmdb.LSN;
-// import org.xtreemfs.babudb.replication.Replication.SYNC_MODUS;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.foundation.LifeCycleListener;
@@ -498,9 +497,17 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                         }                      
                         break;
                         
-                     // saves a chunk sended by the master
+                     // saves a chunk send by the master
                     case CHUNK_RP :                   
                         LSMDatabaseMOCK.writeFileChunk(chunk.getFileName(),data,chunk.getBegin(),chunk.getEnd());
+                        break;
+                        
+                  // shared logic
+                        
+                     // send the LSN for the latest written LogEntry as Response   
+                    case STATE :                       
+                        buffer = ReusableBuffer.wrap(frontEnd.getLastWrittenLSN().toString().getBytes());                                    
+                        orgReq.setResponse(HTTPUtils.SC_OKAY, buffer, DATA_TYPE.BINARY);
                         break;
                         
                     default : 
@@ -719,6 +726,42 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
         } catch (Exception e) {
             throw new ReplicationException(rq.getToken().toString()+" could not be replicated. Because: "+e.getMessage());   
         }
+    }
+    
+    /**
+     * <p>Performs a synchronous STATE {@link Request} for every babuDB on the list.</p>
+     * 
+     * @param babuDBs
+     * @return a table of BabuDBs with their latest acknowledged LogEntry identified by the LSN.
+     */
+    public Map<InetSocketAddress,LSN> sendStateBroadCast(List<InetSocketAddress> babuDBs) {
+        Map<InetSocketAddress,LSN> result = new Hashtable<InetSocketAddress, LSN>();
+       
+        for (InetSocketAddress babuDB : babuDBs) {
+            // build the request
+            Request rq = RequestPreProcessor.getStateRequest();
+            rq.setMaxReceivableACKs(1);
+            rq.setMinExpectableACKs(1);
+            try {
+                // send the request
+                SpeedyRequest sReq = new SpeedyRequest(HTTPUtils.POST_TOKEN,rq.getToken().toString(),null,null,null,DATA_TYPE.BINARY);
+                sReq.genericAttatchment = rq;
+                
+                // wait for the answer
+                synchronized(rq) {
+                    rq.wait();
+                }
+                
+                // analyze the response
+                if (rq.failed()) throw new Exception("Operation failed!");
+                else {
+                    result.put(babuDB,rq.getLSN());
+                }
+            } catch (Exception e) {
+                Logging.logMessage(Logging.LEVEL_ERROR, this, "BabuDB ("+babuDB+") seems to be unavailable: "+e.getMessage());
+            } 
+        } 
+        return result;
     }
     
     /**

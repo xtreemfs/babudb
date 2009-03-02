@@ -1178,8 +1178,17 @@ public class BabuDBImpl implements BabuDB {
         }
     }
 
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.BabuDB#directLookup(java.lang.String, int, byte[])
+     */
     public byte[] directLookup(String databaseName, int indexId, byte[] key) throws BabuDBException {
-        final LSMDatabase db = dbNames.get(databaseName);
+        if (isSlave()) {
+            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
+        }
+        
+        final LSMDatabase db = dbNames.get(databaseName);       
+       
         if (db == null) {
             throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database does not exist");
         }
@@ -1189,7 +1198,15 @@ public class BabuDBImpl implements BabuDB {
         return db.getIndex(indexId).lookup(key);
     }
 
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.BabuDB#directPrefixLookup(java.lang.String, int, byte[])
+     */
     public Iterator<Entry<byte[], byte[]>> directPrefixLookup(String databaseName, int indexId, byte[] key) throws BabuDBException {
+        if (isSlave()) {
+            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
+        }
+        
         final LSMDatabase db = dbNames.get(databaseName);
         if (db == null) {
             throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database does not exist");
@@ -1200,7 +1217,15 @@ public class BabuDBImpl implements BabuDB {
         return db.getIndex(indexId).prefixLookup(key);
     }
 
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.BabuDB#directInsert(org.xtreemfs.babudb.BabuDBInsertGroup)
+     */
     public void directInsert(BabuDBInsertGroup irg) throws BabuDBException {
+        if (isSlave()) {
+            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
+        }
+        
         final LSMDatabase db = databases.get(irg.getRecord().getDatabaseId());
         if (db == null) {
             throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database does not exist");

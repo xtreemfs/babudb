@@ -48,6 +48,9 @@ enum Token {
     /** Slave-token, for receiving a replica from the master. */
     REPLICA,
     
+    /** Request for the last acknowledged state of a BabuDB. */
+    STATE,
+    
     /** Request for a missing {@link org.xtreemfs.babudb.log.LogEntry}. */
     RQ,
     
