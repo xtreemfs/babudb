@@ -51,6 +51,7 @@ public class SetupMaster {
         options.put("port", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,0));
         options.put("reset", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH, false));
         options.put("repMode", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,0));
+        options.put("seed", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,0));
         options.put("h", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH, false));        
         
         List<String> arguments = new ArrayList(1);
@@ -86,37 +87,48 @@ public class SetupMaster {
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
         
         String nextCommand = null;
-        while((nextCommand = reader.readLine()) != null) {
-            if (nextCommand.equals("exit")){
-                break;
-            }else if(nextCommand.startsWith("benchmark ")){
-                String[] param = nextCommand.split(" ");
-
-                MasterBabuDBBenchmark b = new MasterBabuDBBenchmark(master,
-                        options.get("path").fileValue.getAbsolutePath(),
-                        SyncMode.valueOf(options.get("sync").stringValue),
-                        options.get("wait").numValue.intValue(),
-                        options.get("maxq").numValue.intValue(),
-                        options.get("thr").numValue.intValue(),
-                        options.get("workers").numValue.intValue(),
-                        Integer.parseInt(param[1]),
-                        options.get("payload").numValue.intValue(),
-                        options.get("keymin").numValue.intValue(),
-                        options.get("keymax").numValue.intValue(),
-                        options.get("port").numValue.intValue(),param[2]);
-                
-                double tpIns =b.benchmarkInserts();
-                double tpIter = b.benchmarkIterate();
-                double durCP = b.checkpoint();
-                double tpLookup = b.benchmarkLookup();
-
-                System.out.println("RESULTS -----------------------------------------\n");
-                
-                System.out.format("total throughput for INSERT : %12.4f keys/s\n", tpIns);
-                System.out.format("total throughput for ITERATE: %12.4f keys/s\n", tpIter);
-                System.out.format("total throughput for LOOKUP : %12.4f keys/s\n\n", tpLookup);
-
-                System.out.format("CHECKPOINTING took          : %12.4f s\n", durCP);
+        while(true) {
+            if ((nextCommand = reader.readLine()) != null){
+                if (nextCommand.equals("exit")){
+                    break;
+                } else if(nextCommand.startsWith("benchmark ")){
+                    String[] param = nextCommand.split(" ");
+                    if (param.length!=3) System.out.println("benchmark #keys prefix \n NOT:"+nextCommand);
+                    else { 
+                        MasterBabuDBBenchmark b = new MasterBabuDBBenchmark(master,
+                                options.get("path").fileValue.getAbsolutePath(),
+                                SyncMode.valueOf(options.get("sync").stringValue),
+                                options.get("wait").numValue.intValue(),
+                                options.get("maxq").numValue.intValue(),
+                                options.get("thr").numValue.intValue(),
+                                options.get("workers").numValue.intValue(),
+                                Integer.parseInt(param[1]),
+                                options.get("payload").numValue.intValue(),
+                                options.get("keymin").numValue.intValue(),
+                                options.get("keymax").numValue.intValue(),
+                                options.get("port").numValue.intValue(),param[2],
+                                options.get("seed").numValue.longValue());
+                        
+                        double tpIns = b.benchmarkInserts();
+                        double tpIter = b.benchmarkIterate();
+                        double durCP = b.checkpoint();
+                        double tpLookup = b.benchmarkLookup();
+        
+                        System.out.println("RESULTS -----------------------------------------\n");
+                        
+                        System.out.format("total throughput for INSERT : %12.4f keys/s\n", tpIns);
+                        System.out.format("total throughput for ITERATE: %12.4f keys/s\n", tpIter);
+                        System.out.format("total throughput for LOOKUP : %12.4f keys/s\n\n", tpLookup);
+        
+                        System.out.format("CHECKPOINTING took          : %12.4f s\n", durCP);
+                    }
+                } else if(nextCommand.startsWith("sleep")){
+                    String[] param = nextCommand.split(" ");
+                    if (param.length!=2) System.out.println("wait #seconds\nNOT:"+nextCommand);
+                    else {
+                        Thread.sleep(Long.valueOf(param[1]));
+                    }
+                } else System.err.println("UNKNOWN COMMAND: "+nextCommand);
             }
         }
         
@@ -161,6 +173,7 @@ public class SetupMaster {
         System.out.println("  "+"-keymin minimum key length, default is 2");
         System.out.println("  "+"-keymax maximum key length, default is 20");
         System.out.println("  "+"-repMode 0 means ASYNC; #slaves means SYNC and every value between is NSYNC mode");
+        System.out.println("  "+"-seed long value of the seed from which the keys inserted into the db will be generated");
         System.out.println("  "+"-reset starts the DB in clean mode");
         System.exit(1);
     }

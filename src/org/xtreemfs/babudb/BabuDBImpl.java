@@ -1197,6 +1197,27 @@ public class BabuDBImpl implements BabuDB {
         }
         return db.getIndex(indexId).lookup(key);
     }
+    
+    /**
+     * FOR TESTING PURPOSE ONLY!
+     * 
+     * @param databaseName
+     * @param indexId
+     * @param key
+     * @return
+     * @throws BabuDBException
+     */
+    public byte[] hiddenLookup(String databaseName, int indexId, byte[] key) throws BabuDBException {        
+        final LSMDatabase db = dbNames.get(databaseName);       
+       
+        if (db == null) {
+            throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database does not exist");
+        }
+        if ((indexId >= db.getIndexCount()) || (indexId < 0)) {
+            throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
+        }
+        return db.getIndex(indexId).lookup(key);
+    }
 
     /*
      * (non-Javadoc)

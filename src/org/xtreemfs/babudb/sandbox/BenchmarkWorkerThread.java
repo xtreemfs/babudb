@@ -9,6 +9,7 @@
 package org.xtreemfs.babudb.sandbox;
 
 import java.util.Iterator;
+import java.util.Random;
 import java.util.Map.Entry;
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
@@ -51,8 +52,15 @@ public class BenchmarkWorkerThread extends Thread {
 
     private final String dbName;
 
+    private final Random random;
+ 
     public BenchmarkWorkerThread(int id, int numKeys, int minKeyLength,
             int maxKeyLength, byte[] payload, BabuDB database, BenchmarkOperation operation) {
+        this(id,numKeys,minKeyLength,maxKeyLength,payload,database,operation,"",0L);
+    }
+    
+    public BenchmarkWorkerThread(int id, int numKeys, int minKeyLength,
+            int maxKeyLength, byte[] payload, BabuDB database, BenchmarkOperation operation, String dbPrefix, long seed) {
         this.id = id;
         this.numKeys = numKeys;
         this.minKeyLength = minKeyLength;
@@ -60,7 +68,8 @@ public class BenchmarkWorkerThread extends Thread {
         this.payload = payload;
         this.database = database;
         this.operation = operation;
-        this.dbName = Integer.toString(id);
+        this.dbName = dbPrefix+Integer.toString(id);
+        this.random = new Random(seed);
         error = null;
         done = false;
     }
@@ -208,14 +217,19 @@ public class BenchmarkWorkerThread extends Thread {
         System.out.print(output);
     }
 
-    private byte[] createRandomKey() {
-        final int length = (int) (Math.random() * ((double)(maxKeyLength - minKeyLength)) + minKeyLength);
+    byte[] createRandomKey() {
+        return createRandomKey(random.nextDouble(),random.nextDouble());
+    }
+    
+    private byte[] createRandomKey(double randLength,double randVal) {
+        final int length = (int) (randLength * ((double)(maxKeyLength - minKeyLength)) + minKeyLength);
         assert(length >= minKeyLength);
         assert(length <= maxKeyLength);
 
         byte[] key = new byte[length];
         for (int i = 0; i < length; i++)
-            key[i] = BabuDBBenchmark.CHARS[(int)(Math.random()*(BabuDBBenchmark.CHARS.length-1))];
+            key[i] = BabuDBBenchmark.CHARS[(int)(randVal*(BabuDBBenchmark.CHARS.length-1))];
+        
         return key;
     }
 

@@ -42,15 +42,21 @@ public class MasterBabuDBBenchmark {
     private final byte[] payload;
 
     private final BabuDB database;
-
+    private final String dbPrefix;
+    
     private final int numThreads;
-
+    
+    private final long seed;
+    
+    
     public MasterBabuDBBenchmark(BabuDB db, String dbDir, SyncMode syncMode, int pseudoModeWait, int maxQ, int numThreads, int numDBWorkers,
-            int numKeys, int valueLength, int minKeyLength, int maxKeyLength, int port, String prefix) throws BabuDBException, IOException, InterruptedException {
+            int numKeys, int valueLength, int minKeyLength, int maxKeyLength, int port, String prefix,long seed) throws BabuDBException, IOException, InterruptedException {
         this.numKeys = numKeys;
         this.minKeyLength = minKeyLength;
         this.maxKeyLength = maxKeyLength;
         this.numThreads = numThreads;
+        this.dbPrefix = prefix;
+        this.seed = seed;
 
         payload = new byte[valueLength];
         for (int i = 0; i < valueLength; i++)
@@ -90,7 +96,7 @@ public class MasterBabuDBBenchmark {
     public double benchmarkInserts() throws Exception {
         BenchmarkWorkerThread[] threads = new BenchmarkWorkerThread[numThreads];
         for (int i = 0; i < numThreads; i++) {
-            threads[i] = new BenchmarkWorkerThread(i+1, numKeys, minKeyLength, maxKeyLength, payload, database, BenchmarkWorkerThread.BenchmarkOperation.INSERT);
+            threads[i] = new BenchmarkWorkerThread(i+1, numKeys, minKeyLength, maxKeyLength, payload, database, BenchmarkWorkerThread.BenchmarkOperation.INSERT,dbPrefix,seed);
         }
         for (int i = 0; i < numThreads; i++) {
             threads[i].start();
@@ -106,7 +112,7 @@ public class MasterBabuDBBenchmark {
     public double benchmarkIterate() throws Exception {
         BenchmarkWorkerThread[] threads = new BenchmarkWorkerThread[numThreads];
         for (int i = 0; i < numThreads; i++) {
-            threads[i] = new BenchmarkWorkerThread(i+1, numKeys, minKeyLength, maxKeyLength, payload, database, BenchmarkWorkerThread.BenchmarkOperation.ITERATE);
+            threads[i] = new BenchmarkWorkerThread(i+1, numKeys, minKeyLength, maxKeyLength, payload, database, BenchmarkWorkerThread.BenchmarkOperation.ITERATE,dbPrefix,seed);
         }
         for (int i = 0; i < numThreads; i++) {
             threads[i].start();
@@ -121,7 +127,7 @@ public class MasterBabuDBBenchmark {
     public double benchmarkLookup() throws Exception {
         BenchmarkWorkerThread[] threads = new BenchmarkWorkerThread[numThreads];
         for (int i = 0; i < numThreads; i++) {
-            threads[i] = new BenchmarkWorkerThread(i+1, numKeys, minKeyLength, maxKeyLength, payload, database, BenchmarkWorkerThread.BenchmarkOperation.LOOKUP);
+            threads[i] = new BenchmarkWorkerThread(i+1, numKeys, minKeyLength, maxKeyLength, payload, database, BenchmarkWorkerThread.BenchmarkOperation.LOOKUP,dbPrefix,seed);
         }
         for (int i = 0; i < numThreads; i++) {
             threads[i].start();
