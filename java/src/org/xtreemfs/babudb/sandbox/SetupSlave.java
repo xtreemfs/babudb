@@ -25,6 +25,7 @@ import org.xtreemfs.babudb.BabuDBImpl;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.replication.Replication;
+import org.xtreemfs.babudb.sandbox.BenchmarkWorkerThread.BenchmarkOperation;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
@@ -42,7 +43,7 @@ public class SetupSlave {
      * @throws InterruptedException 
      */
     public static void main(String[] args) throws BabuDBException, IOException, InterruptedException {
-        Logging.start(Logging.LEVEL_TRACE);
+        Logging.start(Logging.LEVEL_ERROR);
 
         Map<String,CLIParser.CliOption> options = new HashMap();
         options.put("path",new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.FILE,new File("/tmp/babudb_benchmark/slave")));
@@ -52,6 +53,8 @@ public class SetupSlave {
         options.put("workers", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,1));
         options.put("port", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,0));
         options.put("h", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH, false));
+        options.put("keymin", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,2));
+        options.put("keymax", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,20));
         options.put("reset", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH, false));
         
         List<String> arguments = new ArrayList(2);
@@ -88,19 +91,44 @@ public class SetupSlave {
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
         
         String nextCommand = null;
-        while((nextCommand = reader.readLine()) != null) {
-            if (nextCommand.equals("exit")){
-                break;
-            }else if(nextCommand.startsWith("consistencyCheck")){
-                String[] param = nextCommand.split(" ");
-
-                String result = new String(slave.syncLookup(param[1], Integer.parseInt(param[2]), param[3].getBytes()));
-                if (!result.equals(param[4])){
-                    String msg = "Consistency check for slave failed! expected: "+param[4]+" found: "+result+" request: "+nextCommand;
-                    Logging.logMessage(Logging.LEVEL_ERROR, slave, msg);
-                    slave.shutdown();
-                    throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,msg);
-                }
+        while(true) {
+            if ((nextCommand = reader.readLine()) != null){
+                if (nextCommand.equals("exit")){
+                    break;
+                } else if(nextCommand.startsWith("consistencyCheck")){
+                    String[] param = nextCommand.split(" ");
+                    if (param.length!=6) System.out.println("consistencyCheck dbName indexId value #keys seed\nNOT:"+nextCommand);
+                    else {
+                        byte[] payload = getPayload(Integer.parseInt(param[3]));
+                        int keys = Integer.parseInt(param[4]);
+                        BenchmarkWorkerThread w = new BenchmarkWorkerThread(1, keys, options.get("keymin").numValue.intValue(),
+                                options.get("keymax").numValue.intValue(), payload, slave, BenchmarkOperation.ITERATE, "", Long.valueOf(param[5]));
+                        
+                        for (int i = 0;i<keys;i++){
+                            byte[] key = w.createRandomKey();
+                            byte[] result = slave.hiddenLookup(param[1], Integer.parseInt(param[2]), key);
+                            
+                            if (result==null) {
+                                String msg = "No result for key: "+new String(key);
+                                Logging.logMessage(Logging.LEVEL_ERROR, slave, msg);
+                                slave.shutdown();
+                                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,msg);
+                            } else if (!new String(result).equals(new String(payload))){
+                                String msg = "Consistency check for slave failed! expected: "+new String(payload)+" found: "+new String (result)+" request: "+nextCommand;
+                                Logging.logMessage(Logging.LEVEL_ERROR, slave, msg);
+                                slave.shutdown();
+                                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,msg);
+                            }
+                        }
+                        System.out.println("CONSISTENCY CHECK WAS SUCCESSFUL!");
+                    }
+                } else if(nextCommand.startsWith("sleep")){
+                    String[] param = nextCommand.split(" ");
+                    if (param.length!=2) System.out.println("wait #seconds\nNOT:"+nextCommand);
+                    else {
+                        Thread.sleep(Long.valueOf(param[1]));
+                    }
+                } else System.err.println("UNKNOWN COMMAND: "+nextCommand);
             }
         }
         
@@ -124,6 +152,13 @@ public class SetupSlave {
         }      
     }
     
+    private static byte[] getPayload (int valueLength){
+        byte[] payload = new byte[valueLength];
+        for (int i = 0; i < valueLength; i++)
+            payload[i] = 'v';
+        
+        return payload;
+    }
     private static void error(String message) {
         System.err.println(message);
         usage();
@@ -135,6 +170,8 @@ public class SetupSlave {
         System.out.println("  "+"<slave_address:port> same as for the master for all available slaves seperated by ','");
         System.out.println("  "+"-path directory in which to store the database, default is /tmp/babudb_benchmark/slave");
         System.out.println("  "+"-sync synchronization mode FSYNC");
+        System.out.println("  "+"-keymin minimum key length, default is 2");
+        System.out.println("  "+"-keymax maximum key length, default is 20");
         System.out.println("  "+"-wait ms between to batch writes, default is 0 for synchronous mode");
         System.out.println("  "+"-maxq maximum worker queue length, default is 0 for unlimited");
         System.out.println("  "+"-port where the slave should listen at (default is "+Replication.SLAVE_PORT+")");
