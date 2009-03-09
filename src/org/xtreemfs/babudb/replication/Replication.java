@@ -98,7 +98,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
     /**
      * <p>Holds the identifier of the last written LogEntry.</p>>
      */
-    private LSN                         lastWrittenLSN  = new LSN("0:0");
+    private LSN                         lastWrittenLSN  = new LSN("1:0");
     
     /**
      * <p>Starts the {@link ReplicationThread} with {@link org.xtreemfs.include.foundation.pinky.PipelinedPinky} listening on <code>port</code>.
@@ -325,6 +325,16 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
         return false;
     }
     
+    /**
+     * <p>Sets the lastWrittenLSN to <code>lsn</code>, if it's bigger.</p>
+     * @param lsn
+     */
+    void updateLastWrittenLSN(LSN lsn){
+        synchronized (lock) {
+            lastWrittenLSN = (lastWrittenLSN.compareTo(lsn)<0) ? lsn : lastWrittenLSN;
+        }
+    }
+    
 /*
  * ResponseListener   
  */
@@ -378,27 +388,30 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      */
     @Override
     public void insertFinished(Object context) {
-        // answer the REPLICA request
-        Status<Request> rq = (Status<Request>) context;
-        PinkyRequest orgReq = (PinkyRequest) rq.getValue().getOriginal();
-        if (orgReq!=null){
-            orgReq.setResponse(HTTPUtils.SC_OKAY);
-            replication.sendResponse(orgReq);
-       // send an ACK for the replicated entry & free the request-buffers
-        } else {
-            rq.getValue().free();
-            try {
-                replication.sendACK(new Status(RequestPreProcessor.getACKRequest(rq.getValue().getLSN(),rq.getValue().getSource())));
-            } catch (ReplicationException e) {
-                Logging.logMessage(Logging.LEVEL_WARN, this, "ACK could not be send to the master.");
-            }    
+        try { 
+            if (context==null) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,"No informations about the inserted logEntry available!");
+            Status<Request> rq = (Status<Request>) context;
+            if (rq!=null){
+                // save it if it has the last LSN
+                updateLastWrittenLSN(rq.getValue().getLSN());
+                replication.removeMissing(rq.getValue());
+                
+                Object parsed = RequestPreProcessor.getReplicationRequest(rq);
+                 // send an ACK for the replicated entry
+                if (parsed instanceof Request) replication.sendACK((Request) parsed);
+                else if (parsed instanceof PinkyRequest){
+                    replication.sendResponse((PinkyRequest) parsed);
+                }                   
+            }
+        }catch (BabuDBException be) {
+            // if a request could not be parsed for any reason
+            Logging.logMessage(Logging.LEVEL_ERROR, this, be.getMessage());
+        }catch (PreProcessException ppe){       
+            Logging.logMessage(Logging.LEVEL_ERROR, this, ppe.getMessage());
+        }catch (ReplicationException e) {
+            // if the ACK could not be send
+            Logging.logMessage(Logging.LEVEL_ERROR, this, "ACK could not be send: "+e.getMessage());
         }
-       // save it if it has the last LSN
-        synchronized (lock) {
-            lastWrittenLSN = (lastWrittenLSN.compareTo(rq.getValue().getLSN())<0) ? rq.getValue().getLSN() : lastWrittenLSN;
-        }
-        rq.getValue().free();
-        replication.removeMissing(rq);
     }
 
     /*
@@ -407,19 +420,32 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      */
     @Override
     public void requestFailed(Object context, BabuDBException error) {
-        // answer the REPLICA request
-        Status<Request> rq = (Status<Request>) context;
-        PinkyRequest orgReq = (PinkyRequest) rq.getValue().getOriginal();
-        if (orgReq!=null){
-            orgReq.setResponse(HTTPUtils.SC_SERVER_ERROR,"LogEntry could not be replicated due a diskLogger failure: "+error.getMessage());
-            replication.sendResponse(orgReq);
-        } 
-       // retry, if the queue isn't full
         try {
-            rq.setStatus(STATUS.FAILED);
-            replication.enqueueRequest(rq);
-        } catch (ReplicationException e) {
-            Logging.logMessage(Logging.LEVEL_WARN, this, "No retry for the failed request because: "+e.getMessage());
+             // parse the error and retrieve the informations
+            if (context==null) new Exception("No informations about the inserted logEntry available!");
+            Status<Request> erq = (Status<Request>) context;
+            Request rq = null;
+            if (!isMaster()) rq = RequestPreProcessor.getReplicationRequest(erq,error);
+            
+             // send the answer
+            PinkyRequest orgReq = (PinkyRequest) erq.getValue().getOriginal();
+            if (orgReq!=null){
+                orgReq.setResponse(HTTPUtils.SC_SERVER_ERROR,"LogEntry could not be replicated due a diskLogger failure: "+error.getMessage());
+                replication.sendResponse(orgReq);
+            }
+            
+             // try to deal with the error
+            if (rq==null){
+                erq.setStatus(STATUS.FAILED);
+                replication.enqueueRequest(erq);
+            } else {
+                replication.enqueueRequest(rq);
+                erq.setStatus(STATUS.OPEN);
+                replication.enqueueRequest(erq);                  
+            }
+        }catch (ReplicationException e){
+            // if a request could not be handled for any reason
+            Logging.logMessage(Logging.LEVEL_ERROR, this, e.getMessage());
         }
     }
 
@@ -536,7 +562,9 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
                 replication.halt.set(false);
                 replication.halt.notify();
             }
-        }       
+        }    
+        
+        Logging.logMessage(Logging.LEVEL_TRACE, replication, "Replication: Master has been changed. New master: "+master.getHostName());
     }
 
     /**
@@ -555,7 +583,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
         int mode = syncN;
         
         if (slaves.size() < mode){
-            Logging.logMessage(Logging.LEVEL_WARN, this, "Replication mode has been adjusted automatically to fit the new slaves count.");
+            Logging.logMessage(Logging.LEVEL_WARN, replication, "Replication: mode has been adjusted automatically to fit the new slaves count.");
             mode = slaves.size();
         }
         
@@ -583,6 +611,8 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
                 }
             }               
         }
+        
+        Logging.logMessage(Logging.LEVEL_TRACE, replication, "Replication: slaves have been changed. New: "+slaves.size()+" slaves.");
     }
     
     /**
@@ -601,7 +631,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      * @param mode
      * @throws InterruptedException
      */
-    public void setSyncModus(int mode) throws BabuDBException,InterruptedException{  
+    public void setSyncMode(int mode) throws BabuDBException,InterruptedException{  
         if (mode<0 || mode>slaves.size()) throw new BabuDBException(
                 ErrorCode.REPLICATION_FAILURE,"The attempt to set an illegal replication-mode ("+mode+") was denied. " +
         	"Legal modes lie between 0 and "+slaves.size());
@@ -621,5 +651,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
                 }
             }
         }
+        
+        Logging.logMessage(Logging.LEVEL_TRACE, replication, "Replication: SyncMode has been changed. New mode: "+mode+" @: "+slaves.size()+" slaves.");
     }
 }

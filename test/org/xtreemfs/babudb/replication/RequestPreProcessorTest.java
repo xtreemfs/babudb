@@ -245,7 +245,7 @@ public class RequestPreProcessorTest {
          */
         
         try {
-            rq = RequestPreProcessor.getReplicationRequest(null);
+            rq = RequestPreProcessor.getReplicationRequest((LogEntry) null);
             fail("Null logEntry should cast an exception.");
         }catch(PreProcessException e){
             assertTrue(true);
