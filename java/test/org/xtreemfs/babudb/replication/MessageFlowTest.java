@@ -74,7 +74,7 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
         
         InetSocketAddress snifferAddress = new InetSocketAddress("localhost",PORT);
         
-        // start the communication components (stands between master and slave and verifies their communication)
+        // start the communication components (standing between master and slave and verifying their communication)
         pinky = new PipelinedPinky(snifferAddress.getPort(),snifferAddress.getAddress(),null);
         pinky.start();
         pinky.waitForStartup();
@@ -330,7 +330,7 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
         master.replicationFacade.setSlaves(testDummySlave);
         
         // apply the replication mode (SYNC)
-        master.replicationFacade.setSyncModus(testDummySlave.size());
+        master.replicationFacade.setSyncMode(testDummySlave.size());
         
         /*
          * INSERT the lost entry
@@ -340,15 +340,13 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
             master.syncSingleInsert(testDBName2, testIndexId, lostKey.getBytes(), lostData.getBytes());    
             fail("REPLICA should fail!");
         } catch (BabuDBException e) {}    
-        
-        Thread.sleep(500);
       
         master.replicationFacade.setSlaves(reset);
         actual = new LSN(actual.getViewId(),actual.getSequenceNo()+1L);
     }
     
     @Test
-    public void replicaRQTest () throws InterruptedException, LogEntryException, IllegalStateException, IOException {
+    public void replicaRQTest () throws InterruptedException, LogEntryException, IllegalStateException, IOException, BabuDBException {
         pinky.registerListener(this);
         speedy.registerSingleListener(this);
         
@@ -365,15 +363,18 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
         
         synchronized (testLock) {
             
+            // apply the replication mode (ASYNC)
+            master.replicationFacade.setSyncMode(0);
+            
             // asynchronous method-call for DB insert 
             Thread asyncInsert = new Thread(new Runnable() {
             
                 @Override
                 public void run() {                    
                     try {
-                        master.syncSingleInsert(testDBName2, testIndexId, lostKey.getBytes(), lostData.getBytes()); 
-                        fail("REPLICA should have got lost!"); // depends on replication mode (SYNC in this case)
+                        master.syncSingleInsert(testDBName2, testIndexId, lostKey.getBytes(), lostData.getBytes());                      
                     } catch (BabuDBException e) {
+                        fail("REPLICA should not have got lost!");
                     }                     
                 }
             });

@@ -12,12 +12,16 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Hashtable;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.xtreemfs.babudb.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
+import org.xtreemfs.babudb.replication.Replication;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.include.common.logging.Logging;
@@ -65,6 +69,8 @@ public class LSMDatabase {
      */
     private LSN           ondiskLSN;
     
+    private final int     numIndices;
+    
     private final ByteRangeComparator[] comparators;
     
     
@@ -79,6 +85,7 @@ public class LSMDatabase {
     public LSMDatabase(String databaseName, int databaseId, String databaseDir,
             int numIndices, boolean readFromDisk, ByteRangeComparator[] comparators) throws BabuDBException {
         
+        this.numIndices = numIndices;
         this.databaseId = databaseId;
         this.databaseDir = databaseDir;
         File f = new File(this.databaseDir);
@@ -286,7 +293,65 @@ public class LSMDatabase {
     private static String getSnaphotFilename(int indexId, int viewId, long sequenceNo) {
         return "IX"+indexId+"V"+viewId+"SEQ"+sequenceNo+".idx";
     }
+    
+    /**
+     * @param fileName
+     * @return true, if the given <code>fileName</code> matches the snapshot-filename-pattern, false otherwise.
+     */
+    public static boolean isSnapshotFilename(String fileName) {
+        return fileName.matches(SNAPSHOT_FILENAME_REGEXP);
+    }
+    
+    /**
+     * @return a list of file details from snapshot files that can used to synchronize master and slave in replication.
+     */
+    public Map<String,List<Long>> getLastestSnapshotFiles() {
+        Map<String,List<Long>> result = new Hashtable<String, List<Long>>();
 
+        for (int index = 0; index < numIndices; index++) {
+            final int idx = index;
+            File f = new File(databaseDir);
+            String[] files = f.list(new FilenameFilter() {
+
+                public boolean accept(File dir, String name) {
+                    return name.startsWith("IX"+idx+"V");
+                }
+            });
+            
+            int maxView = -1;
+            int maxSeq = -1;
+            Pattern p = Pattern.compile(SNAPSHOT_FILENAME_REGEXP);
+            for (String fname : files) {
+                Matcher m = p.matcher(fname);
+                m.matches();
+                Logging.logMessage(Logging.LEVEL_DEBUG, this,"inspecting snapshot: "+fname);
+    
+                int view = Integer.valueOf(m.group(2));
+                int seq = Integer.valueOf(m.group(3));
+                if (view > maxView) {
+                    maxView = view;
+                    maxSeq = seq;
+                } else if (view == maxView) {
+                    if (seq > maxSeq)
+                        maxSeq = seq;
+                }
+                
+                if (maxView > -1) {
+                    String fName = getSnaphotFilename(index,maxView,maxSeq);
+                    
+                    List<Long> parameter = new LinkedList<Long>();
+                    File snapshotFile = new File(databaseDir + fName);
+                    parameter.add(snapshotFile.length());
+                    parameter.add(Replication.CHUNK_SIZE);
+                    
+                    result.put(databaseDir + fName, parameter);
+                }
+            }    
+        }
+        
+        return result;
+    }
+    
     public int getDatabaseId() {
         return databaseId;
     }

@@ -39,6 +39,9 @@ enum Token {
      */
     ACK,
     
+    /** Slave is asked to send a LOAD to the master. */
+    LOAD_RQ,
+    
     /** Response for a complete database load, till a specified LSN. */
     LOAD_RP,
     
@@ -57,6 +60,9 @@ enum Token {
     /** Master-token, for sending a replica to the slaves. */
     REPLICA_BROADCAST,
  
+    /** Request for a database structure load. */
+    CONFIG,
+    
     /** Request for a complete database load, till a specified LSN. */
     LOAD,
     

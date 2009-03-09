@@ -148,4 +148,13 @@ class Chunk implements Comparable<Chunk> {
         
         return fileName.equals(o.fileName) && begin.equals(o.begin) && end.equals(o.end);
     }
+    
+    /*
+     * (non-Javadoc)
+     * @see java.lang.Object#toString()
+     */
+    @Override
+    public String toString() {
+        return "Chunk of '"+fileName+"': ["+begin+";"+end+"]";
+    }
 }

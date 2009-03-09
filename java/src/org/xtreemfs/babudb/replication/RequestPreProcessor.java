@@ -7,7 +7,6 @@
  */
 package org.xtreemfs.babudb.replication;
 
-import java.net.InetSocketAddress;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -123,7 +122,8 @@ class RequestPreProcessor {
      * 
      * @return the {@link Request} in replication abstraction.
      */
-    static Request getReplicationRequest(PinkyRequest theRequest,Replication frontEnd) throws PreProcessException {
+    @SuppressWarnings("unchecked")
+	static Request getReplicationRequest(PinkyRequest theRequest,Replication frontEnd) throws PreProcessException {
         /**
          * <p>Object for generating check sums</p>
          */
@@ -194,7 +194,7 @@ class RequestPreProcessor {
             
         case LOAD:
             if (!frontEnd.isDesignatedSlave(result.source))
-                throw THIS.new PreProcessException(masterSecurityMsg,HTTPUtils.SC_UNAUTHORIZED);           
+                throw THIS.new PreProcessException(masterSecurityMsg,HTTPUtils.SC_UNAUTHORIZED); 
             break;   
             
        // for slave    
@@ -287,7 +287,8 @@ class RequestPreProcessor {
      * 
      * @return the {@link Request} in replication abstraction. Or null, if it was already handled.
      */
-    static Request getReplicationRequest(SpeedyRequest theResponse,Replication frontEnd) throws PreProcessException{
+    @SuppressWarnings("unchecked")
+	static Request getReplicationRequest(SpeedyRequest theResponse,Replication frontEnd) throws PreProcessException{
         Token token = null;
         try {
             token = Token.valueOf(theResponse.getURI());
@@ -491,18 +492,37 @@ class RequestPreProcessor {
                 theResponse.freeBuffer();
                 throw THIS.new PreProcessException(slaveSecurityMsg);
             }
-           // get the lsn
-            Status<LSN> mLSN = null;
-            try {                
+            try {    
                // make a subRequest
-                mLSN = (Status<LSN>) theResponse.genericAttatchment;
-                result.source = theResponse.getServer();
-                result.lsn = mLSN.getValue();
-                result.logEntry = LogEntry.deserialize(ReusableBuffer.wrap(theResponse.getResponseBody()), checksum);
-                checksum.reset();
-                result.token = REPLICA;
-
-                result.context = retrieveRequest(new Status<Request>(result), frontEnd);
+                Status<LSN> mLSN = (Status<LSN>) theResponse.genericAttatchment;
+                
+                if (mLSN!=null){
+                     // server was not able to answer the request, perform a LOAD!
+                    if (theResponse.statusCode!=HTTPUtils.SC_OKAY) {
+                        if (mLSN!=null) mLSN.setStatus(FAILED);
+                        
+                        String msg = "RQ ("+result.lsn.toString()+") could not be answered by master: "+result.source.toString()+
+                                     ",\r\n\t because: ";              
+                        if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
+                        else msg += theResponse.statusCode;
+                        msg+=" DB will be loaded soon.";
+                        
+                        Logging.logMessage(Logging.LEVEL_WARN, THIS, msg);
+                        result.token = LOAD_RQ;
+                     // add the answer as a new REPLICA request
+                    } else {                   
+                        result.source = theResponse.getServer();
+                        result.lsn = mLSN.getValue();
+                        result.logEntry = LogEntry.deserialize(ReusableBuffer.wrap(theResponse.getResponseBody()), checksum);
+                        checksum.reset();
+                        result.token = REPLICA;       
+                        result.context = retrieveRequest(new Status<Request>(result), frontEnd);
+                    }
+                } else {
+                   // this is not the answer to a request, so it will be ignored
+                    theResponse.freeBuffer();
+                    return null;
+                }
             }catch (Exception e){
                 result.free();
                 if (theResponse.statusCode!=HTTPUtils.SC_OKAY){
@@ -516,18 +536,6 @@ class RequestPreProcessor {
                 
                 throw THIS.new PreProcessException("The answer to a RQ by master: "+result.source.toString()+" was not well formed: "+e.getMessage());
             }
-            
-            if (theResponse.statusCode!=HTTPUtils.SC_OKAY) {
-                if (mLSN!=null) mLSN.setStatus(FAILED);
-                result.free();
-                
-                String msg = "RQ ("+result.lsn.toString()+") could not be answered by master: "+result.source.toString()+
-                             ",\r\n\t because: ";              
-                if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
-                else msg += theResponse.statusCode;
-                
-                                   
-            }
             theResponse.freeBuffer();
             break;      
            
@@ -536,29 +544,31 @@ class RequestPreProcessor {
                 theResponse.freeBuffer();
                 throw THIS.new PreProcessException(slaveSecurityMsg,HTTPUtils.SC_UNAUTHORIZED);
             }
-            
-            Status<Chunk> chunk = null;
             try {      
                // make a subRequest
-                chunk = (Status<Chunk>) theResponse.genericAttatchment;
+                Status<Chunk> chunk = (Status<Chunk>) theResponse.genericAttatchment;
+                
+                if (theResponse.statusCode!=HTTPUtils.SC_OKAY) {
+                    if (chunk!=null) chunk.setStatus(FAILED);
+                    result.free();
+                    
+                    String msg = "Could not get CHUNK_RP, because: ";               
+                    if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
+                    else msg += theResponse.statusCode;
+                  
+                    throw THIS.new PreProcessException(msg);
+                } 
+                
                 result.chunkDetails = chunk.getValue();
                 result.data = ReusableBuffer.wrap(theResponse.getResponseBody());
                 result.token = CHUNK_RP;
+            } catch (PreProcessException ppe) { 
+                throw ppe;
             } catch (ClassCastException e) {
                 result.free();
                 throw THIS.new PreProcessException("Files details of a CHUNK could not be decoded for request: "+result.toString()+",\r\n\t because: "+e.getLocalizedMessage());
             }
-            
-            if (theResponse.statusCode!=HTTPUtils.SC_OKAY) {
-                if (chunk!=null) chunk.setStatus(FAILED);
-                result.free();
-                
-                String msg = "Could not get CHUNK_RP, because: ";               
-                if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
-                else msg += theResponse.statusCode;
-              
-                throw THIS.new PreProcessException(msg);
-            } 
+
             theResponse.freeBuffer();
             break;
             
@@ -623,8 +633,7 @@ class RequestPreProcessor {
                     result.source = theResponse.getServer();
                 }
                 
-                theResponse.freeBuffer();
-                
+                theResponse.freeBuffer();               
                 if (msg!=null)
                     throw THIS.new PreProcessException(msg);
             }catch (PreProcessException ppe){
@@ -727,12 +736,58 @@ class RequestPreProcessor {
     }
     
     /**
+     * <p>Translates a successful integration notification into the master-slave-abstraction.</p> 
+     * 
+     * @param request
+     * @exception PreProcessException - if something went wrong.
+     * @return the original pinky request, or an ACK request.
+     */
+    @SuppressWarnings("unchecked")
+	static Object getReplicationRequest(Status<Request> rq) throws PreProcessException{
+        try {
+            PinkyRequest orgReq = (PinkyRequest) rq.getValue().getOriginal();
+            rq.getValue().free();
+            
+            if (orgReq!=null){
+                orgReq.setResponse(HTTPUtils.SC_OKAY);
+                return orgReq;    
+            } else {
+                RequestImpl result = new RequestImpl(ACK,rq.getValue().getSource());
+                result.lsn = rq.getValue().getLSN();
+                return result;
+            }
+        }catch (Exception e){
+            throw THIS.new PreProcessException(e.getMessage());
+        }
+    }
+    
+    /**
+     * 
+     * @param rq
+     * @param error
+     * @return a CONFIG_RQ {@link Request}, if the DB structure is damaged.
+     * @throws PreProcessException
+     */
+    static Request getReplicationRequest(Status<Request> rq, BabuDBException error) {
+        if (error!=null){
+            if ((error.getErrorCode().equals(ErrorCode.NO_SUCH_DB) || 
+                 error.getErrorCode().equals(ErrorCode.NO_SUCH_INDEX))){
+                
+                RequestImpl result = new RequestImpl(LOAD_RQ);
+                result.lsn = rq.getValue().getLSN();
+                return result;                
+            }
+        }
+        return null;
+    }
+    
+    /**
      * @return a state {@link Request}.
      */
     static Request getStateRequest(){
         return new RequestImpl(STATE);
     }
-    
+       
     /**
      * <b>WARNING: dangerous architecture break-through</b></br>
      * do not use this!
@@ -740,8 +795,7 @@ class RequestPreProcessor {
      * @return dummy LOAD_RP request for testing against the pending queue.
      */
     static Request getExpectedLOAD_RP() {
-        RequestImpl result = new RequestImpl(LOAD_RP);
-        return result;
+        return new RequestImpl(LOAD_RP);
     }
     
     /**
@@ -769,18 +823,4 @@ class RequestPreProcessor {
         result.lsn = lsn;
         return result;
     }
-    
-    /**
-     * <b>WARNING: dangerous architecture break-through</b></br>
-     * do not use this!
-     * 
-     * @param lsn
-     * @param destination
-     * @return an ACK-request for the specified LSN with the specified destination.
-     */
-    static Request getACKRequest(LSN lsn, InetSocketAddress destination) {
-        RequestImpl result = new RequestImpl(ACK,destination);
-        result.lsn = lsn;
-        return result;
-    }  
 }

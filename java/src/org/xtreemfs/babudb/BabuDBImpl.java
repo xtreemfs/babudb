@@ -7,6 +7,8 @@
  */
 package org.xtreemfs.babudb;
 
+import static org.xtreemfs.babudb.BabuDBConfiguration.*;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -59,18 +61,10 @@ import org.xtreemfs.include.foundation.pinky.SSLOptions;
  *
  */
 public class BabuDBImpl implements BabuDB {
-    
-    public static final int DEBUG_LEVEL = Logging.LEVEL_WARN;
-    
+  
     static {
         Logging.start(DEBUG_LEVEL);
     }
-
-    /**
-     * The database configuration file.
-     * Contains the names and number of indices for the databases.
-     */
-    private static final String DBCFG_FILE = "config.db";
 
     /**
      * Mapping from database name to database id
@@ -83,20 +77,10 @@ public class BabuDBImpl implements BabuDB {
     public final Map<Integer, LSMDatabase> databases;
 
     /**
-     * base dir to store database index snapshots in
-     */
-    private final String baseDir;
-
-    /**
-     * directory in which the database logs are stored.
-     */
-    private final String dbLogDir;
-
-    /**
      * the disk logger is used to write InsertRecordGroups persistently to disk
      * - visibility changed to public, because the replication needs access to the {@link DiskLogger}
      */
-    public final DiskLogger logger;
+    public DiskLogger logger;
 
     /**
      * object used for synchronizing modifications of the database lists.
@@ -112,9 +96,9 @@ public class BabuDBImpl implements BabuDB {
      * object used for locking to ensure that switch of log file and overlay trees is atomic
      * and not interrupted by inserts
      */
-    private final ReadWriteLock overlaySwitchLock;
+    private ReadWriteLock overlaySwitchLock;
 
-    private final LSMDBWorker[] worker;
+    private LSMDBWorker[] worker;
 
     public final Replication replicationFacade;
 
@@ -127,34 +111,15 @@ public class BabuDBImpl implements BabuDB {
      * Checkpointer thread for automatic checkpointing
      * -has to be public for replication issues
      */
-    public final Checkpointer dbCheckptr;
+    public Checkpointer dbCheckptr;
 
     private final Map<String, ByteRangeComparator> compInstances;
 
     /**
-     * if set to a value > 0, operations are acknowledges immediately before
-     * they are written to the disk log. The disk logger will do batch writes
-     * and call fsync... every pseudoSyncWait seconds. This can be used to
-     * increase performance and emulate PostgreSQL behaviour
+     * All necessary parameters to run the BabuDB.
      */
-    private final int pseudoSyncWait;
-
-    /**
-     * Needed for MasterSlave failOver in case of Replication.
-     */
-    private List<InetSocketAddress> slaves = null;
-
-    /**
-     * Needed for MasterSlave failOver in case of Replication.
-     */
-    private InetSocketAddress master = null;
-
-    /**
-     * Error message.
-     */
-    private static final String slaveProtection = "You are not allowed to proceed this operation, " +
-            "because this DB is running as a slave!";
-
+    public final BabuDBConfiguration configuration;
+    
     /**
      * Starts the BabuDB database (with replication).
      * Hidden main constructor.
@@ -186,10 +151,23 @@ public class BabuDBImpl implements BabuDB {
             int maxQ, InetSocketAddress master, List<InetSocketAddress> slaves, int port,
             SSLOptions ssl, boolean isMaster, int repMode, int qLimit)
             throws BabuDBException {
+        
+        if (!baseDir.endsWith(File.separator)) {
+            baseDir = baseDir + File.separatorChar;
+        }
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "base dir: " + baseDir);
+
+        if (!dbLogDir.endsWith(File.separator)) {
+            dbLogDir = dbLogDir + File.separatorChar;
+        }
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "db log dir: " + dbLogDir);
+
+        this.configuration = new BabuDBConfiguration(baseDir,dbLogDir,maxQ,numThreads,syncMode,maxLogfileSize,checkInterval,pseudoSyncWait);
+        
         // start the replication service
         if (master != null && slaves != null) {
-            this.slaves = slaves;
-            this.master = master;
+            this.configuration.replication_master = master;
+            this.configuration.replication_slaves = slaves;
             try {
                 if (isMaster) {
                     replicationFacade = new Replication(slaves, ssl, port, this, repMode, qLimit);
@@ -203,24 +181,10 @@ public class BabuDBImpl implements BabuDB {
         } else {
             replicationFacade = null;
         }
-
-        if (baseDir.endsWith(File.separator)) {
-            this.baseDir = baseDir;
-        } else {
-            this.baseDir = baseDir + File.separatorChar;
-        }
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "base dir: " + this.baseDir);
-
-        if (dbLogDir.endsWith(File.separator)) {
-            this.dbLogDir = dbLogDir;
-        } else {
-            this.dbLogDir = dbLogDir + File.separatorChar;
-        }
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "db log dir: " + this.dbLogDir);
-
+        
         dbNames = new HashMap<String, LSMDatabase>();
         databases = new HashMap<Integer, LSMDatabase>();
-
+        
         nextDbId = 1;
 
         compInstances = new HashMap<String, ByteRangeComparator>();
@@ -232,7 +196,6 @@ public class BabuDBImpl implements BabuDB {
         LSN nextLSN = replayLogs();
         Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done");
 
-        this.pseudoSyncWait = pseudoSyncWait;
         try {
             logger = new DiskLogger(dbLogDir, nextLSN.getViewId(), nextLSN.getSequenceNo(), syncMode, pseudoSyncWait,
                     maxQ * numThreads);
@@ -261,6 +224,74 @@ public class BabuDBImpl implements BabuDB {
         Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running (version " + BABUDB_VERSION + ")");
     }
 
+    /**
+     * <p>Needed for the initial load process of the babuDB, done by the replication.</p>
+     * @throws BabuDBException 
+     */
+    public void reset() throws BabuDBException{
+        for (LSMDBWorker w : worker) {
+            w.shutdown();
+        }
+        logger.shutdown();
+        if (dbCheckptr != null) {
+            dbCheckptr.shutdown();
+        }
+        try {
+            logger.waitForShutdown();
+            for (LSMDBWorker w : worker) {
+                w.waitForShutdown();
+            }
+            if (dbCheckptr != null) {
+                dbCheckptr.waitForShutdown();
+            }
+        } catch (InterruptedException ex) {
+        }
+        Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB has been stopped by the Replication.");
+        
+        dbNames.clear();
+        databases.clear();
+
+        nextDbId = 1;
+        
+        compInstances.clear();
+        compInstances.put(DefaultByteRangeComparator.class.getName(), new DefaultByteRangeComparator());
+        
+        loadDBs();
+        
+        Logging.logMessage(Logging.LEVEL_INFO, this, "starting log replay");
+        LSN nextLSN = replayLogs();
+        Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done");
+
+        try {
+            logger = new DiskLogger(configuration.getDbLogDir(), nextLSN.getViewId(), 
+                    nextLSN.getSequenceNo(), configuration.getSyncMode(), configuration.getPseudoSyncWait(),
+                    configuration.getMaxQueueLength() * configuration.getNumThreads());
+            logger.start();
+        } catch (IOException ex) {
+            throw new BabuDBException(ErrorCode.IO_ERROR, "cannot start database operations logger", ex);
+        }
+
+        dbModificationLock.notifyAll();
+        checkpointLock.notifyAll();
+        overlaySwitchLock = new ReentrantReadWriteLock();
+
+        worker = new LSMDBWorker[configuration.getNumThreads()];
+        for (int i = 0; i < configuration.getNumThreads(); i++) {
+            worker[i] = new LSMDBWorker(logger, i, overlaySwitchLock, (configuration.getPseudoSyncWait() > 0), 
+                    configuration.getMaxQueueLength(), replicationFacade);
+            worker[i].start();
+        }
+
+        if (configuration.getCheckInterval() > 0) {
+            dbCheckptr = new Checkpointer(this, logger, configuration.getCheckInterval(), configuration.getMaxLogfileSize());
+            dbCheckptr.start();
+        } else {
+            dbCheckptr = null;
+        }
+
+        Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running (version " + BABUDB_VERSION + ")");
+    }
+    
     /*
      * (non-Javadoc)
      * @see org.xtreemfs.babudb.BabuDBInterface#shutdown()
@@ -295,7 +326,7 @@ public class BabuDBImpl implements BabuDB {
         }
         Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB shutdown complete.");
     }
-
+    
     /**
      * NEVER USE THIS EXCEPT FOR UNIT TESTS!
      * Kills the database.
@@ -590,7 +621,7 @@ public class BabuDBImpl implements BabuDB {
                 throw new BabuDBException(ErrorCode.DB_EXISTS, "database '" + databaseName + "' already exists");
             }
             final int dbId = nextDbId++;
-            LSMDatabase db = new LSMDatabase(databaseName, dbId, baseDir + databaseName + "/", numIndices, false, comps);
+            LSMDatabase db = new LSMDatabase(databaseName, dbId, configuration.getBaseDir() + databaseName + File.separatorChar, numIndices, false, comps);
             databases.put(dbId, db);
             dbNames.put(databaseName, db);
             saveDBconfig();
@@ -628,7 +659,7 @@ public class BabuDBImpl implements BabuDB {
                 throw new BabuDBException(ErrorCode.DB_EXISTS, "database '" + databaseName + "' already exists");
             }
             final int dbId = nextDbId++;
-            LSMDatabase db = new LSMDatabase(databaseName, dbId, baseDir + databaseName + "/", numIndices, false, comparators);
+            LSMDatabase db = new LSMDatabase(databaseName, dbId, configuration.getBaseDir() + databaseName + File.separatorChar, numIndices, false, comparators);
             databases.put(dbId, db);
             dbNames.put(databaseName, db);
             saveDBconfig();
@@ -709,14 +740,14 @@ public class BabuDBImpl implements BabuDB {
         //materializing the snapshot takes some time, we should not hold the lock meanwhile!
 
         int[] snaps = sDB.createSnapshot();
-        File dbDir = new File(baseDir + destDB);
+        File dbDir = new File(configuration.getBaseDir() + destDB);
         if (!dbDir.exists()) {
             dbDir.mkdirs();
         }
-        sDB.writeSnapshot(baseDir + destDB + "/", snaps);
+        sDB.writeSnapshot(configuration.getBaseDir() + destDB + File.separatorChar, snaps);
 
         //create new DB and load from snapshot
-        LSMDatabase dDB = new LSMDatabase(destDB, dbId, baseDir + destDB + "/", sDB.getIndexCount(), true, sDB.getComparators());
+        LSMDatabase dDB = new LSMDatabase(destDB, dbId, configuration.getBaseDir() + destDB + File.separatorChar, sDB.getIndexCount(), true, sDB.getComparators());
 
         //insert real database
         synchronized (dbModificationLock) {
@@ -787,7 +818,7 @@ public class BabuDBImpl implements BabuDB {
 
                 //FIXME: delete old logfiles!
                 //delete all logfile with LSN <= lastWrittenLSN
-                File f = new File(dbLogDir);
+                File f = new File(configuration.getDbLogDir());
                 String[] logs = f.list(new FilenameFilter() {
 
                     public boolean accept(File dir, String name) {
@@ -806,7 +837,7 @@ public class BabuDBImpl implements BabuDB {
                         LSN logLSN = new LSN(viewId, seqNo);
                         if (logLSN.compareTo(lastWrittenLSN) <= 0) {
                             Logging.logMessage(Logging.LEVEL_DEBUG, this, "deleting old db log file: " + log);
-                            f = new File(dbLogDir + log);
+                            f = new File(configuration.getDbLogDir() + log);
                             f.delete();
                         }
                     }
@@ -863,12 +894,22 @@ public class BabuDBImpl implements BabuDB {
     }
 
     /**
+     * @return the path to the DB-configuration-file, if available, null otherwise.
+     */
+    public String getDBConfigPath(){
+        String result = configuration.getBaseDir() + DBCFG_FILE;
+        File f = new File(result);
+        if (f.exists()) return result;
+        return null;
+    }
+    
+    /**
      * Loads the configuration and each database from disk
      * @throws BabuDBException
      */
     private void loadDBs() throws BabuDBException {
         try {
-            File f = new File(baseDir + DBCFG_FILE);
+            File f = new File(configuration.getBaseDir() + DBCFG_FILE);
             if (f.exists()) {
                 ObjectInputStream ois = new ObjectInputStream(new FileInputStream(f));
                 final int dbFormatVer = ois.readInt();
@@ -901,7 +942,7 @@ public class BabuDBImpl implements BabuDB {
                         comps[idx] = comp;
                     }
 
-                    LSMDatabase db = new LSMDatabase(dbName, dbId, baseDir + dbName + "/", numIndex, true, comps);
+                    LSMDatabase db = new LSMDatabase(dbName, dbId, configuration.getBaseDir() + dbName + File.separatorChar, numIndex, true, comps);
                     databases.put(dbId, db);
                     dbNames.put(dbName, db);
                     Logging.logMessage(Logging.LEVEL_DEBUG, this, "loaded DB " + dbName + " successfully.");
@@ -935,7 +976,7 @@ public class BabuDBImpl implements BabuDB {
         }
 
         try {
-            File f = new File(dbLogDir);
+            File f = new File(configuration.getDbLogDir());
             String[] logs = f.list(new FilenameFilter() {
 
                 public boolean accept(File dir, String name) {
@@ -959,7 +1000,7 @@ public class BabuDBImpl implements BabuDB {
                 }
                 //apply log entries to databases...
                 for (LSN logLSN : orderedLogList) {
-                    DiskLogFile dlf = new DiskLogFile(this.dbLogDir, logLSN);
+                    DiskLogFile dlf = new DiskLogFile(configuration.getDbLogDir(), logLSN);
                     LogEntry le = null;
                     while (dlf.hasNext()) {
                         le = dlf.next();
@@ -1001,7 +1042,7 @@ public class BabuDBImpl implements BabuDB {
         f.renameTo(new File(baseDir+DBCFG_FILE+".old"));*/
         synchronized (dbModificationLock) {
             try {
-                FileOutputStream fos = new FileOutputStream(baseDir + DBCFG_FILE + ".in_progress");
+                FileOutputStream fos = new FileOutputStream(configuration.getBaseDir() + DBCFG_FILE + ".in_progress");
                 ObjectOutputStream oos = new ObjectOutputStream(fos);
                 oos.writeInt(BABUDB_DB_FORMAT_VERSION);
                 oos.writeInt(databases.size());
@@ -1022,8 +1063,8 @@ public class BabuDBImpl implements BabuDB {
                 fos.flush();
                 fos.getFD().sync();
                 oos.close();
-                File f = new File(baseDir + DBCFG_FILE + ".in_progress");
-                f.renameTo(new File(baseDir + DBCFG_FILE));
+                File f = new File(configuration.getBaseDir() + DBCFG_FILE + ".in_progress");
+                f.renameTo(new File(configuration.getBaseDir() + DBCFG_FILE));
             } catch (IOException ex) {
                 throw new BabuDBException(ErrorCode.IO_ERROR, "unable to save database configuration", ex);
             }

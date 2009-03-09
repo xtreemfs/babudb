@@ -25,6 +25,7 @@ public class LSN implements Comparable<LSN> {
     
     /**
      * <p>Gets the LSN from given string representation.</p>
+     * <p>Pattern: "'viewId':'sequenceNo'"</p>
      * 
      * @param representation
      */
