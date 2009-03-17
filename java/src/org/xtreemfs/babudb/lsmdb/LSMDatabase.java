@@ -163,7 +163,7 @@ public class LSMDatabase {
                 if (maxView > -1) {
                     Logging.logMessage(Logging.LEVEL_DEBUG, this,"loading database "+this.databaseName+" from latest snapshot:"+databaseDir+"IX"+index+"V"+maxView+"SEQ"+maxSeq);
                     assert(comparators[index] != null);
-                    trees.set(index, new LSMTree(databaseDir+getSnaphotFilename(index,maxView,maxSeq),comparators[index]));
+                    trees.set(index, new LSMTree(databaseDir+getSnapshotFilename(index,maxView,maxSeq),comparators[index]));
                     ondiskLSN = new LSN(maxView,maxSeq);
                 } else {
                     Logging.logMessage(Logging.LEVEL_DEBUG, this,"no snapshot for database "+this.databaseName);
@@ -228,7 +228,7 @@ public class LSMDatabase {
         Logging.logMessage(Logging.LEVEL_INFO, this, "writing snapshot, database = " + databaseName + "...");
         for (int index = 0; index < trees.size(); index++) {
             final LSMTree tree = trees.get(index);
-            final String newFileName = databaseDir+getSnaphotFilename(index,viewId,sequenceNo);
+            final String newFileName = databaseDir+getSnapshotFilename(index,viewId,sequenceNo);
             Logging.logMessage(Logging.LEVEL_INFO, this, "snapshotting index " + index + "(dbName = " + databaseName + ")...");
             tree.materializeSnapshot(newFileName, snapIds[index]);
             Logging.logMessage(Logging.LEVEL_INFO, this, "... done (index = " + index + ", dbName = " + databaseName + ")");
@@ -239,7 +239,7 @@ public class LSMDatabase {
     public void writeSnapshot(String directory, int[] snapIds) throws IOException {
         for (int index = 0; index < trees.size(); index++) {
             final LSMTree tree = trees.get(index);
-            final String newFileName = directory+"/"+getSnaphotFilename(index,0,0);
+            final String newFileName = directory+"/"+getSnapshotFilename(index,0,0);
             tree.materializeSnapshot(newFileName, snapIds[index]);
         }
     }
@@ -255,8 +255,8 @@ public class LSMDatabase {
         for (int index = 0; index < trees.size(); index++) {
             final LSMTree tree = trees.get(index);
 
-            Logging.logMessage(Logging.LEVEL_INFO, this, "linking to snapshot "+databaseDir+getSnaphotFilename(index,viewId,sequenceNo) + ", dbName=" + databaseName + ", index=" + index);
-            tree.linkToSnapshot(databaseDir+getSnaphotFilename(index,viewId,sequenceNo));
+            Logging.logMessage(Logging.LEVEL_INFO, this, "linking to snapshot "+databaseDir+getSnapshotFilename(index,viewId,sequenceNo) + ", dbName=" + databaseName + ", index=" + index);
+            tree.linkToSnapshot(databaseDir+getSnapshotFilename(index,viewId,sequenceNo));
             Logging.logMessage(Logging.LEVEL_INFO, this, "...done");
             
             ondiskLSN = new LSN(viewId,sequenceNo);
@@ -290,8 +290,20 @@ public class LSMDatabase {
         return databaseName;
     }
     
-    private static String getSnaphotFilename(int indexId, int viewId, long sequenceNo) {
+    private static String getSnapshotFilename(int indexId, int viewId, long sequenceNo) {
         return "IX"+indexId+"V"+viewId+"SEQ"+sequenceNo+".idx";
+    }
+    
+    /**
+     * 
+     * @param fname
+     * @return the {@link LSN} retrieved from the filename.
+     */
+    public static LSN getSnapshotLSNbyFilename(String fname) {
+        Matcher m = Pattern.compile(SNAPSHOT_FILENAME_REGEXP).matcher(fname);
+        m.matches();
+        
+        return new LSN(Integer.valueOf(m.group(2)),Integer.valueOf(m.group(3)));
     }
     
     /**
@@ -337,7 +349,7 @@ public class LSMDatabase {
                 }
                 
                 if (maxView > -1) {
-                    String fName = getSnaphotFilename(index,maxView,maxSeq);
+                    String fName = getSnapshotFilename(index,maxView,maxSeq);
                     
                     List<Long> parameter = new LinkedList<Long>();
                     File snapshotFile = new File(databaseDir + fName);

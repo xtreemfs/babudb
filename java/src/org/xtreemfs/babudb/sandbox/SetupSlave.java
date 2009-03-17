@@ -26,6 +26,7 @@ import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.replication.Replication;
 import org.xtreemfs.babudb.sandbox.BenchmarkWorkerThread.BenchmarkOperation;
+import org.xtreemfs.babudb.sandbox.CLIParser.CliOption;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
@@ -45,7 +46,7 @@ public class SetupSlave {
     public static void main(String[] args) throws BabuDBException, IOException, InterruptedException {
         Logging.start(Logging.LEVEL_ERROR);
 
-        Map<String,CLIParser.CliOption> options = new HashMap();
+        Map<String,CLIParser.CliOption> options = new HashMap<String, CliOption>();
         options.put("path",new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.FILE,new File("/tmp/babudb_benchmark/slave")));
         options.put("sync",new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.STRING,"FSYNC"));
         options.put("wait", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,0));
@@ -57,7 +58,7 @@ public class SetupSlave {
         options.put("keymax", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,20));
         options.put("reset", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH, false));
         
-        List<String> arguments = new ArrayList(2);
+        List<String> arguments = new ArrayList<String>(2);
         CLIParser.parseCLI(args, options, arguments);
 
         if ((arguments.size() < 2) || (options.get("h").switchValue))

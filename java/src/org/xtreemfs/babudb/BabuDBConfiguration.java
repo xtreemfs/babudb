@@ -27,7 +27,7 @@ public class BabuDBConfiguration {
      * The database configuration file.
      * Contains the names and number of indices for the databases.
      */
-    static final String         DBCFG_FILE      = "config.db";    
+    public static final String  DBCFG_FILE      = "config.db";    
     
     /**
      * Base directory to store database index snapshots in.
@@ -117,7 +117,7 @@ public class BabuDBConfiguration {
     /**
      * @return the dbLogDir
      */
-    String getDbLogDir() {
+    public String getDbLogDir() {
         return dbLogDir;
     }
 

@@ -17,10 +17,11 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import org.xtreemfs.babudb.BabuDB;
+import org.xtreemfs.babudb.BabuDBImpl;
 import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.replication.Replication;
+import org.xtreemfs.babudb.sandbox.CLIParser.CliOption;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
@@ -38,7 +39,7 @@ public class SetupMaster {
     public static void main(String[] args) throws Exception {
         Logging.start(Logging.LEVEL_ERROR);
 
-        Map<String,CLIParser.CliOption> options = new HashMap();
+        Map<String,CLIParser.CliOption> options = new HashMap<String, CliOption>();
         options.put("path",new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.FILE,new File("/tmp/babudb_benchmark/master")));
         options.put("sync",new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.STRING,"FSYNC"));
         options.put("wait", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,0));
@@ -54,7 +55,7 @@ public class SetupMaster {
         options.put("seed", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,0));
         options.put("h", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH, false));        
         
-        List<String> arguments = new ArrayList(1);
+        List<String> arguments = new ArrayList<String>(1);
         CLIParser.parseCLI(args, options, arguments);
 
         if ((arguments.size() < 1) || (options.get("h").switchValue))
@@ -73,7 +74,7 @@ public class SetupMaster {
             p.waitFor();
         }
         
-        BabuDB master = BabuDBFactory.getMasterBabuDB(
+        BabuDBImpl master = (BabuDBImpl) BabuDBFactory.getMasterBabuDB(
                 options.get("path").fileValue.getAbsolutePath(), 
                 options.get("path").fileValue.getAbsolutePath(), 
                 options.get("workers").numValue.intValue(), 1, 0, 
@@ -125,9 +126,11 @@ public class SetupMaster {
                 } else if(nextCommand.startsWith("sleep")){
                     String[] param = nextCommand.split(" ");
                     if (param.length!=2) System.out.println("wait #seconds\nNOT:"+nextCommand);
-                    else {
-                        Thread.sleep(Long.valueOf(param[1]));
-                    }
+                    else Thread.sleep(Long.valueOf(param[1]));
+                } else if(nextCommand.startsWith("mode")){
+                    String[] param = nextCommand.split(" ");
+                    if (param.length!=2) System.out.println("mode #syncSlaves\nNOT:"+nextCommand);
+                    else master.replication_switchSyncMode(Integer.parseInt(param[1]));
                 } else System.err.println("UNKNOWN COMMAND: "+nextCommand);
             }
         }

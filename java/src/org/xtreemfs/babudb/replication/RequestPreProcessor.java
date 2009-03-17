@@ -16,9 +16,8 @@ import java.util.zip.Checksum;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.log.LogEntry;
-import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
-import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.replication.ReplicationThread.ReplicationException;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.foundation.json.JSONException;
@@ -106,9 +105,9 @@ class RequestPreProcessor {
             throw THIS.new PreProcessException("LogEntry could not be serialized because: "+e.getLocalizedMessage());
         }    
         
-        assert (result.lsn!=null);
-        assert (result.context!=null);
-        assert (result.data!=null);
+        assert (result.lsn!=null) : "BROADCAST misses a LSN.";
+        assert (result.context!=null) : "BROADCAST misses the context.";
+        assert (result.data!=null) : "BROADCAST misses the data.";
         
         return result;
     }
@@ -123,7 +122,7 @@ class RequestPreProcessor {
      * @return the {@link Request} in replication abstraction.
      */
     @SuppressWarnings("unchecked")
-	static Request getReplicationRequest(PinkyRequest theRequest,Replication frontEnd) throws PreProcessException {
+    static Request getReplicationRequest(PinkyRequest theRequest,Replication frontEnd) throws PreProcessException {
         /**
          * <p>Object for generating check sums</p>
          */
@@ -149,7 +148,7 @@ class RequestPreProcessor {
             +"' is not the designated master. Request will be ignored: "+result.toString();
         }
         
-        assert(frontEnd!=null);
+        assert(frontEnd!=null) : "Reference to the replication interface missing.";
         
         switch (result.token) {
         
@@ -162,7 +161,7 @@ class RequestPreProcessor {
                 result.lsn = new LSN(new String(theRequest.getBody()));
             }catch (Exception e) {
                 result.free();
-                throw THIS.new PreProcessException("The LSN of an ACK could not be decoded because: "+e.getLocalizedMessage()+" | Source: "+result.getSource());
+                throw THIS.new PreProcessException("The LSN of an ACK could not be decoded because: "+e.getMessage()+" | Source: "+result.getSource());
             }                
             break;
         
@@ -174,7 +173,7 @@ class RequestPreProcessor {
                 result.lsn = new LSN(new String(theRequest.getBody()));
             }catch (Exception e) {
                 result.free();
-                throw THIS.new PreProcessException("The LSN of a RQ could not be decoded because: "+e.getLocalizedMessage()+" | Source: "+result.getSource());
+                throw THIS.new PreProcessException("The LSN of a RQ could not be decoded because: "+e.getMessage()+" | Source: "+result.getSource());
             }
             break;
          
@@ -188,7 +187,7 @@ class RequestPreProcessor {
                 result.chunkDetails = new Chunk((List<Object>) JSONParser.parseJSON(jsonString));
             } catch (Exception e) {
                 result.free();
-                throw THIS.new PreProcessException("Chunk details could for a CHUNK_RQ not be decoded because: "+e.getLocalizedMessage()+" | Source: "+result.getSource());
+                throw THIS.new PreProcessException("Chunk details could for a CHUNK_RQ not be decoded because: "+e.getMessage()+" | Source: "+result.getSource());
             }
             break;    
             
@@ -205,12 +204,11 @@ class RequestPreProcessor {
             try {
                 result.logEntry = LogEntry.deserialize(ReusableBuffer.wrap(theRequest.getBody()), checksum);
                 checksum.reset();
-                result.lsn = result.logEntry.getLSN();                
-                result.context = retrieveRequest(new Status<Request>(result), frontEnd);              
+                result.lsn = result.logEntry.getLSN();       
             } catch (Exception e) {
                 checksum.reset();
                 result.free();
-                throw THIS.new PreProcessException("The data of a REPLICA could not be retrieved because: "+e.getLocalizedMessage()+" | Source: "+result.getSource());
+                throw THIS.new PreProcessException("The data of a REPLICA could not be retrieved because: "+e.getMessage()+" | Source: "+result.getSource());
             }
             break;   
             
@@ -226,7 +224,7 @@ class RequestPreProcessor {
                 frontEnd.dbInterface.proceedCreate((String) data.get(0),Integer.parseInt((String) data.get(1)) );
             } catch (Exception e) {
                 result.free();
-                throw THIS.new PreProcessException("CREATE could not be performed because: "+e.getLocalizedMessage()+" | Source: "+result.getSource());
+                throw THIS.new PreProcessException("CREATE could not be performed because: "+e.getMessage()+" | Source: "+result.getSource());
             }
             return null;
             
@@ -242,7 +240,7 @@ class RequestPreProcessor {
                 frontEnd.dbInterface.proceedCopy((String) data.get(0),(String) data.get(1), null, null);
             } catch (Exception e) {
                 result.free();
-                throw THIS.new PreProcessException("COPY could not be performed because: "+e.getLocalizedMessage()+" | Source: "+result.getSource());
+                throw THIS.new PreProcessException("COPY could not be performed because: "+e.getMessage()+" | Source: "+result.getSource());
             }
             return null;
             
@@ -258,7 +256,7 @@ class RequestPreProcessor {
                 frontEnd.dbInterface.proceedDelete((String) data.get(0),Boolean.valueOf((String) data.get(1)));
             } catch (Exception e) {
                 result.free();
-                throw THIS.new PreProcessException("DELETE could not be performed because: "+e.getLocalizedMessage()+" | Source: "+result.getSource());
+                throw THIS.new PreProcessException("DELETE could not be performed because: "+e.getMessage()+" | Source: "+result.getSource());
             }
             return null;
             
@@ -288,7 +286,7 @@ class RequestPreProcessor {
      * @return the {@link Request} in replication abstraction. Or null, if it was already handled.
      */
     @SuppressWarnings("unchecked")
-	static Request getReplicationRequest(SpeedyRequest theResponse,Replication frontEnd) throws PreProcessException{
+    static Request getReplicationRequest(SpeedyRequest theResponse,Replication frontEnd) throws PreProcessException{
         Token token = null;
         try {
             token = Token.valueOf(theResponse.getURI());
@@ -313,7 +311,8 @@ class RequestPreProcessor {
             +"' is not the designated master. Request will be ignored: "+result.toString();
         }
         
-        assert(frontEnd!=null);
+        assert(frontEnd!=null) : "Reference to the replication interface missing.";
+        assert(theResponse!=null) : "Null-like response is not allowed.";
         
         switch (result.token) {
         
@@ -492,49 +491,50 @@ class RequestPreProcessor {
                 theResponse.freeBuffer();
                 throw THIS.new PreProcessException(slaveSecurityMsg);
             }
-            try {    
-               // make a subRequest
+            if (theResponse.statusCode==HTTPUtils.SC_NOT_FOUND){
+                 // try to cancel the request
+                try {
+                    ((Status<LSN>) theResponse.genericAttatchment).cancel();                   
+                } catch (Exception e) {
+                    Logging.logMessage(Logging.LEVEL_WARN, THIS, "A request could not be canceled");
+                }
+                   
+                 // make a load request
+                result.token = LOAD_RQ;
+                Logging.logMessage(Logging.LEVEL_WARN, THIS, "Requested entry was not found; DB will be loaded soon.");
+            } else if (theResponse.statusCode==HTTPUtils.SC_OKAY) {
                 Status<LSN> mLSN = (Status<LSN>) theResponse.genericAttatchment;
+                assert (mLSN!=null) : "The original request (missing LSN) is missing.";
                 
-                if (mLSN!=null){
-                     // server was not able to answer the request, perform a LOAD!
-                    if (theResponse.statusCode!=HTTPUtils.SC_OKAY) {
-                        if (mLSN!=null) mLSN.setStatus(FAILED);
-                        
-                        String msg = "RQ ("+result.lsn.toString()+") could not be answered by master: "+result.source.toString()+
-                                     ",\r\n\t because: ";              
-                        if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
-                        else msg += theResponse.statusCode;
-                        msg+=" DB will be loaded soon.";
-                        
-                        Logging.logMessage(Logging.LEVEL_WARN, THIS, msg);
-                        result.token = LOAD_RQ;
-                     // add the answer as a new REPLICA request
-                    } else {                   
-                        result.source = theResponse.getServer();
-                        result.lsn = mLSN.getValue();
-                        result.logEntry = LogEntry.deserialize(ReusableBuffer.wrap(theResponse.getResponseBody()), checksum);
-                        checksum.reset();
-                        result.token = REPLICA;       
-                        result.context = retrieveRequest(new Status<Request>(result), frontEnd);
+                try {
+                    result.source = theResponse.getServer();
+                    result.lsn = mLSN.getValue();
+                    result.logEntry = LogEntry.deserialize(ReusableBuffer.wrap(theResponse.getResponseBody()), checksum);
+                    checksum.reset();
+                    result.token = REPLICA;  
+                } catch (Exception e) {
+                    if (mLSN.attemptFailedAttemptLeft(frontEnd.maxTries))
+                        mLSN.setStatus(OPEN);
+                    else {
+                        String msg = "The given response was malformed and there are no attempts left to get a new one.";
+                        try {
+                            mLSN.cancel();
+                        } catch (ReplicationException re) {
+                            Logging.logMessage(Logging.LEVEL_WARN, THIS, "A request could not be canceled: "+re.getMessage());
+                        }
+                        Logging.logMessage(Logging.LEVEL_ERROR, THIS, msg);
+                        theResponse.freeBuffer();
+                        throw THIS.new PreProcessException(msg);
                     }
-                } else {
-                   // this is not the answer to a request, so it will be ignored
-                    theResponse.freeBuffer();
-                    return null;
                 }
-            }catch (Exception e){
-                result.free();
-                if (theResponse.statusCode!=HTTPUtils.SC_OKAY){
-                    String msg = "RQ could not be answered by master: "+result.source.toString()+
-                                 ",\r\n\t because: "; 
-                    if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
-                    else msg += theResponse.statusCode;
-                    
-                    throw THIS.new PreProcessException(msg);
-                }
+            } else {
+                String msg = "The server does not respond ,\r\n\t because: "; 
+                if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
+                else msg += theResponse.statusCode;
                 
-                throw THIS.new PreProcessException("The answer to a RQ by master: "+result.source.toString()+" was not well formed: "+e.getMessage());
+                Logging.logMessage(Logging.LEVEL_ERROR, THIS, msg);
+                theResponse.freeBuffer();
+                return null;
             }
             theResponse.freeBuffer();
             break;      
@@ -544,31 +544,49 @@ class RequestPreProcessor {
                 theResponse.freeBuffer();
                 throw THIS.new PreProcessException(slaveSecurityMsg,HTTPUtils.SC_UNAUTHORIZED);
             }
-            try {      
-               // make a subRequest
-                Status<Chunk> chunk = (Status<Chunk>) theResponse.genericAttatchment;
-                
-                if (theResponse.statusCode!=HTTPUtils.SC_OKAY) {
-                    if (chunk!=null) chunk.setStatus(FAILED);
-                    result.free();
-                    
-                    String msg = "Could not get CHUNK_RP, because: ";               
-                    if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
-                    else msg += theResponse.statusCode;
+            if (theResponse.statusCode==HTTPUtils.SC_NOT_FOUND){
+                // try to cancel the request
+               try {
+                   ((Status<Chunk>) theResponse.genericAttatchment).cancel();                   
+               } catch (Exception e) {
+                   Logging.logMessage(Logging.LEVEL_WARN, THIS, "A request could not be canceled: "+e.getMessage());
+               }
                   
-                    throw THIS.new PreProcessException(msg);
-                } 
+                // make a load request
+               result.token = LOAD_RQ;
+               Logging.logMessage(Logging.LEVEL_WARN, THIS, "Requested entry was not found; DB will be loaded soon.");
+            } else if (theResponse.statusCode==HTTPUtils.SC_OKAY) {
+                Status<Chunk> chunk = (Status<Chunk>) theResponse.genericAttatchment;
+                assert (chunk!=null) : "The original request (missing Chunk) is missing.";
                 
-                result.chunkDetails = chunk.getValue();
-                result.data = ReusableBuffer.wrap(theResponse.getResponseBody());
-                result.token = CHUNK_RP;
-            } catch (PreProcessException ppe) { 
-                throw ppe;
-            } catch (ClassCastException e) {
-                result.free();
-                throw THIS.new PreProcessException("Files details of a CHUNK could not be decoded for request: "+result.toString()+",\r\n\t because: "+e.getLocalizedMessage());
+                try {
+                    result.chunkDetails = chunk.getValue();
+                    result.data = ReusableBuffer.wrap(theResponse.getResponseBody());
+                    result.token = CHUNK_RP; 
+                } catch (Exception e) {
+                    if (chunk.attemptFailedAttemptLeft(frontEnd.maxTries))
+                        chunk.setStatus(OPEN);
+                    else {
+                        String msg = "The given response was malformed and there are no attempts left to get a new one.";
+                        try {
+                            chunk.cancel();
+                        } catch (ReplicationException re) {
+                            Logging.logMessage(Logging.LEVEL_WARN, THIS, "A request could not be canceled: "+re.getMessage());
+                        }
+                        Logging.logMessage(Logging.LEVEL_ERROR, THIS, msg);
+                        theResponse.freeBuffer();
+                        throw THIS.new PreProcessException(msg);
+                    }
+                }
+            } else {
+                String msg = "The server does not respond ,\r\n\t because: "; 
+                if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
+                else msg += theResponse.statusCode;
+                
+                Logging.logMessage(Logging.LEVEL_ERROR, THIS, msg);
+                theResponse.freeBuffer();
+                return null;
             }
-
             theResponse.freeBuffer();
             break;
             
@@ -657,24 +675,6 @@ class RequestPreProcessor {
         
         return result;
     }
-    
-    /**
-     * 
-     * @param rq
-     * @param frontEnd
-     * @return the LSMDBRequest retrieved from the logEntry
-     * @throws Exception
-     */
-    private static LSMDBRequest retrieveRequest (Status<Request> rq,Replication frontEnd) throws Exception{
-        // build a LSMDBRequest
-        InsertRecordGroup irg = InsertRecordGroup.deserialize(rq.getValue().getLogEntry().getPayload());
-        
-        if (!frontEnd.dbInterface.databases.containsKey(irg.getDatabaseId()))
-            throw THIS.new PreProcessException("Database does not exist.Load DB!");
-        
-        return new LSMDBRequest(frontEnd.dbInterface.databases.get(irg.getDatabaseId()),
-                                          frontEnd,irg,rq);
-    }
 
     /**
      * @param databaseName
@@ -742,14 +742,14 @@ class RequestPreProcessor {
      * @exception PreProcessException - if something went wrong.
      * @return the original pinky request, or an ACK request.
      */
-    @SuppressWarnings("unchecked")
-	static Object getReplicationRequest(Status<Request> rq) throws PreProcessException{
+    static Object getReplicationRequest(Status<Request> rq) throws PreProcessException{
         try {
             PinkyRequest orgReq = (PinkyRequest) rq.getValue().getOriginal();
             rq.getValue().free();
             
             if (orgReq!=null){
-                orgReq.setResponse(HTTPUtils.SC_OKAY);
+                if (!orgReq.responseSet)
+                    orgReq.setResponse(HTTPUtils.SC_OKAY);
                 return orgReq;    
             } else {
                 RequestImpl result = new RequestImpl(ACK,rq.getValue().getSource());
@@ -762,19 +762,18 @@ class RequestPreProcessor {
     }
     
     /**
+     * <p>Parses the <code>error</code> and generates a LOAD_RQ if necessary.</p>
      * 
-     * @param rq
-     * @param error
-     * @return a CONFIG_RQ {@link Request}, if the DB structure is damaged.
+     * @param error - a DB failure.
+     * @return a LOAD_RQ {@link Request}, if the DB structure is damaged, null otherwise.
      * @throws PreProcessException
      */
-    static Request getReplicationRequest(Status<Request> rq, BabuDBException error) {
+    static Request getReplicationRequest(BabuDBException error) {
         if (error!=null){
             if ((error.getErrorCode().equals(ErrorCode.NO_SUCH_DB) || 
                  error.getErrorCode().equals(ErrorCode.NO_SUCH_INDEX))){
                 
                 RequestImpl result = new RequestImpl(LOAD_RQ);
-                result.lsn = rq.getValue().getLSN();
                 return result;                
             }
         }
@@ -786,6 +785,14 @@ class RequestPreProcessor {
      */
     static Request getStateRequest(){
         return new RequestImpl(STATE);
+    }
+    
+    /**
+     * 
+     * @return a new load {@link Request}.
+     */
+    static Request getLOAD_RQ(){
+        return new RequestImpl(LOAD);
     }
        
     /**

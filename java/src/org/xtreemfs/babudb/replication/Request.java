@@ -26,7 +26,7 @@ import org.xtreemfs.include.foundation.pinky.PinkyRequest;
  * @author flangner
  */
 
-interface Request extends Comparable<Request>{
+interface Request {
 
     /**
      * <p>Recycle {@link ReusableBuffer}s.</p>
@@ -114,14 +114,7 @@ interface Request extends Comparable<Request>{
      * 
      * @return true if there are still some open expected ACKs which have not been received.
      */
-    boolean failed();
-    
-    /*
-     * (non-Javadoc)
-     * @see java.lang.Comparable#compareTo(java.lang.Object)
-     */
-    @Override
-    public int compareTo(Request r);
+    boolean hasFailed();
     
     /*
      * (non-Javadoc)
