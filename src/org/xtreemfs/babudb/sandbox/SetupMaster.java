@@ -131,7 +131,7 @@ public class SetupMaster {
                     String[] param = nextCommand.split(" ");
                     if (param.length!=2) System.out.println("mode #syncSlaves\nNOT:"+nextCommand);
                     else master.replication_switchSyncMode(Integer.parseInt(param[1]));
-                } else System.err.println("UNKNOWN COMMAND: "+nextCommand);
+                } else System.err.println(nextCommand);
             }
         }
         
