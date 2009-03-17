@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.Map.Entry;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Matcher;
@@ -152,6 +153,8 @@ public class BabuDBImpl implements BabuDB {
             SSLOptions ssl, boolean isMaster, int repMode, int qLimit)
             throws BabuDBException {
         
+        overlaySwitchLock = new ReentrantReadWriteLock();
+        
         if (!baseDir.endsWith(File.separator)) {
             baseDir = baseDir + File.separatorChar;
         }
@@ -168,11 +171,11 @@ public class BabuDBImpl implements BabuDB {
         if (master != null && slaves != null) {
             this.configuration.replication_master = master;
             this.configuration.replication_slaves = slaves;
-            try {
+            try {             
                 if (isMaster) {
-                    replicationFacade = new Replication(slaves, ssl, port, this, repMode, qLimit);
+                    replicationFacade = new Replication(slaves, ssl, port, this, repMode, qLimit, overlaySwitchLock.readLock(), Replication.DEFAULT_NO_TRIES);
                 } else {
-                    replicationFacade = new Replication(master, ssl, port, this, repMode, qLimit);
+                    replicationFacade = new Replication(master, ssl, port, this, repMode, qLimit, overlaySwitchLock.readLock(), Replication.DEFAULT_NO_TRIES);
                 }
 
             } catch (Exception e) {
@@ -206,8 +209,7 @@ public class BabuDBImpl implements BabuDB {
 
         dbModificationLock = new Object();
         checkpointLock = new Object();
-        overlaySwitchLock = new ReentrantReadWriteLock();
-
+        
         worker = new LSMDBWorker[numThreads];
         for (int i = 0; i < numThreads; i++) {
             worker[i] = new LSMDBWorker(logger, i, overlaySwitchLock, (pseudoSyncWait > 0), maxQ, replicationFacade);
@@ -226,9 +228,10 @@ public class BabuDBImpl implements BabuDB {
 
     /**
      * <p>Needed for the initial load process of the babuDB, done by the replication.</p>
+     * @param latest - {@link LSN} until which the loading is done.
      * @throws BabuDBException 
      */
-    public void reset() throws BabuDBException{
+    public void reset(LSN latest) throws BabuDBException{
         for (LSMDBWorker w : worker) {
             w.shutdown();
         }
@@ -258,22 +261,24 @@ public class BabuDBImpl implements BabuDB {
         
         loadDBs();
         
-        Logging.logMessage(Logging.LEVEL_INFO, this, "starting log replay");
-        LSN nextLSN = replayLogs();
-        Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done");
-
         try {
-            logger = new DiskLogger(configuration.getDbLogDir(), nextLSN.getViewId(), 
-                    nextLSN.getSequenceNo(), configuration.getSyncMode(), configuration.getPseudoSyncWait(),
+            logger = new DiskLogger(configuration.getDbLogDir(), latest.getViewId(), 
+                    latest.getSequenceNo()+1L, configuration.getSyncMode(), configuration.getPseudoSyncWait(),
                     configuration.getMaxQueueLength() * configuration.getNumThreads());
             logger.start();
         } catch (IOException ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot start database operations logger", ex);
         }
 
-        dbModificationLock.notifyAll();
-        checkpointLock.notifyAll();
+        synchronized (dbModificationLock){
+            dbModificationLock.notifyAll();
+        }        
+        synchronized (checkpointLock){
+            checkpointLock.notifyAll();
+        }
+        
         overlaySwitchLock = new ReentrantReadWriteLock();
+        replicationFacade.changeContextSwitchLock(overlaySwitchLock.readLock());
 
         worker = new LSMDBWorker[configuration.getNumThreads()];
         for (int i = 0; i < configuration.getNumThreads(); i++) {
@@ -304,7 +309,7 @@ public class BabuDBImpl implements BabuDB {
         // stop the replication
         try {
             if (replicationFacade != null) {
-                replicationFacade.stop();
+                replicationFacade.shutdown();
             }
         } catch (BabuDBException e) {
             Logging.logMessage(Logging.LEVEL_ERROR, this, "Replication could not be stopped properly. Because: " + e.getMessage());
@@ -347,7 +352,7 @@ public class BabuDBImpl implements BabuDB {
      * @see org.xtreemfs.babudb.BabuDBInterface#syncSingleInsert(java.lang.String, int, byte[], byte[])
      */
     public void syncSingleInsert(String database, int indexId, byte[] key, byte[] value) throws BabuDBException {
-        if (isSlave()) {
+        if (replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
 
@@ -401,7 +406,7 @@ public class BabuDBImpl implements BabuDB {
      * @see org.xtreemfs.babudb.BabuDBInterface#syncInsert(org.xtreemfs.babudb.BabuDBInsertGroup)
      */
     public void syncInsert(BabuDBInsertGroup irg) throws BabuDBException {
-        if (isSlave()) {
+        if (replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
         //final LSMDatabase db = databases.get(irg.getDatabaseId());
@@ -452,7 +457,7 @@ public class BabuDBImpl implements BabuDB {
      * @see org.xtreemfs.babudb.BabuDBInterface#syncLookup(java.lang.String, int, byte[])
      */
     public byte[] syncLookup(String database, int indexId, byte[] key) throws BabuDBException {
-        if (isSlave()) {
+        if (replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
 
@@ -504,7 +509,7 @@ public class BabuDBImpl implements BabuDB {
      * @see org.xtreemfs.babudb.BabuDBInterface#syncUserDefinedLookup(java.lang.String, org.xtreemfs.babudb.UserDefinedLookup)
      */
     public Object syncUserDefinedLookup(String database, UserDefinedLookup udl) throws BabuDBException {
-        if (isSlave()) {
+        if (replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
 
@@ -556,7 +561,7 @@ public class BabuDBImpl implements BabuDB {
      * @see org.xtreemfs.babudb.BabuDBInterface#syncPrefixLookup(java.lang.String, int, byte[])
      */
     public Iterator<Entry<byte[], byte[]>> syncPrefixLookup(String database, int indexId, byte[] key) throws BabuDBException {
-        if (isSlave()) {
+        if (replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
 
@@ -638,7 +643,7 @@ public class BabuDBImpl implements BabuDB {
      * @see org.xtreemfs.babudb.BabuDBInterface#createDatabase(java.lang.String, int)
      */
     public void createDatabase(String databaseName, int numIndices) throws BabuDBException {
-        if (isSlave()) {
+        if (replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
 
@@ -650,7 +655,7 @@ public class BabuDBImpl implements BabuDB {
      * @see org.xtreemfs.babudb.BabuDBInterface#createDatabase(java.lang.String, int, org.xtreemfs.babudb.index.ByteRangeComparator[])
      */
     public void createDatabase(String databaseName, int numIndices, ByteRangeComparator[] comparators) throws BabuDBException {
-        if (isSlave()) {
+        if (replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
 
@@ -703,7 +708,7 @@ public class BabuDBImpl implements BabuDB {
      * @see org.xtreemfs.babudb.BabuDBInterface#deleteDatabase(java.lang.String, boolean)
      */
     public void deleteDatabase(String databaseName, boolean deleteFiles) throws BabuDBException {
-        if (isSlave()) {
+        if (replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
 
@@ -767,7 +772,7 @@ public class BabuDBImpl implements BabuDB {
      * @see org.xtreemfs.babudb.BabuDBInterface#copyDatabase(java.lang.String, java.lang.String, byte[], byte[])
      */
     public void copyDatabase(String sourceDB, String destDB, byte[] rangeStart, byte[] rangeEnd) throws BabuDBException, IOException {
-        if (isSlave()) {
+        if (replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
 
@@ -779,7 +784,7 @@ public class BabuDBImpl implements BabuDB {
      * @see org.xtreemfs.babudb.BabuDBInterface#checkpoint()
      */
     public void checkpoint() throws BabuDBException, InterruptedException {
-        if (isSlave()) {
+        if (replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
 
@@ -854,7 +859,7 @@ public class BabuDBImpl implements BabuDB {
      * @see org.xtreemfs.babudb.BabuDBInterface#createSnapshot(java.lang.String)
      */
     public int[] createSnapshot(String dbName) throws BabuDBException, InterruptedException {
-        if (isSlave()) {
+        if (replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
 
@@ -878,7 +883,7 @@ public class BabuDBImpl implements BabuDB {
      * @see org.xtreemfs.babudb.BabuDBInterface#writeSnapshot(java.lang.String, int[], java.lang.String)
      */
     public void writeSnapshot(String dbName, int[] snapIds, String directory) throws BabuDBException {
-        if (isSlave()) {
+        if (replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
 
@@ -1098,7 +1103,7 @@ public class BabuDBImpl implements BabuDB {
      */
     public void asyncInsert(BabuDBInsertGroup ig, BabuDBRequestListener listener,
             Object context) throws BabuDBException {
-        if (isSlave()) {
+        if (replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
 
@@ -1126,7 +1131,7 @@ public class BabuDBImpl implements BabuDB {
      */
     public void asyncUserDefinedLookup(String databaseName, BabuDBRequestListener listener,
             UserDefinedLookup udl, Object context) throws BabuDBException {
-        if (isSlave()) {
+        if (replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
 
@@ -1153,7 +1158,7 @@ public class BabuDBImpl implements BabuDB {
      */
     public BabuDBInsertGroup createInsertGroup(
             String databaseName) throws BabuDBException {
-        if (isSlave()) {
+        if (replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
 
@@ -1171,7 +1176,7 @@ public class BabuDBImpl implements BabuDB {
      */
     public void asyncLookup(String databaseName, int indexId, byte[] key,
             BabuDBRequestListener listener, Object context) throws BabuDBException {
-        if (isSlave()) {
+        if (replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
 
@@ -1198,7 +1203,7 @@ public class BabuDBImpl implements BabuDB {
      */
     public void asyncPrefixLookup(String databaseName, int indexId, byte[] key,
             BabuDBRequestListener listener, Object context) throws BabuDBException {
-        if (isSlave()) {
+        if (replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
 
@@ -1224,7 +1229,7 @@ public class BabuDBImpl implements BabuDB {
      * @see org.xtreemfs.babudb.BabuDB#directLookup(java.lang.String, int, byte[])
      */
     public byte[] directLookup(String databaseName, int indexId, byte[] key) throws BabuDBException {
-        if (isSlave()) {
+        if (replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
         
@@ -1265,7 +1270,7 @@ public class BabuDBImpl implements BabuDB {
      * @see org.xtreemfs.babudb.BabuDB#directPrefixLookup(java.lang.String, int, byte[])
      */
     public Iterator<Entry<byte[], byte[]>> directPrefixLookup(String databaseName, int indexId, byte[] key) throws BabuDBException {
-        if (isSlave()) {
+        if (replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
         
@@ -1284,7 +1289,7 @@ public class BabuDBImpl implements BabuDB {
      * @see org.xtreemfs.babudb.BabuDB#directInsert(org.xtreemfs.babudb.BabuDBInsertGroup)
      */
     public void directInsert(BabuDBInsertGroup irg) throws BabuDBException {
-        if (isSlave()) {
+        if (replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
         
@@ -1365,11 +1370,37 @@ public class BabuDBImpl implements BabuDB {
         return worker[dbId % worker.length];
     }
 
-    private boolean isSlave() {
+    private boolean replication_isSlave() {
         if (replicationFacade == null) {
             return false;
         }
         return !replicationFacade.isMaster();
+    }
+    
+    /**
+     * <p>Operation to switch the synchronization policy while replication is running.</p>
+     * 
+     * @see {@link Replication}.setSyncMode(int)
+     * @param n
+     * @throws BabuDBException
+     * @throws InterruptedException
+     */
+    public void replication_switchSyncMode(int n) throws BabuDBException, InterruptedException{
+        if (replicationFacade != null) 
+            replicationFacade.setSyncMode(n);
+        else
+            throw new UnsupportedOperationException ("Replication is not enabled! Thats why it does not make sense to change the replication policies.");
+    }
+    
+    /**
+     * TODO failover-strategy 
+     * @param msg
+     */
+    public void replication_runtime_failure(String msg) {
+        
+        String message = "BabuDB in "+((replication_isSlave()) ? "slave" : "master")+"-mode has failed: "+msg;
+        Logging.logMessage(Logging.LEVEL_ERROR, this, message);
+        shutdown();
     }
    
     /**

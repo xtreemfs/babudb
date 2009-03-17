@@ -17,6 +17,7 @@ import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.foundation.pinky.PinkyRequest;
 
 /**
@@ -166,6 +167,7 @@ class RequestImpl implements Request {
      * @see org.xtreemfs.babudb.replication.Request#setMaxReceivableACKs(int)
      */
     public void setMaxReceivableACKs(int count) {
+        assert (count > 0) : "There has to be at least one receiver of the request.";
         maxReceivableACKs.set(count);
     }
 
@@ -174,13 +176,13 @@ class RequestImpl implements Request {
      * @see org.xtreemfs.babudb.replication.Request#decreaseMaxReceivableACKs(int)
      */
     public boolean decreaseMaxReceivableACKs(int count) {
-        assert (count > 0);
+        assert (count > 0) : "The amount to decrease has to be positive not-0 integer.";
         
         int newMax = 0;
         for (int i=0;i<count;i++)
             newMax = maxReceivableACKs.decrementAndGet();
         
-        assert (newMax >= 0);
+        assert (newMax >= 0) : "There cannot be less than 0 expected receivable ACKs left. Especially not: "+newMax;
         
         return newMax >= minExpectableACKs.get();
     }
@@ -205,39 +207,10 @@ class RequestImpl implements Request {
     
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.Request#failed()
+     * @see org.xtreemfs.babudb.replication.Request#hasFailed()
      */
-    public boolean failed(){
+    public boolean hasFailed(){
         return minExpectableACKs.get()!=0;
-    }
- 
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.Request#compareTo(org.xtreemfs.babudb.replication.Request)
-     */
-    @Override
-    public int compareTo(Request o) {
-        // lowest priority
-        if (o==null) return +1;
-        /*
-         * Order for the pending queue in ReplicationThread.
-         */        
-        if (token.compareTo(o.getToken())==0){
-            switch (token) {
-            // master
-            case ACK:                   return o.getLSN().compareTo(lsn);
-            case RQ:                    return lsn.compareTo(o.getLSN());
-            case REPLICA_BROADCAST:     return lsn.compareTo(o.getLSN());
-            case CHUNK:                 return chunkDetails.compareTo(o.getChunkDetails());
-            
-            // slave
-            case REPLICA:               return lsn.compareTo(o.getLSN());
-            case CHUNK_RP:              return chunkDetails.compareTo(o.getChunkDetails());
-            
-            default:                    return 0;
-            }
-        }
-        return token.compareTo(o.getToken());
     }
     
     /*
@@ -270,6 +243,8 @@ class RequestImpl implements Request {
                 return (source.equals(rq.getSource())
                         && lsmDbMetaData.equals(rq.getLsmDbMetaData()));
                 
+            case LOAD_RQ: return true;
+                
             case REPLICA:
                 return (lsn.equals(rq.getLSN()));
                 
@@ -279,6 +254,9 @@ class RequestImpl implements Request {
             case RQ:
                 return (source.equals(rq.getSource())
                         && lsn.equals(rq.getLSN()));
+                
+            case STATE: 
+                return source.equals(rq.getSource());
                 
             default: return false;                
             }
@@ -297,10 +275,14 @@ class RequestImpl implements Request {
         if (lsn!=null)              string+="LSN: '"+lsn.toString()+"',";  
         if (logEntry!=null)         string+="LogEntry: '"+logEntry.toString()+"',"; 
         if (chunkDetails!=null)     string+="ChunkDetails: '"+chunkDetails.toString()+"',";
-        if (data!=null)             string+="there is some data on the buffer,";
-        if (lsmDbMetaData!=null)    string+="LSM DB metaData: "+lsmDbMetaData.toString()+"',";
-        if (context!=null)          string+="context is set,";
-        if (original!=null)         string+="the original PinkyRequest: "+original.toString()+"',";            
+        if (Logging.tracingEnabled()) {
+            if (data!=null)             string+="data : "+data.array()+"',";
+            if (lsmDbMetaData!=null)    string+="LSM DB metaData: "+lsmDbMetaData.toString()+"',";
+            if (context!=null)          string+="context: "+context.toString()+"',";      
+            if (original!=null)         string+="the original PinkyRequest is available : "+original.toString()+"',";       
+        } else 
+            string += "\nEnable tracing for more informations.";
+
         string+="Object's id: "+super.toString();
         return string;
     }

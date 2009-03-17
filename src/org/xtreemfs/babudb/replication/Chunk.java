@@ -39,7 +39,7 @@ class Chunk implements Comparable<Chunk> {
      * @param r2
      */
     Chunk(String fName,long r1, long r2) {
-        assert(fName!=null);
+        assert(fName!=null) : "The name of a chunk can't be null!";
         
         fileName = fName;
         saveByteRange(r1,r2);
@@ -52,7 +52,7 @@ class Chunk implements Comparable<Chunk> {
      */
     Chunk(List<Object> json) {
         fileName = (String) json.get(0);
-        assert (fileName!=null);
+        assert (fileName!=null) : "The name of a chunk can't be null!";
         saveByteRange((Long) json.get(1), (Long) json.get(2));
     }
     
@@ -72,8 +72,8 @@ class Chunk implements Comparable<Chunk> {
             end = r1;
         }
         
-        assert (begin!=null);
-        assert (end!=null);
+        assert (begin!=null) : "Illegal byte-range for a chunk.("+fileName+")";
+        assert (end!=null) : "Illegal byte-range for a chunk.("+fileName+")";
     }
     
     /**
@@ -135,17 +135,9 @@ class Chunk implements Comparable<Chunk> {
      */
     @Override
     public boolean equals(Object obj) {
-        assert(fileName!=null);
-        assert(begin!=null);
-        assert(end!=null);
+        if (obj==null) return false;
         
-        Chunk o = (Chunk) obj;
-        
-        assert(o!=null);
-        assert(o.fileName!=null);
-        assert(o.begin!=null);
-        assert(o.end!=null);
-        
+        Chunk o = (Chunk) obj;       
         return fileName.equals(o.fileName) && begin.equals(o.begin) && end.equals(o.end);
     }
     

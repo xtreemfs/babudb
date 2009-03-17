@@ -79,7 +79,7 @@ public class RequestPreProcessorTest {
 
     @After
     public void tearDown() throws Exception {
-        replicationFacade.stop();
+        replicationFacade.shutdown();
     }
 
     @Test

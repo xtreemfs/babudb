@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
 
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBRequestListener;
@@ -23,7 +24,6 @@ import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.ReplicationThread.ReplicationException;
 import org.xtreemfs.babudb.replication.RequestPreProcessor.PreProcessException;
-import org.xtreemfs.babudb.replication.Status.STATUS;
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.foundation.LifeCycleListener;
 import org.xtreemfs.include.foundation.pinky.HTTPUtils;
@@ -33,6 +33,8 @@ import org.xtreemfs.include.foundation.pinky.SSLOptions;
 import org.xtreemfs.include.foundation.speedy.SpeedyRequest;
 import org.xtreemfs.include.foundation.speedy.SpeedyResponseListener;
 
+import static org.xtreemfs.babudb.replication.Replication.CONDITION.*;
+
 /**
  * <p>Configurable settings and default approach for the {@link ReplicationThread}.</p>
  * <p>Used to be one single Instance.</p>
@@ -41,7 +43,20 @@ import org.xtreemfs.include.foundation.speedy.SpeedyResponseListener;
  * @author flangner
  */
 
-public class Replication implements PinkyRequestListener,SpeedyResponseListener,LifeCycleListener,BabuDBRequestListener {       
+public class Replication implements PinkyRequestListener,SpeedyResponseListener,LifeCycleListener,BabuDBRequestListener { 
+    
+    /**
+     * <p>The inner state of the {@link ReplicationThread}.</p>
+     * 
+     * @author flangner
+     */
+    public enum CONDITION {
+        RUNNING,
+        STOPPED,
+        LOADING,
+        DEAD
+    }
+    
     /**
      * <p>Default Port, where all {@link ReplicationThread}s designated as master are listening at.</p> 
      */  
@@ -56,6 +71,11 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      * <p>Default chunk size, for initial load of file chunks.</p>
      */
     public final static long            CHUNK_SIZE      = 5*1024L*1024L;
+    
+    /**
+     * <p>Default maximal number of attempts for every {@link Request}.</p>
+     */
+    public final static int             DEFAULT_NO_TRIES= 3;
     
     /**
      * <p>The {@link InetSocketAddress} of the master, if this BabuDB server is a slave, null otherwise.</p>
@@ -83,9 +103,19 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
     private final AtomicBoolean         isMaster        = new AtomicBoolean();
     
     /**
+     * <p>The condition of the replication mechanism.</p>
+     */
+    private volatile CONDITION          condition       = null;
+    
+    /**
      * <p>Object for synchronization issues.</p>
      */
     private final Object                lock            = new Object();
+    
+    /**
+     * <p>The user defined maximum count of attempts every {@link Request}. <code>0</code> means infinite number of retries.</p>
+     */
+    final int                           maxTries;
     
     /**
      * <p>Actual chosen synchronization modus.</p>
@@ -101,6 +131,11 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
     private LSN                         lastWrittenLSN  = new LSN("1:0");
     
     /**
+     * <p>Needed for the replication mechanism to control context switches on the BabuDB.</p>
+     */
+    Lock                                babuDBLockcontextSwitchLock;
+    
+    /**
      * <p>Starts the {@link ReplicationThread} with {@link org.xtreemfs.include.foundation.pinky.PipelinedPinky} listening on <code>port</code>.
      * 
      * <p>Is a Master with <code>slaves</code>.</p>
@@ -111,16 +146,21 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      * @param slaves
      * @param babu
      * @param mode
+     * @param lock
+     * @param maxRetries
      * 
      * @throws BabuDBException - if replication could not be initialized.
      */
-    public Replication(List<InetSocketAddress> slaves, SSLOptions sslOptions,int port,BabuDBImpl babu, int mode, int qLimit) throws BabuDBException {
-        assert (slaves!=null);
-        assert (babu!=null);
+    public Replication(List<InetSocketAddress> slaves, SSLOptions sslOptions,int port,BabuDBImpl babu, int mode, int qLimit, Lock lock, int maxRetries) throws BabuDBException {
+        assert (slaves!=null) : "Replication in master-mode has no slaves attached.";
+        assert (babu!=null) : "Replication misses the DB interface.";
+        assert (lock!=null) : "Replication misses the DB-switch-lock.";
         
+        this.babuDBLockcontextSwitchLock = lock;
         this.syncN = mode;
         this.slaves = slaves;
         this.isMaster.set(true);
+        this.maxTries = maxRetries;
         dbInterface = babu;
         
         initReplication((port==0) ? MASTER_PORT : port, sslOptions, qLimit);
@@ -139,15 +179,21 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      * @param babu
      * @param mode
      * @param qLimit
+     * @param maxRetries
      * 
      * @throws BabuDBException - if replication could not be initialized.
      */
-    public Replication(InetSocketAddress master, SSLOptions sslOptions, int port, BabuDBImpl babu, int mode, int qLimit) throws BabuDBException {
-        assert (master!=null);
-        
+    public Replication(InetSocketAddress master, SSLOptions sslOptions, int port, BabuDBImpl babu, int mode, int qLimit, Lock lock, int maxRetries) throws BabuDBException {
+        assert (master!=null) : "Replication in slave-mode has no master attached.";
+        /* TODO activate after testing
+        assert (babu!=null) : "Replication misses the DB interface.";
+        assert (lock!=null) : "Replication misses the DB-switch-lock.";
+        */
+        this.babuDBLockcontextSwitchLock = lock;
         this.syncN = mode;
         this.master = master;
         this.isMaster.set(false);
+        this.maxTries = maxRetries;
         dbInterface = babu;
         initReplication((port==0) ? SLAVE_PORT : port,sslOptions, qLimit);
     }
@@ -162,8 +208,10 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
                 
                 replication.waitForStartup();
             }
+            
+            switchCondition(RUNNING);
         } catch (Exception e) {
-            throw new BabuDBException(ErrorCode.IO_ERROR,"Failed to startup replication.",e.getCause());
+            throw new BabuDBException(ErrorCode.IO_ERROR,e.getMessage(),e.getCause());
         }
     }
 
@@ -178,7 +226,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
         
         try {
             Request rq = RequestPreProcessor.getReplicationRequest(le);
-            replication.enqueueRequest(rq); 
+            if (!replication.enqueueRequest(rq)) Logging.logMessage(Logging.LEVEL_INFO, replication, "Request is already in the queue: "+rq.toString()); 
         } catch (Exception e) {
             Logging.logMessage(Logging.LEVEL_TRACE, this, "A LogEntry could not be replicated because: "+e.getMessage());
             le.getAttachment().getListener().requestFailed(le.getAttachment().getContext(), new BabuDBException(ErrorCode.REPLICATION_FAILURE,
@@ -191,11 +239,15 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      * (synchronous)
      * @throws BabuDBException - if replication could not be stopped. 
      */
-    public void stop() throws BabuDBException {
+    public void shutdown() throws BabuDBException {
         try {
-            replication.shutdown();
-            replication.waitForShutdown();
+            if (condition.equals(RUNNING)){
+                replication.shutdown();
+                replication.waitForShutdown();
+            }
+            switchCondition(DEAD);
         } catch (Exception e) {
+            dbInterface.replication_runtime_failure(e.getMessage());
             throw new BabuDBException(ErrorCode.IO_ERROR,"Failed to stop replication.",e.getCause());
         }       
     }
@@ -215,11 +267,10 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
             try {
                 Request rq = RequestPreProcessor.getReplicationRequest(databaseName,numIndices);
                 replication.sendSynchronousRequest(rq);
-            } catch (PreProcessException e) {
+            } catch (Exception e) {
+                dbInterface.replication_runtime_failure(e.getMessage());
                 throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,e.getMessage(),e.getCause());
-            } catch (ReplicationException re){
-                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,re.getMessage(),re.getCause());
-            }           
+            }          
         }
     }
     
@@ -237,11 +288,10 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
             try {
                 Request rq = RequestPreProcessor.getReplicationRequest(sourceDB,destDB);
                 replication.sendSynchronousRequest(rq);
-            } catch (PreProcessException e) {
+            } catch (Exception e) {
+                dbInterface.replication_runtime_failure(e.getMessage());
                 throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,e.getMessage(),e.getCause());
-            } catch (ReplicationException re){
-                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,re.getMessage(),re.getCause());
-            } 
+            }
         }
     }
     
@@ -259,11 +309,10 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
             try {
                 Request rq = RequestPreProcessor.getReplicationRequest(databaseName,deleteFiles);
                 replication.sendSynchronousRequest(rq);
-            } catch (PreProcessException e) {
+            } catch (Exception e) {
+                dbInterface.replication_runtime_failure(e.getMessage());
                 throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,e.getMessage(),e.getCause());
-            } catch (ReplicationException re){
-                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,re.getMessage(),re.getCause());
-            }   
+            }  
         }
     }  
     
@@ -348,8 +397,12 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
         try {
             Request rq = RequestPreProcessor.getReplicationRequest(theRequest,this);   
            // if rq==null it was already proceeded and will just be responded
-            if (rq!=null) replication.enqueueRequest(rq);
-            else replication.sendResponse(theRequest);
+            if (rq!=null){ 
+                if (!replication.enqueueRequest(rq))
+                    theRequest.setResponse(HTTPUtils.SC_OKAY);
+                else return;
+            }
+            replication.sendResponse(theRequest);
         }catch (PreProcessException e){
            // if a request could not be parsed for any reason
             Logging.logMessage(Logging.LEVEL_ERROR, this, e.getMessage());
@@ -376,8 +429,13 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
         try {
             Request rq = RequestPreProcessor.getReplicationRequest(theRequest,this);
            // if rq is null than it was already responded
-            if (rq!=null) replication.enqueueRequest(rq);
+            if (rq!=null) 
+                if (!replication.enqueueRequest(rq))
+                    Logging.logMessage(Logging.LEVEL_INFO, replication, "Request is already in the queue: "+rq.toString());
+        }catch (PreProcessException ppe) {
+            Logging.logMessage(Logging.LEVEL_WARN, this, ppe.getMessage());
         }catch (Exception e){
+            dbInterface.replication_runtime_failure(e.getMessage());
             Logging.logMessage(Logging.LEVEL_ERROR, this, e.getMessage());
         }       
     }
@@ -386,6 +444,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      * (non-Javadoc)
      * @see org.xtreemfs.babudb.BabuDBRequestListener#insertFinished(java.lang.Object)
      */
+    @SuppressWarnings("unchecked")
     @Override
     public void insertFinished(Object context) {
         try { 
@@ -394,23 +453,26 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
             if (rq!=null){
                 // save it if it has the last LSN
                 updateLastWrittenLSN(rq.getValue().getLSN());
-                replication.removeMissing(rq.getValue());
+                replication.remove(rq);
                 
                 Object parsed = RequestPreProcessor.getReplicationRequest(rq);
                  // send an ACK for the replicated entry
                 if (parsed instanceof Request) replication.sendACK((Request) parsed);
                 else if (parsed instanceof PinkyRequest){
                     replication.sendResponse((PinkyRequest) parsed);
-                }                   
+                }   
+                // TODO change logLevel to LEVEL_TRACE
+                Logging.logMessage(Logging.LEVEL_ERROR, replication, "LogEntry inserted successfully: "+rq.getValue().getLSN().toString());
+                rq.getValue().free();
             }
-        }catch (BabuDBException be) {
-            // if a request could not be parsed for any reason
-            Logging.logMessage(Logging.LEVEL_ERROR, this, be.getMessage());
-        }catch (PreProcessException ppe){       
-            Logging.logMessage(Logging.LEVEL_ERROR, this, ppe.getMessage());
         }catch (ReplicationException e) {
             // if the ACK could not be send
             Logging.logMessage(Logging.LEVEL_ERROR, this, "ACK could not be send: "+e.getMessage());
+            dbInterface.replication_runtime_failure(e.getMessage());
+        }catch (Exception e) {
+            // if a request could not be parsed for any reason
+            Logging.logMessage(Logging.LEVEL_ERROR, this, e.getMessage());
+            dbInterface.replication_runtime_failure(e.getMessage());
         }
     }
 
@@ -418,6 +480,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      * (non-Javadoc)
      * @see org.xtreemfs.babudb.BabuDBRequestListener#requestFailed(java.lang.Object, org.xtreemfs.babudb.BabuDBException)
      */
+    @SuppressWarnings("unchecked")
     @Override
     public void requestFailed(Object context, BabuDBException error) {
         try {
@@ -425,27 +488,31 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
             if (context==null) new Exception("No informations about the inserted logEntry available!");
             Status<Request> erq = (Status<Request>) context;
             Request rq = null;
-            if (!isMaster()) rq = RequestPreProcessor.getReplicationRequest(erq,error);
+            if (!isMaster()) rq = RequestPreProcessor.getReplicationRequest(error);
+            else replication.remove(erq);
             
              // send the answer
             PinkyRequest orgReq = (PinkyRequest) erq.getValue().getOriginal();
-            if (orgReq!=null){
-                orgReq.setResponse(HTTPUtils.SC_SERVER_ERROR,"LogEntry could not be replicated due a diskLogger failure: "+error.getMessage());
-                replication.sendResponse(orgReq);
-            }
             
              // try to deal with the error
             if (rq==null){
-                erq.setStatus(STATUS.FAILED);
-                replication.enqueueRequest(erq);
+                if (erq.attemptFailedAttemptLeft(maxTries))
+                    assert (!replication.enqueueRequest(erq.getValue())) : "This request should not be in the queue: "+erq.toString();
+                else {
+                    if (orgReq!=null){
+                        orgReq.setResponse(HTTPUtils.SC_SERVER_ERROR,"LogEntry could not be replicated due a diskLogger failure: "+error.getMessage());
+                        replication.sendResponse(orgReq);
+                    }
+                    dbInterface.replication_runtime_failure(error.getMessage());
+                }
             } else {
                 replication.enqueueRequest(rq);
-                erq.setStatus(STATUS.OPEN);
-                replication.enqueueRequest(erq);                  
+                replication.enqueueRequest(erq.getValue());                  
             }
         }catch (ReplicationException e){
             // if a request could not be handled for any reason
-            Logging.logMessage(Logging.LEVEL_ERROR, this, e.getMessage());
+            Logging.logMessage(Logging.LEVEL_ERROR, this, "Received the answer of a malformed request: "+e.getMessage());
+            dbInterface.replication_runtime_failure(e.getMessage());
         }
     }
 
@@ -492,7 +559,9 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
             message = "Master ReplicationThread crashed.";
         else
             message = "Slave ReplicationThread crashed.";
-        Logging.logMessage(Logging.LEVEL_ERROR, this, message);       
+        Logging.logMessage(Logging.LEVEL_ERROR, this, message);  
+        switchCondition(DEAD);
+        dbInterface.replication_runtime_failure(message);
     }
 
     /*
@@ -505,7 +574,8 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
         if (isMaster.get())
             message = "Master ReplicationThread stopped.";
         else
-            message = "Slave ReplicationThread stopped.";
+            message = "Slave ReplicationThread stopped.";       
+        switchCondition(DEAD);
         Logging.logMessage(Logging.LEVEL_INFO, this, message);  
     }
 
@@ -520,6 +590,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
             message = "Master ReplicationThread started.";
         else
             message = "Slave ReplicationThread started.";
+        switchCondition(RUNNING);
         Logging.logMessage(Logging.LEVEL_INFO, this, message);  
     } 
     
@@ -578,8 +649,10 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
 
     /**
      * @param slaves the slaves to set
+     * @throws BabuDBException if an error occurs.
+     * @throws InterruptedException if the process was interrupted.
      */
-    public void setSlaves(List<InetSocketAddress> slaves) throws InterruptedException {
+    public void setSlaves(List<InetSocketAddress> slaves) throws InterruptedException, BabuDBException {
         int mode = syncN;
         
         if (slaves.size() < mode){
@@ -629,7 +702,8 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      * mode > 0 && mode < slaves.size(): N-sync mode with N = mode</p>
      * 
      * @param mode
-     * @throws InterruptedException
+     * @throws InterruptedException if the process was interrupted.
+     * @throws BabuDBException if an error occurs.
      */
     public void setSyncMode(int mode) throws BabuDBException,InterruptedException{  
         if (mode<0 || mode>slaves.size()) throw new BabuDBException(
@@ -653,5 +727,33 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
         }
         
         Logging.logMessage(Logging.LEVEL_TRACE, replication, "Replication: SyncMode has been changed. New mode: "+mode+" @: "+slaves.size()+" slaves.");
+    }
+    
+    /**
+     * sets the inner state
+     * 
+     * @param c
+     */
+    public void switchCondition(CONDITION c){
+        this.condition = c;
+    }
+    
+    /**
+     * 
+     * @return the inner state
+     */
+    public CONDITION getCondition() {
+        return this.condition;
+    }
+    
+    /**
+     * <p>Sets a new readLock for contextSwitches on babuDB in case of a babuDB reset.</p>
+     * 
+     * @param l
+     */
+    public void changeContextSwitchLock(Lock l){
+        synchronized (lock) {
+            this.babuDBLockcontextSwitchLock = l;
+        }
     }
 }

@@ -59,9 +59,6 @@ enum Token {
     
     /** Master-token, for sending a replica to the slaves. */
     REPLICA_BROADCAST,
- 
-    /** Request for a database structure load. */
-    CONFIG,
     
     /** Request for a complete database load, till a specified LSN. */
     LOAD,
