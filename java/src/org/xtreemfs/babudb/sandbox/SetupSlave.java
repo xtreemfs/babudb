@@ -94,7 +94,25 @@ public class SetupSlave {
         String nextCommand = null;
         while(true) {
             if ((nextCommand = reader.readLine()) != null){
-                if (nextCommand.equals("exit")){
+                if (nextCommand.equals("stop")){
+                    slave.shutdown();
+                }else if (nextCommand.startsWith("start")){
+                    String[] param = nextCommand.split(" ");
+                    if (param.length>1){
+                        Process p = Runtime.getRuntime().exec("rm -rf "+options.get("path").fileValue.getAbsolutePath());
+                        p.waitFor();
+                    }
+                    
+                    slave = (BabuDBImpl) BabuDBFactory.getSlaveBabuDB(
+                            options.get("path").fileValue.getAbsolutePath(), 
+                            options.get("path").fileValue.getAbsolutePath(), 
+                            options.get("workers").numValue.intValue(), 1, 0, 
+                            SyncMode.valueOf(options.get("sync").stringValue), 
+                            options.get("wait").numValue.intValue(), 
+                            options.get("maxq").numValue.intValue(), 
+                            master, slaves, 
+                            options.get("port").numValue.intValue(), null, 0);
+                }else if (nextCommand.equals("exit")){
                     break;
                 } else if(nextCommand.startsWith("consistencyCheck")){
                     String[] param = nextCommand.split(" ");
@@ -129,7 +147,7 @@ public class SetupSlave {
                     else {
                         Thread.sleep(Long.valueOf(param[1]));
                     }
-                } else System.err.println("UNKNOWN COMMAND: "+nextCommand);
+                } else System.err.println(nextCommand);
             }
         }
         
