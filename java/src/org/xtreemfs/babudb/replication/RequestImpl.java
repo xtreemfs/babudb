@@ -10,13 +10,10 @@ package org.xtreemfs.babudb.replication;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.include.common.buffer.BufferPool;
-import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.foundation.pinky.PinkyRequest;
 
@@ -46,7 +43,7 @@ class RequestImpl implements Request {
     LogEntry                    logEntry                = null;
     
     /** {@link Chunk} data or a serialized {@link LogEntry} to send */
-    ReusableBuffer              data                    = null;
+    byte[]                      data                    = null;
 
     /** for response issues and to be checked into the DB */
     LSMDBRequest                context                 = null;
@@ -56,10 +53,9 @@ class RequestImpl implements Request {
     
     /** for requesting the initial load by pieces */
     Map<String, List<Long>>     lsmDbMetaData           = null;
-            
-    /** status of an broadCast request - the expected ACKs */
-    private final AtomicInteger maxReceivableACKs       = new AtomicInteger(0);
-    private final AtomicInteger minExpectableACKs       = new AtomicInteger(0);
+    
+    /** where the request should be send to */
+    List<InetSocketAddress> 	destinations			= null;
     
     RequestImpl(Token t){
         token = t;
@@ -74,12 +70,7 @@ class RequestImpl implements Request {
      * (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.Request#free()
      */
-    public void free() {
-        if (data!=null){
-            BufferPool.free(data);
-            data = null;
-        }
-        
+    public void free() {       
         if (logEntry!=null){
             logEntry.free();
             logEntry = null;
@@ -126,7 +117,7 @@ class RequestImpl implements Request {
      * (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.Request#getData()
      */
-    public ReusableBuffer getData() {
+    public byte[] getData() {
         return data;
     }
 
@@ -164,55 +155,12 @@ class RequestImpl implements Request {
     
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.Request#setMaxReceivableACKs(int)
+     * @see org.xtreemfs.babudb.replication.Request#getDestinations()
      */
-    public void setMaxReceivableACKs(int count) {
-        assert (count > 0) : "There has to be at least one receiver of the request.";
-        maxReceivableACKs.set(count);
+    public List<InetSocketAddress> getDestinations(){
+    	return destinations;
     }
-
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.Request#decreaseMaxReceivableACKs(int)
-     */
-    public boolean decreaseMaxReceivableACKs(int count) {
-        assert (count > 0) : "The amount to decrease has to be positive not-0 integer.";
-        
-        int newMax = 0;
-        for (int i=0;i<count;i++)
-            newMax = maxReceivableACKs.decrementAndGet();
-        
-        assert (newMax >= 0) : "There cannot be less than 0 expected receivable ACKs left. Especially not: "+newMax;
-        
-        return newMax >= minExpectableACKs.get();
-    }
-    
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.Request#setMinExpectableACKs(int)
-     */
-    public void setMinExpectableACKs(int count) {
-        minExpectableACKs.set(count);
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.Request#decreaseMinExpectableACKs()
-     */
-    public boolean decreaseMinExpectableACKs() {
-        int remaining = minExpectableACKs.decrementAndGet();
-        maxReceivableACKs.decrementAndGet();        
-        return remaining == 0;
-    }
-    
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.Request#hasFailed()
-     */
-    public boolean hasFailed(){
-        return minExpectableACKs.get()!=0;
-    }
-    
+  
     /*
      * (non-Javadoc)
      * @see java.lang.Object#equals(java.lang.Object)
@@ -255,6 +203,15 @@ class RequestImpl implements Request {
                 return (source.equals(rq.getSource())
                         && lsn.equals(rq.getLSN()));
                 
+            case CREATE:
+                return (data.equals(rq.getData()));
+                
+            case COPY:
+                return (data.equals(rq.getData()));
+                
+            case DELETE:
+                return (data.equals(rq.getData()));
+                
             case STATE: 
                 return source.equals(rq.getSource());
                 
@@ -276,7 +233,7 @@ class RequestImpl implements Request {
         if (logEntry!=null)         string+="LogEntry: '"+logEntry.toString()+"',"; 
         if (chunkDetails!=null)     string+="ChunkDetails: '"+chunkDetails.toString()+"',";
         if (Logging.tracingEnabled()) {
-            if (data!=null)             string+="data : "+data.array()+"',";
+            if (data!=null)             string+="data : "+data.toString()+"',";
             if (lsmDbMetaData!=null)    string+="LSM DB metaData: "+lsmDbMetaData.toString()+"',";
             if (context!=null)          string+="context: "+context.toString()+"',";      
             if (original!=null)         string+="the original PinkyRequest is available : "+original.toString()+"',";       

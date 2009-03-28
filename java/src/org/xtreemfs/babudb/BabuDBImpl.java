@@ -25,7 +25,6 @@ import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.Map.Entry;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Matcher;
@@ -225,6 +224,19 @@ public class BabuDBImpl implements BabuDB {
 
         Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running (version " + BABUDB_VERSION + ")");
     }
+    
+    /**
+     * DUMMY - constructor for testing only!
+     */
+    public BabuDBImpl() {
+    	replicationFacade = null;
+    	dbNames = null;
+    	dbModificationLock = null;
+    	databases = null;
+    	configuration = null;
+    	compInstances = null;
+    	checkpointLock = null;
+	}
 
     /**
      * <p>Needed for the initial load process of the babuDB, done by the replication.</p>

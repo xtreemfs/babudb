@@ -19,7 +19,7 @@ import org.xtreemfs.babudb.lsmdb.LSN;
  * @param <T>
  */
 
-public class PriorityQueueComparator<T> implements Comparator<Status<T>> {
+class PriorityQueueComparator<T> implements Comparator<Status<T>> {
 
     /*
      * (non-Javadoc)
@@ -27,14 +27,14 @@ public class PriorityQueueComparator<T> implements Comparator<Status<T>> {
      */
     @Override
     public int compare(Status<T> o1, Status<T> o2) {
-        if (o1.getStatus().equals(o2.getStatus())) {
+        if ((o1.isPending() && o2.isPending()) || (!o1.isPending() && !o2.isPending())) {
             // make a case differentiation for not comparing apples with oranges     
 
             // compare requests
             if (o1.getValue() instanceof Request){
                 Request rq1 = (Request) o1.getValue();
                 Request rq2 = (Request) o2.getValue();
-                // lowest priority
+                // lowest priority for dummies
                 if (rq2==null) return +1;
 
                 /*
@@ -71,10 +71,10 @@ public class PriorityQueueComparator<T> implements Comparator<Status<T>> {
                 Chunk chunk2 = (Chunk) o2.getValue();
                 return chunk1.compareTo(chunk2);
                 
-            // unknown type of request has low priority    
+            // unknown type of request has low priority
             } else
                 return +1;
-        }else 
-            return o1.getStatus().compareTo(o2.getStatus());
+        }else if (o1.isPending()) return +1;
+        else return -1;
     }
 }

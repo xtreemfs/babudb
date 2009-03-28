@@ -20,4 +20,6 @@ public class TestConfiguration {
     public static final String master_baseDir = "/tmp/lsmdb-test/master/";
     
     public static final String slave1_baseDir = "/tmp/lsmdb-test/slave1/";
+    
+    public static final String unknown_host = "unknownHost";
 }

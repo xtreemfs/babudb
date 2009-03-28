@@ -64,7 +64,7 @@ interface Request {
     /**
      * @return {@link Chunk} data or a {@link LogEntry} to send.
      */
-    ReusableBuffer getData();
+    byte[] getData();
     
     /**
      * @return the context for response issues.
@@ -82,51 +82,18 @@ interface Request {
     Map<String, List<Long>> getLsmDbMetaData();
     
     /**
-     * sets the maximal number of ACKs receivable by slaves
-     * 
-     * @param count
+     * @return a list of destinations, where the request should be send to.
      */
-    void setMaxReceivableACKs(int count);
-    
-    /**
-     * Decreases the counter for receivable sub-requests by <code>count</code>.
-     * 
-     * @param count
-     * @return true, if the maximal number of receivable ACKs is GE than the minimal number of ACKs expected by the application. false otherwise 
-     */
-    boolean decreaseMaxReceivableACKs(int count);
-    
-    /**
-     * sets the number of minimal amount of expectable ACKs for a broad cast request to be successful
-     *  
-     * @param count
-     */
-    void setMinExpectableACKs(int count);
-    
-    /**
-     * Decreases the counter for expectable sub-requests.
-     * 
-     * @return true, if counter was decreased to 0, false otherwise.
-     */
-    boolean decreaseMinExpectableACKs();
-    
-    /**
-     * 
-     * @return true if there are still some open expected ACKs which have not been received.
-     */
-    boolean hasFailed();
-    
+    List<InetSocketAddress> getDestinations();
     /*
      * (non-Javadoc)
      * @see java.lang.Object#equals(java.lang.Object)
      */
-    @Override
-    public boolean equals(Object obj);
+    boolean equals(Object obj);
 
     /*
      * (non-Javadoc)
      * @see java.lang.Object#toString()
      */
-    @Override
-    public String toString();
+    String toString();
 }
