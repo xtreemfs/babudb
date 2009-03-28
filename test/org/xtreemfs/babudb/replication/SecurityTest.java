@@ -14,8 +14,8 @@ import java.net.InetSocketAddress;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
@@ -25,11 +25,11 @@ import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.include.common.logging.Logging;
 
 public class SecurityTest {
-    private static BabuDB slave;
-    
-    @BeforeClass
-    public static void setUpBeforeClass() throws Exception {   
-        Logging.start(Logging.LEVEL_WARN);
+    private BabuDB slave;
+
+    @Before
+    public void setUp() throws Exception {   
+        Logging.start(Logging.LEVEL_ERROR);
         
         Process p = Runtime.getRuntime().exec("rm -rf "+slave1_baseDir);
         p.waitFor();
@@ -42,8 +42,8 @@ public class SecurityTest {
                 0,0,new InetSocketAddress("localhost",PORT),slaves,0,null,0);
     }
     
-    @AfterClass
-    public static void tearDownAfterClass() throws Exception {
+    @After
+    public void tearDown() throws Exception {
         Logging.logMessage(Logging.LEVEL_TRACE, slave, "shutting down databases...");
         slave.shutdown();
     }

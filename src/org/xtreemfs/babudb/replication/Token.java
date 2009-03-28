@@ -51,6 +51,9 @@ enum Token {
     /** Slave-token, for receiving a replica from the master. */
     REPLICA,
     
+    /** State-RQ for every available DB, to get to know their latest LSNs. */
+    STATE_BROADCAST,
+    
     /** Request for the last acknowledged state of a BabuDB. */
     STATE,
     

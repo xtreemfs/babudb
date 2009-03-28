@@ -7,66 +7,60 @@
  */
 package org.xtreemfs.babudb.replication;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.xtreemfs.babudb.replication.ReplicationThread.ReplicationException;
-
-import static org.xtreemfs.babudb.replication.Status.STATUS.*;
+import org.xtreemfs.include.common.logging.Logging;
 
 /**
  * <p>Wrapper that adds a state to an <T>, that has to be requested.</p>
  * <p>Method compareTo first orders by status and if equal by <T>.</p>
+ * <p>Counts failed attempts to match retry-restriction and ACKs from broadcast requests.</p>
  * 
  * @author flangner
  * @param <T>
  */
-class Status<T> {
-    /**
-     * <p>Status options.</p>
-     * <p>Tokens are ordered by the priority, with which they will be processed in the ReplicationThread.</p>
-     * 
-     * @author flangner
-     *
-     */
-    static enum STATUS {
+class Status<T> {   	
+    private             T               rq       = null;
         
-        /** not requested */
-        OPEN,
-        
-        /** requested and waiting for answer */
-        PENDING,
-        
-        };
-    
-    private             STATUS          stat    = STATUS.OPEN;
-    
-    private             T               c       = null;
-    
+    private final       AtomicBoolean   pending 				= new AtomicBoolean(false);
+ 
     /** counter for failed attempts to process this {@link Request} */
     private final       AtomicInteger   failedAttempts          = new AtomicInteger(0);
     
-    private final   ReplicationThread   statusListener;
+    /** status of an broadCast request - the expected responses */
+    private final       AtomicInteger   maxReceivableResp       = new AtomicInteger(1);
+    private final       AtomicInteger   minExpectableResp       = new AtomicInteger(0);
+    private final 		AtomicBoolean	done					= new AtomicBoolean(false);
+    
+    /** back-link to the queues */
+    private final   ReplicationThread   statusListener;   
     
     /**
-     * <p>Dummy constructor!</p>
-     * <p>Saves a the given <code>c</code>.</p>
-     * <p>Status will be OPEN.</p>
-     * 
-     * @param c
+     * <p>A request dummy with the lowest priority for the pending queues.</p>
      */
-    Status(T c) {
-        this(c,(ReplicationThread) null);
+    Status() {
+        this(null,(ReplicationThread) null);
+        this.pending.set(true);
     }
     
     /**
-     * <p>Dummy constructor!</p>
-     * <p>Saves a the given <code>c</code> and the {@link STATUS} <code>stat</code>.</p>
-     * 
+     * <p>A request dummy for the pending queues. Marked, as open (not pending).</p>
      * @param c
-     * @param stat
      */
-    Status(T c, STATUS stat) {
-        this(c,stat,null);
+    Status(T c){
+    	this(c,(ReplicationThread) null);
+    }
+    
+    /**
+     * <p>A request dummy for the pending queues. With the given pending-state.</p>
+     * @param c
+     * @param pending
+     */
+    Status(T c,boolean pending){
+    	this(c,(ReplicationThread) null);
+    	this.pending.set(pending);
     }
     
     /**
@@ -77,47 +71,122 @@ class Status<T> {
      * @param sL - the obsolete-status-listener
      */
     Status(T c, ReplicationThread sL) {
-        this.c = c;
+        this.rq = c;
         this.statusListener = sL;
-    }
-    
-    /**
-     * <p>Saves a the given <code>c</code> and the {@link STATUS} <code>stat</code>.</p>
-     * 
-     * @param c
-     * @param stat
-     * @param sL - the obsolete-status-listener
-     */
-    Status(T c, STATUS stat, ReplicationThread sL) {
-        this(c,sL);
-        this.stat = stat;
     }
 
 /*
  * getter/setter    
  */   
-    STATUS getStatus(){
-        return stat;
+    boolean isPending(){
+    	return this.pending.get();
     }
     
     T getValue(){
-        return c;
+        return rq;
     }
-   
-    void setStatus(STATUS s){
-        this.stat = s;
-    }
-    
-    void setValue(T v){
-        this.c = v;
+ 
+    /**
+     * sets the maximal number of responses receivable by slaves
+     * 
+     * @param count
+     */
+    void setMaxReceivableResp(int count) {
+        assert (count > 0) : "There has to be at least one receiver of the request.";
+        maxReceivableResp.set(count);
     }
     
     /**
-     * Increases a inner failure-attempt-counter.
+     * sets the number of minimal amount of expectable responses for a broad cast request to be successful
+     *  
+     * @param count
+     */
+    void setMinExpectableResp(int count) {
+        minExpectableResp.set(count);
+    }
+    
+    /**
+     * <p>Sets the request's status to pending and reorders the queue it is in.</p>
+     * @throws ReplicationException if status could not be changed.
+     */
+	void pending() throws ReplicationException {
+		pending.set(true);
+		statusListener.statusChanged(this);
+	}    
+    
+    /**
+     * <p>Resets the state of the actual request.</p>
+     * @throws ReplicationException if status could not be changed.
+     */
+    void retry() throws ReplicationException {
+    	pending.set(false);
+    	maxReceivableResp.set(1);
+    	minExpectableResp.set(0);
+    	statusListener.statusChanged(this);
+    }
+    
+    /**
+     * <p>Function to wait synchronous for a {@link Request} to be done.</p>
+     * @return <code>true</code> if minExpected is gt the maxReceivable. In other word, if the request has failed. false otherwise.
+     */
+    boolean waitFor() {
+    	synchronized (done) {
+			while (!done.get()) {
+				try {
+					done.wait();
+				}catch (InterruptedException e) { /* ignored */ }
+			}
+		}
+    	return minExpectableResp.get()>maxReceivableResp.get();
+    }
+/*
+ * broadcast counters    
+ */
+
+    /**
+     * Decreases the counter for receivable sub-requests by <code>count</code>.
+     * 
+     * @param count
+     * @return true, if the maximal number of receivable responses is GE than the minimal number of ACKs expected by the application. false otherwise 
+     */
+    private boolean decreaseMaxReceivableResp() {
+        int remaining = maxReceivableResp.decrementAndGet();       
+        assert (remaining >= 0) : "There cannot be less than 0 expected receivable ACKs left. Especially not: "+remaining;       
+        return remaining >= minExpectableResp.get();
+    }
+
+    /**
+     * Decreases the counter for expectable sub-requests.
+     * 
+     * @return true, if counter was decreased to 0, false otherwise.
+     */
+    private boolean decreaseMinExpectableResp() {
+        int remainingExpected = minExpectableResp.decrementAndGet();
+        int remainingReceivable = maxReceivableResp.decrementAndGet();        
+        return remainingExpected == 0 || (remainingReceivable == 0 && remainingExpected<0);
+    }
+  
+    /**
+     * <p>Switches status <code>done</code> to true and notifies every waiting instance.</p> 
+     * <p>Has to run in a <code>synchronized(done)</code> block.</p>
+     */
+    private void done() {
+    	assert(pending.get()) : "An open request cannot be done!";
+    	
+		done.set(true);
+		done.notifyAll();
+    }
+    
+/*
+ * retry-methods    
+ */
+    
+    /**
+     * <p>Increases a inner failure-attempt-counter.</p>
      * 
      * @return true, if there is an attempt left.
      */
-    boolean attemptFailedAttemptLeft(int maxTries){
+    private boolean attemptFailedAttemptLeft(int maxTries){
         int failed = this.failedAttempts.incrementAndGet();
         return (maxTries == 0) || (failed < maxTries);
     }
@@ -127,9 +196,62 @@ class Status<T> {
      * @throws ReplicationException if request could not be removed.
      */
     void cancel() throws ReplicationException {       
-        assert (statusListener != null) : "A dummy cannot be obsolete!";
+        assert (statusListener!=null) : "A dummy cannot be obsolete!";
 
-        statusListener.remove(this);
+        synchronized(done){
+        	if (!done.get()) {
+        		statusListener.remove(this);
+        		done();
+        	}
+        }
+    }
+    
+    /**
+     * <p>If the request was finished any available listeners will be notified and it will be removed.</p>
+     * 
+     * @throws ReplicationException if the request could not be marked as finished.
+     */
+    void finished() throws ReplicationException {
+        assert (statusListener!=null) : "A dummy cannot be finished!";
+        assert (pending.get()) : "An open request cannot be finished!";
+        synchronized(done) {
+        	if (!done.get())
+                if (decreaseMinExpectableResp()) {  
+                    statusListener.finished(this);
+                    done();
+                }
+        } 
+    }
+    
+    /**
+     * <p>If the request has failed any available listeners will be notified and the reason will be delivered.</p>
+     * <p>The request will be enqueued, if it has not finally failed, which means, that there are no more attempts left for retrying.</p>
+     * 
+     * @param reason
+     * @param maxTries
+     * @throws ReplicationException if the request could not be marked as failed.
+     */
+    void failed(String reason,int maxTries) throws ReplicationException {
+        assert (statusListener != null) : "A dummy cannot fail!";
+        assert (pending.get()) : "An open request cannot fail!";
+        synchronized(done) {
+        	if (!done.get()) {
+        		// check, if it has completely failed
+	            if (!decreaseMaxReceivableResp()) {
+	            	// check, if there are retry-attempts left
+	            	if (attemptFailedAttemptLeft(maxTries)) {     
+	            		// retry
+	            		Logging.logMessage(Logging.LEVEL_TRACE, this, "Request has failed, and will be retried soon...");
+	            		retry();
+	            	} else {
+	            		// it has really failed
+	            		Logging.logMessage(Logging.LEVEL_TRACE, this, "Giving up after '"+maxTries+"' attempts to: "+rq.toString());
+	            		statusListener.failed(this,reason);
+		                done();
+	            	}
+	            }
+        	} 
+        }
     }
     
     /*
@@ -141,7 +263,9 @@ class Status<T> {
     public boolean equals(Object obj) {
         Status<T> o = (Status<T>) obj;
         if (obj == null) return false;
-        return c.equals(o.c);
+        if (o.rq==null && rq==null) return true;
+        if (o.rq==null) return false;
+        return rq.equals(o.rq);
     }
     
     /*
@@ -150,8 +274,8 @@ class Status<T> {
      */
     @Override
     public String toString() {  
-        String string = stat.toString()+": "+((c!=null) ? c.toString() : "n.a.");
-        if (stat.equals(OPEN))
+        String string = ((pending.get()) ? "PENDING" : "OPEN")+": "+((rq!=null) ? rq.toString() : "n.a.");
+        if (pending.get())
             string+="This request failed for '"+failedAttempts.get()+"' times,";
         
         return string;       

@@ -59,13 +59,13 @@ public class LSMDBWorker extends Thread implements SyncListener {
     
     public LSMDBWorker(DiskLogger logger, int id, ReadWriteLock insertLock,
             boolean pseudoSync, int maxQ,Replication replication) {
-        super("LSMDBWrkr#"+id);        
+        super("LSMDBWrkr#"+id);  
+        down = new AtomicBoolean(false);
         this.replicationFacade = replication;        
         if (maxQ > 0)
             requests = new LinkedBlockingQueue<LSMDBRequest>(maxQ);
         else
-            requests = new LinkedBlockingQueue<LSMDBRequest>();
-        down = new AtomicBoolean(false);
+            requests = new LinkedBlockingQueue<LSMDBRequest>();       
         this.lookupIfs = new HashMap<LSMDatabase, LSMLookupInterface>();
         this.logger = logger;
         this.insertLock = insertLock;
@@ -89,15 +89,32 @@ public class LSMDBWorker extends Thread implements SyncListener {
     
     public void waitForShutdown() throws InterruptedException {
         synchronized (down) {
-            if (!down.get())
+            if (!down.get()){
                 down.wait();
+            }
         }
     }
     
-    public void run() {
+    /**
+     * This function is necessary, to avoid race-conditions.
+     */
+    /*
+     * (non-Javadoc)
+     * @see java.lang.Thread#start()
+     */
+    @Override
+    public synchronized void start() {
         quit = false;
         down.set(false);
-        
+    	super.start();
+    }
+    
+    /*
+     * (non-Javadoc)
+     * @see java.lang.Thread#run()
+     */
+    @Override
+    public void run() {       
         while (!quit) {
             try {
                 final LSMDBRequest r = requests.take();

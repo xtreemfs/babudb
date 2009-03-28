@@ -83,7 +83,7 @@ public class SetupMaster {
                 options.get("maxq").numValue.intValue(), 
                 slaves, 
                 options.get("port").numValue.intValue(), null, 
-                options.get("repMode").numValue.intValue(), 0);
+                options.get("repMode").numValue.intValue(), Replication.DEFAULT_MAX_Q*5);
         
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
         

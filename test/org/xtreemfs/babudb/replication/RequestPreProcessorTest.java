@@ -10,8 +10,10 @@ package org.xtreemfs.babudb.replication;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.zip.CRC32;
@@ -74,7 +76,7 @@ public class RequestPreProcessorTest {
             public void insertFinished(Object context) {}
         },null,false,null);
         
-        replicationFacade = new DummyReplication(null,35666);
+        replicationFacade = new DummyReplication(35666);
     }
 
     @After
@@ -94,7 +96,7 @@ public class RequestPreProcessorTest {
          * REPLICA_BROADCAST
          */
         
-        Request broadcastRQ = RequestPreProcessor.getReplicationRequest(testLogEntry);       
+        Request broadcastRQ = RequestPreProcessor.getReplicationRequest(testLogEntry,new LinkedList<InetSocketAddress>());       
         assertNull(broadcastRQ.getChunkDetails());
         assertNull(broadcastRQ.getLsmDbMetaData());
         assertNull(broadcastRQ.getOriginal());
@@ -103,7 +105,7 @@ public class RequestPreProcessorTest {
         assertEquals(testLSN,broadcastRQ.getLSN());
         assertEquals(context,broadcastRQ.getContext());
         
-        LogEntry rqLe = LogEntry.deserialize(broadcastRQ.getData(), new CRC32());
+        LogEntry rqLe = LogEntry.deserialize(ReusableBuffer.wrap(broadcastRQ.getData()), new CRC32());
         assertEquals(testLogEntry.getLSN(), rqLe.getLSN()); 
         assertEquals(testData,new String(rqLe.getPayload().array()));
         rqLe.free();
@@ -124,10 +126,10 @@ public class RequestPreProcessorTest {
         
         /*
          * ACK as sub request
-         */
+         
         
         SpeedyRequest testREPLICAResponse = new SpeedyRequest(HTTPUtils.POST_TOKEN,Token.REPLICA.toString(),null,null,testLogEntry.serialize(new CRC32()),DATA_TYPE.BINARY);        
-        testREPLICAResponse.genericAttatchment = new Status<Request>(broadcastRQ);
+        testREPLICAResponse.genericAttatchment = new Status<Request>(broadcastRQ,replicationFacade.replication);
         Request rq = RequestPreProcessor.getReplicationRequest(testREPLICAResponse,replicationFacade);
         assertEquals(Token.ACK, rq.getToken());
         assertEquals(testLSN,rq.getLSN()); 
@@ -136,6 +138,7 @@ public class RequestPreProcessorTest {
         rq.free();
         broadcastRQ.free();
         testREPLICAResponse.freeBuffer();
+        */
     }
 /*    due to security mechanisms these tests are not available anymore
 
@@ -245,7 +248,7 @@ public class RequestPreProcessorTest {
          */
         
         try {
-            rq = RequestPreProcessor.getReplicationRequest((LogEntry) null);
+            rq = RequestPreProcessor.getReplicationRequest((LogEntry) null,new LinkedList<InetSocketAddress>());
             fail("Null logEntry should cast an exception.");
         }catch(PreProcessException e){
             assertTrue(true);
@@ -300,9 +303,9 @@ public class RequestPreProcessorTest {
         String testDBName = "testDB";
         int testNumIndices = 5;
         
-        Request rq = RequestPreProcessor.getReplicationRequest(testDBName, testNumIndices);
+        Request rq = RequestPreProcessor.getReplicationRequest(testDBName, testNumIndices,new LinkedList<InetSocketAddress>());
         assertEquals(Token.CREATE,rq.getToken());
-        List<Object> load = (List<Object>) JSONParser.parseJSON(new JSONString(new String(rq.getData().array())));
+        List<Object> load = (List<Object>) JSONParser.parseJSON(new JSONString(new String(rq.getData())));
         assertEquals(testDBName,(String) load.get(0));
         assertEquals(testNumIndices,Integer.parseInt((String) load.get(1)));
         rq.free();
@@ -314,9 +317,9 @@ public class RequestPreProcessorTest {
         String testSource = "testSourceDB";
         String testDestination = "testDestinationDB";
         
-        Request rq = RequestPreProcessor.getReplicationRequest(testSource, testDestination);
+        Request rq = RequestPreProcessor.getReplicationRequest(testSource, testDestination,new LinkedList<InetSocketAddress>());
         assertEquals(Token.COPY,rq.getToken());
-        List<Object> load = (List<Object>) JSONParser.parseJSON(new JSONString(new String(rq.getData().array())));
+        List<Object> load = (List<Object>) JSONParser.parseJSON(new JSONString(new String(rq.getData())));
         assertEquals(testSource,(String) load.get(0));
         assertEquals(testDestination,(String) load.get(1));
         rq.free();
@@ -328,9 +331,9 @@ public class RequestPreProcessorTest {
         String testDBName = "testDB";
         boolean testDeleteAll = false;
         
-        Request rq = RequestPreProcessor.getReplicationRequest(testDBName, testDeleteAll);
+        Request rq = RequestPreProcessor.getReplicationRequest(testDBName, testDeleteAll, new LinkedList<InetSocketAddress>());
         assertEquals(Token.DELETE,rq.getToken());
-        List<Object> load = (List<Object>) JSONParser.parseJSON(new JSONString(new String(rq.getData().array())));
+        List<Object> load = (List<Object>) JSONParser.parseJSON(new JSONString(new String(rq.getData())));
         assertEquals(testDBName,(String) load.get(0));
         assertEquals(testDeleteAll,Boolean.valueOf((String) load.get(1)));
         rq.free();

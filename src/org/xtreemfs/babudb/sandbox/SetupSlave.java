@@ -44,7 +44,7 @@ public class SetupSlave {
      * @throws InterruptedException 
      */
     public static void main(String[] args) throws BabuDBException, IOException, InterruptedException {
-        Logging.start(Logging.LEVEL_ERROR);
+        Logging.start(Logging.LEVEL_WARN);
 
         Map<String,CLIParser.CliOption> options = new HashMap<String, CliOption>();
         options.put("path",new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.FILE,new File("/tmp/babudb_benchmark/slave")));
@@ -87,7 +87,7 @@ public class SetupSlave {
                 options.get("wait").numValue.intValue(), 
                 options.get("maxq").numValue.intValue(), 
                 master, slaves, 
-                options.get("port").numValue.intValue(), null, 0);
+                options.get("port").numValue.intValue(), null, Replication.DEFAULT_MAX_Q);
         
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
         
@@ -111,7 +111,7 @@ public class SetupSlave {
                             options.get("wait").numValue.intValue(), 
                             options.get("maxq").numValue.intValue(), 
                             master, slaves, 
-                            options.get("port").numValue.intValue(), null, 0);
+                            options.get("port").numValue.intValue(), null, Replication.DEFAULT_MAX_Q);
                 }else if (nextCommand.equals("exit")){
                     break;
                 } else if(nextCommand.startsWith("consistencyCheck")){

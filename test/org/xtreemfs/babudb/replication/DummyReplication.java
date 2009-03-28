@@ -8,14 +8,15 @@
 package org.xtreemfs.babudb.replication;
 
 import java.net.InetSocketAddress;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBImpl;
 
 public class DummyReplication extends Replication {
     
-    public DummyReplication(BabuDBImpl  babu, int Port) throws BabuDBException{       
-        super(new InetSocketAddress(0), null, Port, babu,0,4000,null,Replication.DEFAULT_NO_TRIES);
+    public DummyReplication(int Port) throws BabuDBException{       
+        super(new InetSocketAddress(0), null, Port, new BabuDBImpl(),0,4000,new ReentrantLock(),Replication.DEFAULT_NO_TRIES);
     }
     
     @Override

@@ -44,7 +44,6 @@ import org.xtreemfs.include.foundation.speedy.SpeedyRequest;
 import org.xtreemfs.include.foundation.speedy.SpeedyResponseListener;
 
 public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListener{        
-
     
     private static LSN actual = new LSN(1,0L);
     
@@ -107,6 +106,7 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
         speedy.waitForShutdown();
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     public void createDBNORMALTest() throws InterruptedException, JSONException, IllegalStateException, IOException, LogEntryException {        
         pinky.registerListener(this);
@@ -178,6 +178,7 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
         insertSomeData(testDBName1,testIndexId,testKeys,testData);
     }
     
+    @SuppressWarnings("unchecked")
     @Test
     public void copyDBNORMALTest () throws JSONException, InterruptedException, IllegalStateException, IOException, LogEntryException {
         pinky.registerListener(this);
@@ -249,6 +250,7 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
         insertSomeData(testDBName2,testIndexId,testKeys,testData);
     }
     
+    @SuppressWarnings("unchecked")
     @Test
     public void deleteDBNORMALTest() throws BabuDBException, IOException, InterruptedException, JSONException, LogEntryException{
         pinky.registerListener(this);
@@ -323,9 +325,13 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
         
         List<InetSocketAddress> reset = master.replicationFacade.getSlaves();
         
+        InetSocketAddress unavailableSlave = new InetSocketAddress(unknown_host,12345);
+        // tests if the unavailable slave is really unavailable
+        assertNull(unavailableSlave.getAddress());
+        
         final List<InetSocketAddress> testDummySlave = new LinkedList<InetSocketAddress>();
         testDummySlave.add(slave1_address);
-        testDummySlave.add(new InetSocketAddress("unknownHost",12345));
+        testDummySlave.add(unavailableSlave);
         
         master.replicationFacade.setSlaves(testDummySlave);
         
