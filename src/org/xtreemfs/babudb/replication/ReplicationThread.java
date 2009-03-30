@@ -14,7 +14,6 @@ import java.io.IOException;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.net.InetSocketAddress;
 import java.util.Hashtable;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -92,7 +91,7 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
     final static int TIMEOUT_GRANULARITY = 250;
     
     /** <p>Requests that are waiting to be done.</p> */
-    private PriorityBlockingQueue<Status<Request>> pending;
+    private final PriorityBlockingQueue<Status<Request>> pending;
     
     /** <p>LSN's of missing {@link LogEntry}s.</p> */
     private PriorityBlockingQueue<Status<LSN>> missing;
@@ -210,21 +209,29 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
     /**
      * <p>Work the requestQueue <code>pending</code>.</p>
      */
-    @SuppressWarnings("unchecked")
-	@Override
+    @Override
     public void run() {  
         final Checksum checkSum = new CRC32(); 
-   
+        Chunk chunk;
+        LSMDBRequest context;
+        InetSocketAddress source;
+        PinkyRequest orgReq;            
+        byte[] data;
+        LSN lsn;
+        Map<String, List<Long>> metaDataLSM;
+        boolean idle;
+        
         super.notifyStarted();
         while (running) {
           //initializing...
-            Chunk chunk = null;
-            LSMDBRequest context = null;
-            InetSocketAddress source = null;
-            PinkyRequest orgReq = null;            
-            byte[] data = null;
-            LSN lsn = null;
-            Map<String, List<Long>> metaDataLSM = null;
+            chunk = null;
+            context = null;
+            source = null;
+            orgReq = null;            
+            data = null;
+            lsn = null;
+            metaDataLSM = null;
+            idle = true;
             
           // check for missing LSNs and missing file chunks -highest priority- (just for slaves)          
             if (!frontEnd.isMaster()) {
@@ -233,25 +240,28 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                     Status<Chunk> missingChunk = missingChunks.peek();
                     if (missingChunk != null && !missingChunk.isPending()) {
                         missingChunk.pending();
+                        idle = false;
                         try {
                             sendCHUNK(missingChunk);     
                         } catch (Exception e) {
                         	missingChunk.failed(e.getMessage(), frontEnd.maxTries);
                         		
                         }
+                        
                     } else {                   
 	                   // if there are any missing logEntries
 	                    Status<LSN> missingLSN = missing.peek();
 	                    if (!frontEnd.getCondition().equals(CONDITION.LOADING) && missingLSN != null && !missingLSN.isPending()){
 	                        missingLSN.pending();
+	                        idle = false;
 	                        try {
 	                            sendRQ(missingLSN);
 	                        } catch (Exception e) {
 	                        	missingLSN.failed(e.getMessage(), frontEnd.maxTries);
 	                        }
-	                        continue;
 	                    }
                     }
+                // missing LSN/Chunk - request failed    
                 }catch (ReplicationException re){
                     String msg = "The master seems to be not available for information-retrieval: "+re.getMessage();
                     Logging.logMessage(Logging.LEVEL_ERROR, this, msg);
@@ -262,8 +272,9 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
             Status<Request> newRequest = pending.peek();     
             if (newRequest != null && hasHighPriority(newRequest) && !newRequest.isPending()) {              
                 try{
-                	newRequest.pending();
+                    newRequest.pending();
                     resetNextExpected();
+                    idle = false;
                 	
                     chunk = newRequest.getValue().getChunkDetails();
                     source = newRequest.getValue().getSource();
@@ -451,21 +462,7 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                                 try {
                                     getFile(c.getValue()).delete();
                                 }catch (IOException e) { /* ignored in this case */ }
-                            }
-                            
-                            // TODO ?y...
-                            Iterator<Status<Request>> iter = pending.iterator();
-                            Status<Request> org = null;
-                            while (iter.hasNext()) {
-                                Status<Request> next = iter.next();
-                                if (next.getValue().getToken().equals(Token.LOAD_RQ)){
-                                    org = next;
-                                    break;
-                                }
-                            }
-                            
-                            if (org!=null) throw new ReplicationException("Loading slaves DB was not successful.");    
-                            // TODO ...?
+                            } 
                         }   
                         try {
                             sendLOAD(newRequest);
@@ -617,16 +614,10 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                 	} catch (ReplicationException e) {
                 		Logging.logMessage(Logging.LEVEL_ERROR, this, "Request did not fail properly: "+e.getMessage());
                 	}
-                }
-             // wait   
-            } else {
-                try {
-                    Thread.sleep(TIMEOUT_GRANULARITY);          
-                } catch (InterruptedException e) {
-                    Logging.logMessage(Logging.LEVEL_WARN, this, "Waiting for work was interrupted.");
-                }
-            }
-            
+                }     
+            } 
+                       
+            // halt, if necessary
             synchronized (halt){
                 while (halt.get() == true){
                     halt.notify();
@@ -636,7 +627,16 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                         Logging.logMessage(Logging.LEVEL_WARN, this, "Waiting for context switch was interrupted.");
                     }
                 }
-            }           
+            }  
+            
+            // sleep, if idle 
+            if (idle) {
+                try {
+                    Thread.sleep(TIMEOUT_GRANULARITY);          
+                } catch (InterruptedException e) {
+                    Logging.logMessage(Logging.LEVEL_WARN, this, "Waiting for work was interrupted.");
+                }
+            }      
         }
         
         if (running) notifyCrashed(new Exception("ReplicationThread crashed for an unknown reason!"));       
@@ -705,6 +705,7 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
     private void sendLOAD(Status<Request> rq) throws IllegalStateException, IOException {     
         frontEnd.switchCondition(CONDITION.LOADING);
         SpeedyRequest sReq = new SpeedyRequest(HTTPUtils.POST_TOKEN,Token.LOAD.toString(),null,null,null,DATA_TYPE.BINARY);
+        sReq.genericAttatchment = rq;
         speedy.sendRequest(sReq, frontEnd.master);
         
         // make a higher restriction for the nextExpected request
@@ -829,8 +830,10 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
             // if replication mechanism is >slave< --> deny all requests, but those which have a higher priority than or equal to the nextExpected
             else if (!hasHighPriority(rq))
                 throw new ReplicationException("The pending queue is full. Next expected request to received will be: "+nextExpected.toString()+"\nRejected: "+rq.toString());
-        }
+        }    
+        
         pending.add(rq);
+        Logging.logMessage(Logging.LEVEL_ERROR, this, "ADDED: "+rq.toString());
         return true;
     }
 
@@ -1009,6 +1012,7 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
         this.setName("Master");
         missing = null;
         missingChunks = null;
+        
         slavesStatus.clear();
     }
     
@@ -1018,9 +1022,10 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
     void toSlave(){
         this.setName("Slave");
         if (missing == null)
-            missing.clear();
+        	missing = new PriorityBlockingQueue<Status<LSN>>(100,new PriorityQueueComparator<LSN>());
         if (missingChunks == null)
-            missingChunks.clear();
+        	missingChunks = new PriorityBlockingQueue<Status<Chunk>>(10,new PriorityQueueComparator<Chunk>());
+        
         slavesStatus.clear();
     }
     
