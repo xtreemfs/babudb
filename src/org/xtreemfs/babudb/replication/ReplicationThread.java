@@ -134,9 +134,6 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
      */
     private final AtomicReference<Status<Request>> nextExpected = new AtomicReference<Status<Request>>(LOWEST_PRIORITY_REQUEST);
     
-    /** <p>Maximal number of {@link Request} to store in the pending queue.</p> */
-    private final int pendingQueueLimit;
-    
     /** <p>The default comparator for the order at the pending queue.</p> */
     private final PriorityQueueComparator<Request> PENDING_QUEUE_COMPARATOR = new PriorityQueueComparator<Request>();
     
@@ -148,9 +145,8 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
      * @param pendingLimit
      * @param sslOptions
      */
-    ReplicationThread(Replication frontEnd, int port, int pendingLimit, SSLOptions sslOptions) throws ReplicationException{
-        super((frontEnd.isMaster()) ? "Master" : "Slave");
-        this.pendingQueueLimit = pendingLimit;       
+    ReplicationThread(Replication frontEnd, int port, SSLOptions sslOptions) throws ReplicationException{
+        super((frontEnd.isMaster()) ? "Master" : "Slave");      
         this.frontEnd = frontEnd;
         pending = new PriorityBlockingQueue<Status<Request>>(100,PENDING_QUEUE_COMPARATOR);
         missing = (!frontEnd.isMaster()) ? new PriorityBlockingQueue<Status<LSN>>(100,new PriorityQueueComparator<LSN>()) : null;
@@ -233,7 +229,7 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
             metaDataLSM = null;
             idle = true;
             
-          // check for missing LSNs and missing file chunks -highest priority- (just for slaves)          
+          // check for missing LSNs and missing file chunks (just for slaves)          
             if (!frontEnd.isMaster()) {
                 try{
                    // if there are any missing file chunks
@@ -320,20 +316,20 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                         LogEntry le = null;
                         String latestFileName;
                       
-                        frontEnd.babuDBLockcontextSwitchLock.lock();
+                        frontEnd.babuDBcontextSwitchLock.lock();
                        // get the latest logFile
                         try {
                             latestFileName = frontEnd.dbInterface.logger.getLatestLogFileName();
                             diskLogFile = new DiskLogFile(latestFileName);     
                         } catch (IOException e) {
-                            frontEnd.babuDBLockcontextSwitchLock.unlock();
+                            frontEnd.babuDBcontextSwitchLock.unlock();
                             throw new ReplicationException("The diskLogFile seems to be damaged. Reason: "+e.getMessage());
                         }
                         
                         LSN last = frontEnd.dbInterface.logger.getLatestLSN();
                        // check the requested LSN for availability
                         if (last.getViewId()!=lsn.getViewId() || last.compareTo(lsn) < 0) {
-                            frontEnd.babuDBLockcontextSwitchLock.unlock();
+                            frontEnd.babuDBcontextSwitchLock.unlock();
                             try {
                                 diskLogFile.close();
                             }catch (IOException ioe) { /* ignored in this case */ }
@@ -344,14 +340,13 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                        // parse the diskLogFile
                         while (diskLogFile.hasNext()) {
                             try {
-                                if (le!=null) le.free();
                                 le = diskLogFile.next();
                             } catch (LogEntryException e) {
                                 if (le!=null) le.free();
                                 try {
                                     diskLogFile.close();
                                 }catch (IOException ioe) { /* ignored in this case */ }
-                                frontEnd.babuDBLockcontextSwitchLock.unlock();
+                                frontEnd.babuDBcontextSwitchLock.unlock();
                                 throw new ReplicationException("The requested LogEntry is not available, please load the Database. Reason: "+e.getMessage());
                             }
                             
@@ -368,11 +363,12 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                                     try {
                                         diskLogFile.close();
                                     }catch (IOException ioe) { /* ignored in this case */ }
-                                    frontEnd.babuDBLockcontextSwitchLock.unlock();
+                                    frontEnd.babuDBcontextSwitchLock.unlock();
                                     throw new ReplicationException("The requested LogEntry is damaged. Reason: "+e.getMessage());
                                 }  
                                 break;
                             } 
+                            if (le!=null) le.free();
                         }
                         
                        // requested LogEntry was not found 
@@ -380,7 +376,7 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                             try {
                                 diskLogFile.close();
                             }catch (IOException ioe) { /* ignored in this case */ }
-                            frontEnd.babuDBLockcontextSwitchLock.unlock();
+                            frontEnd.babuDBcontextSwitchLock.unlock();
                             orgReq.setResponse(HTTPUtils.SC_NOT_FOUND,"The requested LogEntry is not available. Load the DB.");
                             break; 
                         }
@@ -388,7 +384,7 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                         try {
                             diskLogFile.close();
                         }catch (IOException ioe) { /* ignored in this case */ }                       
-                        frontEnd.babuDBLockcontextSwitchLock.unlock();
+                        frontEnd.babuDBcontextSwitchLock.unlock();
                         break;
                      
                      // appreciates the ACK of a slave
@@ -513,9 +509,8 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                                 }
                             // get an initial copy from the master    
                             } else if (latestLSN.getViewId() < lsn.getViewId()){
-                                Status<Request> loadRq = new Status<Request> (RequestPreProcessor.getLOAD_RQ(),this);
                                 try {
-                                    sendLOAD(loadRq);
+                                    sendLOAD();
                                     Logging.logMessage(Logging.LEVEL_INFO, this, "LOAD was send successfully.");
                                 } catch (Exception e) {
                                 	throw new ReplicationException("Load could not be send.");
@@ -526,9 +521,8 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                                 Logging.logMessage(Logging.LEVEL_WARN, this, "The Master seems to be out of order. Strange LSN received: '"+lsn.toString()+"'; latest LSN is: "+latestLSN.toString());
                             }                           
                         } catch (IOException ioe) {
-                            Status<Request> loadRq = new Status<Request> (RequestPreProcessor.getLOAD_RQ(),this);
                             try {
-                                sendLOAD(loadRq);
+                                sendLOAD();
                                 Logging.logMessage(Logging.LEVEL_INFO, this, ioe.getMessage()+" - LOAD was send successfully.");
                             } catch (Exception e) {
                             	throw new ReplicationException("Load could not be send.");
@@ -695,14 +689,33 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
     } 
     
     /**
+     * <p>Generates and enqueues an original LOAD_RQ.</p>
      * <p>Sends an {@link Token}.LOAD request to the master.</p>
      * <p>Sets the nextExpected flag to a higher priority.</p>
+     * <p>Appends the original {@link Request} to the {@link SpeedyRequest}.</p>
      * 
      * @param rq - the original {@link Request}.
      * @throws IOException - if an error occurs.
      * @throws IllegalStateException - if an error occurs.
+     * @throws ReplicationException if the request status could not be switched.
      */
-    private void sendLOAD(Status<Request> rq) throws IllegalStateException, IOException {     
+    private void sendLOAD() throws IllegalStateException, IOException, ReplicationException { 
+        Status<Request> loadRq = new Status<Request> (RequestPreProcessor.getLOAD_RQ(),this);
+        pending.add(loadRq);
+        loadRq.pending();
+        sendLOAD(loadRq);
+    }
+    
+    /**
+     * <p>Sends an {@link Token}.LOAD request to the master.</p>
+     * <p>Sets the nextExpected flag to a higher priority.</p>
+     * <p>Appends the original {@link Request} to the {@link SpeedyRequest}.</p>
+     * 
+     * @param rq - the original {@link Request}.
+     * @throws IOException if an error occurs.
+     * @throws IllegalStateException if an error occurs.
+     */
+    private void sendLOAD(Status<Request> rq) throws IllegalStateException, IOException { 
         frontEnd.switchCondition(CONDITION.LOADING);
         SpeedyRequest sReq = new SpeedyRequest(HTTPUtils.POST_TOKEN,Token.LOAD.toString(),null,null,null,DATA_TYPE.BINARY);
         sReq.genericAttatchment = rq;
@@ -710,7 +723,7 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
         
         // make a higher restriction for the nextExpected request
         setNextExpected(RequestPreProcessor.getExpectedLOAD_RP());            
-    }
+    } 
     
     /**
      * <p>Sends an {@link Token}.CHUNK_RQ for the given <code>chunk</code> to the master.</p>
@@ -823,7 +836,7 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
         if (pending.contains(rq)) return false;
 
         // queue limit is reached
-        if (pendingQueueLimit != 0 && pending.size()>pendingQueueLimit) {
+        if (frontEnd.queueLimit != 0 && pending.size()>frontEnd.queueLimit) {
             // if replication mechanism is >master< --> deny all requests
             if (frontEnd.isMaster()) 
                 throw new ReplicationException("The pending queue is full. Master is too busy.\nRejected: "+rq.toString());
@@ -833,7 +846,7 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
         }    
         
         pending.add(rq);
-        Logging.logMessage(Logging.LEVEL_ERROR, this, "ADDED: "+rq.toString());
+        Logging.logMessage(Logging.LEVEL_TRACE, this, "ADDED: "+rq.toString());
         return true;
     }
 
@@ -862,14 +875,15 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
         if (rq.getValue() instanceof Request) {
             pending.remove((Status<Request>) rq);
             Chunk chunk = ((Request)rq.getValue()).getChunkDetails();
+            LSN lsn = ((Request)rq.getValue()).getLSN();
             
             if (hasHighPriority((Status<Request>) rq)) resetNextExpected();
-            if (missing!=null && missing.remove(new Status<LSN>(((Request)rq.getValue()).getLSN()))) resetNextExpected();
-            if (missingChunks!=null && chunk!=null){
+            if (lsn!=null && missing!=null  && missing.remove(new Status<LSN>(lsn))) resetNextExpected();
+            if (chunk!=null && missingChunks!=null){
             	if (missingChunks.remove(new Status<Chunk>(chunk))) resetNextExpected();
                 if (missingChunks.isEmpty()){ 
                     try {
-                        LSN lsn = frontEnd.getLastWrittenLSN();
+                        lsn = frontEnd.getLastWrittenLSN();
                         frontEnd.dbInterface.reset(lsn);
                         frontEnd.switchCondition(CONDITION.RUNNING);
                         Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB was reseted successfully. New latest LSN: "+lsn.toString()); 

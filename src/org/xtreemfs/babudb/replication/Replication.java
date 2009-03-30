@@ -95,6 +95,15 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
     /** <p>Object for synchronization issues.</p> */
     private final Object                lock            = new Object();
     
+    /** <p>The port, where the replication listens at.</p> */
+    private final int                   port;
+    
+    /** <p>The options for the SSL-connections established by the replication.</p> */
+    private final SSLOptions            SSLOptions;
+    
+    /** <p>Maximal number of {@link Request} to store in the pending queue.</p> */
+    final int                           queueLimit;
+    
     /** <p>The user defined maximum count of attempts every {@link Request}. <code>0</code> means infinite number of retries.</p> */
     final int                           maxTries;
     
@@ -110,7 +119,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
     private final AtomicReference<LSN> lastWrittenLSN  = new AtomicReference<LSN>(new LSN ("1:0"));
     
     /** <p>Needed for the replication mechanism to control context switches on the BabuDB.</p> */
-    Lock                                babuDBLockcontextSwitchLock;
+    Lock                                babuDBcontextSwitchLock;
     
     /**
      * <p>Starts the {@link ReplicationThread} with {@link org.xtreemfs.include.foundation.pinky.PipelinedPinky} listening on <code>port</code>.
@@ -133,14 +142,15 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
         assert (babu!=null) : "Replication misses the DB interface.";
         assert (lock!=null) : "Replication misses the DB-switch-lock.";
         
-        this.babuDBLockcontextSwitchLock = lock;
+        this.babuDBcontextSwitchLock = lock;
         this.syncN = mode;
         this.slaves = slaves;
         this.isMaster.set(true);
         this.maxTries = maxRetries;
-        dbInterface = babu;
-        
-        initReplication((port==0) ? MASTER_PORT : port, sslOptions, qLimit);
+        this.dbInterface = babu;
+        this.port = (port==0) ? MASTER_PORT : port;
+        this.SSLOptions = sslOptions;
+        this.queueLimit = qLimit;
     }
     
     /**
@@ -158,25 +168,31 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      * @param qLimit
      * @param maxRetries
      * 
-     * @throws BabuDBException - if replication could not be initialized.
+     * @throws BabuDBException - 
      */
     public Replication(InetSocketAddress master, SSLOptions sslOptions, int port, BabuDBImpl babu, int mode, int qLimit, Lock lock, int maxRetries) throws BabuDBException {
         assert (master!=null) : "Replication in slave-mode has no master attached.";
         assert (babu!=null) : "Replication misses the DB interface.";
         assert (lock!=null) : "Replication misses the DB-switch-lock.";
 
-        this.babuDBLockcontextSwitchLock = lock;
+        this.babuDBcontextSwitchLock = lock;
         this.syncN = mode;
         this.master = master;
         this.isMaster.set(false);
         this.maxTries = maxRetries;
-        dbInterface = babu;
-        initReplication((port==0) ? SLAVE_PORT : port,sslOptions, qLimit);
+        this.dbInterface = babu;
+        this.port = (port==0) ? SLAVE_PORT : port;
+        this.SSLOptions = sslOptions;
+        this.queueLimit = qLimit;
     }
-    
-    private void initReplication(int port,SSLOptions sslOptions, int queueLimit) throws BabuDBException{        
+
+    /**
+     * <p>Initializes the replication after all BabuDB-components have been started successfully.</p>
+     * @throws BabuDBException if replication could not be initialized.
+     */
+    public void initialize() throws BabuDBException{
         try {
-            replication = new ReplicationThread(this, port, queueLimit, sslOptions);
+            replication = new ReplicationThread(this, this.port, this.SSLOptions);
             replication.setLifeCycleListener(this);
             
             synchronized (lock) {
@@ -190,7 +206,6 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
             throw new BabuDBException(ErrorCode.IO_ERROR,e.getMessage(),e.getCause());
         }
     }
-
 
     /**
      * <p>Approach for a Worker to announce a new {@link LogEntry} <code>le</code> to the {@link ReplicationThread}.</p>
@@ -468,7 +483,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
                 if (parsed != null) replication.sendACK((Request) parsed);
                 
                 // XXX change logLevel to LEVEL_ERROR for testing purpose
-                Logging.logMessage(Logging.LEVEL_TRACE, replication, "LogEntry inserted successfully: "+rq.getValue().getLSN().toString());
+                Logging.logMessage(Logging.LEVEL_ERROR, replication, "LogEntry inserted successfully: "+rq.getValue().getLSN().toString());
                 rq.finished();
             }
         }catch (ReplicationException e) {
@@ -750,7 +765,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      */
     public void changeContextSwitchLock(Lock l){
         synchronized (lock) {
-            this.babuDBLockcontextSwitchLock = l;
+            this.babuDBcontextSwitchLock = l;
         }
     }
 }

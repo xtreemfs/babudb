@@ -24,7 +24,7 @@ import org.xtreemfs.include.common.logging.Logging;
 class Status<T> {   	
     private             T               rq       = null;
         
-    private final       AtomicBoolean   pending 				= new AtomicBoolean(false);
+    private final       AtomicBoolean   pending 		= new AtomicBoolean(false);
  
     /** counter for failed attempts to process this {@link Request} */
     private final       AtomicInteger   failedAttempts          = new AtomicInteger(0);
@@ -32,7 +32,7 @@ class Status<T> {
     /** status of an broadCast request - the expected responses */
     private final       AtomicInteger   maxReceivableResp       = new AtomicInteger(1);
     private final       AtomicInteger   minExpectableResp       = new AtomicInteger(0);
-    private final 		AtomicBoolean	done					= new AtomicBoolean(false);
+    private final 	AtomicBoolean	done			= new AtomicBoolean(false);
     
     /** back-link to the queues */
     private final   ReplicationThread   statusListener;   
@@ -131,12 +131,12 @@ class Status<T> {
      */
     boolean waitFor() {
     	synchronized (done) {
-			while (!done.get()) {
-				try {
-					done.wait();
-				}catch (InterruptedException e) { /* ignored */ }
-			}
-		}
+    	    while (!done.get()) {
+		try {
+		    done.wait();
+		}catch (InterruptedException e) { /* ignored */ }
+    	    }
+	}
     	return minExpectableResp.get()>maxReceivableResp.get();
     }
 /*
@@ -165,17 +165,6 @@ class Status<T> {
         int remainingReceivable = maxReceivableResp.decrementAndGet();        
         return remainingExpected == 0 || (remainingReceivable == 0 && remainingExpected<0);
     }
-  
-    /**
-     * <p>Switches status <code>done</code> to true and notifies every waiting instance.</p> 
-     * <p>Has to run in a <code>synchronized(done)</code> block.</p>
-     */
-    private void done() {
-    	assert(pending.get()) : "An open request cannot be done!";
-    	
-		done.set(true);
-		done.notifyAll();
-    }
     
 /*
  * retry-methods    
@@ -195,14 +184,15 @@ class Status<T> {
      * <p>If the request becomes obsolete it will be removed from the listeners queues.</p>
      * @throws ReplicationException if request could not be removed.
      */
-    void cancel() throws ReplicationException {       
+    void cancel() throws ReplicationException {     
+        assert(pending.get()) : "An open request cannot be done!";
         assert (statusListener!=null) : "A dummy cannot be obsolete!";
-
         synchronized(done){
-        	if (!done.get()) {
-        		statusListener.remove(this);
-        		done();
-        	}
+            if (!done.get()) {
+        	statusListener.remove(this);
+        	done.set(true);
+        	done.notifyAll();
+            }
         }
     }
     
@@ -215,11 +205,13 @@ class Status<T> {
         assert (statusListener!=null) : "A dummy cannot be finished!";
         assert (pending.get()) : "An open request cannot be finished!";
         synchronized(done) {
-        	if (!done.get())
+            if (!done.get()) {
                 if (decreaseMinExpectableResp()) {  
                     statusListener.finished(this);
-                    done();
+                    done.set(true);
+                    done.notifyAll();
                 }
+            }
         } 
     }
     
@@ -247,7 +239,8 @@ class Status<T> {
 	            		// it has really failed
 	            		Logging.logMessage(Logging.LEVEL_TRACE, this, "Giving up after '"+maxTries+"' attempts to: "+rq.toString());
 	            		statusListener.failed(this,reason);
-		                done();
+	            	        done.set(true);
+	            	        done.notifyAll();
 	            	}
 	            }
         	} 

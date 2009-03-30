@@ -166,6 +166,31 @@ public class BabuDBImpl implements BabuDB {
 
         this.configuration = new BabuDBConfiguration(baseDir,dbLogDir,maxQ,numThreads,syncMode,maxLogfileSize,checkInterval,pseudoSyncWait);
         
+        dbNames = new HashMap<String, LSMDatabase>();
+        databases = new HashMap<Integer, LSMDatabase>();
+        
+        nextDbId = 1;
+
+        compInstances = new HashMap<String, ByteRangeComparator>();
+        compInstances.put(DefaultByteRangeComparator.class.getName(), new DefaultByteRangeComparator());
+
+        loadDBs();
+        
+        Logging.logMessage(Logging.LEVEL_INFO, this, "starting log replay");
+        LSN nextLSN = replayLogs();
+        Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done");
+        
+        try {
+            logger = new DiskLogger(dbLogDir, nextLSN.getViewId(), nextLSN.getSequenceNo(), syncMode, pseudoSyncWait,
+                    maxQ * numThreads);
+            logger.start();
+        } catch (IOException ex) {
+            throw new BabuDBException(ErrorCode.IO_ERROR, "cannot start database operations logger", ex);
+        }
+
+        dbModificationLock = new Object();
+        checkpointLock = new Object();
+        
         // start the replication service
         if (master != null && slaves != null) {
             this.configuration.replication_master = master;
@@ -184,31 +209,6 @@ public class BabuDBImpl implements BabuDB {
             replicationFacade = null;
         }
         
-        dbNames = new HashMap<String, LSMDatabase>();
-        databases = new HashMap<Integer, LSMDatabase>();
-        
-        nextDbId = 1;
-
-        compInstances = new HashMap<String, ByteRangeComparator>();
-        compInstances.put(DefaultByteRangeComparator.class.getName(), new DefaultByteRangeComparator());
-
-        loadDBs();
-
-        Logging.logMessage(Logging.LEVEL_INFO, this, "starting log replay");
-        LSN nextLSN = replayLogs();
-        Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done");
-
-        try {
-            logger = new DiskLogger(dbLogDir, nextLSN.getViewId(), nextLSN.getSequenceNo(), syncMode, pseudoSyncWait,
-                    maxQ * numThreads);
-            logger.start();
-        } catch (IOException ex) {
-            throw new BabuDBException(ErrorCode.IO_ERROR, "cannot start database operations logger", ex);
-        }
-
-        dbModificationLock = new Object();
-        checkpointLock = new Object();
-        
         worker = new LSMDBWorker[numThreads];
         for (int i = 0; i < numThreads; i++) {
             worker[i] = new LSMDBWorker(logger, i, overlaySwitchLock, (pseudoSyncWait > 0), maxQ, replicationFacade);
@@ -222,6 +222,8 @@ public class BabuDBImpl implements BabuDB {
             dbCheckptr = null;
         }
 
+        if (replicationFacade!=null) replicationFacade.initialize();
+        
         Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running (version " + BABUDB_VERSION + ")");
     }
     
