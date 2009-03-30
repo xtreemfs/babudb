@@ -537,7 +537,7 @@ class RequestPreProcessor {
                 throw THIS.new PreProcessException(slaveSecurityMsg,HTTPUtils.SC_UNAUTHORIZED);
 
             rq = (Status<RequestImpl>) theResponse.genericAttatchment;
-            // the original request (LOAD) is missing, it seems to be obsolete. there is nothing to do.
+            // the original request (LOAD_RQ) is missing, it seems to be obsolete. there is nothing to do.
             if (rq==null) return null;
             
             if (theResponse.statusCode==HTTPUtils.SC_OKAY) {
@@ -793,7 +793,7 @@ class RequestPreProcessor {
      * @return a new load {@link Request}.
      */
     static Request getLOAD_RQ(){
-        return new RequestImpl(LOAD);
+        return new RequestImpl(LOAD_RQ);
     }
        
     /**
