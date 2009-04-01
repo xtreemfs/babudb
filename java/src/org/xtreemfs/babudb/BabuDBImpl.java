@@ -61,7 +61,9 @@ import org.xtreemfs.include.foundation.pinky.SSLOptions;
  *
  */
 public class BabuDBImpl implements BabuDB {
-  
+    
+    public static final int DEBUG_LEVEL = Logging.LEVEL_INFO;
+    
     static {
         Logging.start(DEBUG_LEVEL);
     }
@@ -175,10 +177,30 @@ public class BabuDBImpl implements BabuDB {
         compInstances.put(DefaultByteRangeComparator.class.getName(), new DefaultByteRangeComparator());
 
         loadDBs();
+
+        LSN dbLsn = null;
+        for (LSMDatabase db : databases.values()) {
+            if (dbLsn == null)
+                dbLsn = db.getOndiskLSN();
+            else {
+                if (!dbLsn.equals(db.getOndiskLSN()))
+                    throw new RuntimeException("databases have different LSNs!");
+            }
+        }
+        if (dbLsn == null) {
+            //empty babudb
+            dbLsn = new LSN(0,0);
+        } else {
+            //need next LSN which is onDisk + 1
+            dbLsn = new LSN(dbLsn.getViewId(),dbLsn.getSequenceNo()+1);
+        }
         
         Logging.logMessage(Logging.LEVEL_INFO, this, "starting log replay");
         LSN nextLSN = replayLogs();
-        Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done");
+        if (dbLsn.compareTo(nextLSN) > 0) {
+            nextLSN = dbLsn;
+        }
+        Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done, using LSN: "+nextLSN);
         
         try {
             logger = new DiskLogger(dbLogDir, nextLSN.getViewId(), nextLSN.getSequenceNo(), syncMode, pseudoSyncWait,
@@ -1012,8 +1034,7 @@ public class BabuDBImpl implements BabuDB {
                     m.matches();
                     String tmp = m.group(1);
                     int viewId = Integer.valueOf(tmp);
-                    tmp =
-                            m.group(2);
+                    tmp = m.group(2);
                     int seqNo = Integer.valueOf(tmp);
                     orderedLogList.add(new LSN(viewId, seqNo));
                 }
@@ -1033,7 +1054,6 @@ public class BabuDBImpl implements BabuDB {
                     if (le != null) {
                         nextLSN = new LSN(le.getViewId(), le.getLogSequenceNo() + 1);
                     }
-
                 }
             }
             if (nextLSN != null) {
