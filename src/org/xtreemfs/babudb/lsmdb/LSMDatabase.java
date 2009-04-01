@@ -166,6 +166,7 @@ public class LSMDatabase {
                     trees.set(index, new LSMTree(databaseDir+getSnapshotFilename(index,maxView,maxSeq),comparators[index]));
                     ondiskLSN = new LSN(maxView,maxSeq);
                 } else {
+                    ondiskLSN = new LSN(0,0);
                     Logging.logMessage(Logging.LEVEL_DEBUG, this,"no snapshot for database "+this.databaseName);
                     assert(comparators[index] != null);
                     trees.set(index, new LSMTree(null,comparators[index]));
