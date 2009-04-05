@@ -4,7 +4,7 @@
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
-*/
+ */
 
 package org.xtreemfs.babudb.replication;
 
@@ -90,7 +90,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
     private final AtomicBoolean         isMaster        = new AtomicBoolean();
     
     /** <p>The condition of the replication mechanism.</p> */
-    private volatile CONDITION          condition       = null;
+    private volatile CONDITION          condition       = STOPPED;
     
     /** <p>Object for synchronization issues.</p> */
     private final Object                lock            = new Object();
@@ -766,6 +766,34 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
     public void changeContextSwitchLock(Lock l){
         synchronized (lock) {
             this.babuDBcontextSwitchLock = l;
+        }
+    }
+    
+    /**
+     * <p>Verify that no other setting of the replication changes while it is paused!</p>
+     * 
+     * @return the LSN of the last written entry, or null, if the condition is LOADING.Because no consistent state is ensured in this case.
+     * @throws InterruptedException
+     */
+    public LSN pause() throws InterruptedException{
+        synchronized (replication.halt) {
+            replication.halt.set(true);
+            replication.halt.wait();
+        }
+        if (getCondition()!=LOADING)
+        	return getLastWrittenLSN();
+        else return null;
+    }
+    
+    /**
+     * <p>Verify that no other setting of the replication changes while it is paused!</p>
+     * 
+     * <p>Resumes the replication processing.</p>
+     */
+    public void resume(){
+        synchronized (replication.halt) {   
+            replication.halt.set(false);
+            replication.halt.notify();
         }
     }
 }
