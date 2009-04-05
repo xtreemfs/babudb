@@ -21,7 +21,7 @@ import org.xtreemfs.include.common.logging.Logging;
 
 public class BabuDBConfiguration {
     /** Log Level. */
-    static final int            DEBUG_LEVEL     = Logging.LEVEL_WARN;
+    static final int            DEBUG_LEVEL     = Logging.LEVEL_INFO;
     
     /**
      * The database configuration file.

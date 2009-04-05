@@ -61,9 +61,6 @@ import org.xtreemfs.include.foundation.pinky.SSLOptions;
  *
  */
 public class BabuDBImpl implements BabuDB {
-    
-    public static final int DEBUG_LEVEL = Logging.LEVEL_INFO;
-    
     static {
         Logging.start(DEBUG_LEVEL);
     }
@@ -132,7 +129,7 @@ public class BabuDBImpl implements BabuDB {
      * @param maxLogfileSize a checkpoint is generated if  maxLogfileSize is exceeded
      * @param checkInterval interval between two checks in seconds, 0 disables auto checkpointing
      * @param syncMode the synchronization mode to use for the logfile
-     * @param pseudoSyncWait if value > 0 then requests are immediateley aknowledged and synced to disk every
+     * @param pseudoSyncWait if value > 0 then requests are immediately acknowledged and synced to disk every
      *        pseudoSyncWait ms.
      * @param maxQ if > 0, the queue for each worker is limited to maxQ
      * @param master host, from which replicas are received
@@ -297,6 +294,30 @@ public class BabuDBImpl implements BabuDB {
         
         loadDBs();
         
+        LSN dbLsn = null;
+        for (LSMDatabase db : databases.values()) {
+            if (dbLsn == null)
+                dbLsn = db.getOndiskLSN();
+            else {
+                if (!dbLsn.equals(db.getOndiskLSN()))
+                    throw new RuntimeException("databases have different LSNs!");
+            }
+        }
+        if (dbLsn == null) {
+            //empty babudb
+            dbLsn = new LSN(0,0);
+        } else {
+            //need next LSN which is onDisk + 1
+            dbLsn = new LSN(dbLsn.getViewId(),dbLsn.getSequenceNo()+1);
+        }
+        
+        Logging.logMessage(Logging.LEVEL_INFO, this, "starting log replay");
+        LSN nextLSN = replayLogs();
+        if (dbLsn.compareTo(nextLSN) > 0) {
+            nextLSN = dbLsn;
+        }
+        Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done, using LSN: "+nextLSN);
+        
         try {
             logger = new DiskLogger(configuration.getDbLogDir(), latest.getViewId(), 
                     latest.getSequenceNo()+1L, configuration.getSyncMode(), configuration.getPseudoSyncWait(),
@@ -329,7 +350,7 @@ public class BabuDBImpl implements BabuDB {
         } else {
             dbCheckptr = null;
         }
-
+        
         Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running (version " + BABUDB_VERSION + ")");
     }
     
@@ -372,7 +393,8 @@ public class BabuDBImpl implements BabuDB {
      * NEVER USE THIS EXCEPT FOR UNIT TESTS!
      * Kills the database.
      */
-    public void __test_killDB_dangerous() {
+    @SuppressWarnings("deprecation")
+	public void __test_killDB_dangerous() {
         try {
             logger.stop();
             for (LSMDBWorker w : worker) {
@@ -1404,11 +1426,32 @@ public class BabuDBImpl implements BabuDB {
         return worker[dbId % worker.length];
     }
 
+    /**
+     * 
+     * @return true, if replication runs in slave-mode, false otherwise.
+     */
     private boolean replication_isSlave() {
         if (replicationFacade == null) {
             return false;
         }
         return !replicationFacade.isMaster();
+    }
+    
+    /**
+     * <p>Dangerous function. Just for testing purpose!</p>
+     * 
+     * @return the LSN of the last written insert.
+     * @throws InterruptedException
+     */
+    public LSN replication_pause() throws InterruptedException{
+    	return replicationFacade.pause();
+    }
+    
+    /**
+     * <p>Dangerous function. Just for testing purpose!</p>
+     */
+    public void replication_resume(){
+    	replicationFacade.resume();
     }
     
     /**
@@ -1423,7 +1466,7 @@ public class BabuDBImpl implements BabuDB {
         if (replicationFacade != null) 
             replicationFacade.setSyncMode(n);
         else
-            throw new UnsupportedOperationException ("Replication is not enabled! Thats why it does not make sense to change the replication policies.");
+            throw new UnsupportedOperationException ("Replication is not enabled! That's why it does not make sense to change the replication policies.");
     }
     
     /**
