@@ -7,7 +7,6 @@
 */
 package org.xtreemfs.babudb.replication;
 
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.HashSet;
@@ -22,11 +21,11 @@ import org.xtreemfs.babudb.replication.ReplicationThread.ReplicationException;
  * <p>Table of slaves with their latest acknowledged {@link LSN}s.</p>
  * <p>Thread safe.</p>
  * 
- * <p>Slaves are identified by their {@link InetAddress} given from a pinky response.</p>
+ * <p>Slaves are identified by their {@link InetSocketAddress} given from a pinky response.</p>
  * 
  * @author flangner
  */
-class SlavesStatus extends Hashtable<InetAddress,LSN> {
+class SlavesStatus extends Hashtable<InetSocketAddress,LSN> {
     /***/
     private static final long serialVersionUID = -9069872080659282882L;
 
@@ -43,7 +42,8 @@ class SlavesStatus extends Hashtable<InetAddress,LSN> {
     	super();
         if (slaves!=null){
             for (InetSocketAddress slave : slaves) 
-                put(slave.getAddress(), new LSN(0,0));
+                put(slave, new LSN(0,0));
+            
             statusListener = new Hashtable<InetSocketAddress, List<Status<Request>>>(slaves.size());
         }else
         	statusListener = new Hashtable<InetSocketAddress, List<Status<Request>>>();
@@ -62,7 +62,7 @@ class SlavesStatus extends Hashtable<InetAddress,LSN> {
      * @return <code>true</code>, if the latestCommon {@link LSN} has changed, <code>false</code> otherwise.
      * @throws ReplicationException 
      */
-    synchronized boolean update(InetAddress slave, LSN acknowledgedLSN) throws ReplicationException {
+    synchronized boolean update(InetSocketAddress slave, LSN acknowledgedLSN) throws ReplicationException {
         // the latest common LSN is >= the acknowledged one, just update the slave
         if (get(slave)!=null) {            
             // compare all LSNs and take the smallest one as latest common one

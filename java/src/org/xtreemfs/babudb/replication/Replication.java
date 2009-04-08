@@ -300,7 +300,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
         try{
         	Status<Request> rq = new Status<Request>(RequestPreProcessor.getReplicationRequest(babuDBs),replication);
         	if (!replication.enqueueRequest(rq)) throw new Exception("State is already enqueued!");
-        	if (rq.waitFor()) throw new Exception("");
+        	if (rq.waitFor()) throw new Exception("Request has failed.");
         }catch (Exception e){
         	throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,e.getMessage(),e.getCause());
         }
@@ -470,7 +470,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
             replication.enqueueRequest(RequestPreProcessor.getACK_RQ(rq.getValue().getLSN(), rq.getValue().getSource()));
             
             // XXX changed logLevel to LEVEL_ERROR for testing purpose
-            Logging.logMessage(Logging.LEVEL_TRACE, replication, "LogEntry inserted successfully: "+rq.getValue().getLSN().toString());
+            Logging.logMessage(Logging.LEVEL_INFO, replication, "LogEntry inserted successfully: "+rq.getValue().getLSN().toString());
             rq.finished();           
         }catch (ReplicationException e) {
             // if the ACK could not be send
@@ -773,7 +773,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
             replication.halt.wait();
         }
         if (getCondition()!=LOADING)
-        	return getLastWrittenLSN();
+            return getLastWrittenLSN();
         else return null;
     }
     
