@@ -40,7 +40,7 @@ public class Checkpointer extends Thread {
     /**
      * From the replication designated checkpoint.
      */
-    private LSN                 recommended;
+    private volatile LSN        recommended;
     
     /**
      * Creates a new database checkpointer
@@ -119,7 +119,7 @@ public class Checkpointer extends Thread {
      * 
      * @param lsn
      */
-    public synchronized void designateRecommendedCheckpoint(LSN lsn){
+    public void designateRecommendedCheckpoint(LSN lsn){
             this.recommended = lsn;       
     }
 }

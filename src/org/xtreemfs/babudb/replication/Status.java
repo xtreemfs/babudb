@@ -23,7 +23,7 @@ import static org.xtreemfs.babudb.replication.Status.STATE.*;
  * @param <T>
  */
 class Status<T> {   
-	static enum STATE {OPEN,PENDING,DONE}
+    static enum STATE {OPEN,PENDING,DONE}
 	
     private             T               rq       = null;
 
@@ -33,7 +33,7 @@ class Status<T> {
     /** status of an broadCast request - the expected responses */
     private final       AtomicInteger   maxReceivableResp       = new AtomicInteger(1);
     private final       AtomicInteger   minExpectableResp       = new AtomicInteger(0);
-    private final 		AtomicReference<STATE> state			= new AtomicReference<STATE>(OPEN);
+    private final 	AtomicReference<STATE> state		= new AtomicReference<STATE>(OPEN);
     
     /** back-link to the queues */
     private final   ReplicationThread   statusListener;   
@@ -110,20 +110,24 @@ class Status<T> {
      * <p>Sets the request's status to pending and reorders the queue it is in.</p>
      * @throws ReplicationException if status could not be changed.
      */
-	void pending() throws ReplicationException {
-		state.set(PENDING);
-		statusListener.statusChanged(this);
-	}    
+    void pending() throws ReplicationException {
+        synchronized(state){
+            state.set(PENDING);
+            statusListener.statusChanged(this);
+        }
+    }    
     
     /**
      * <p>Resets the state of the actual request.</p>
      * @throws ReplicationException if status could not be changed.
      */
     void retry() throws ReplicationException {
-    	state.set(OPEN);
-    	maxReceivableResp.set(1);
-    	minExpectableResp.set(0);
-    	statusListener.statusChanged(this);
+        synchronized (state) {
+            state.set(OPEN);
+            maxReceivableResp.set(1);
+            minExpectableResp.set(0);
+            statusListener.statusChanged(this);
+        }
     }
     
     /**
@@ -145,10 +149,11 @@ class Status<T> {
  */
 
     /**
-     * Decreases the counter for receivable sub-requests by <code>count</code>.
+     * <p>Decreases the counter for receivable sub-requests by <code>count</code>.<br>
+     * This function is used in the case, that the request fails.</p>
      * 
      * @param count
-     * @return true, if the maximal number of receivable responses is GE than the minimal number of ACKs expected by the application. false otherwise 
+     * @return true, if the maximal number of receivable responses is GE than the minimal number of ACKs expected by the application. false otherwise. 
      */
     private boolean decreaseMaxReceivableResp() {
         int remaining = maxReceivableResp.decrementAndGet();       
@@ -157,14 +162,15 @@ class Status<T> {
     }
 
     /**
-     * Decreases the counter for expectable sub-requests.
+     * <p>Decreases the counter for expectable sub-requests.<br>
+     * This function is used in the case, that the request succeeds.</p>
      * 
      * @return true, if counter was decreased to 0, false otherwise.
      */
     private boolean decreaseMinExpectableResp() {
         int remainingExpected = minExpectableResp.decrementAndGet();
         int remainingReceivable = maxReceivableResp.decrementAndGet();        
-        return remainingExpected == 0 || (remainingReceivable == 0 && remainingExpected<0);
+        return remainingExpected == -1 || (remainingExpected == 0 && remainingReceivable>=0);
     }
     
 /*
@@ -186,9 +192,10 @@ class Status<T> {
      * @throws ReplicationException if request could not be removed.
      */
     void cancel() throws ReplicationException {     
-        assert(state.get().equals(PENDING)) : "An open request cannot be done!";
         assert (statusListener!=null) : "A dummy cannot be obsolete!";
         synchronized(state){
+            assert(state.get().equals(PENDING)) : "An open request cannot be done!";
+            
             if (!state.equals(DONE)) {
         	statusListener.remove(this);
         	state.set(DONE);
@@ -204,16 +211,12 @@ class Status<T> {
      */
     void finished() throws ReplicationException {
         assert (statusListener!=null) : "A dummy cannot be finished!";
-        if (state.get().equals(PENDING)) {
-	        synchronized(state) {
-	            if (!state.get().equals(DONE)) {
-	                if (decreaseMinExpectableResp()) {  
-	                    statusListener.finished(this);
-	                    state.set(DONE);
-	                    state.notifyAll();
-	                }
-	            }
-	        }
+        synchronized(state) {
+            if (state.get().equals(PENDING) && decreaseMinExpectableResp()) {  
+                statusListener.finished(this);
+	        state.set(DONE);
+	        state.notifyAll();
+	    }
         }
     }
     
@@ -228,25 +231,23 @@ class Status<T> {
      */
     boolean failed(String reason,int maxTries) throws ReplicationException {
         assert (statusListener != null) : "A dummy cannot fail!";
-        if (!state.get().equals(PENDING)) return false;
         synchronized(state) {
-        	if (!state.get().equals(DONE)) {
-        		// check, if it has completely failed
-	            if (!decreaseMaxReceivableResp()) {
-	            	// check, if there are retry-attempts left
-	            	if (attemptFailedAttemptLeft(maxTries)) {     
-	            		// retry
-	            		Logging.logMessage(Logging.LEVEL_TRACE, this, "Request has failed, and will be retried soon...");
-	            		retry();
-	            	} else {
-	            		// it has really failed
-	            		Logging.logMessage(Logging.LEVEL_TRACE, this, "Giving up after '"+maxTries+"' attempts to: "+rq.toString());
-	            		statusListener.failed(this,reason);
-	            	        state.set(DONE);
-	            	        state.notifyAll();
-	            	}
-	            }
-        	} 
+            if (!state.get().equals(PENDING)) return false;
+                // check, if it has completely failed
+            else if (!decreaseMaxReceivableResp()) {
+                // check, if there are retry-attempts left
+	        if (attemptFailedAttemptLeft(maxTries)) {     
+	            // retry
+	            Logging.logMessage(Logging.LEVEL_TRACE, this, "Request has failed, and will be retried soon...");
+	            retry();
+	        } else {
+	            // it has really failed
+	            Logging.logMessage(Logging.LEVEL_TRACE, this, "Giving up after '"+maxTries+"' attempts to: "+rq.toString());
+	            statusListener.failed(this,reason);
+	            state.set(DONE);
+	            state.notifyAll();
+	        }
+            } 
         }
         return true;
     }

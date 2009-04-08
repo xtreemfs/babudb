@@ -337,7 +337,7 @@ class ReplicationThread extends LifeCycleThread{
                      
                      // appreciates the ACK of a slave
                     case ACK :         
-                        if (slavesStatus.update(source.getAddress(),lsn))
+                        if (slavesStatus.update(source,lsn))
                             if (frontEnd.dbInterface.dbCheckptr!=null) // otherwise the checkIntervall is 0
                                 frontEnd.dbInterface.dbCheckptr.designateRecommendedCheckpoint(slavesStatus.getLatestCommonLSN());
                         break;
