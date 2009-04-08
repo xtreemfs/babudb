@@ -14,9 +14,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
+import org.xtreemfs.babudb.BabuDBImpl;
 import org.xtreemfs.babudb.BabuDBInsertGroup;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.LSN;
@@ -33,18 +33,18 @@ import org.xtreemfs.include.common.logging.Logging;
  */
 
 public class BabuDBRandomMasterTest {
-	public final static String PATH = "/tmp/babudb_test/master";
-	public final static int NUM_WKS = 1;
+    public final static String PATH = "/tmp/babuDB/master"; // /scratch/babuDB/data/master
+    public final static int NUM_WKS = 1;
 	
-	private final static RandomGenerator generator = new RandomGenerator();
-	private static BabuDB DBS;
+    private final static RandomGenerator generator = new RandomGenerator();
+    private static BabuDBImpl DBS;
 
-	private BabuDBRandomMasterTest() {}
+    private BabuDBRandomMasterTest() {}
 	
-	public static void main(String[] args) throws Exception {
-		Logging.start(Logging.LEVEL_ERROR);
+    public static void main(String[] args) throws Exception {
+        Logging.start(Logging.LEVEL_ERROR);
 		
-		if (args.length!=2) usage();
+        if (args.length!=2) usage();
 		
         // delete existing files
         Process p = Runtime.getRuntime().exec("rm -rf "+PATH);
@@ -65,45 +65,45 @@ public class BabuDBRandomMasterTest {
                 slaves.add(parseAddress(adr));
 		
         
-        DBS = BabuDBFactory.getMasterBabuDB(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, slaves, Replication.MASTER_PORT, null, 0, Replication.DEFAULT_MAX_Q);
-		Map<Integer, List<List<Object>>> scenario = generator.initialize(seed);
-		Random random = new Random();
-		assert (RandomGenerator.MAX_SEQUENCENO<((long) Integer.MAX_VALUE)) : "This test cannot handle such a big MAX_SEQUENCENO.";
+        DBS = (BabuDBImpl) BabuDBFactory.getMasterBabuDB(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, slaves, Replication.MASTER_PORT, null, 0, Replication.DEFAULT_MAX_Q);
+        Map<Integer, List<List<Object>>> scenario = generator.initialize(seed);
+        Random random = new Random();
+        assert (RandomGenerator.MAX_SEQUENCENO<((long) Integer.MAX_VALUE)) : "This test cannot handle such a big MAX_SEQUENCENO.";
 		
-		int nOmetaOp = 0;
-		long metaOpTime = 0L;
-		int nOinsertOp = 0;
-		long insertOpTime = 0L;
-		long time;
+        int nOmetaOp = 0;
+        long metaOpTime = 0L;
+        int nOinsertOp = 0;
+        long insertOpTime = 0L;
+        long time;
 		
 		
-		System.out.println("BabuDBRandomMaster-Longruntest----------------------");
-		for (int viewID=1;viewID<=RandomGenerator.MAX_VIEWID;viewID++){
-			System.out.print("Performing meta-operations for viewID '"+viewID+"' ...");
-			time = System.currentTimeMillis();
-			for (List<Object> operation : scenario.get(viewID)){
-				performOperation(operation);
-				nOmetaOp++;
-			}
-			metaOpTime += System.currentTimeMillis() - time;
+        System.out.println("BabuDBRandomMaster-Longruntest----------------------");
+        for (int viewID=1;viewID<=RandomGenerator.MAX_VIEWID;viewID++){
+            System.out.print("Performing meta-operations for viewID '"+viewID+"' ...");
+            time = System.currentTimeMillis();
+            for (List<Object> operation : scenario.get(viewID)){
+                performOperation(operation);
+                nOmetaOp++;
+            }
+            metaOpTime += System.currentTimeMillis() - time;
 			
-			System.out.println("done.");
+            System.out.println("done.");
 			
-			int nOsequenceNO = random.nextInt((int)RandomGenerator.MAX_SEQUENCENO);
-			System.out.print("Performing "+nOsequenceNO+" insert/delete operations ...");
-			LSN lsn = new LSN(0,0L);
-			time = System.currentTimeMillis();
-			for (int seqNo=1;seqNo<=nOsequenceNO;seqNo++){
-				lsn = new LSN(viewID,(long) seqNo);
-				performInsert(lsn);
-				nOinsertOp++;
-			}
-			insertOpTime += System.currentTimeMillis() - time;
-			System.out.println("done. Last insert was LSN ("+lsn.toString()+").");
+            int nOsequenceNO = random.nextInt((int)RandomGenerator.MAX_SEQUENCENO);
+            System.out.print("Performing "+nOsequenceNO+" insert/delete operations ...");
+            LSN lsn = new LSN(0,0L);
+            time = System.currentTimeMillis();
+            for (int seqNo=1;seqNo<=nOsequenceNO;seqNo++){
+                lsn = new LSN(viewID,(long) seqNo);
+                performInsert(lsn);
+                nOinsertOp++;
+            }
+            insertOpTime += System.currentTimeMillis() - time;
+            System.out.println("done. Last insert was LSN ("+lsn.toString()+").");
 			
-			// TODO increment viewID on BabuDB
-		}
-		double metaTroughput = ((double)nOmetaOp)/(((double) metaOpTime)/1000.0);
+            DBS.replication_toMaster();
+	}
+	double metaTroughput = ((double)nOmetaOp)/(((double) metaOpTime)/1000.0);
         double insertThroughput = ((double)nOinsertOp)/(((double) insertOpTime)/1000.0);
         
 		System.out.println("\nRESULTS --------------------------------------------");
@@ -111,7 +111,7 @@ public class BabuDBRandomMasterTest {
         System.out.format("total throughput for inserts : %12.2f insertGroups/s\n", insertThroughput);
 	
         DBS.shutdown();
-	}
+    }
 	
 	/**
 	 * Performs an meta-operation on the BabuDB.

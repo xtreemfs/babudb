@@ -14,7 +14,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.io.SyncFailedException;
-import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -178,9 +177,9 @@ public class DiskLogger extends Thread {
         channel = fos.getChannel();
         fdes = fos.getFD();
         if (maxQ > 0)
-            entries = new LinkedBlockingQueue(maxQ);
+            entries = new LinkedBlockingQueue<LogEntry>(maxQ);
         else
-            entries = new LinkedBlockingQueue();
+            entries = new LinkedBlockingQueue<LogEntry>();
         
         quit = false;
         this.down = new AtomicBoolean(false);
@@ -222,7 +221,7 @@ public class DiskLogger extends Thread {
         sync.unlock();
     }
 
-    public LSN switchLogFile() throws IOException {
+    public LSN switchLogFile(boolean incrementViewId) throws IOException {
         if (!sync.isHeldByCurrentThread()) {
             throw new IllegalStateException("the lock is held by another thread or the logger is not locked.");
         }
@@ -247,6 +246,8 @@ public class DiskLogger extends Thread {
         channel = fos.getChannel();
         fdes = fos.getFD();
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "switched log files... new name: " + currentLogFileName);
+        
+        if (incrementViewId) this.currentViewId.incrementAndGet();
         return lastSyncedLSN;
     }
 
@@ -255,7 +256,7 @@ public class DiskLogger extends Thread {
      */
     public void run() {
 
-        ArrayList<LogEntry> tmpE = new ArrayList(MAX_ENTRIES_PER_BLOCK);
+        ArrayList<LogEntry> tmpE = new ArrayList<LogEntry>(MAX_ENTRIES_PER_BLOCK);
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "operational");
 
         CRC32 csumAlgo = new CRC32();
