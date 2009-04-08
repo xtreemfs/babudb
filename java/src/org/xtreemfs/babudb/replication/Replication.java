@@ -370,14 +370,13 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      * @param lsn
      */
     void updateLastWrittenLSN(LSN lsn){
-    	boolean running = true;
-    	while (running){
-	    	LSN actual = lastWrittenLSN.get();
-	    	if (actual.compareTo(lsn)<0)
-	    		if (!lastWrittenLSN.compareAndSet(actual, lsn)) continue;
-	    	
-	    	running = false;
-    	}
+        synchronized (lastWrittenLSN) {
+            LSN actual = lastWrittenLSN.get();
+            if (actual.compareTo(lsn)<0){
+                lastWrittenLSN.set(lsn);
+                Logging.logMessage(Logging.LEVEL_TRACE, this, "Last written LogEntry had the LSN '("+lsn.toString()+")'.");
+            }
+        }
     }
     
     /**

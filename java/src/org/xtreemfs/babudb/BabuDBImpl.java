@@ -842,10 +842,10 @@ public class BabuDBImpl implements BabuDB {
      * @see org.xtreemfs.babudb.BabuDBInterface#checkpoint()
      */
     public void checkpoint() throws BabuDBException, InterruptedException {
-        if (replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
-
+        checkpoint(false);
+    }
+    
+    private void checkpoint(boolean incrementViewId) throws BabuDBException, InterruptedException{
         List<LSMDatabase> dbListCopy;
 
         synchronized (dbModificationLock) {
@@ -867,7 +867,7 @@ public class BabuDBImpl implements BabuDB {
                     for (LSMDatabase db : dbListCopy) {
                         snapIds[i++] = db.createSnapshot();
                     }
-                    lastWrittenLSN = logger.switchLogFile();
+                    lastWrittenLSN = logger.switchLogFile(incrementViewId);
                 } finally {
                     logger.unlockLogger();
                 }
@@ -909,7 +909,6 @@ public class BabuDBImpl implements BabuDB {
                 throw new BabuDBException(ErrorCode.IO_ERROR, "cannot create checkpoint", ex);
             }
         }
-
     }
 
     /*
@@ -1452,6 +1451,18 @@ public class BabuDBImpl implements BabuDB {
      */
     public void replication_resume(){
     	replicationFacade.resume();
+    }
+    
+    /**
+     * <p>Makes a new checkPoint and increments the viewID.</p>
+     * 
+     * @throws BabuDBException 
+     * @throws InterruptedException 
+     */
+    public void replication_toMaster() throws InterruptedException, BabuDBException{
+        assert (replicationFacade!=null);
+        checkpoint(true);
+        replicationFacade.setSlaves(configuration.replication_slaves);
     }
     
     /**

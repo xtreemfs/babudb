@@ -90,7 +90,7 @@ public class DiskLoggerTest {
                 
         try {
             l.lockLogger();
-            l.switchLogFile();
+            l.switchLogFile(false);
         } finally {
             l.unlockLogger();
         }
@@ -147,7 +147,7 @@ public class DiskLoggerTest {
                 
         try {
             l.lockLogger();
-            l.switchLogFile();
+            l.switchLogFile(false);
         } finally {
             l.unlockLogger();
         }
@@ -200,7 +200,7 @@ public class DiskLoggerTest {
         
         try {
             l.lockLogger();
-            l.switchLogFile();
+            l.switchLogFile(false);
         } finally {
             l.unlockLogger();
         }

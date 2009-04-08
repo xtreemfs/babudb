@@ -45,7 +45,7 @@ import org.xtreemfs.include.foundation.speedy.SpeedyResponseListener;
 
 public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListener{        
     
-	public final static int NO_ENTRIES = 1;
+    public final static int NO_ENTRIES = 3;
 	
     private static LSN actual = new LSN(1,0L);
     
@@ -173,7 +173,7 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
         final int testIndexId = 0;
      
         /*
-         * Insert 3 entries into the database
+         * Insert some entries into the database
          */       
         insertSomeData(testDBName1,testIndexId,testKeys,testData);
     }
@@ -243,7 +243,7 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
         final int testIndexId = 0;
         
         /*
-         * Insert 3 entries into the database
+         * Insert some entries into the database
          */        
         insertSomeData(testDBName2,testIndexId,testKeys,testData);
     }
@@ -544,7 +544,7 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
             assertEquals(Token.ACK,Token.valueOf(pRq.requestURI));
             
             if (!lostLSN.equals(new LSN(new String(pRq.getBody())))){
-            	assertEquals(actual,new LSN(new String(pRq.getBody()))); //TODO
+            	assertEquals(actual,new LSN(new String(pRq.getBody())));
             	actualFirst = true;
             }
             
@@ -678,6 +678,8 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
                         pRq.requestURI,null,null,
                         ReusableBuffer.wrap(pRq.getBody()),
                         DATA_TYPE.BINARY), master_address);
+                
+                pRq = null;
                 
              // check the response of the master
                 while (sRpState == null)
