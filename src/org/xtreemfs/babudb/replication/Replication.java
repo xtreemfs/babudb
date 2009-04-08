@@ -8,6 +8,7 @@
 
 package org.xtreemfs.babudb.replication;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -83,6 +84,9 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
     /** <p>The always alone running {@link ReplicationThread}.</p> */
     private ReplicationThread           replication     = null;
     
+    /** <p>Controls the connection between the different BabuDBSystems.</p> */
+    final InterBabuConnection			connectionControl; 
+    
     /** <p>Needed for the replication of service functions like create,copy and delete.</p> */
     final BabuDBImpl                    dbInterface;
     
@@ -94,12 +98,6 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
     
     /** <p>Object for synchronization issues.</p> */
     private final Object                lock            = new Object();
-    
-    /** <p>The port, where the replication listens at.</p> */
-    private final int                   port;
-    
-    /** <p>The options for the SSL-connections established by the replication.</p> */
-    private final SSLOptions            SSLOptions;
     
     /** <p>Maximal number of {@link Request} to store in the pending queue.</p> */
     final int                           queueLimit;
@@ -134,10 +132,8 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      * @param mode
      * @param lock
      * @param maxRetries
-     * 
-     * @throws BabuDBException - if replication could not be initialized.
      */
-    public Replication(List<InetSocketAddress> slaves, SSLOptions sslOptions,int port,BabuDBImpl babu, int mode, int qLimit, Lock lock, int maxRetries) throws BabuDBException {
+    public Replication(List<InetSocketAddress> slaves, SSLOptions sslOptions,int port,BabuDBImpl babu, int mode, int qLimit, Lock lock, int maxRetries){
         assert (slaves!=null) : "Replication in master-mode has no slaves attached.";
         assert (babu!=null) : "Replication misses the DB interface.";
         assert (lock!=null) : "Replication misses the DB-switch-lock.";
@@ -148,9 +144,8 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
         this.isMaster.set(true);
         this.maxTries = maxRetries;
         this.dbInterface = babu;
-        this.port = (port==0) ? MASTER_PORT : port;
-        this.SSLOptions = sslOptions;
         this.queueLimit = qLimit;
+        this.connectionControl = new InterBabuConnection((port==0) ? MASTER_PORT : port,sslOptions,this);
     }
     
     /**
@@ -167,10 +162,8 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      * @param mode
      * @param qLimit
      * @param maxRetries
-     * 
-     * @throws BabuDBException - 
      */
-    public Replication(InetSocketAddress master, SSLOptions sslOptions, int port, BabuDBImpl babu, int mode, int qLimit, Lock lock, int maxRetries) throws BabuDBException {
+    public Replication(InetSocketAddress master, SSLOptions sslOptions, int port, BabuDBImpl babu, int mode, int qLimit, Lock lock, int maxRetries) {
         assert (master!=null) : "Replication in slave-mode has no master attached.";
         assert (babu!=null) : "Replication misses the DB interface.";
         assert (lock!=null) : "Replication misses the DB-switch-lock.";
@@ -181,27 +174,29 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
         this.isMaster.set(false);
         this.maxTries = maxRetries;
         this.dbInterface = babu;
-        this.port = (port==0) ? SLAVE_PORT : port;
-        this.SSLOptions = sslOptions;
         this.queueLimit = qLimit;
+        this.connectionControl = new InterBabuConnection((port==0) ? SLAVE_PORT : port,sslOptions,this);
     }
 
     /**
-     * <p>Initializes the replication after all BabuDB-components have been started successfully.</p>
+     * <p>Initializes the replication after that all BabuDB-components are started successfully.</p>
+     * 
      * @throws BabuDBException if replication could not be initialized.
      */
     public void initialize() throws BabuDBException{
         try {
-            replication = new ReplicationThread(this, this.port, this.SSLOptions);
+            replication = new ReplicationThread(this);
             replication.setLifeCycleListener(this);
             
             synchronized (lock) {
                 replication.start();
-                
                 replication.waitForStartup();
+                connectionControl.start();
             }
             
             switchCondition(RUNNING);
+        } catch (BabuDBException be){
+            throw be;
         } catch (Exception e) {
             throw new BabuDBException(ErrorCode.IO_ERROR,e.getMessage(),e.getCause());
         }
@@ -328,6 +323,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
                 replication.shutdown();
                 replication.waitForShutdown();
             }
+            connectionControl.shutdown();
             switchCondition(DEAD);
         } catch (Exception e) {
             dbInterface.replication_runtime_failure(e.getMessage());
@@ -347,12 +343,10 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      */
     boolean isDesignatedMaster(InetSocketAddress potMaster) {
         if (isMaster.get()) return false;
-        
-        synchronized (lock) {
-            if (master!=null && potMaster!=null)               
-                return potMaster.getAddress().getHostAddress().equals(master.getAddress().getHostAddress());                
-        }
-        
+
+        if (master!=null && potMaster!=null)               
+            return potMaster.equals(master);                
+
         return false;
     }
     
@@ -365,19 +359,8 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
     boolean isDesignatedSlave(InetSocketAddress potSlave) {
         if (!isMaster.get()) return false;
         
-        synchronized (lock) {
-            if (slaves!=null && potSlave!=null){
-               // check the message, whether it is from a designated slave, or not
-                boolean designated = false;               
-                for (InetSocketAddress slave : slaves) {
-                    if (potSlave.getAddress().getHostAddress().equals(slave.getAddress().getHostAddress())) {
-                        designated = true;
-                        break;
-                    }
-                }
-                return designated;
-            } 
-        }
+        if (slaves!=null && potSlave!=null)            
+            return slaves.contains(potSlave);
         
         return false;
     }
@@ -397,6 +380,26 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
     	}
     }
     
+    /**
+     * @param sourceAddress
+     * @return the complete {@link InetSocketAddress} to the given sourceAddress, or null, if the address is unknown. 
+     */
+    InetSocketAddress retrieveSocketAddress(InetAddress sourceAddress){
+        synchronized (lock) {
+            if (!isMaster()){
+                InetAddress masterAddr = master.getAddress();
+                if (masterAddr!=null && masterAddr.equals(sourceAddress))
+                    return master;
+            }
+            for (InetSocketAddress slave : slaves){
+                InetAddress slaveAddr = slave.getAddress();
+                if (slaveAddr!=null && slaveAddr.equals(sourceAddress))
+                    return slave;
+            }
+        }
+        return null;
+    }
+    
 /*
  * ResponseListener   
  */
@@ -409,25 +412,24 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
     public void receiveRequest(PinkyRequest theRequest) {
         try {
             Request rq = RequestPreProcessor.getReplicationRequest(theRequest,this);   
-           // if request is null, or already in the queue it was already proceeded and will just be responded
-            if (rq==null)
-	            replication.sendResponse(theRequest);
-            else if (!replication.enqueueRequest(rq))
-            	throw replication.new ReplicationException("The received request could not be appended to the pending queue.");            	
+            
+            if (rq!=null)
+	            if (rq!=null && !replication.enqueueRequest(rq))
+	            	throw replication.new ReplicationException("The received request could not be appended to the pending queue. \n"+rq.toString());            	
+            
+            connectionControl.sendResponse(theRequest);
         }catch (PreProcessException e){
            // if a request could not be parsed for any reason
             Logging.logMessage(Logging.LEVEL_ERROR, this, e.getMessage());
             if (!theRequest.responseSet) theRequest.setResponse(e.status,e.getMessage());
             else assert(false) : "This request must not have already set a response: "+theRequest.toString();
-            theRequest.setClose(true); // close the connection, if an error occurred
-            replication.sendResponse(theRequest);
+            connectionControl.sendResponse(theRequest);
         }catch (ReplicationException re){
             // if a request could not be parsed because,or the queue limit was reached
             Logging.logMessage(Logging.LEVEL_ERROR, this, re.getMessage());
             if (!theRequest.responseSet) theRequest.setResponse(HTTPUtils.SC_SERV_UNAVAIL, re.getMessage());
             else assert(false) : "This request must not have already set a response: "+theRequest.toString();
-            theRequest.setClose(true); // close the connection, if an error occurred
-            replication.sendResponse(theRequest);
+            connectionControl.sendResponse(theRequest);
         }
     }
     
@@ -437,23 +439,11 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      */
     @Override
     public void receiveRequest(SpeedyRequest theRequest) {   
-    	Request rq = null;
         try {
-            rq = RequestPreProcessor.getReplicationRequest(theRequest,this);
-           // if request is null than it was already responded
-            if (rq!=null) 
-                if (!replication.enqueueRequest(rq)) {
-                    Logging.logMessage(Logging.LEVEL_INFO, replication, "Request is already in the queue: "+rq.toString());
-                    rq.free();
-                }
+            RequestPreProcessor.getReplicationRequest(theRequest,this);
         }catch (PreProcessException ppe) {
             Logging.logMessage(Logging.LEVEL_WARN, this, ppe.getMessage());
-            if (rq!=null) rq.free();
-        }catch (ReplicationException re) {
-        	Logging.logMessage(Logging.LEVEL_WARN, this, re.getMessage());
-        	if (rq!=null) rq.free();
         }catch (Exception e){
-        	if (rq!=null) rq.free();
             dbInterface.replication_runtime_failure(e.getMessage());
             Logging.logMessage(Logging.LEVEL_ERROR, this, e.getMessage());
         }   
@@ -474,18 +464,15 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
             	dbInterface.replication_runtime_failure(msg);
             }
             Status<Request> rq = (Status<Request>) context;
-            if (rq!=null){
-                // save it if it has the last LSN
-                updateLastWrittenLSN(rq.getValue().getLSN());
-                
-                Request parsed = RequestPreProcessor.getReplicationRequest(rq);
-                 // send an ACK for the replicated entry
-                if (parsed != null) replication.sendACK((Request) parsed);
-                
-                // XXX change logLevel to LEVEL_ERROR for testing purpose
-                Logging.logMessage(Logging.LEVEL_ERROR, replication, "LogEntry inserted successfully: "+rq.getValue().getLSN().toString());
-                rq.finished();
-            }
+            // save it if it has the last LSN
+            updateLastWrittenLSN(rq.getValue().getLSN());
+            
+            // send an ACK for the replicated entry
+            replication.enqueueRequest(RequestPreProcessor.getACK_RQ(rq.getValue().getLSN(), rq.getValue().getSource()));
+            
+            // XXX changed logLevel to LEVEL_ERROR for testing purpose
+            Logging.logMessage(Logging.LEVEL_TRACE, replication, "LogEntry inserted successfully: "+rq.getValue().getLSN().toString());
+            rq.finished();           
         }catch (ReplicationException e) {
             // if the ACK could not be send
             Logging.logMessage(Logging.LEVEL_ERROR, this, "ACK could not be send: "+e.getMessage());
@@ -573,6 +560,12 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
         else
             message = "Slave ReplicationThread crashed.";
         Logging.logMessage(Logging.LEVEL_ERROR, this, message);  
+        
+        try {
+        	connectionControl.shutdown();
+        } catch(Exception e) {
+        	Logging.logMessage(Logging.LEVEL_ERROR, this, "InterBabuConnection could not be stopped, because: "+e.getMessage());
+        }
         switchCondition(DEAD);
         dbInterface.replication_runtime_failure(message);
     }

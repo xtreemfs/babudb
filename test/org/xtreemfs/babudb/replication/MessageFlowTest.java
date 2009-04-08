@@ -45,6 +45,8 @@ import org.xtreemfs.include.foundation.speedy.SpeedyResponseListener;
 
 public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListener{        
     
+	public final static int NO_ENTRIES = 1;
+	
     private static LSN actual = new LSN(1,0L);
     
     private static MultiSpeedy speedy;
@@ -55,9 +57,9 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
     
     private static BabuDBImpl slave;
     
-    private SpeedyRequest sRq = null;
-    
     private PinkyRequest pRq = null;
+    
+    private Boolean sRpState = null;
     
     private final Object testLock = new Object();  
     
@@ -153,13 +155,11 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
                     DATA_TYPE.JSON), slave1_address); 
            
          // check the response from slave
-            while (sRq == null)
+            while (sRpState == null)
                 testLock.wait();
             
-            assertEquals(HTTPUtils.SC_OKAY, sRq.statusCode);
-            
-            sRq.freeBuffer();
-            sRq = null;
+            assertTrue(sRpState);
+            sRpState = null;
          
          // send it back to the master   
             pRq.setResponse(HTTPUtils.SC_OKAY);
@@ -225,13 +225,11 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
                     DATA_TYPE.JSON), slave1_address); 
            
          // check the response from slave
-            while (sRq == null)
+            while (sRpState == null)
                 testLock.wait();
             
-            assertEquals(HTTPUtils.SC_OKAY, sRq.statusCode);
-            
-            sRq.freeBuffer();
-            sRq = null;
+            assertTrue(sRpState);
+            sRpState = null;
          
          // send it back to the master   
             pRq.setResponse(HTTPUtils.SC_OKAY);
@@ -297,13 +295,11 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
                     DATA_TYPE.JSON), slave1_address); 
            
          // check the response from slave
-            while (sRq == null)
+            while (sRpState == null)
                 testLock.wait();
             
-            assertEquals(HTTPUtils.SC_OKAY, sRq.statusCode);
-            
-            sRq.freeBuffer();
-            sRq = null;
+            assertTrue(sRpState);
+            sRpState = null;
          
          // send it back to the master   
             pRq.setResponse(HTTPUtils.SC_OKAY);
@@ -345,10 +341,26 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
         try {
             master.syncSingleInsert(testDBName2, testIndexId, lostKey.getBytes(), lostData.getBytes());    
             fail("REPLICA should fail!");
-        } catch (BabuDBException e) {}    
-      
-        master.replicationFacade.setSlaves(reset);
+        } catch (BabuDBException e) {}     
+        
+        // catch the ACK rq's and send the responses to slave1
         actual = new LSN(actual.getViewId(),actual.getSequenceNo()+1L);
+
+        synchronized (testLock) {
+            while (pRq == null)
+                testLock.wait();
+            
+            assertEquals(Token.ACK,Token.valueOf(pRq.requestURI));
+            assertEquals(actual,new LSN(new String(pRq.getBody())));
+            
+            // send ACK to the slave1    
+            pRq.setResponse(HTTPUtils.SC_OKAY);
+            pinky.sendResponse(pRq);
+            
+            pRq = null;
+        }
+        
+        master.replicationFacade.setSlaves(reset);
     }
     
     @Test
@@ -388,23 +400,25 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
             asyncInsert.start();
             
             
-         // check the REPLICA from master
+         // check the REPLICA from master/ACK from slave
             while (pRq == null)
                 testLock.wait();
 
             LogEntry logEntry = LogEntry.deserialize(ReusableBuffer.wrap(pRq.getBody()), checksum);
             checksum.reset();
             InsertRecordGroup irec = InsertRecordGroup.deserialize(logEntry.getPayload());                
-            LSN lsn = logEntry.getLSN();                
-            actual = new LSN(actual.getViewId(),actual.getSequenceNo()+1L);
+            LSN lsn = logEntry.getLSN(); 
+            
+            LSN illegalLSN = new LSN(actual.getViewId(),actual.getSequenceNo()+1L);
             
             assertEquals(Token.REPLICA,Token.valueOf(pRq.requestURI));
-            assertEquals(actual, lsn);
+            assertEquals(illegalLSN, lsn);
             assertEquals(testIndexId,irec.getInserts().get(0).getIndexId());            
             assertTrue(lostKey.equals(new String(irec.getInserts().get(0).getKey())));            
             assertTrue(lostData.equals(new String(irec.getInserts().get(0).getValue())));
 
-          // --> DO NOT SEND IT TO THE SLAVE! IT IS LOST.
+          // --> DO NOT SEND IT TO THE SLAVE! IT IS LOST
+            actual = new LSN(actual.getViewId(),actual.getSequenceNo()+1L);
             
             pRq.setResponse(HTTPUtils.SC_SERV_UNAVAIL);
             pinky.sendResponse(pRq);
@@ -422,7 +436,7 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
         synchronized (testLock) {    
             PinkyRequest nextEntry;
             PinkyRequest lostRq;
-            SpeedyRequest lostAnswer;
+            PinkyRequest lostAnswer;
             LSN lostLSN;
             
             // asynchronous method-call for DB insert 
@@ -485,15 +499,20 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
                     DATA_TYPE.BINARY), master_address); 
             
          // check the response from master
-            while (sRq == null)
+            while (sRpState == null)
                 testLock.wait();
             
-            lostAnswer = sRq;
-            sRq = null;
+            assertTrue(sRpState);
+            sRpState = null;
             
-            assertEquals(HTTPUtils.SC_OKAY, lostAnswer.statusCode);
-            assertEquals(Token.RQ,Token.valueOf(lostAnswer.getURI()));
-            logEntry = LogEntry.deserialize(ReusableBuffer.wrap(lostAnswer.getResponseBody()), checksum);
+            while (pRq == null)
+            	testLock.wait();
+            
+            lostAnswer = pRq;
+            pRq = null;
+                       
+            assertEquals(Token.REPLICA,Token.valueOf(lostAnswer.requestURI));
+            logEntry = LogEntry.deserialize(ReusableBuffer.wrap(lostAnswer.getBody()), checksum);
             checksum.reset();
             irec = InsertRecordGroup.deserialize(logEntry.getPayload());                
             lsn = logEntry.getLSN();         
@@ -503,36 +522,76 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
             assertEquals(lostData,new String(irec.getInserts().get(0).getValue()));
             
          // send it to the slave
-            lostRq.setResponse(HTTPUtils.SC_OKAY,ReusableBuffer.wrap(lostAnswer.getResponseBody()),DATA_TYPE.BINARY);
-            pinky.sendResponse(lostRq);
-
-         // wait for the ACK of the slave, and the HTTP_Okay for nextEntry
-            while (sRq == null || pRq == null)
+            speedy.sendRequest(new SpeedyRequest(HTTPUtils.POST_TOKEN,
+            		lostAnswer.requestURI,null,null,
+            		ReusableBuffer.wrap(lostAnswer.getBody()),
+            		DATA_TYPE.BINARY), slave1_address);
+          
+         // check the response of the slave
+            while (sRpState == null)
                 testLock.wait();
             
+            assertTrue(sRpState);
+            sRpState = null;
+            
+         // wait for the ACKs of the slave for nextEnry and lostEntry 
+            while (pRq == null)
+            	testLock.wait();
+                        
+         // send it to the master    
+            boolean actualFirst = false;
+            
+            assertEquals(Token.ACK,Token.valueOf(pRq.requestURI));
+            
+            if (!lostLSN.equals(new LSN(new String(pRq.getBody())))){
+            	assertEquals(actual,new LSN(new String(pRq.getBody()))); //TODO
+            	actualFirst = true;
+            }
+            
+            speedy.sendRequest(new SpeedyRequest(HTTPUtils.POST_TOKEN,
+                    pRq.requestURI,null,null,
+                    ReusableBuffer.wrap(pRq.getBody()),
+                    DATA_TYPE.BINARY), master_address);
+         
+            pRq = null;
+            
+         // check the response of the master
+            while (sRpState == null)
+                testLock.wait();
+            
+            assertTrue(sRpState);
+            sRpState = null;
+            
+         // wait for the ACKs of the slave for nextEnry and lostEntry 
+            while (pRq == null)
+            	testLock.wait();
+                        
          // send it to the master    
             assertEquals(Token.ACK,Token.valueOf(pRq.requestURI));
-            assertEquals(lostLSN,new LSN(new String(pRq.getBody())));         
+            if (actualFirst) {
+            	assertEquals(lostLSN,new LSN(new String(pRq.getBody())));
+            } else {
+            	assertEquals(actual,new LSN(new String(pRq.getBody())));         
+            }
             
             speedy.sendRequest(new SpeedyRequest(HTTPUtils.POST_TOKEN,
                     pRq.requestURI,null,null,
                     ReusableBuffer.wrap(pRq.getBody()),
                     DATA_TYPE.BINARY), master_address);
             
-         // send it back to the master 
-            assertEquals(HTTPUtils.SC_OKAY, sRq.statusCode);
-            nextEntry.setResponse(HTTPUtils.SC_OKAY);
-            pinky.sendResponse(nextEntry);
+            // check the response of the master
+            while (sRpState == null)
+                testLock.wait();
             
-            sRq.freeBuffer();
-            sRq = null;
-            pRq = null;
-            lostAnswer.freeBuffer();           
+            assertTrue(sRpState);
+            sRpState = null;
+            
+            pRq = null;           
         }
     }
     
     /**
-     * inserts 3 entries into the DB
+     * inserts NO_ENTRIES entries into the DB
      * 
      * @throws Exception
      */
@@ -540,9 +599,9 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
         Checksum checksum = new CRC32();        
         
         /*
-         * Insert entries (3)
+         * Insert entries
          */
-        for (int i=0;i<3;i++){
+        for (int i=0;i<NO_ENTRIES;i++){
             synchronized (testLock) {
                           
                 // asynchronous method-call for DB insert 
@@ -594,20 +653,38 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
                         ReusableBuffer.wrap(pRq.getBody()),
                         DATA_TYPE.BINARY), slave1_address); 
                
-             // check the response from slave
-                while (sRq == null)
+             // check the response of the slave
+                while (sRpState == null)
                     testLock.wait();
                 
-                assertEquals(HTTPUtils.SC_OKAY, sRq.statusCode);
-                
-                sRq.freeBuffer();
-                sRq = null;
+                assertTrue(sRpState);
+                sRpState = null;
              
              // send it back to the master   
                 pRq.setResponse(HTTPUtils.SC_OKAY);
                 pinky.sendResponse(pRq);
                 
                 pRq = null;
+                
+             // wait for the ACK of the slave
+                while (pRq == null)
+                    testLock.wait();
+                
+                assertEquals(Token.ACK,Token.valueOf(pRq.requestURI));
+                assertEquals(actual,new LSN(new String(pRq.getBody())));
+                
+             // redirect it to the master
+                speedy.sendRequest(new SpeedyRequest(HTTPUtils.POST_TOKEN,
+                        pRq.requestURI,null,null,
+                        ReusableBuffer.wrap(pRq.getBody()),
+                        DATA_TYPE.BINARY), master_address);
+                
+             // check the response of the master
+                while (sRpState == null)
+                    testLock.wait();
+                
+                assertTrue(sRpState);
+                sRpState = null;
             }
         }
     }
@@ -622,9 +699,10 @@ public class MessageFlowTest implements PinkyRequestListener,SpeedyResponseListe
 
     @Override
     public void receiveRequest(SpeedyRequest theRequest) {
-        synchronized (testLock) {
-            sRq = theRequest; 
-            testLock.notify();
-        }
+    	synchronized (testLock) {
+	    	sRpState = (theRequest.statusCode==HTTPUtils.SC_OKAY);
+	    	testLock.notify();
+	    }
+    	theRequest.freeBuffer();
     }
 }

@@ -101,9 +101,11 @@ class RequestPreProcessor {
         } catch (IllegalArgumentException e){
             throw THIS.new PreProcessException("Request had an illegal Token: "+theRequest.requestURI);
         }
+        InetSocketAddress source = null;
+        if (theRequest.getClientAddress()!=null)
+            source = frontEnd.retrieveSocketAddress(theRequest.getClientAddress().getAddress());
         
-        RequestImpl result = new RequestImpl(token,theRequest.getClientAddress());
-        result.original = theRequest;
+        RequestImpl result = new RequestImpl(token,source);
         
         String masterSecurityMsg = null;
         String slaveSecurityMsg = null;
@@ -177,9 +179,25 @@ class RequestPreProcessor {
             } catch (Exception e) {
                 checksum.reset();
                 result.free();
-                throw THIS.new PreProcessException("The data of a REPLICA could not be retrieved because: "+e.getMessage()+" | Source: "+result.getSource());
+                throw THIS.new PreProcessException("The data of a REPLICA could not be retrieved because: "+e.getMessage()+" | Source: "+result.getSource().toString());
             }
-            break;   
+            break; 
+            
+        case LOAD_RP:
+            if (!frontEnd.isDesignatedMaster(result.source)) 
+                throw THIS.new PreProcessException(slaveSecurityMsg,HTTPUtils.SC_UNAUTHORIZED);
+            
+            try {
+                // parse details
+                JSONString jsonString = new JSONString(new String(theRequest.getBody()));
+                result.lsmDbMetaData = (Map<String, List<Long>>) JSONParser.parseJSON(jsonString);
+            	
+                assert(result.lsmDbMetaData!=null);
+            } catch (Exception e){
+            	result.free();
+            	throw THIS.new PreProcessException("The data of a LOAD_RP could not be retrieved because: "+e.getMessage()+" | Source: "+result.getSource().toString());
+            }
+            break;
             
         case CREATE:
             if (!frontEnd.isDesignatedMaster(result.source))
@@ -229,6 +247,24 @@ class RequestPreProcessor {
             }
             return null;
             
+        case REPLICA_NA:  
+            if (!frontEnd.isDesignatedMaster(result.source)) 
+                throw THIS.new PreProcessException(slaveSecurityMsg,HTTPUtils.SC_UNAUTHORIZED);
+            
+             // make a load request
+            result.token = LOAD_RQ;
+            Logging.logMessage(Logging.LEVEL_WARN, THIS, "Requested logEntry was not found; DB will be loaded soon.");
+        	break;
+        	
+        case CHUNK_NA:
+            if (!frontEnd.isDesignatedMaster(result.source)) 
+                throw THIS.new PreProcessException(slaveSecurityMsg,HTTPUtils.SC_UNAUTHORIZED);
+            
+            // make a load request
+            result.token = LOAD_RQ;
+            Logging.logMessage(Logging.LEVEL_WARN, THIS, "Requested chunk was not found; DB will be loaded soon.");
+        	break;
+            
        // shared     
         case STATE: 
             if (!frontEnd.isDesignatedMaster(result.source) && !frontEnd.isDesignatedSlave(result.source))
@@ -250,12 +286,10 @@ class RequestPreProcessor {
      * 
      * @param theResponse
      * @param frontEnd
-     * @throws Exception if request could not be preprocessed.
-     * 
-     * @return the {@link Request} in replication abstraction. Or null, if it was already handled.
+     * @throws PreProcessException if request could not be preprocessed.
      */
     @SuppressWarnings("unchecked")
-    static Request getReplicationRequest(SpeedyRequest theResponse,Replication frontEnd) throws PreProcessException{
+    static void getReplicationRequest(SpeedyRequest theResponse,Replication frontEnd) throws PreProcessException{
         Token token = null;
         try {
             token = Token.valueOf(theResponse.getURI());
@@ -263,21 +297,17 @@ class RequestPreProcessor {
             throw THIS.new PreProcessException("Request had an illegal Token: "+theResponse.getURI());
         }
         
-        /**
-         * <p>Object for generating check sums</p>
-         */
-        final Checksum checksum = new CRC32();
-        
-        RequestImpl result = new RequestImpl(token,theResponse.getServer());
+        InetSocketAddress source = null;
+        if (theResponse.getServer()!=null) source = frontEnd.retrieveSocketAddress(theResponse.getServer().getAddress());
         
         String masterSecurityMsg = null;
         String slaveSecurityMsg = null;
-        if (result.source!=null){
-            masterSecurityMsg = "Security Exception! '"+result.source.toString()
-            +"' is not a designated slave. Request will be ignored: "+result.toString();
+        if (source!=null){
+            masterSecurityMsg = "Security Exception! '"+source.toString()
+            +"' is not a designated slave."+token.toString()+"-request will be ignored!";
             
-            slaveSecurityMsg = "Security Exception! '"+result.source.toString()
-            +"' is not the designated master. Request will be ignored: "+result.toString();
+            slaveSecurityMsg = "Security Exception! '"+source.toString()
+            +"' is not the designated master."+token.toString()+"-request will be ignored!";
         }
         
         assert(frontEnd!=null) : "Reference to the replication interface missing.";
@@ -285,36 +315,17 @@ class RequestPreProcessor {
         
         Status<RequestImpl> rq = null;
         
-        switch (result.token) {
+        switch (token) {
         
        // for master:       
         case REPLICA:   
-            if (!frontEnd.isDesignatedSlave(result.source))
+            if (!frontEnd.isDesignatedSlave(source))
                 throw THIS.new PreProcessException(masterSecurityMsg);
 
             rq = (Status<RequestImpl>) theResponse.genericAttatchment;
-            // if the original request (REPLICA) is missing, it seems to be obsolete. there is nothing to do.
-            if (rq==null) return null;
-
-            // replication was successful
-            if (theResponse.statusCode==HTTPUtils.SC_OKAY) {    
-                try {
-                    // ACK as sub request 
-                    result.token = ACK;
-                    result.lsn = rq.getValue().getLSN();
-                    result.source = theResponse.getServer();
-                    rq.finished();
-                } catch (Exception e) {
-                    result.free();
-                    try {
-                        rq.failed("DELETE could not be finished because: "+e.getMessage(), frontEnd.maxTries);
-                    } catch (ReplicationException re) {
-                        throw THIS.new PreProcessException("Request could not be marked as failed, because: "+re.getMessage());
-                    }
-                    return null;
-                }
-            } else {
-                String msg = "Slave '"+result.source.toString()+"' did not confirm replication, because: ";
+            
+            if (theResponse.statusCode!=HTTPUtils.SC_OKAY && rq!=null) {                  
+                String msg = "Slave '"+source.toString()+"' did not confirm replication, because: ";
                 if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
                 else msg += theResponse.statusCode;
                 Logging.logMessage(Logging.LEVEL_WARN, THIS, msg);
@@ -322,19 +333,19 @@ class RequestPreProcessor {
                 try {
                     rq.failed(msg, frontEnd.maxTries); 
                 } catch (ReplicationException re) {
-                        throw THIS.new PreProcessException("Request could not be marked as failed, because: "+re.getMessage());
+                    throw THIS.new PreProcessException("Request could not be marked as failed, because: "+re.getMessage());
                 }
-                return null;
             }
             break;
             
         case CREATE:
-            if (!frontEnd.isDesignatedSlave(result.source))
+            if (!frontEnd.isDesignatedSlave(source))
                 throw THIS.new PreProcessException(masterSecurityMsg); 
             
             rq = (Status<RequestImpl>) theResponse.genericAttatchment;
+            
             // if the original request (CREATE) is missing, it seems to be obsolete. there is nothing to do.
-            if (rq==null) return null;
+            if (rq==null) break;
             
             if (theResponse.statusCode==HTTPUtils.SC_OKAY) {    
                 try {
@@ -347,7 +358,7 @@ class RequestPreProcessor {
                     }
                 }
             } else {
-                String msg = "Slave '"+result.source.toString()+"' did not confirm replication, because: ";
+                String msg = "Slave '"+source.toString()+"' did not confirm replication, because: ";
                 if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
                 else msg += theResponse.statusCode;
                 Logging.logMessage(Logging.LEVEL_WARN, THIS, msg);
@@ -358,15 +369,16 @@ class RequestPreProcessor {
                         throw THIS.new PreProcessException("Request could not be marked as failed, because: "+re.getMessage());
                 }
             }
-            return null;
+            break;
             
         case COPY: 
-            if (!frontEnd.isDesignatedSlave(result.source))
+            if (!frontEnd.isDesignatedSlave(source))
                 throw THIS.new PreProcessException(masterSecurityMsg); 
             
             rq = (Status<RequestImpl>) theResponse.genericAttatchment;
+            
             // if the original request (COPY) is missing, it seems to be obsolete. there is nothing to do.
-            if (rq==null) return null;
+            if (rq==null) break;
             
             if (theResponse.statusCode==HTTPUtils.SC_OKAY) {    
                 try {
@@ -379,7 +391,7 @@ class RequestPreProcessor {
                     }
                 }
             } else {
-                String msg = "Slave '"+result.source.toString()+"' did not confirm replication, because: ";
+                String msg = "Slave '"+source.toString()+"' did not confirm replication, because: ";
                 if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
                 else msg += theResponse.statusCode;
                 Logging.logMessage(Logging.LEVEL_WARN, THIS, msg);
@@ -390,15 +402,16 @@ class RequestPreProcessor {
                         throw THIS.new PreProcessException("Request could not be marked as failed, because: "+re.getMessage());
                 }
             }
-            return null;
+            break;
             
         case DELETE:
-            if (!frontEnd.isDesignatedSlave(result.source))
+            if (!frontEnd.isDesignatedSlave(source))
                 throw THIS.new PreProcessException(masterSecurityMsg); 
             
             rq = (Status<RequestImpl>) theResponse.genericAttatchment;
+            
             // if the original request (DELETE) is missing, it seems to be obsolete. there is nothing to do.
-            if (rq==null) return null;
+            if (rq==null) break;
             
             if (theResponse.statusCode==HTTPUtils.SC_OKAY) {    
                 try {
@@ -411,7 +424,7 @@ class RequestPreProcessor {
                     }
                 }
             } else {
-                String msg = "Slave '"+result.source.toString()+"' did not confirm replication, because: ";
+                String msg = "Slave '"+source.toString()+"' did not confirm replication, because: ";
                 if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
                 else msg += theResponse.statusCode;
                 Logging.logMessage(Logging.LEVEL_WARN, THIS, msg);
@@ -422,52 +435,19 @@ class RequestPreProcessor {
                         throw THIS.new PreProcessException("Request could not be marked as failed, because: "+re.getMessage());
                 }
             }
-            return null;
+            break;
             
        // for slave:    
         case ACK: // ignore answers to an ACK-Request (necessary for pinky/speedy communication compatibility)
-            return null;
+            break;
             
         case RQ:
-            if (!frontEnd.isDesignatedMaster(result.source))
+            if (!frontEnd.isDesignatedMaster(source))
                 throw THIS.new PreProcessException(slaveSecurityMsg);
             
             Status<LSN> mLSN = (Status<LSN>) theResponse.genericAttatchment;          
-            // if the original request (missing LSN) is missing, it seems to be obsolete. there is nothing to do.
-            if (mLSN==null) return null;
-            
-            if (theResponse.statusCode==HTTPUtils.SC_NOT_FOUND){
-                 // try to cancel the request
-                try {
-                    mLSN.cancel();                   
-                } catch (Exception e) {
-                    Logging.logMessage(Logging.LEVEL_WARN, THIS, "A request could not be canceled");
-                }
-                   
-                 // make a load request
-                result.token = LOAD_RQ;
-                Logging.logMessage(Logging.LEVEL_WARN, THIS, "Requested entry was not found; DB will be loaded soon.");
-            } else if (theResponse.statusCode==HTTPUtils.SC_OKAY) {               
-                try {
-                    // make a replica request
-                    result.source = theResponse.getServer();
-                    result.lsn = mLSN.getValue();
-                    result.logEntry = LogEntry.deserialize(ReusableBuffer.wrap(theResponse.getResponseBody()), checksum);
-                    checksum.reset();
-                    result.token = REPLICA;  
-                    
-                    assert (result.lsn!=null) : "The LSN of the received request cannot be null!";                    
-                    mLSN.finished();
-                } catch (Exception e) {
-                	result.free();
-                	try {
-	                    mLSN.failed("The given response was malformed and there are no attempts left to get a new one.", frontEnd.maxTries); 
-                	} catch (ReplicationException re) {
-                		throw THIS.new PreProcessException("Request could not be marked as failed, because: "+re.getMessage());
-                	}
-                	return null;
-                }
-            } else {
+           
+            if (theResponse.statusCode!=HTTPUtils.SC_OKAY && mLSN!=null) {
                 String msg = "The server does not respond ,\r\n\t because: "; 
                 if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
                 else msg += theResponse.statusCode;
@@ -477,47 +457,17 @@ class RequestPreProcessor {
                     mLSN.failed(msg, frontEnd.maxTries); 
             	} catch (ReplicationException re) {
             		throw THIS.new PreProcessException("Request could not be marked as failed, because: "+re.getMessage());
-            	}
-                return null;
+            	}  
             }
             break;      
            
         case CHUNK:
-            if (!frontEnd.isDesignatedMaster(result.source)) 
+            if (!frontEnd.isDesignatedMaster(source)) 
                 throw THIS.new PreProcessException(slaveSecurityMsg,HTTPUtils.SC_UNAUTHORIZED);
             
             Status<Chunk> chunk = (Status<Chunk>) theResponse.genericAttatchment;
-            // the original request (missing Chunk) is missing, it seems to be obsolete. there is nothing to do.
-            if (chunk==null) return null;
             
-            if (theResponse.statusCode==HTTPUtils.SC_NOT_FOUND){
-                // try to cancel the request
-               try {
-                   chunk.cancel();                   
-               } catch (Exception e) {
-                   Logging.logMessage(Logging.LEVEL_WARN, THIS, "A request could not be canceled: "+e.getMessage());
-               }
-                  
-                // make a load request
-               result.token = LOAD_RQ;
-               Logging.logMessage(Logging.LEVEL_WARN, THIS, "Requested entry was not found; DB will be loaded soon.");
-            } else if (theResponse.statusCode==HTTPUtils.SC_OKAY) {              
-                try {
-                	// make a chunk request
-                    result.chunkDetails = chunk.getValue();
-                    result.data = theResponse.getResponseBody();
-                    result.token = CHUNK_RP; 
-                    chunk.finished();
-                } catch (Exception e) {
-                	result.free();
-                	try {
-	                    chunk.failed("The given response was malformed and there are no attempts left to get a new one.", frontEnd.maxTries);
-                	} catch (ReplicationException re) {
-                		throw THIS.new PreProcessException("Request could not be marked as failed, because: "+re.getMessage());
-                	}
-                	return null;
-                }
-            } else {
+            if (theResponse.statusCode!=HTTPUtils.SC_NOT_FOUND && chunk!=null){
                 String msg = "The server does not respond ,\r\n\t because: "; 
                 if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
                 else msg += theResponse.statusCode;
@@ -528,35 +478,16 @@ class RequestPreProcessor {
             	} catch (ReplicationException re) {
             		throw THIS.new PreProcessException("Request could not be marked as failed, because: "+re.getMessage());
             	}
-                return null;
             }
             break;
             
         case LOAD:
-            if (!frontEnd.isDesignatedMaster(result.source)) 
+            if (!frontEnd.isDesignatedMaster(source)) 
                 throw THIS.new PreProcessException(slaveSecurityMsg,HTTPUtils.SC_UNAUTHORIZED);
-
-            rq = (Status<RequestImpl>) theResponse.genericAttatchment;
-            // the original request (LOAD_RQ) is missing, it seems to be obsolete. there is nothing to do.
-            if (rq==null) return null;
             
-            if (theResponse.statusCode==HTTPUtils.SC_OKAY) {
-            	try {
-                    // parse details & make a subRequest
-                     JSONString jsonString = new JSONString(new String(theResponse.getResponseBody()));
-                     result.lsmDbMetaData = (Map<String, List<Long>>) JSONParser.parseJSON(jsonString);              
-                     result.token = LOAD_RP;      
-                     rq.finished();
-                 } catch (Exception e) {
-                     result.free();
-                     try {
-                         rq.failed("Files details of a LOAD_RP could not be decoded because: "+e.getMessage(), frontEnd.maxTries);
-                     } catch (ReplicationException re) {
-                         throw THIS.new PreProcessException("Request could not be marked as failed, because: "+re.getMessage());
-                     }
-                     return null;
-                 }
-            } else {
+            rq = (Status<RequestImpl>) theResponse.genericAttatchment;
+            
+            if (theResponse.statusCode!=HTTPUtils.SC_OKAY && rq!=null) {
                 String msg = "Could not get LOAD_RP, because: ";
                 if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
                 else msg += theResponse.statusCode; 
@@ -567,38 +498,18 @@ class RequestPreProcessor {
             	} catch (ReplicationException re) {
             		throw THIS.new PreProcessException("Request could not be marked as failed, because: "+re.getMessage());
             	}
-                return null;
             }     
             break;
        
        // shared:
         case STATE:
-            if (!frontEnd.isDesignatedSlave(result.source) && !frontEnd.isDesignatedMaster(result.source))
+            if (!frontEnd.isDesignatedSlave(source) && !frontEnd.isDesignatedMaster(source))
                 throw THIS.new PreProcessException(masterSecurityMsg+"/nAND/n"+slaveSecurityMsg); 
 
             rq = (Status<RequestImpl>) theResponse.genericAttatchment;
-            // the original request (STATE) is missing, it seems to be obsolete. there is nothing to do.
-            if (rq==null) return null;
             
-            if (theResponse.statusCode==HTTPUtils.SC_OKAY) {    
-                try {
-                    // ACK as sub request 
-                    result.token = ACK;
-                    result.lsn = rq.getValue().getLSN();
-                    result.source = theResponse.getServer();
-                    
-                    rq.finished();
-                } catch (Exception e) {
-                    result.free();
-                    try {
-                        rq.failed("Files details of a STATE response could not be decoded because: "+e.getMessage(), frontEnd.maxTries);
-                    } catch (ReplicationException re) {
-                        throw THIS.new PreProcessException("Request could not be marked as failed, because: "+re.getMessage());
-                    }
-                    return null;
-                }
-            } else {
-                String msg = "Slave '"+result.source.toString()+"' did not send it's state, because: ";
+            if (theResponse.statusCode!=HTTPUtils.SC_OKAY && rq!=null) {
+                String msg = "Slave '"+source.toString()+"' did not send it's state, because: ";
                 if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
                 else msg += theResponse.statusCode;
                 Logging.logMessage(Logging.LEVEL_WARN, THIS, msg);
@@ -607,8 +518,7 @@ class RequestPreProcessor {
                     rq.failed(msg, frontEnd.maxTries); 
                 } catch (ReplicationException re) {
                         throw THIS.new PreProcessException("Request could not be marked as failed, because: "+re.getMessage());
-                }
-                return null;
+                }   
             }
             break;
             
@@ -620,8 +530,7 @@ class RequestPreProcessor {
             throw THIS.new PreProcessException(msg);
         }
         
-        Logging.logMessage(Logging.LEVEL_TRACE, frontEnd, "Response received: "+token.toString()+((result.lsn!=null) ? " "+result.lsn.toString() : ""));
-        return result;
+        Logging.logMessage(Logging.LEVEL_TRACE, frontEnd, "Response received: "+token.toString()+" from: "+source.toString());
     }
 
     /**
@@ -697,6 +606,7 @@ class RequestPreProcessor {
     static Request getReplicationRequest(List<InetSocketAddress> destinations) {
     	RequestImpl result = new RequestImpl(STATE_BROADCAST,null);
     	result.destinations = destinations;
+    	result.lsn = new LSN(0,0L);
     	return result;
     }
     
@@ -743,28 +653,6 @@ class RequestPreProcessor {
     }
     
     /**
-     * <p>Translates a successful-integration-notification into the master-slave-abstraction.</p> 
-     * 
-     * @param rq
-     * @exception PreProcessException - if something went wrong.
-     * @return an ACK request, if necessary.
-     */
-    static Request getReplicationRequest(Status<Request> rq) throws PreProcessException{
-        try {
-            PinkyRequest orgReq = (PinkyRequest) rq.getValue().getOriginal();
-            
-            if (orgReq==null) {
-                RequestImpl result = new RequestImpl(ACK,rq.getValue().getSource());
-                result.lsn = rq.getValue().getLSN();
-                return result;
-            }
-        }catch (Exception e){
-            throw THIS.new PreProcessException(e.getMessage());
-        }
-        return null;
-    }
-    
-    /**
      * <p>Parses the <code>error</code> and generates a LOAD_RQ if necessary.</p>
      * 
      * @param error - a DB failure.
@@ -794,6 +682,18 @@ class RequestPreProcessor {
      */
     static Request getLOAD_RQ(){
         return new RequestImpl(LOAD_RQ);
+    }
+    
+    /**
+     * 
+     * @param lsn
+     * @param destination
+     * @return a new acknowledgment {@link Request}, which acknowledges the given {@link LSN} to the given destination.
+     */
+    static Request getACK_RQ(LSN lsn, InetSocketAddress destination) {
+    	RequestImpl result = new RequestImpl(ACK_RQ,destination);
+    	result.lsn = lsn;
+    	return result;
     }
        
     /**

@@ -15,7 +15,6 @@ import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.include.common.logging.Logging;
-import org.xtreemfs.include.foundation.pinky.PinkyRequest;
 
 /**
  * <p><b>To get instances of that use the {@link RequestPreProcessor}!</b></p>
@@ -47,15 +46,12 @@ class RequestImpl implements Request {
 
     /** for response issues and to be checked into the DB */
     LSMDBRequest                context                 = null;
-    
-    /** for response issues too */
-    PinkyRequest                original                = null;
-    
+        
     /** for requesting the initial load by pieces */
     Map<String, List<Long>>     lsmDbMetaData           = null;
     
     /** where the request should be send to */
-    List<InetSocketAddress> 	destinations			= null;
+    List<InetSocketAddress> 	destinations       	= null;
     
     RequestImpl(Token t){
         token = t;
@@ -128,14 +124,6 @@ class RequestImpl implements Request {
     public LSMDBRequest getContext() {
         return context;
     }
-    
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.Request#getOriginal()
-     */
-    public PinkyRequest getOriginal() {
-        return original;
-    }   
 
     /*
      * (non-Javadoc)
@@ -172,6 +160,11 @@ class RequestImpl implements Request {
         
         if (token.equals(rq.getToken())){
             switch (rq.getToken()){
+            
+            case ACK_RQ:
+                return (source.equals(rq.getSource())
+                        && lsn.equals(rq.getLSN()));
+                
             case ACK:
                 return (source.equals(rq.getSource())
                         && lsn.equals(rq.getLSN()));
@@ -214,7 +207,7 @@ class RequestImpl implements Request {
                 
             case STATE: 
                 return source.equals(rq.getSource());
-                
+                                
             default: return false;                
             }
         }return false;
@@ -235,8 +228,7 @@ class RequestImpl implements Request {
         if (Logging.tracingEnabled()) {
             if (data!=null)             string+="data : "+data.toString()+"',";
             if (lsmDbMetaData!=null)    string+="LSM DB metaData: "+lsmDbMetaData.toString()+"',";
-            if (context!=null)          string+="context: "+context.toString()+"',";      
-            if (original!=null)         string+="the original PinkyRequest is available : "+original.toString()+"',";       
+            if (context!=null)          string+="context: "+context.toString()+"',";         
         } else 
             string += "\nEnable tracing for more informations.";
 

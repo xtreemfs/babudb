@@ -38,8 +38,12 @@ public class SecurityTest {
         slaves.add(new InetSocketAddress("localhost",PORT));
         
         // start the slave
+        try {
         slave = BabuDBFactory.getSlaveBabuDB(slave1_baseDir,slave1_baseDir,1,0,0,SyncMode.SYNC_WRITE,
                 0,0,new InetSocketAddress("localhost",PORT),slaves,0,null,0);
+        } catch (Exception e){
+        	System.out.println("ERROR: "+e.getMessage());
+        }
     }
     
     @After

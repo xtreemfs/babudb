@@ -99,7 +99,6 @@ public class RequestPreProcessorTest {
         Request broadcastRQ = RequestPreProcessor.getReplicationRequest(testLogEntry,new LinkedList<InetSocketAddress>());       
         assertNull(broadcastRQ.getChunkDetails());
         assertNull(broadcastRQ.getLsmDbMetaData());
-        assertNull(broadcastRQ.getOriginal());
         assertNull(broadcastRQ.getSource());
         assertEquals(Token.REPLICA_BROADCAST, broadcastRQ.getToken());
         assertEquals(testLSN,broadcastRQ.getLSN());
@@ -236,9 +235,7 @@ public class RequestPreProcessorTest {
     }
  */   
     @Test
-    public void testGetReplicationRequestFailures() throws PreProcessException, JSONException, IOException, LogEntryException {
-        Request rq = null;
-        
+    public void testGetReplicationRequestFailures() throws PreProcessException, JSONException, IOException, LogEntryException {     
         /*
          * Error cases
          */
@@ -248,7 +245,7 @@ public class RequestPreProcessorTest {
          */
         
         try {
-            rq = RequestPreProcessor.getReplicationRequest((LogEntry) null,new LinkedList<InetSocketAddress>());
+            RequestPreProcessor.getReplicationRequest((LogEntry) null,new LinkedList<InetSocketAddress>());
             fail("Null logEntry should cast an exception.");
         }catch(PreProcessException e){
             assertTrue(true);
@@ -260,7 +257,7 @@ public class RequestPreProcessorTest {
         
         PinkyRequest testDefectToken = new PinkyRequest(HTTPUtils.POST_TOKEN,"defectToken",null,null,null);
         try {
-            rq = RequestPreProcessor.getReplicationRequest(testDefectToken,replicationFacade);
+            RequestPreProcessor.getReplicationRequest(testDefectToken,replicationFacade);
             fail("Defect Token should cast an exception.");
         }catch(PreProcessException e){
             assertTrue(true);
@@ -268,7 +265,7 @@ public class RequestPreProcessorTest {
         
         PinkyRequest testFalseToken = new PinkyRequest(HTTPUtils.POST_TOKEN,Token.REPLICA_BROADCAST.toString(),null,null,null);
         try {
-            rq = RequestPreProcessor.getReplicationRequest(testFalseToken,replicationFacade);
+            RequestPreProcessor.getReplicationRequest(testFalseToken,replicationFacade);
             fail("Defect Token should cast an exception.");
         }catch(PreProcessException e){
             assertTrue(true);
@@ -280,7 +277,7 @@ public class RequestPreProcessorTest {
         
         SpeedyRequest testDefectTokenS = new SpeedyRequest(HTTPUtils.POST_TOKEN,"defectToken",null,null,null,DATA_TYPE.BINARY);
         try {
-            rq = RequestPreProcessor.getReplicationRequest(testDefectTokenS,replicationFacade);
+            RequestPreProcessor.getReplicationRequest(testDefectTokenS,replicationFacade);
             fail("Defect Token should cast an exception.");
         }catch(PreProcessException e){
             assertTrue(true);
@@ -288,13 +285,11 @@ public class RequestPreProcessorTest {
         
         SpeedyRequest testFalseTokenS = new SpeedyRequest(HTTPUtils.POST_TOKEN,Token.REPLICA_BROADCAST.toString(),null,null,null,DATA_TYPE.BINARY);
         try {
-            rq = RequestPreProcessor.getReplicationRequest(testFalseTokenS,replicationFacade);
+            RequestPreProcessor.getReplicationRequest(testFalseTokenS,replicationFacade);
             fail("Defect Token should cast an exception.");
         }catch(PreProcessException e){
             assertTrue(true);
         } 
-        
-        assertNull(rq);
     }
 
     @SuppressWarnings("unchecked")

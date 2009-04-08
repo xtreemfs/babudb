@@ -11,7 +11,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.Thread.UncaughtExceptionHandler;
 import java.net.InetSocketAddress;
 import java.util.Hashtable;
 import java.util.LinkedList;
@@ -34,21 +33,19 @@ import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
 import org.xtreemfs.babudb.lsmdb.LSMDBWorker;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.replication.InterBabuConnection.BabuDBConnectionException;
 import org.xtreemfs.babudb.replication.Replication.CONDITION;
 import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
-import org.xtreemfs.include.foundation.LifeCycleListener;
 import org.xtreemfs.include.foundation.LifeCycleThread;
 import org.xtreemfs.include.foundation.json.JSONException;
 import org.xtreemfs.include.foundation.json.JSONParser;
-import org.xtreemfs.include.foundation.pinky.HTTPUtils;
-import org.xtreemfs.include.foundation.pinky.PinkyRequest;
 import org.xtreemfs.include.foundation.pinky.PipelinedPinky;
-import org.xtreemfs.include.foundation.pinky.SSLOptions;
-import org.xtreemfs.include.foundation.pinky.HTTPUtils.DATA_TYPE;
 import org.xtreemfs.include.foundation.speedy.MultiSpeedy;
 import org.xtreemfs.include.foundation.speedy.SpeedyRequest;
+
+import static org.xtreemfs.babudb.replication.Token.*;
 
 /**
  * <p>Master-Slave-replication</p>
@@ -65,7 +62,7 @@ import org.xtreemfs.include.foundation.speedy.SpeedyRequest;
  * @author flangner
  *
  */
-class ReplicationThread extends LifeCycleThread implements LifeCycleListener,UncaughtExceptionHandler{
+class ReplicationThread extends LifeCycleThread{
     
     /**
      * <p>Exception occurs while the replication process.</p>
@@ -99,16 +96,8 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
     /** <p>Details for missing file-chunks. File Name + [chunk-beginL,chunk-endL].</p> */
     private PriorityBlockingQueue<Status<Chunk>> missingChunks;
     
-    /**
-     * <p>Table of slaves with their latest acknowledged {@link LSN}s.</p>
-     */
+    /** <p>Table of slaves with their latest acknowledged {@link LSN}s.</p> */
     final SlavesStatus slavesStatus;
-    
-    /** <p>Pinky - Thread.</p> */
-    private final PipelinedPinky pinky;
-    
-    /** <p> {@link MultiSpeedy} - Thread.</p> */
-    private final MultiSpeedy speedy;
     
     /** <p>Holds all variable configuration parameters and is the approach for the complete replication.</p> */
     private final Replication frontEnd;
@@ -116,9 +105,7 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
     /** <p>Flag which implies, that this {@link LifeCycleThread} is running.</p> */
     private boolean running = false;
 
-    /**
-     * <p>Flag which implies the Thread to halt and notify the waiting application.</p>
-     */
+    /** <p>Flag which implies the Thread to halt and notify the waiting application.</p> */
     final AtomicBoolean halt = new AtomicBoolean(false);
     
     /** <p>Lazy holder for the diskLogFile.</p> */
@@ -140,37 +127,15 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
     /**
      * <p>Default constructor. Synchronous start-up for pinky and speedy component.</p>
      * 
-     * @param frontEnd 
-     * @param port 
-     * @param pendingLimit
-     * @param sslOptions
+     * @param frontEnd
      */
-    ReplicationThread(Replication frontEnd, int port, SSLOptions sslOptions) throws ReplicationException{
+    ReplicationThread(Replication frontEnd) throws ReplicationException{
         super((frontEnd.isMaster()) ? "Master" : "Slave");      
         this.frontEnd = frontEnd;
         pending = new PriorityBlockingQueue<Status<Request>>(100,PENDING_QUEUE_COMPARATOR);
         missing = (!frontEnd.isMaster()) ? new PriorityBlockingQueue<Status<LSN>>(100,new PriorityQueueComparator<LSN>()) : null;
         missingChunks = (!frontEnd.isMaster()) ? new PriorityBlockingQueue<Status<Chunk>>(10,new PriorityQueueComparator<Chunk>()) : null;
         this.slavesStatus = new SlavesStatus(frontEnd.slaves);
-
-        try{
-           // setup pinky
-            pinky = new PipelinedPinky(port,null,frontEnd,sslOptions);
-            pinky.setLifeCycleListener(this);
-            pinky.setUncaughtExceptionHandler(this);
-            
-           // setup speedy
-            speedy = new MultiSpeedy(sslOptions);
-            speedy.registerSingleListener(frontEnd);
-            
-            speedy.setLifeCycleListener(this);
-            speedy.setUncaughtExceptionHandler(this);
-        }catch (IOException io){
-            String msg = "Could not initialize the Replication because: "+io.getMessage();
-            Logging.logMessage(Logging.LEVEL_ERROR, this, msg);
-            throw new ReplicationException(msg);
-        }
-
     }
     
 /*
@@ -182,24 +147,10 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
      * @see java.lang.Thread#start()
      */
     @Override
-    public synchronized void start() {
-        try {
-           // start pinky
-            pinky.start();
-            pinky.waitForStartup();
-            
-           // start speedy
-            speedy.start();
-            speedy.waitForStartup();  
-            
-           // start the lifeCycle
-            running = true;
-            super.start();
-        }catch (Exception io){
-            String msg = "ReplicationThread did not start properly, because: "+io.getMessage();
-            Logging.logMessage(Logging.LEVEL_ERROR, this, msg);
-            crashPerformed();
-        }  
+    public synchronized void start() {         
+       // start the lifeCycle
+        running = true;
+        super.start();
     }
     
     /**
@@ -210,8 +161,7 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
         final Checksum checkSum = new CRC32(); 
         Chunk chunk;
         LSMDBRequest context;
-        InetSocketAddress source;
-        PinkyRequest orgReq;            
+        InetSocketAddress source;         
         byte[] data;
         LSN lsn;
         Map<String, List<Long>> metaDataLSM;
@@ -222,8 +172,7 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
           //initializing...
             chunk = null;
             context = null;
-            source = null;
-            orgReq = null;            
+            source = null;         
             data = null;
             lsn = null;
             metaDataLSM = null;
@@ -274,7 +223,6 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                 	
                     chunk = newRequest.getValue().getChunkDetails();
                     source = newRequest.getValue().getSource();
-                    orgReq = newRequest.getValue().getOriginal();
                     context = newRequest.getValue().getContext();
                     data = newRequest.getValue().getData();
                     lsn = newRequest.getValue().getLSN();
@@ -287,28 +235,28 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                      // sends logEntry to the given destinations. as a broadcast, the thread has to continue, without marking the request as finished
                     case REPLICA_BROADCAST :   
                         frontEnd.updateLastWrittenLSN(lsn);                       
-                        if (sendBROADCAST(newRequest,Token.REPLICA)) break;
+                        if (sendBROADCAST(newRequest,REPLICA)) break;
                         continue;
     
+                     // sends a STATE to the given destinations. as a broadcast, the thread has to continue, without marking the request as finished     
+                    case STATE_BROADCAST : 
+                       	if (sendBROADCAST(newRequest, STATE)) break;
+                       	continue;
+                        
                      // sends a CREATE to the given destinations. as a broadcast, the thread has to continue, without marking the request as finished
                     case CREATE: 
-                        if (sendBROADCAST(newRequest, Token.CREATE)) break;
+                        if (sendBROADCAST(newRequest, CREATE)) break;
                         continue;
                      
                      // sends a CREATE to the given destinations. as a broadcast, the thread has to continue, without marking the request as finished   
                     case COPY: 
-                        if (sendBROADCAST(newRequest, Token.COPY)) break;
+                        if (sendBROADCAST(newRequest, COPY)) break;
                         continue;
                         
                      // sends a CREATE to the given destinations. as a broadcast, the thread has to continue, without marking the request as finished   
                     case DELETE: 
-                        if (sendBROADCAST(newRequest, Token.DELETE)) break;
+                        if (sendBROADCAST(newRequest, DELETE)) break;
                         continue;
-                     
-                     // sends a STATE to the given destinations. as a broadcast, the thread has to continue, without marking the request as finished     
-                    case STATE_BROADCAST : 
-                    	if (sendBROADCAST(newRequest, Token.STATE)) break;
-                    	continue;
                         
                      // answers a slaves logEntry request
                     case RQ : 
@@ -333,7 +281,7 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                             try {
                                 diskLogFile.close();
                             }catch (IOException ioe) { /* ignored in this case */ }
-                            orgReq.setResponse(HTTPUtils.SC_NOT_FOUND,"The requested LogEntry is not available, please load the Database. Last on Master: "+last.toString()+" Requested: "+lsn.toString());
+                            sendResponse(newRequest, REPLICA_NA, ReusableBuffer.wrap(lsn.toString().getBytes()));
                             break;
                         }
                         
@@ -353,7 +301,7 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                            // we hit the bullseye
                             if (le.getLSN().equals(lsn)){
                                 try {
-                                    orgReq.setResponse(HTTPUtils.SC_OKAY, le.serialize(checkSum), DATA_TYPE.BINARY);
+                                    sendResponse(newRequest,REPLICA,le.serialize(checkSum));
                                     notFound = false;
                                     checkSum.reset();
                                     le.free();
@@ -377,7 +325,7 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                                 diskLogFile.close();
                             }catch (IOException ioe) { /* ignored in this case */ }
                             frontEnd.babuDBcontextSwitchLock.unlock();
-                            orgReq.setResponse(HTTPUtils.SC_NOT_FOUND,"The requested LogEntry is not available. Load the DB.");
+                            sendResponse(newRequest, REPLICA_NA, ReusableBuffer.wrap(lsn.toString().getBytes()));
                             break; 
                         }
                         
@@ -416,7 +364,7 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                                 filesDetails.putAll(db.getLastestSnapshotFiles());
                             
                              // send these informations back to the slave    
-                            orgReq.setResponse(HTTPUtils.SC_OKAY, ReusableBuffer.wrap(JSONParser.writeJSON(filesDetails).getBytes()), DATA_TYPE.JSON);
+                            sendResponse(newRequest, LOAD_RP, ReusableBuffer.wrap(JSONParser.writeJSON(filesDetails).getBytes()));
                         } catch (Exception e) {      
                         	throw new ReplicationException("LOAD_RQ could not be answered: '"+newRequest.toString()+"', because: "+e.getMessage());
                         } 
@@ -430,7 +378,7 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                             File f = new File(chunk.getFileName());
                             if (!f.exists()) {
                                 Logging.logMessage(Logging.LEVEL_INFO, this, "A requested chunk does not exist anymore: "+chunk.toString());
-                                orgReq.setResponse(HTTPUtils.SC_NOT_FOUND, "The requested chunk does not exist anymore!");
+                                sendResponse(newRequest, CHUNK_NA, ReusableBuffer.wrap(JSONParser.writeJSON(chunk.toJSON()).getBytes()));
                                 break;
                             }
                             if (f.length()<length)
@@ -439,7 +387,7 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                              // get the requested chunk 
                             in.read(bbuf, ((int) chunk.getBegin()), length);
                                          
-                            orgReq.setResponse(HTTPUtils.SC_OKAY, ReusableBuffer.wrap(bbuf), DATA_TYPE.BINARY);
+                            sendResponse(newRequest, CHUNK_RP, ReusableBuffer.wrap(bbuf));
                         } catch (Exception e){     
                         	throw new ReplicationException("CHUNK request could not be answered: '"+newRequest.toString()+"', because: "+e.getMessage());
                         }
@@ -447,8 +395,33 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                         
                   // slave's logic:
                      
+                     // send a ACK to the master
+                    case ACK_RQ:
+                    	sendACK(newRequest);
+                    	break;
+                        
                      // send a LOAD to the master
-                    case LOAD_RQ :                       
+                    case LOAD_RQ : 
+                    	Status<LSN> mLSN;
+                        // cancel all existing missingLSN-requests
+                    	while ((mLSN = missing.peek()) != null){
+	                    	try {
+	                            mLSN.cancel();                   
+	                        } catch (Exception e) {
+	                            Logging.logMessage(Logging.LEVEL_WARN, this, "A missingLSN-request could not be canceled.");
+	                        }
+                    	}
+                    	
+                    	// delete also all existing chunk-requests, because there will be some new
+                    	Status<Chunk> mChunk = null;
+                    	while ((mChunk = missingChunks.peek()) != null){
+                    		try {
+                    			mChunk.cancel();
+                    		} catch (Exception e) {
+                    			Logging.logMessage(Logging.LEVEL_WARN, this, "A missingChunk-request could not be canceled.");
+                    		}
+                    	}
+                    	
                         // delete all previews loaded files 
                         if (frontEnd.getCondition().equals(CONDITION.LOADING)) {
                             frontEnd.switchCondition(CONDITION.RUNNING);
@@ -459,7 +432,9 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                                     getFile(c.getValue()).delete();
                                 }catch (IOException e) { /* ignored in this case */ }
                             } 
-                        }   
+                        }
+                        
+                        // finally send the LOAD-request
                         try {
                             sendLOAD(newRequest);
                         } catch (Exception e){
@@ -479,7 +454,9 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                             context = retrieveRequest(newRequest); 
                             
                             LSN latestLSN = frontEnd.getLastWrittenLSN(); 
-                            Status<LSN> mLSN = new Status<LSN>(lsn,this);
+                            
+                            // change status of the missingLSN-request to pending
+                            mLSN = new Status<LSN>(lsn,this);
                             if (missing.contains(mLSN)) mLSN.pending();
                             
                              // check the sequence#
@@ -533,7 +510,7 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                         break;
                         
                      // evaluates the load details from the master
-                    case LOAD_RP :                        
+                    case LOAD_RP :
                        // make chunks and store them at the missingChunks                       
                        // for each file 
                         for (String fName : metaDataLSM.keySet()) {
@@ -566,13 +543,29 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                             File f = new File(fName);
                             fName = f.getName();
                             if (LSMDatabase.isSnapshotFilename(fName)) frontEnd.updateLastWrittenLSN(LSMDatabase.getSnapshotLSNbyFilename(fName));
-                        }    
+                        }
+                       
+                        // change state of the loadRq to finished
+                    	Status<Request> loadRq = null;
+                    	for (Status<Request> rq : pending){
+                        	if (rq.getValue().getToken().equals(LOAD_RQ)){
+                        		loadRq = rq;
+                        		break;
+                        	}
+                        }
+                    	assert (loadRq!=null) : "LOAD_RP received without sending a request!";
+                    	loadRq.finished();
+                        
                         // make a higher restriction for the nextExpected request
                         setNextExpected(RequestPreProcessor.getExpectedCHUNK_RP(chunk));
                         break;
                         
                      // saves a chunk send by the master
-                    case CHUNK_RP :      
+                    case CHUNK_RP :
+                        // change status of the missingChunk-request to pending
+                        mChunk = new Status<Chunk>(chunk,this);
+                        if (missingChunks.contains(mChunk)) mChunk.pending();
+                    	
                         int length = (int) (chunk.getEnd() - chunk.getBegin());
                                                
                         try {
@@ -589,9 +582,8 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
                   // shared logic
                         
                      // send the LSN for the latest written LogEntry as Response   
-                    case STATE :                                       
-                        orgReq.setResponse(HTTPUtils.SC_OKAY, 
-                                ReusableBuffer.wrap(frontEnd.getLastWrittenLSN().toString().getBytes()), DATA_TYPE.BINARY);
+                    case STATE :
+                    	sendACK(frontEnd.getLastWrittenLSN(),source);
                         break;
                         
                     default : 
@@ -674,14 +666,10 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
      * <p>Sets the nextExpected flag to a higher priority, if necessary.</p>
      * 
      * @param rq
-     * @throws IOException - if an error occurs.
-     * @throws IllegalStateException - if an error occurs.
-
+     * @throws BabuDBConnectionException if an error occurs.
      */
-    private void sendRQ(Status<LSN> rq) throws IllegalStateException, IOException { 
-        SpeedyRequest sReq = new SpeedyRequest(HTTPUtils.POST_TOKEN,Token.RQ.toString(),null,null,ReusableBuffer.wrap(rq.getValue().toString().getBytes()),DATA_TYPE.BINARY);
-        sReq.genericAttatchment = rq;
-        speedy.sendRequest(sReq, frontEnd.master);
+    private void sendRQ(Status<LSN> rq) throws BabuDBConnectionException { 
+        frontEnd.connectionControl.sendRequest(RQ, rq.getValue().toString().getBytes(), rq, frontEnd.master);
         
         // make a better restriction for the nextExpected request
         Request dummy = RequestPreProcessor.getExpectedREPLICA(rq.getValue());
@@ -695,11 +683,10 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
      * <p>Appends the original {@link Request} to the {@link SpeedyRequest}.</p>
      * 
      * @param rq - the original {@link Request}.
-     * @throws IOException - if an error occurs.
-     * @throws IllegalStateException - if an error occurs.
      * @throws ReplicationException if the request status could not be switched.
+     * @throws BabuDBConnectionException if an error occurs.
      */
-    private void sendLOAD() throws IllegalStateException, IOException, ReplicationException { 
+    private void sendLOAD() throws ReplicationException, BabuDBConnectionException { 
         Status<Request> loadRq = new Status<Request> (RequestPreProcessor.getLOAD_RQ(),this);
         pending.add(loadRq);
         loadRq.pending();
@@ -712,14 +699,11 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
      * <p>Appends the original {@link Request} to the {@link SpeedyRequest}.</p>
      * 
      * @param rq - the original {@link Request}.
-     * @throws IOException if an error occurs.
-     * @throws IllegalStateException if an error occurs.
+     * @throws BabuDBConnectionException if an error occurs.
      */
-    private void sendLOAD(Status<Request> rq) throws IllegalStateException, IOException { 
+    private void sendLOAD(Status<Request> rq) throws BabuDBConnectionException { 
         frontEnd.switchCondition(CONDITION.LOADING);
-        SpeedyRequest sReq = new SpeedyRequest(HTTPUtils.POST_TOKEN,Token.LOAD.toString(),null,null,null,DATA_TYPE.BINARY);
-        sReq.genericAttatchment = rq;
-        speedy.sendRequest(sReq, frontEnd.master);
+        frontEnd.connectionControl.sendRequest(LOAD, rq, frontEnd.master);
         
         // make a higher restriction for the nextExpected request
         setNextExpected(RequestPreProcessor.getExpectedLOAD_RP());            
@@ -730,16 +714,11 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
      * <p>Sets the nextExpected flag to a higher priority, if necessary.</p>
      * 
      * @param chunk
-     * @throws JSONException - if an error occurs.
-     * @throws IOException - if an error occurs.
-     * @throws IllegalStateException - if an error occurs.
+     * @throws JSONException if an error occurs.
+     * @throws BabuDBConnectionException if an error occurs.
      */
-    private void sendCHUNK(Status<Chunk> chunk) throws JSONException, IllegalStateException, IOException { 
-        SpeedyRequest sReq = new SpeedyRequest(HTTPUtils.POST_TOKEN,
-                Token.CHUNK.toString(),null,null,
-                ReusableBuffer.wrap(JSONParser.writeJSON(chunk.getValue().toJSON()).getBytes()),DATA_TYPE.JSON);
-        sReq.genericAttatchment = chunk;
-        speedy.sendRequest(sReq, frontEnd.master);    
+    private void sendCHUNK(Status<Chunk> chunk) throws JSONException, BabuDBConnectionException {   
+        frontEnd.connectionControl.sendRequest(CHUNK, JSONParser.writeJSON(chunk.getValue().toJSON()).getBytes(), chunk, frontEnd.master);
         
         // make a higher restriction for the nextExpected request
         Request dummy = RequestPreProcessor.getExpectedCHUNK_RP(chunk.getValue());
@@ -748,6 +727,7 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
     
     /**
      * <p>Sends a {@link Request} <code>rq</code> as broadcast to all available slaves.</p>
+     * <p>Only for meta-operations!</p>
      * 
      * @param rq
      * @throws ReplicationException if an error occurs.
@@ -755,40 +735,85 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
      */
     private boolean sendBROADCAST(Status<Request> rq,Token t) throws ReplicationException {
         int replicasFailed = 0;
-            final int slaveCount = rq.getValue().getDestinations().size();
-            rq.setMaxReceivableResp(slaveCount);
-            rq.setMinExpectableResp(frontEnd.syncN);
-            
-            for (InetSocketAddress slave : rq.getValue().getDestinations()) {
-                // build the request
-                SpeedyRequest srq = new SpeedyRequest(HTTPUtils.POST_TOKEN,
-                                                     t.toString(),null,null,
-                                                     ReusableBuffer.wrap(rq.getValue().getData()),
-                                                     DATA_TYPE.BINARY);
-                srq.genericAttatchment = rq;
-                
-                // send the request
-                try{  
-                    speedy.sendRequest(srq, slave); 
-                } catch (Exception e){
-                    srq.freeBuffer();
+        final int slaveCount = rq.getValue().getDestinations().size();
+        rq.setMaxReceivableResp(slaveCount);
+        rq.setMinExpectableResp(frontEnd.syncN);
+        
+        for (InetSocketAddress slave : rq.getValue().getDestinations()) {
+            // the slave is already up-to-date
+            LSN latestOfSlave = (slave.getAddress() == null) ? null : slavesStatus.get(slave.getAddress()) ;
+            if (rq.getValue().getLSN()!=null && latestOfSlave!=null && latestOfSlave.compareTo(rq.getValue().getLSN()) >= 0){
+                rq.finished();
+            }else{
+                try{
+                	frontEnd.connectionControl.sendRequest(t, rq.getValue().getData(), rq, slave);
+                } catch (BabuDBConnectionException e){
                     replicasFailed++;
                     Logging.logMessage(Logging.LEVEL_WARN, this, t.toString()+" could not be send to slave: '"+slave.toString()+"', because: "+e.getMessage());
                 }
             }
+        }
+        
+         // ASYNC mode unavailable slaves will be ignored for the response   
+        if(frontEnd.syncN > 0){ 
+            String msg = "The replication of '"+rq.getValue().getToken().toString()+"' was not successful. " +
+                         "'"+replicasFailed+"' of '"+slaveCount+"' slaves could not be reached.";
             
-             // ASYNC mode unavailable slaves will be ignored for the response   
-            if(frontEnd.syncN > 0){ 
-	            String msg = "The replication of '"+rq.getValue().getToken().toString()+"' was not successful. " +
-	                         "'"+replicasFailed+"' of '"+slaveCount+"' slaves could not be reached.";
-	            
-	            if (replicasFailed > 0)
-	                for (int i=0;i<replicasFailed;i++)
-	                    rq.failed(msg,frontEnd.maxTries);
-	            
-	            return false;
-            }else
-            	return true;
+            if (replicasFailed > 0)
+                for (int i=0;i<replicasFailed;i++)
+                    if (!rq.failed(msg,frontEnd.maxTries)) break;
+            
+            return false;
+        }else
+            return true;
+    }
+    
+    /**
+     * <p>Sends the response with the given <code>value</code> to the given {@link Request} with the given {@link Token} to the source of the request.</p>
+     * 
+     * @param rq
+     * @param t
+     * @param value
+     * @throws ReplicationException
+     */
+    private void sendResponse(Status<Request> rq, Token t, ReusableBuffer value) throws ReplicationException {
+    	try {
+    		frontEnd.connectionControl.sendRequest(t, value, null, rq.getValue().getSource());
+        } catch (BabuDBConnectionException e) {
+            throw new ReplicationException(t.toString()+" could not be send to : '"+rq.getValue().getSource().toString()+"', because: "+e.getMessage());   
+        }
+    }
+    
+    /**
+     * <p>Generates and enqueues an original LOAD_RQ.</p>
+     * <p>Sends an {@link Token}.ACK for the given {@link LSN} <code>lsn</code> to the master.</p>
+     * <p>This is a send and ignore call.</p>
+     * 
+     * @param request - for retrying purpose.
+     * @throws ReplicationException if the ACK-request could not be marked as failed.
+     */
+    private void sendACK(LSN acknowledgedLSN,InetSocketAddress destination) throws ReplicationException{
+        Status<Request> ackRq = new Status<Request> (RequestPreProcessor.getACK_RQ(acknowledgedLSN, destination),this);
+        pending.add(ackRq);
+        ackRq.pending();
+        sendACK(ackRq);
+    }
+    
+    /**
+     * <p>Sends the given <code>request</code> to the master.</p>
+     * <p>This is a send and ignore call.</p>
+     * 
+     * @param request - for retrying purpose.
+     * @throws ReplicationException if the ACK-request could not be marked as failed.
+     */
+    private void sendACK(Status<Request> request) throws ReplicationException{
+        try {
+            frontEnd.connectionControl.sendRequest(ACK, request.getValue().getLSN().toString().getBytes(), request, frontEnd.master);
+            
+            request.finished();
+        } catch (Exception e) {
+        	request.failed("ACK ("+request.getValue().getLSN().toString()+") could not be send to master: '"+frontEnd.master.toString()+"', because: "+e.getMessage(), frontEnd.maxTries);
+        } 
     }
     
     /**
@@ -914,15 +939,12 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
     <T> void finished(Status<T> rq) throws ReplicationException {
         if (rq.getValue() instanceof Request) {
             Request req = (Request) rq.getValue();
-            PinkyRequest pinkyRq = req.getOriginal();
             LSMDBRequest lsmDBRq = req.getContext();
             
              // send a response to the application, if available
             if (lsmDBRq!=null)
             	lsmDBRq.getListener().insertFinished(lsmDBRq);
-             // send a response to the client, if available
-            if (pinkyRq!=null)
-            	sendResponse(pinkyRq);
+            
         }
         
         remove(rq);
@@ -941,22 +963,14 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
         if (rq.getValue() instanceof Request) {
             Request req = (Request) rq.getValue();
             LSMDBRequest lsmDBRq = req.getContext();
-            PinkyRequest pinkyRq = req.getOriginal();
             
              // send a response to the application, if available
             if (lsmDBRq!=null)
                 lsmDBRq.getListener().requestFailed(lsmDBRq, 
                             new BabuDBException(ErrorCode.REPLICATION_FAILURE,reason));            
-             // send a response to the client, if available
-            if (pinkyRq!=null){
-            	if (!pinkyRq.responseSet)
-            		pinkyRq.setResponse(HTTPUtils.SC_SERVER_ERROR, reason);
-            	
-            	sendResponse(pinkyRq);
-            }
             
              // send a error message to the administrator, if no other instance is available
-            if (pinkyRq==null && lsmDBRq == null) {
+            if (lsmDBRq == null) {
             	Logging.logMessage(Logging.LEVEL_ERROR, this, reason);
             	frontEnd.dbInterface.replication_runtime_failure(reason);
             }
@@ -990,36 +1004,6 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
     }
     
     /**
-     * <p>Checks the {@link PinkyRequest} <code>rq</code> against <code>null</code>, before sending a Response.</p>
-     * 
-     * @param rq
-     */
-    void sendResponse(PinkyRequest rq) {
-        if (rq!=null) {
-            if (!rq.responseSet)
-                rq.setResponse(HTTPUtils.SC_OKAY); 
-            
-            pinky.sendResponse(rq);                
-        }      
-    }
-    
-    /**
-     * <p>Sends an {@link Token}.ACK for the given {@link LSN} <code>lsn</code> to the master.</p>
-     * <p>This is a send and ignore call.</p>
-     * 
-     * @param request - for retrying purpose.
-     * @throws ReplicationException - if an error occurs.
-     */
-    void sendACK(Request request) throws ReplicationException{
-        try {
-            SpeedyRequest sReq = new SpeedyRequest(HTTPUtils.POST_TOKEN,Token.ACK.toString(),null,null,ReusableBuffer.wrap(request.getLSN().toString().getBytes()),DATA_TYPE.BINARY);
-            speedy.sendRequest(sReq, frontEnd.master);
-        } catch (Exception e) {
-            throw new ReplicationException("ACK ("+request.getLSN().toString()+") could not be send to master: '"+frontEnd.master.toString()+"', because: "+e.getLocalizedMessage());   
-        } 
-    }
-    
-    /**
      * <p>Changes the replication mechanism behavior to master.</p>
      */
     void toMaster(){
@@ -1044,76 +1028,12 @@ class ReplicationThread extends LifeCycleThread implements LifeCycleListener,Unc
     }
     
     /**
-     * <p>Shuts the {@link ReplicationThread} down gracefully. All connections are closed.</p>
+     * <p>Shuts the {@link ReplicationThread} down gracefully.</p>
      * @throws Exception 
      */
     void shutdown() throws Exception {
-        running = false;
-        pinky.shutdown();
-        speedy.shutdown();
-        pinky.waitForShutdown();
-        speedy.waitForShutdown();        
+        running = false;       
     }
-
-/*
- * LifeCycleListener for Pinky & Speedy
- */
-    
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.foundation.LifeCycleListener#crashPerformed()
-     */  
-    @Override
-    public void crashPerformed() {
-        String message = "";
-        if (frontEnd.isMaster())
-            message = "A component of the Master ReplicationThread crashed. The ReplicationThread will be shut down.";
-        else
-            message = "A component of the Slave ReplicationThread crashed. The ReplicationThread will be shut down.";
-        Logging.logMessage(Logging.LEVEL_ERROR, this, message);       
-
-        running = false;
-        if (pinky!=null && pinky.isAlive()) pinky.shutdown();
-        if (speedy!=null && speedy.isAlive()) speedy.shutdown();  
-        notifyCrashed(new ReplicationException(message));
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.foundation.LifeCycleListener#shutdownPerformed()
-     */
-    @Override
-    public void shutdownPerformed() {
-        String message = "";
-        if (frontEnd.isMaster())
-            message = "Master ReplicationThread component stopped.";
-        else
-            message = "Slave ReplicationThread component stopped.";
-        Logging.logMessage(Logging.LEVEL_INFO, this, message);      
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.foundation.LifeCycleListener#startupPerformed()
-     */
-    @Override
-    public void startupPerformed() {
-        String message = "";
-        if (frontEnd.isMaster())
-            message = "Master ReplicationThread component started.";
-        else
-            message = "Slave ReplicationThread component started.";
-        Logging.logMessage(Logging.LEVEL_INFO, this, message);  
-    }
-    
-    /*
-     * (non-Javadoc)
-     * @see java.lang.Thread.UncaughtExceptionHandler#uncaughtException(java.lang.Thread, java.lang.Throwable)
-     */
-    @Override
-    public void uncaughtException(Thread t, Throwable e) {
-        Logging.logMessage(Logging.LEVEL_ERROR, this, "Critical error in thread: "+t.getName()+" because: "+e.getLocalizedMessage());
-    }  
     
 /*
  * Getter/Setter for the 'nextExpected' flag
