@@ -7,32 +7,33 @@
  */
 package org.xtreemfs.babudb.replication;
 
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.xtreemfs.babudb.replication.ReplicationThread.ReplicationException;
 import org.xtreemfs.include.common.logging.Logging;
 
+import static org.xtreemfs.babudb.replication.Status.STATE.*;
+
 /**
- * <p>Wrapper that adds a state to an <T>, that has to be requested.</p>
- * <p>Method compareTo first orders by status and if equal by <T>.</p>
+ * <p>Wrapper that adds a state to an object of T, that has to be requested.</p>
  * <p>Counts failed attempts to match retry-restriction and ACKs from broadcast requests.</p>
  * 
  * @author flangner
  * @param <T>
  */
-class Status<T> {   	
+class Status<T> {   
+	static enum STATE {OPEN,PENDING,DONE}
+	
     private             T               rq       = null;
-        
-    private final       AtomicBoolean   pending 		= new AtomicBoolean(false);
- 
+
     /** counter for failed attempts to process this {@link Request} */
     private final       AtomicInteger   failedAttempts          = new AtomicInteger(0);
     
     /** status of an broadCast request - the expected responses */
     private final       AtomicInteger   maxReceivableResp       = new AtomicInteger(1);
     private final       AtomicInteger   minExpectableResp       = new AtomicInteger(0);
-    private final 	AtomicBoolean	done			= new AtomicBoolean(false);
+    private final 		AtomicReference<STATE> state			= new AtomicReference<STATE>(OPEN);
     
     /** back-link to the queues */
     private final   ReplicationThread   statusListener;   
@@ -42,7 +43,7 @@ class Status<T> {
      */
     Status() {
         this(null,(ReplicationThread) null);
-        this.pending.set(true);
+        this.state.set(PENDING);
     }
     
     /**
@@ -60,7 +61,7 @@ class Status<T> {
      */
     Status(T c,boolean pending){
     	this(c,(ReplicationThread) null);
-    	this.pending.set(pending);
+    	if (pending) this.state.set(PENDING);
     }
     
     /**
@@ -79,7 +80,7 @@ class Status<T> {
  * getter/setter    
  */   
     boolean isPending(){
-    	return this.pending.get();
+    	return this.state.get().equals(PENDING);
     }
     
     T getValue(){
@@ -110,7 +111,7 @@ class Status<T> {
      * @throws ReplicationException if status could not be changed.
      */
 	void pending() throws ReplicationException {
-		pending.set(true);
+		state.set(PENDING);
 		statusListener.statusChanged(this);
 	}    
     
@@ -119,7 +120,7 @@ class Status<T> {
      * @throws ReplicationException if status could not be changed.
      */
     void retry() throws ReplicationException {
-    	pending.set(false);
+    	state.set(OPEN);
     	maxReceivableResp.set(1);
     	minExpectableResp.set(0);
     	statusListener.statusChanged(this);
@@ -130,10 +131,10 @@ class Status<T> {
      * @return <code>true</code> if minExpected is gt the maxReceivable. In other word, if the request has failed. false otherwise.
      */
     boolean waitFor() {
-    	synchronized (done) {
-    	    while (!done.get()) {
+    	synchronized (state) {
+    	    while (!state.get().equals(DONE)) {
 		try {
-		    done.wait();
+		    state.wait();
 		}catch (InterruptedException e) { /* ignored */ }
     	    }
 	}
@@ -185,13 +186,13 @@ class Status<T> {
      * @throws ReplicationException if request could not be removed.
      */
     void cancel() throws ReplicationException {     
-        assert(pending.get()) : "An open request cannot be done!";
+        assert(state.get().equals(PENDING)) : "An open request cannot be done!";
         assert (statusListener!=null) : "A dummy cannot be obsolete!";
-        synchronized(done){
-            if (!done.get()) {
+        synchronized(state){
+            if (!state.equals(DONE)) {
         	statusListener.remove(this);
-        	done.set(true);
-        	done.notifyAll();
+        	state.set(DONE);
+        	state.notifyAll();
             }
         }
     }
@@ -203,16 +204,17 @@ class Status<T> {
      */
     void finished() throws ReplicationException {
         assert (statusListener!=null) : "A dummy cannot be finished!";
-        assert (pending.get()) : "An open request cannot be finished!";
-        synchronized(done) {
-            if (!done.get()) {
-                if (decreaseMinExpectableResp()) {  
-                    statusListener.finished(this);
-                    done.set(true);
-                    done.notifyAll();
-                }
-            }
-        } 
+        if (state.get().equals(PENDING)) {
+	        synchronized(state) {
+	            if (!state.get().equals(DONE)) {
+	                if (decreaseMinExpectableResp()) {  
+	                    statusListener.finished(this);
+	                    state.set(DONE);
+	                    state.notifyAll();
+	                }
+	            }
+	        }
+        }
     }
     
     /**
@@ -222,12 +224,13 @@ class Status<T> {
      * @param reason
      * @param maxTries
      * @throws ReplicationException if the request could not be marked as failed.
+     * @return true, if the request could be marked as failed, false if it was already marked as failed.
      */
-    void failed(String reason,int maxTries) throws ReplicationException {
+    boolean failed(String reason,int maxTries) throws ReplicationException {
         assert (statusListener != null) : "A dummy cannot fail!";
-        assert (pending.get()) : "An open request cannot fail!";
-        synchronized(done) {
-        	if (!done.get()) {
+        if (!state.get().equals(PENDING)) return false;
+        synchronized(state) {
+        	if (!state.get().equals(DONE)) {
         		// check, if it has completely failed
 	            if (!decreaseMaxReceivableResp()) {
 	            	// check, if there are retry-attempts left
@@ -239,12 +242,13 @@ class Status<T> {
 	            		// it has really failed
 	            		Logging.logMessage(Logging.LEVEL_TRACE, this, "Giving up after '"+maxTries+"' attempts to: "+rq.toString());
 	            		statusListener.failed(this,reason);
-	            	        done.set(true);
-	            	        done.notifyAll();
+	            	        state.set(DONE);
+	            	        state.notifyAll();
 	            	}
 	            }
         	} 
         }
+        return true;
     }
     
     /*
@@ -267,8 +271,8 @@ class Status<T> {
      */
     @Override
     public String toString() {  
-        String string = ((pending.get()) ? "PENDING" : "OPEN")+": "+((rq!=null) ? rq.toString() : "n.a.");
-        if (pending.get())
+        String string = state.get()+": "+((rq!=null) ? rq.toString() : "n.a.");
+        if (!state.get().equals(OPEN))
             string+="This request failed for '"+failedAttempts.get()+"' times,";
         
         return string;       

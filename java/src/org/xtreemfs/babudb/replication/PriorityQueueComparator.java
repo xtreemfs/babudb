@@ -51,6 +51,10 @@ class PriorityQueueComparator<T> implements Comparator<Status<T>> {
                     case CHUNK:                 return rq1.getChunkDetails().compareTo(rq2.getChunkDetails());
                     
                     // slave
+                    case ACK_RQ: 				if (rq1.getLSN().equals(rq2.getLSN()))
+                    								return -1;
+                    			 				else
+                    			 					return rq1.getLSN().compareTo(rq2.getLSN());
                     case REPLICA:               return rq1.getLSN().compareTo(rq2.getLSN());
                     case CHUNK_RP:              return rq1.getChunkDetails().compareTo(rq2.getChunkDetails());
                     

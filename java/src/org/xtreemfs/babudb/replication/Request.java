@@ -15,7 +15,6 @@ import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
-import org.xtreemfs.include.foundation.pinky.PinkyRequest;
 
 /**
  * <p>Interface for a replication request.</p>
@@ -70,11 +69,6 @@ interface Request {
      * @return the context for response issues.
      */
     LSMDBRequest getContext();
-        
-    /**
-     * @return the original request for response issues too.
-     */
-    PinkyRequest getOriginal();
     
     /**
      * @return the lsmDbMetaData

@@ -33,13 +33,15 @@ enum Token {
 /*
  * Regular replication and failure Tokens.
  */
+    /** Slave is requested to send an ACK with the given LSN to the appended destination. */
+    ACK_RQ,
     
     /** Acknowledgment from a Slave to the Master for the latest added {@link org.xtreemfs.babudb.log.LogEntry}. 
      *  Is a real request and a sub-request retrieved from the response.
      */
     ACK,
     
-    /** Slave is asked to send a LOAD to the master. */
+    /** Slave is requested to send a LOAD to the master. */
     LOAD_RQ,
     
     /** Response for a complete database load, till a specified LSN. */
@@ -66,6 +68,16 @@ enum Token {
     /** Request for a complete database load, till a specified LSN. */
     LOAD,
     
-    /** Request for a missing {@link Chunk} to a slave */
+    /** Request for a missing {@link Chunk} to a slave. */
     CHUNK,  
+    
+/*
+ * Lowest priority for requests handled by the RequestPreProcessor.
+ */
+    
+    /** Response if a requested logEntry was not available. */
+    REPLICA_NA,
+    
+    /** Response if a requested chunk was not available. */
+    CHUNK_NA,
 }
