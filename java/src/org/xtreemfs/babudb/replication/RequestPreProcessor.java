@@ -128,11 +128,15 @@ class RequestPreProcessor {
             
             try {
                 result.lsn = new LSN(new String(theRequest.getBody()));
+    
+                if (frontEnd.slavesStatus.update(source,result.lsn))
+                    if (frontEnd.dbInterface.dbCheckptr!=null) // otherwise the checkIntervall is 0
+                        frontEnd.dbInterface.dbCheckptr.designateRecommendedCheckpoint(frontEnd.slavesStatus.getLatestCommonLSN());
             }catch (Exception e) {
                 result.free();
                 throw THIS.new PreProcessException("The LSN of an ACK could not be decoded because: "+e.getMessage()+" | Source: "+result.getSource());
             }                
-            break;
+            return null;
         
         case RQ:
             if (!frontEnd.isDesignatedSlave(result.source))

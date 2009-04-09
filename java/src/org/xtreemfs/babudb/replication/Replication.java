@@ -105,6 +105,9 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
     /** <p>The user defined maximum count of attempts every {@link Request}. <code>0</code> means infinite number of retries.</p> */
     final int                           maxTries;
     
+    /** <p>Table of slaves with their latest acknowledged {@link LSN}s.</p> */
+    final SlavesStatus slavesStatus;
+    
     /**
      * <p>Actual chosen synchronization mode.</p>
      * <p>syncN == 0: asynchronous mode</br>
@@ -138,6 +141,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
         assert (babu!=null) : "Replication misses the DB interface.";
         assert (lock!=null) : "Replication misses the DB-switch-lock.";
         
+        this.slavesStatus = new SlavesStatus(slaves);
         this.babuDBcontextSwitchLock = lock;
         this.syncN = mode;
         this.slaves = slaves;
@@ -168,6 +172,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
         assert (babu!=null) : "Replication misses the DB interface.";
         assert (lock!=null) : "Replication misses the DB-switch-lock.";
 
+        this.slavesStatus = new SlavesStatus(null);
         this.babuDBcontextSwitchLock = lock;
         this.syncN = mode;
         this.master = master;
@@ -307,7 +312,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
         
         Map<InetSocketAddress,LSN> result = new HashMap<InetSocketAddress, LSN>();
         for (InetSocketAddress babu : babuDBs)
-        	result.put(babu,replication.slavesStatus.get(babu));
+            result.put(babu,slavesStatus.get(babu));
 
         return result;
     }
@@ -412,9 +417,8 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
         try {
             Request rq = RequestPreProcessor.getReplicationRequest(theRequest,this);   
             
-            if (rq!=null)
-	            if (rq!=null && !replication.enqueueRequest(rq))
-	            	throw replication.new ReplicationException("The received request could not be appended to the pending queue. \n"+rq.toString());            	
+            if (rq!=null && !replication.enqueueRequest(rq))
+        	throw replication.new ReplicationException("The received request could not be appended to the pending queue. \n"+rq.toString());            	
             
             connectionControl.sendResponse(theRequest);
         }catch (PreProcessException e){

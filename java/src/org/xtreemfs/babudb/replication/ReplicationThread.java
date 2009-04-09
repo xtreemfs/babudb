@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
@@ -87,6 +88,9 @@ class ReplicationThread extends LifeCycleThread{
     /** <p>Milliseconds idle-time, if the pending and the missing queues are empty.</p> */
     final static int TIMEOUT_GRANULARITY = 250;
     
+    /** <p>Maximal amount of open requests, that can be send to the master.</p> */
+    final static int MAX_OPEN_REQUESTS = 10;
+    
     /** <p>Requests that are waiting to be done.</p> */
     private final PriorityBlockingQueue<Status<Request>> pending;
     
@@ -95,9 +99,6 @@ class ReplicationThread extends LifeCycleThread{
     
     /** <p>Details for missing file-chunks. File Name + [chunk-beginL,chunk-endL].</p> */
     private PriorityBlockingQueue<Status<Chunk>> missingChunks;
-    
-    /** <p>Table of slaves with their latest acknowledged {@link LSN}s.</p> */
-    final SlavesStatus slavesStatus;
     
     /** <p>Holds all variable configuration parameters and is the approach for the complete replication.</p> */
     private final Replication frontEnd;
@@ -124,6 +125,9 @@ class ReplicationThread extends LifeCycleThread{
     /** <p>The default comparator for the order at the pending queue.</p> */
     private final PriorityQueueComparator<Request> PENDING_QUEUE_COMPARATOR = new PriorityQueueComparator<Request>();
     
+    /** <p>All current open master requests.</p> */
+    private final AtomicInteger openMasterRequest = new AtomicInteger(0);
+    
     /**
      * <p>Default constructor. Synchronous start-up for pinky and speedy component.</p>
      * 
@@ -135,7 +139,6 @@ class ReplicationThread extends LifeCycleThread{
         pending = new PriorityBlockingQueue<Status<Request>>(100,PENDING_QUEUE_COMPARATOR);
         missing = (!frontEnd.isMaster()) ? new PriorityBlockingQueue<Status<LSN>>(100,new PriorityQueueComparator<LSN>()) : null;
         missingChunks = (!frontEnd.isMaster()) ? new PriorityBlockingQueue<Status<Chunk>>(10,new PriorityQueueComparator<Chunk>()) : null;
-        this.slavesStatus = new SlavesStatus(frontEnd.slaves);
     }
     
 /*
@@ -153,9 +156,7 @@ class ReplicationThread extends LifeCycleThread{
         super.start();
     }
     
-    /**
-     * <p>Work the requestQueue <code>pending</code>.</p>
-     */
+    /** <p>Work the requestQueue <code>pending</code>.</p> */
     @Override
     public void run() {  
         final Checksum checkSum = new CRC32(); 
@@ -179,7 +180,7 @@ class ReplicationThread extends LifeCycleThread{
             idle = true;
             
           // check for missing LSNs and missing file chunks (just for slaves)          
-            if (!frontEnd.isMaster()) {
+            if (!frontEnd.isMaster() && openMasterRequest.get()<MAX_OPEN_REQUESTS) {
                 try{
                    // if there are any missing file chunks
                     Status<Chunk> missingChunk = missingChunks.peek();
@@ -187,7 +188,8 @@ class ReplicationThread extends LifeCycleThread{
                         missingChunk.pending();
                         idle = false;
                         try {
-                            sendCHUNK(missingChunk);     
+                            sendCHUNK(missingChunk); 
+                            openMasterRequest.incrementAndGet();
                         } catch (Exception e) {
                         	missingChunk.failed(e.getMessage(), frontEnd.maxTries);
                         		
@@ -201,6 +203,7 @@ class ReplicationThread extends LifeCycleThread{
 	                        idle = false;
 	                        try {
 	                            sendRQ(missingLSN);
+	                            openMasterRequest.incrementAndGet();
 	                        } catch (Exception e) {
 	                        	missingLSN.failed(e.getMessage(), frontEnd.maxTries);
 	                        }
@@ -334,13 +337,6 @@ class ReplicationThread extends LifeCycleThread{
                         }catch (IOException ioe) { /* ignored in this case */ }                       
                         frontEnd.babuDBcontextSwitchLock.unlock();
                         break;
-                     
-                     // appreciates the ACK of a slave
-                    case ACK :         
-                        if (slavesStatus.update(source,lsn))
-                            if (frontEnd.dbInterface.dbCheckptr!=null) // otherwise the checkIntervall is 0
-                                frontEnd.dbInterface.dbCheckptr.designateRecommendedCheckpoint(slavesStatus.getLatestCommonLSN());
-                        break;
                     
                      // answers a LOAD request of a slave
                     case LOAD :     
@@ -402,6 +398,7 @@ class ReplicationThread extends LifeCycleThread{
                         
                      // send a LOAD to the master
                     case LOAD_RQ : 
+                	openMasterRequest.set(0);
                     	Status<LSN> mLSN;
                         // cancel all existing missingLSN-requests
                     	while ((mLSN = missing.peek()) != null){
@@ -470,7 +467,6 @@ class ReplicationThread extends LifeCycleThread{
                                     			" be put back into the pending queue,"+
                                                 "\r\n\t because: "+e.getMessage());
                                     }
-                                    continue; // don't send a response at the end of the progress
                                  // get the lost sequences and put it back on pending
                                 } else if (latestLSN.getSequenceNo() < lsn.getSequenceNo()) {
                                     LSN missingLSN = new LSN (latestLSN.getViewId(),latestLSN.getSequenceNo()+1L);
@@ -482,7 +478,6 @@ class ReplicationThread extends LifeCycleThread{
                                         missingLSN = new LSN (missingLSN.getViewId(),missingLSN.getSequenceNo()+1L);
                                     } while (missingLSN.compareTo(lsn)<0);   
                                     newRequest.retry();
-                                    continue; // don't send a response at the end of the progress
                                 }
                             // get an initial copy from the master    
                             } else if (latestLSN.getViewId() < lsn.getViewId()){
@@ -493,9 +488,9 @@ class ReplicationThread extends LifeCycleThread{
                                 	throw new ReplicationException("Load could not be send.");
                                 }  
                                 newRequest.retry();
-                                continue; // don't send a response at the end of the progress
                             } else {
                                 Logging.logMessage(Logging.LEVEL_WARN, this, "The Master seems to be out of order. Strange LSN received: '"+lsn.toString()+"'; latest LSN is: "+latestLSN.toString());
+                                break;
                             }                           
                         } catch (IOException ioe) {
                             try {
@@ -505,9 +500,8 @@ class ReplicationThread extends LifeCycleThread{
                             	throw new ReplicationException("Load could not be send.");
                             }
                             newRequest.retry();
-                            continue; // don't send a response at the end of the progress
                         }
-                        break;
+                        continue; // don't send a response at the end of the progress
                         
                      // evaluates the load details from the master
                     case LOAD_RP :
@@ -576,7 +570,8 @@ class ReplicationThread extends LifeCycleThread{
                         	throw new ReplicationException("Chunk could not be written to disk: "+chunk.toString()+"\n"+
                                     "because: "+e.getMessage());
                         }
-                        Logging.logMessage(Logging.LEVEL_TRACE, this, "Chunk written: "+chunk.toString());                  
+                        Logging.logMessage(Logging.LEVEL_TRACE, this, "Chunk written: "+chunk.toString());  
+                        openMasterRequest.decrementAndGet();
                         break;
                         
                   // shared logic
@@ -741,7 +736,7 @@ class ReplicationThread extends LifeCycleThread{
         
         for (InetSocketAddress slave : rq.getValue().getDestinations()) {
             // the slave is already up-to-date
-            LSN latestOfSlave = (slave.getAddress() == null) ? null : slavesStatus.get(slave.getAddress()) ;
+            LSN latestOfSlave = (slave.getAddress() == null) ? null : frontEnd.slavesStatus.get(slave.getAddress()) ;
             if (rq.getValue().getLSN()!=null && latestOfSlave!=null && latestOfSlave.compareTo(rq.getValue().getLSN()) >= 0){
                 rq.finished();
             }else{
@@ -945,6 +940,7 @@ class ReplicationThread extends LifeCycleThread{
             if (lsmDBRq!=null)
             	lsmDBRq.getListener().insertFinished(lsmDBRq);
             
+            if (req.getToken() == REPLICA) openMasterRequest.decrementAndGet();
         }
         
         remove(rq);
@@ -1011,7 +1007,7 @@ class ReplicationThread extends LifeCycleThread{
         missing = null;
         missingChunks = null;
         
-        slavesStatus.clear();
+        frontEnd.slavesStatus.clear();
     }
     
     /**
@@ -1024,7 +1020,7 @@ class ReplicationThread extends LifeCycleThread{
         if (missingChunks == null)
         	missingChunks = new PriorityBlockingQueue<Status<Chunk>>(10,new PriorityQueueComparator<Chunk>());
         
-        slavesStatus.clear();
+        frontEnd.slavesStatus.clear();
     }
     
     /**
