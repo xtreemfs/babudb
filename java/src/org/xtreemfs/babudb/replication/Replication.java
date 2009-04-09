@@ -429,7 +429,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
             connectionControl.sendResponse(theRequest);
         }catch (ReplicationException re){
             // if a request could not be parsed because,or the queue limit was reached
-            Logging.logMessage(Logging.LEVEL_ERROR, this, re.getMessage());
+            Logging.logMessage(Logging.LEVEL_WARN, this, re.getMessage());
             if (!theRequest.responseSet) theRequest.setResponse(HTTPUtils.SC_SERV_UNAVAIL, re.getMessage());
             else assert(false) : "This request must not have already set a response: "+theRequest.toString();
             connectionControl.sendResponse(theRequest);
