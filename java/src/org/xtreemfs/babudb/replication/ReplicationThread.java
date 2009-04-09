@@ -383,7 +383,10 @@ class ReplicationThread extends LifeCycleThread{
                              // get the requested chunk 
                             in.read(bbuf, ((int) chunk.getBegin()), length);
                                          
-                            sendResponse(newRequest, CHUNK_RP, ReusableBuffer.wrap(bbuf));
+                            List<Object> chunkBuffer = chunk.toJSON();
+                            chunkBuffer.add(bbuf);
+                            
+                            sendResponse(newRequest, CHUNK_RP, ReusableBuffer.wrap(JSONParser.writeJSON(chunkBuffer).getBytes()));
                         } catch (Exception e){     
                         	throw new ReplicationException("CHUNK request could not be answered: '"+newRequest.toString()+"', because: "+e.getMessage());
                         }
@@ -567,8 +570,8 @@ class ReplicationThread extends LifeCycleThread{
                             FileOutputStream fO = new FileOutputStream(getFile(chunk));
                             fO.write(data, (int) chunk.getBegin(), length);
                         } catch (Exception e) {
-                        	throw new ReplicationException("Chunk could not be written to disk: "+chunk.toString()+"\n"+
-                                    "because: "+e.getMessage());
+                            throw new ReplicationException("Chunk could not be written to disk: "+chunk.toString()+"\n"+
+                                    			   "because: "+e.getMessage());
                         }
                         Logging.logMessage(Logging.LEVEL_TRACE, this, "Chunk written: "+chunk.toString());  
                         openMasterRequest.decrementAndGet();
