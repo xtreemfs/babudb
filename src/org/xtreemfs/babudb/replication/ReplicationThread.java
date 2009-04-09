@@ -481,6 +481,9 @@ class ReplicationThread extends LifeCycleThread{
                                         missingLSN = new LSN (missingLSN.getViewId(),missingLSN.getSequenceNo()+1L);
                                     } while (missingLSN.compareTo(lsn)<0);   
                                     newRequest.retry();
+                                } else {
+                                    Logging.logMessage(Logging.LEVEL_INFO, this, "The received LogEntry with LSN '"+lsn.toString()+"' is already in. Latest LSN is: "+latestLSN.toString());
+                                    break;
                                 }
                             // get an initial copy from the master    
                             } else if (latestLSN.getViewId() < lsn.getViewId()){
