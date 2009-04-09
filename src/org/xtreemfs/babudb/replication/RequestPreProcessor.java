@@ -203,14 +203,31 @@ class RequestPreProcessor {
             }
             break;
             
+        case CHUNK_RP:
+            if (!frontEnd.isDesignatedMaster(result.source)) 
+                throw THIS.new PreProcessException(slaveSecurityMsg,HTTPUtils.SC_UNAUTHORIZED);
+            
+            JSONString jsonString = new JSONString(new String(theRequest.getBody()));
+            List<Object> data;
+            try {
+		data = (List<Object>) JSONParser.parseJSON(jsonString);
+	        result.data = (byte[]) data.remove(data.size()-1);
+	        result.chunkDetails = new Chunk(data);
+            } catch (JSONException e) {
+                result.free();
+                throw THIS.new PreProcessException("CHUNK_RP could not be performed because: "+e.getMessage()+" | Source: "+result.getSource());
+            }
+
+            break;
+            
         case CREATE:
             if (!frontEnd.isDesignatedMaster(result.source))
                 throw THIS.new PreProcessException(slaveSecurityMsg,HTTPUtils.SC_UNAUTHORIZED);
 
             try {
                // parse details
-                JSONString jsonString = new JSONString(new String(theRequest.getBody()));
-                List<Object> data = (List<Object>) JSONParser.parseJSON(jsonString);
+                jsonString = new JSONString(new String(theRequest.getBody()));
+                data = (List<Object>) JSONParser.parseJSON(jsonString);
                 
                 frontEnd.dbInterface.proceedCreate((String) data.get(0),Integer.parseInt((String) data.get(1)) );
             } catch (Exception e) {
@@ -225,8 +242,8 @@ class RequestPreProcessor {
             
             try {
                // parse details
-                JSONString jsonString = new JSONString(new String(theRequest.getBody()));
-                List<Object> data = (List<Object>) JSONParser.parseJSON(jsonString);
+                jsonString = new JSONString(new String(theRequest.getBody()));
+                data = (List<Object>) JSONParser.parseJSON(jsonString);
                 
                 frontEnd.dbInterface.proceedCopy((String) data.get(0),(String) data.get(1), null, null);
             } catch (Exception e) {
@@ -241,8 +258,8 @@ class RequestPreProcessor {
 
             try {
                // parse details
-                JSONString jsonString = new JSONString(new String(theRequest.getBody()));
-                List<Object> data = (List<Object>) JSONParser.parseJSON(jsonString);
+                jsonString = new JSONString(new String(theRequest.getBody()));
+                data = (List<Object>) JSONParser.parseJSON(jsonString);
                 
                 frontEnd.dbInterface.proceedDelete((String) data.get(0),Boolean.valueOf((String) data.get(1)));
             } catch (Exception e) {
