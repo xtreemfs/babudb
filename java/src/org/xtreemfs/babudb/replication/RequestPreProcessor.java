@@ -133,7 +133,6 @@ class RequestPreProcessor {
                     if (frontEnd.dbInterface.dbCheckptr!=null) // otherwise the checkIntervall is 0
                         frontEnd.dbInterface.dbCheckptr.designateRecommendedCheckpoint(frontEnd.slavesStatus.getLatestCommonLSN());
             }catch (Exception e) {
-                result.free();
                 throw THIS.new PreProcessException("The LSN of an ACK could not be decoded because: "+e.getMessage()+" | Source: "+result.getSource());
             }                
             return null;
@@ -145,7 +144,6 @@ class RequestPreProcessor {
             try {
                 result.lsn = new LSN(new String(theRequest.getBody()));
             }catch (Exception e) {
-                result.free();
                 throw THIS.new PreProcessException("The LSN of a RQ could not be decoded because: "+e.getMessage()+" | Source: "+result.getSource());
             }
             break;
@@ -159,7 +157,6 @@ class RequestPreProcessor {
                 JSONString jsonString = new JSONString(new String(theRequest.getBody()));
                 result.chunkDetails = new Chunk((List<Object>) JSONParser.parseJSON(jsonString));
             } catch (Exception e) {
-                result.free();
                 throw THIS.new PreProcessException("Chunk details could for a CHUNK_RQ not be decoded because: "+e.getMessage()+" | Source: "+result.getSource());
             }
             break;    
@@ -198,7 +195,6 @@ class RequestPreProcessor {
             	
                 assert(result.lsmDbMetaData!=null);
             } catch (Exception e){
-            	result.free();
             	throw THIS.new PreProcessException("The data of a LOAD_RP could not be retrieved because: "+e.getMessage()+" | Source: "+result.getSource().toString());
             }
             break;
@@ -214,7 +210,6 @@ class RequestPreProcessor {
 	        result.data = (byte[]) data.remove(data.size()-1);
 	        result.chunkDetails = new Chunk(data);
             } catch (JSONException e) {
-                result.free();
                 throw THIS.new PreProcessException("CHUNK_RP could not be performed because: "+e.getMessage()+" | Source: "+result.getSource());
             }
 
@@ -231,7 +226,6 @@ class RequestPreProcessor {
                 
                 frontEnd.dbInterface.proceedCreate((String) data.get(0),Integer.parseInt((String) data.get(1)) );
             } catch (Exception e) {
-                result.free();
                 throw THIS.new PreProcessException("CREATE could not be performed because: "+e.getMessage()+" | Source: "+result.getSource());
             }
             return null;
@@ -247,7 +241,6 @@ class RequestPreProcessor {
                 
                 frontEnd.dbInterface.proceedCopy((String) data.get(0),(String) data.get(1), null, null);
             } catch (Exception e) {
-                result.free();
                 throw THIS.new PreProcessException("COPY could not be performed because: "+e.getMessage()+" | Source: "+result.getSource());
             }
             return null;
@@ -263,7 +256,6 @@ class RequestPreProcessor {
                 
                 frontEnd.dbInterface.proceedDelete((String) data.get(0),Boolean.valueOf((String) data.get(1)));
             } catch (Exception e) {
-                result.free();
                 throw THIS.new PreProcessException("DELETE could not be performed because: "+e.getMessage()+" | Source: "+result.getSource());
             }
             return null;
@@ -284,7 +276,7 @@ class RequestPreProcessor {
             // make a load request
             result.token = LOAD_RQ;
             Logging.logMessage(Logging.LEVEL_WARN, THIS, "Requested chunk was not found; DB will be loaded soon.");
-        	break;
+            break;
             
        // shared     
         case STATE: 
@@ -293,7 +285,6 @@ class RequestPreProcessor {
             break;
             
         default:
-            result.free();
             throw THIS.new PreProcessException("Unknown Request received: "+result.toString(),HTTPUtils.SC_BAD_REQUEST);
         } 
         

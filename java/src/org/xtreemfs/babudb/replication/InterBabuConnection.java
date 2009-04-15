@@ -175,7 +175,7 @@ class InterBabuConnection implements UncaughtExceptionHandler, LifeCycleListener
     void sendRequest(Token token, ReusableBuffer buffer, Object attachment, InetSocketAddress destination) throws BabuDBConnectionException{
 	    SpeedyRequest sReq = new SpeedyRequest(HTTPUtils.POST_TOKEN,
 	            token.toString(),null,null,
-	            buffer,DATA_TYPE.JSON);
+	            buffer,DATA_TYPE.BINARY);
 	    sReq.genericAttatchment = attachment;
 	    
 	    try{

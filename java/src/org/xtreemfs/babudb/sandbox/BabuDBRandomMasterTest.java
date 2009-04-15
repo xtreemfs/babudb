@@ -89,7 +89,7 @@ public class BabuDBRandomMasterTest {
 			
             System.out.println("done.");
 			
-            int nOsequenceNO = random.nextInt((int)RandomGenerator.MAX_SEQUENCENO);
+            int nOsequenceNO = random.nextInt((int)(RandomGenerator.MAX_SEQUENCENO-RandomGenerator.MIN_SEQUENCENO))+(int) RandomGenerator.MIN_SEQUENCENO;
             System.out.print("Performing "+nOsequenceNO+" insert/delete operations ...");
             LSN lsn = new LSN(0,0L);
             time = System.currentTimeMillis();
