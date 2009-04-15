@@ -626,7 +626,12 @@ class ReplicationThread extends LifeCycleThread{
             }      
         }
         
-        if (running) notifyCrashed(new Exception("ReplicationThread crashed for an unknown reason!"));       
+        if (running) notifyCrashed(new Exception("ReplicationThread crashed for an unknown reason!")); 
+        //free buffers of the requests at the pending queue
+        else
+            for (Status<Request> rq : pending)
+        	rq.getValue().free();
+            
         notifyStopped();
     }
     
