@@ -32,31 +32,32 @@ import static org.xtreemfs.babudb.sandbox.RandomGenerator.Operation.*;
  */
 
 public class RandomGenerator {
-	public final static int MAX_INSERTS_PER_GROUP = 10;
-	public final static int MIN_INSERTS_PER_GROUP = 5;
-	public final static int MAX_DELETES_PER_GROUP = 5;
-	public final static int MIN_DELETES_PER_GROUP = 3;
-	public final static int MAX_META_OPERATIONS_PER_VIEWID = 3;
-	public final static int MIN_META_OPERATIONS_PER_VIEWID = 1;
-	public final static int MAX_INDICES = 10;
-	public final static int MIN_INDICES = 2;
-	public final static int MAX_KEY_LENGTH = 10;
-	public final static int MIN_KEY_LENGTH = 3;
-	public final static int MAX_VALUE_LENGTH = 30;
-	public final static int MIN_VALUE_LENGTH = 10;
+    public final static int MAX_INSERTS_PER_GROUP = 10;
+    public final static int MIN_INSERTS_PER_GROUP = 5;
+    public final static int MAX_DELETES_PER_GROUP = 5;
+    public final static int MIN_DELETES_PER_GROUP = 3;
+    public final static int MAX_META_OPERATIONS_PER_VIEWID = 3;
+    public final static int MIN_META_OPERATIONS_PER_VIEWID = 1;
+    public final static int MAX_INDICES = 10;
+    public final static int MIN_INDICES = 2;
+    public final static int MAX_KEY_LENGTH = 10;
+    public final static int MIN_KEY_LENGTH = 3;
+    public final static int MAX_VALUE_LENGTH = 30;
+    public final static int MIN_VALUE_LENGTH = 10;
+    
+    public final static int MAX_VIEWID = 11;
+    public final static long MAX_SEQUENCENO;
+    public final static long MIN_SEQUENCENO = 100L;
 	
-	public final static int MAX_VIEWID = 11;
-	public final static long MAX_SEQUENCENO = 10007L;
-	
-	// table of tables of meta operations ordered by their viewId
-	public final Map<Integer,List<List<Object>>> operationsScenario = new HashMap<Integer,List<List<Object>>>();
+    // table of tables of meta operations ordered by their viewId
+    public final Map<Integer,List<List<Object>>> operationsScenario = new HashMap<Integer,List<List<Object>>>();
 	
     private final static byte[] CHARS;
-    private final static long[] prims;
+    private final static long[] prims = new long[MAX_VIEWID];
     private final static String[] dbPrefixes;
     
-	// map that shows at which viewIds a DB given by its name and number of indices exists.
-	private final Map<Integer, List<Object[]>> dbExist = new HashMap<Integer, List<Object[]>>();
+    // map that shows at which viewIds a DB given by its name and number of indices exists.
+    private final Map<Integer, List<Object[]>> dbExist = new HashMap<Integer, List<Object[]>>();
     private InsertGroup lastISG = null;
 	
     /** Meta-operations supported by the BabuDB-replication */
@@ -73,18 +74,18 @@ public class RandomGenerator {
             CHARS[charptr++] = (byte)i;
     
         // have to be big (>10000) and ascending ordered
-        prims = new long[MAX_VIEWID];
-        prims[0] = MAX_SEQUENCENO;
-        prims[1] = 10009L;
-        prims[2] = 10037L;
-        prims[3] = 10039L;
-        prims[4] = 10061L;
-        prims[5] = 10067L;
-        prims[6] = 10069L;
-        prims[7] = 10079L;
-        prims[8] = 10091L;
-        prims[9] = 10093L;
-        prims[10] = 10099L;
+        prims[0] = 3001L;
+        prims[1] = 3011L;
+        prims[2] = 3019L;
+        prims[3] = 3023L;
+        prims[4] = 3037L;
+        prims[5] = 3041L;
+        prims[6] = 3049L;
+        prims[7] = 3061L;
+        prims[8] = 3079L;
+        prims[9] = 3083L;
+        prims[10] = 3089L;
+        MAX_SEQUENCENO = prims[0];
         
         dbPrefixes = new String[5];
         dbPrefixes[0] = "db";
