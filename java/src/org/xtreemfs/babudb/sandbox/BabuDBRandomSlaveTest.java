@@ -98,14 +98,17 @@ public class BabuDBRandomSlaveTest {
             
             	int event = random.nextInt(100);
             	if (event<P_CCHECK) {
-            		performConsistencyCheck();        		
-            		ccheck = true;
+            	    System.out.println("CONISTENCY CHECK:");
+            	    performConsistencyCheck();        		
+            	    ccheck = true;
             	}else if (event<(P_CCHECK+P_CLEAN_RESTART)){
-            		performCleanAndRestart(random, master, slaves);
-            		ccheck = false;
+            	    System.out.println("CLEAN RESTART:");
+            	    performCleanAndRestart(random, master, slaves);
+            	    ccheck = false;
             	}else{
-            		performRestart(random, master, slaves);
-            		ccheck = false;
+            	    System.out.println("RESTART:");
+            	    performRestart(random, master, slaves);
+            	    ccheck = false;
             	}
             }
 	}
@@ -127,7 +130,6 @@ public class BabuDBRandomSlaveTest {
 	    Thread.sleep(downTime);
 		
             DBS = (BabuDBImpl) BabuDBFactory.getSlaveBabuDB(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, master, slaves, Replication.SLAVE_PORT, null, Replication.DEFAULT_MAX_Q);
-            System.out.println("Restart performed.");
 	}
 	
 	/**
@@ -152,7 +154,6 @@ public class BabuDBRandomSlaveTest {
             p.waitFor();
         
             DBS = (BabuDBImpl) BabuDBFactory.getSlaveBabuDB(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, master, slaves, Replication.SLAVE_PORT, null, Replication.DEFAULT_MAX_Q);
-            System.out.println("Clean restart performed.");
 	}
 	
 	/**
@@ -167,13 +168,14 @@ public class BabuDBRandomSlaveTest {
 		for (int i=0;i<lookupGroup.size();i++){
 		    byte[] value = DBS.hiddenLookup(lookupGroup.dbName, lookupGroup.getIndex(i), lookupGroup.getKey(i));
 		    if (!new String(value).equals(new String(lookupGroup.getValue(i)))) {
-			System.err.println("ConsistencyCheck failed for LSN ("+last.toString()+")!" +
+			System.err.println("FAILED for LSN ("+last.toString()+")!" +
 					"\n"+new String(value)+" != "+new String(lookupGroup.getValue(i)));
 			System.exit(1);
 		    }
 		}
-		System.out.println("ConsistencyCheck for LSN ("+last.toString()+") was successful.");
-	    }
+		System.out.println("SUCCESSFUL for LSN ("+last.toString()+").");
+	    } else 
+		System.err.println("No 'last LSN' could be retrieved.");
 	    
 	    DBS.replication_resume();
 	}

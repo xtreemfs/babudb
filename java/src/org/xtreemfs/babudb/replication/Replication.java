@@ -85,7 +85,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
     private ReplicationThread           replication     = null;
     
     /** <p>Controls the connection between the different BabuDBSystems.</p> */
-    final InterBabuConnection			connectionControl; 
+    final InterBabuConnection		connectionControl; 
     
     /** <p>Needed for the replication of service functions like create,copy and delete.</p> */
     final BabuDBImpl                    dbInterface;
@@ -324,12 +324,22 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
      */
     public void shutdown() throws BabuDBException {
         try {
-            if (condition.equals(RUNNING)){
-                replication.shutdown();
-                replication.waitForShutdown();
-            }
-            connectionControl.shutdown();
-            switchCondition(DEAD);
+            if (!condition.equals(DEAD) && !condition.equals(STOPPED)){
+        	synchronized (lock) {
+                    synchronized (replication.halt) {
+                        replication.halt.set(true);
+                        replication.halt.wait();
+                        
+                        connectionControl.shutdown();
+                        replication.shutdown();
+                        
+                        replication.halt.set(false);
+                        replication.halt.notify();
+                    }
+                    replication.waitForShutdown();
+                    switchCondition(DEAD);
+        	}
+            }    
         } catch (Exception e) {
             dbInterface.replication_runtime_failure(e.getMessage());
             throw new BabuDBException(ErrorCode.IO_ERROR,"Failed to stop replication.",e.getCause());
