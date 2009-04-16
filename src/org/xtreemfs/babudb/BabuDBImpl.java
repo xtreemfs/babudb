@@ -313,6 +313,10 @@ public class BabuDBImpl implements BabuDB {
         
         Logging.logMessage(Logging.LEVEL_INFO, this, "starting log replay");
         LSN nextLSN = replayLogs();
+        
+        // XXX
+        Logging.logMessage(Logging.LEVEL_ERROR, this, "Latest: "+latest.toString()+" dbLSN: "+dbLsn.toString()+" replayLSN: "+nextLSN.toString());
+        
         if (dbLsn.compareTo(nextLSN) > 0) {
             nextLSN = dbLsn;
         }

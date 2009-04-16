@@ -247,7 +247,10 @@ public class DiskLogger extends Thread {
         fdes = fos.getFD();
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "switched log files... new name: " + currentLogFileName);
         
-        if (incrementViewId) this.currentViewId.incrementAndGet();
+        if (incrementViewId){
+            this.currentViewId.incrementAndGet();
+            this.nextLogSequenceNo.set(1L);
+        }
         return lastSyncedLSN;
     }
 

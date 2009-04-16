@@ -170,6 +170,19 @@ class ReplicationThread extends LifeCycleThread{
         
         super.notifyStarted();
         while (running) {
+            
+          // halt, if necessary
+            synchronized (halt){
+                while (halt.get() == true){
+                    halt.notify();
+                    try {
+                        halt.wait();
+                    } catch (InterruptedException e) {
+                        Logging.logMessage(Logging.LEVEL_WARN, this, "Waiting for context switch was interrupted.");
+                    }
+                }
+            } 
+            
           //initializing...
             chunk = null;
             context = null;
@@ -342,27 +355,31 @@ class ReplicationThread extends LifeCycleThread{
                     case LOAD :     
                      // Make the LSM-file metaData JSON compatible, for sending it to a slave
                         try {
-                            Map<String,List<Long>> filesDetails = new Hashtable<String, List<Long>>();
-                            String path;
-                            long length;
-                            
-                             // add the DB-structure-file metadata
-                            path = frontEnd.dbInterface.getDBConfigPath();
-                            length = new File(path).length();
-                            
-                            List<Long> parameters = new LinkedList<Long>();
-                            parameters.add(length);
-                            parameters.add(Replication.CHUNK_SIZE);
-                            filesDetails.put(path, parameters);
-                           
-                             // add the latest snapshot files for every DB, if available
-                            for (LSMDatabase db : frontEnd.dbInterface.databases.values())
-                                filesDetails.putAll(db.getLastestSnapshotFiles());
-                            
-                             // send these informations back to the slave    
-                            sendResponse(newRequest, LOAD_RP, ReusableBuffer.wrap(JSONParser.writeJSON(filesDetails).getBytes()));
+                            if (frontEnd.lastOnView!=null && lsn.equals(frontEnd.lastOnView)) {
+                        	sendResponse(newRequest, LOAD_RP, null);
+                            }else{
+                                Map<String,List<Long>> filesDetails = new Hashtable<String, List<Long>>();
+                                String path;
+                                long length;
+                                
+                                 // add the DB-structure-file metadata
+                                path = frontEnd.dbInterface.getDBConfigPath();
+                                length = new File(path).length();
+                                
+                                List<Long> parameters = new LinkedList<Long>();
+                                parameters.add(length);
+                                parameters.add(Replication.CHUNK_SIZE);
+                                filesDetails.put(path, parameters);
+                               
+                                 // add the latest snapshot files for every DB, if available
+                                for (LSMDatabase db : frontEnd.dbInterface.databases.values())
+                                    filesDetails.putAll(db.getLastestSnapshotFiles());
+                                
+                                // send these informations back to the slave    
+                                sendResponse(newRequest, LOAD_RP, ReusableBuffer.wrap(JSONParser.writeJSON(filesDetails).getBytes()));
+                            }
                         } catch (Exception e) {      
-                        	throw new ReplicationException("LOAD_RQ could not be answered: '"+newRequest.toString()+"', because: "+e.getMessage());
+                            throw new ReplicationException("LOAD_RQ could not be answered: '"+newRequest.toString()+"', because: "+e.getMessage());
                         } 
                         break;                                                    
                         
@@ -405,21 +422,21 @@ class ReplicationThread extends LifeCycleThread{
                     	Status<LSN> mLSN;
                         // cancel all existing missingLSN-requests
                     	while ((mLSN = missing.peek()) != null){
-	                    	try {
-	                            mLSN.cancel();                   
-	                        } catch (Exception e) {
-	                            Logging.logMessage(Logging.LEVEL_WARN, this, "A missingLSN-request could not be canceled.");
-	                        }
+	                    try {
+	                        mLSN.cancel();                   
+	                    } catch (Exception e) {
+	                        Logging.logMessage(Logging.LEVEL_WARN, this, "A missingLSN-request could not be canceled.");
+	                    }
                     	}
                     	
                     	// delete also all existing chunk-requests, because there will be some new
                     	Status<Chunk> mChunk = null;
                     	while ((mChunk = missingChunks.peek()) != null){
-                    		try {
-                    			mChunk.cancel();
-                    		} catch (Exception e) {
-                    			Logging.logMessage(Logging.LEVEL_WARN, this, "A missingChunk-request could not be canceled.");
-                    		}
+                    	    try {
+                		mChunk.cancel();
+                    	    } catch (Exception e) {
+                		Logging.logMessage(Logging.LEVEL_WARN, this, "A missingChunk-request could not be canceled.");
+                    	    }
                     	}
                     	
                         // delete all previews loaded files 
@@ -438,7 +455,7 @@ class ReplicationThread extends LifeCycleThread{
                         try {
                             sendLOAD(newRequest);
                         } catch (Exception e){
-                        	throw new ReplicationException("LOAD could not be send to master: '"+frontEnd.master.toString()+"', because: "+e.getMessage());
+                            throw new ReplicationException("LOAD could not be send to master: '"+frontEnd.master.toString()+"', because: "+e.getMessage());
                         }
                         break;
                         
@@ -485,22 +502,36 @@ class ReplicationThread extends LifeCycleThread{
                                     Logging.logMessage(Logging.LEVEL_INFO, this, "The received LogEntry with LSN '"+lsn.toString()+"' is already in. Latest LSN is: "+latestLSN.toString());
                                     break;
                                 }
-                            // get an initial copy from the master    
+                            // get an initial copy from the master, if necessary
                             } else if (latestLSN.getViewId() < lsn.getViewId()){
-                                try {
-                                    sendLOAD();
-                                    Logging.logMessage(Logging.LEVEL_INFO, this, "LOAD was send successfully.");
-                                } catch (Exception e) {
-                                	throw new ReplicationException("Load could not be send.");
-                                }  
-                                newRequest.retry();
+                        	// store the LogEntry, if it is expected
+                        	if (nextExpected.get().getValue()!=null && 
+                        	    nextExpected.get().getValue().getLSN()!=null && 
+                        	    lsn.equals(nextExpected.get().getValue().getLSN())){
+                                    try {
+                                        writeLogEntry(newRequest,context);
+                                    } catch (InterruptedException e) {
+                                    	throw new ReplicationException("LogEntry could not be written and will" +
+                                    			" be put back into the pending queue,"+
+                                                "\r\n\t because: "+e.getMessage());
+                                    }
+                                // send the load
+                        	} else {
+                                    try {
+                                        sendLOAD((latestLSN.getViewId()+1 == lsn.getViewId()) ? latestLSN : new LSN(0,0L));
+                                        Logging.logMessage(Logging.LEVEL_INFO, this, "LOAD was send successfully.");
+                                    } catch (Exception e) {
+                                        throw new ReplicationException("Load could not be send.");
+                                    }  
+                                    newRequest.retry();
+                        	}
                             } else {
                                 Logging.logMessage(Logging.LEVEL_WARN, this, "The Master seems to be out of order. Strange LSN received: '"+lsn.toString()+"'; latest LSN is: "+latestLSN.toString());
                                 break;
                             }                           
                         } catch (IOException ioe) {
                             try {
-                                sendLOAD();
+                                sendLOAD(new LSN(0,0L));
                                 Logging.logMessage(Logging.LEVEL_INFO, this, ioe.getMessage()+" - LOAD was send successfully.");
                             } catch (Exception e) {
                             	throw new ReplicationException("Load could not be send.");
@@ -511,53 +542,59 @@ class ReplicationThread extends LifeCycleThread{
                         
                      // evaluates the load details from the master
                     case LOAD_RP :
-                       // make chunks and store them at the missingChunks                       
-                       // for each file 
-                        for (String fName : metaDataLSM.keySet()) {
-                            Long fileSize = metaDataLSM.get(fName).get(0);
-                            Long chunkSize = metaDataLSM.get(fName).get(1);
-                            
-                            assert (fileSize>0L) : "Empty files are not allowed.";
-                            assert (chunkSize>0L) : "Empty chunks are not allowed.";
-                            
-                           // calculate chunks and add them to the list 
-                            Long[] range = new Long[2];
-                            range[0] = 0L;
-                            for (long i=chunkSize;i<fileSize;i+=chunkSize) {
-                                range[1] = i;
-                                chunk = new Chunk(fName,range[0],range[1]);
-                                missingChunks.add(new Status<Chunk>(chunk,this));
-                                Logging.logMessage(Logging.LEVEL_TRACE, this, "Chunk added: "+chunk.toString());
-                                range = new Long[2];
-                                range[0] = i;
+                	if (metaDataLSM == null){
+                	    frontEnd.switchCondition(CONDITION.RUNNING);
+                	    
+                	    // make a higher restriction for the nextExpected request
+                            setNextExpected(RequestPreProcessor.getExpectedREPLICA(new LSN(frontEnd.getLastWrittenLSN().getViewId()+1,1L)));
+                	}else{
+                           // make chunks and store them at the missingChunks                       
+                           // for each file 
+                            for (String fName : metaDataLSM.keySet()) {
+                                Long fileSize = metaDataLSM.get(fName).get(0);
+                                Long chunkSize = metaDataLSM.get(fName).get(1);
+                                
+                                assert (fileSize>0L) : "Empty files are not allowed.";
+                                assert (chunkSize>0L) : "Empty chunks are not allowed.";
+                                
+                               // calculate chunks and add them to the list 
+                                Long[] range = new Long[2];
+                                range[0] = 0L;
+                                for (long i=chunkSize;i<fileSize;i+=chunkSize) {
+                                    range[1] = i;
+                                    chunk = new Chunk(fName,range[0],range[1]);
+                                    missingChunks.add(new Status<Chunk>(chunk,this));
+                                    Logging.logMessage(Logging.LEVEL_TRACE, this, "Chunk added: "+chunk.toString());
+                                    range = new Long[2];
+                                    range[0] = i;
+                                }
+                                
+                               // put the last chunk
+                                if ((range[0]-fileSize)!=0L) {
+                                    chunk = new Chunk(fName,range[0],fileSize);
+                                    missingChunks.add(new Status<Chunk>(chunk,this));
+                                    Logging.logMessage(Logging.LEVEL_TRACE, this, "Chunk added: "+chunk.toString());
+                                } 
+                                
+                               // change the latest LSN to the one expected after loading
+                                File f = new File(fName);
+                                fName = f.getName();
+                                if (LSMDatabase.isSnapshotFilename(fName)) frontEnd.updateLastWrittenLSN(LSMDatabase.getSnapshotLSNbyFilename(fName));
                             }
-                            
-                           // put the last chunk
-                            if ((range[0]-fileSize)!=0L) {
-                                chunk = new Chunk(fName,range[0],fileSize);
-                                missingChunks.add(new Status<Chunk>(chunk,this));
-                                Logging.logMessage(Logging.LEVEL_TRACE, this, "Chunk added: "+chunk.toString());
-                            } 
-                            
-                           // change the latest LSN to the one expected after loading
-                            File f = new File(fName);
-                            fName = f.getName();
-                            if (LSMDatabase.isSnapshotFilename(fName)) frontEnd.updateLastWrittenLSN(LSMDatabase.getSnapshotLSNbyFilename(fName));
-                        }
-                       
+                           
+                            // make a higher restriction for the nextExpected request
+                            setNextExpected(RequestPreProcessor.getExpectedCHUNK_RP(chunk));
+                	}
                         // change state of the loadRq to finished
-                    	Status<Request> loadRq = null;
-                    	for (Status<Request> rq : pending){
-                        	if (rq.getValue().getToken().equals(LOAD_RQ)){
-                        		loadRq = rq;
-                        		break;
-                        	}
+                	Status<Request> loadRq = null;
+                	for (Status<Request> rq : pending){
+                	    if (rq.getValue().getToken().equals(LOAD_RQ)){
+                		loadRq = rq;
+                        	break;
+                	    }
                         }
-                    	assert (loadRq!=null) : "LOAD_RP received without sending a request!";
-                    	loadRq.finished();
-                        
-                        // make a higher restriction for the nextExpected request
-                        setNextExpected(RequestPreProcessor.getExpectedCHUNK_RP(chunk));
+                	assert (loadRq!=null) : "LOAD_RP received without sending a request!";
+                	loadRq.finished();
                         break;
                         
                      // saves a chunk send by the master
@@ -576,7 +613,7 @@ class ReplicationThread extends LifeCycleThread{
                             throw new ReplicationException("Chunk could not be written to disk: "+chunk.toString()+"\n"+
                                     			   "because: "+e.getMessage());
                         }
-                        Logging.logMessage(Logging.LEVEL_TRACE, this, "Chunk written: "+chunk.toString());  
+                        Logging.logMessage(Logging.LEVEL_ERROR, this, "Chunk written: "+chunk.toString());  
                         openMasterRequest.decrementAndGet();
                         break;
                         
@@ -603,18 +640,6 @@ class ReplicationThread extends LifeCycleThread{
                 	}
                 }     
             } 
-                       
-            // halt, if necessary
-            synchronized (halt){
-                while (halt.get() == true){
-                    halt.notify();
-                    try {
-                        halt.wait();
-                    } catch (InterruptedException e) {
-                        Logging.logMessage(Logging.LEVEL_WARN, this, "Waiting for context switch was interrupted.");
-                    }
-                }
-            }  
             
             // sleep, if idle 
             if (idle) {
@@ -638,7 +663,7 @@ class ReplicationThread extends LifeCycleThread{
     /**
      * @param rq
      * @return the LSMDBRequest retrieved from the logEntry
-     * @throws IOException - if the DB is not consistent and should be loaded.
+     * @throws IOException if the DB is not consistent and should be loaded.
      */
     private LSMDBRequest retrieveRequest (Status<Request> rq) throws IOException{
         // build a LSMDBRequest
@@ -659,7 +684,7 @@ class ReplicationThread extends LifeCycleThread{
      * 
      * @param context
      * @param rq - the original request
-     * @throws InterruptedException - if an error occurs.
+     * @throws InterruptedException if an error occurs.
      */
     private void writeLogEntry(Status<Request> rq,LSMDBRequest context) throws InterruptedException{
         int dbId = context.getInsertData().getDatabaseId();
@@ -688,12 +713,12 @@ class ReplicationThread extends LifeCycleThread{
      * <p>Sets the nextExpected flag to a higher priority.</p>
      * <p>Appends the original {@link Request} to the {@link SpeedyRequest}.</p>
      * 
-     * @param rq - the original {@link Request}.
+     * @param lsn - the last acknowledged LSN.
      * @throws ReplicationException if the request status could not be switched.
      * @throws BabuDBConnectionException if an error occurs.
      */
-    private void sendLOAD() throws ReplicationException, BabuDBConnectionException { 
-        Status<Request> loadRq = new Status<Request> (RequestPreProcessor.getLOAD_RQ(),this);
+    private void sendLOAD(LSN lsn) throws ReplicationException, BabuDBConnectionException { 
+        Status<Request> loadRq = new Status<Request> (RequestPreProcessor.getLOAD_RQ(lsn),this);
         pending.add(loadRq);
         loadRq.pending();
         sendLOAD(loadRq);
@@ -709,7 +734,8 @@ class ReplicationThread extends LifeCycleThread{
      */
     private void sendLOAD(Status<Request> rq) throws BabuDBConnectionException { 
         frontEnd.switchCondition(CONDITION.LOADING);
-        frontEnd.connectionControl.sendRequest(LOAD, rq, frontEnd.master);
+        frontEnd.connectionControl.sendRequest(LOAD, 
+        	rq.getValue().getLSN().toString().getBytes(), rq, frontEnd.master);
         
         // make a higher restriction for the nextExpected request
         setNextExpected(RequestPreProcessor.getExpectedLOAD_RP());            
@@ -1078,5 +1104,31 @@ class ReplicationThread extends LifeCycleThread{
      */
     private void resetNextExpected() {
     	setNextExpected(LOWEST_PRIORITY_REQUEST);
+    }
+    
+    /**
+     * @return the state of the replication-queues.
+     */
+    @Override
+    public String toString() {
+	String result = "Thread:\n";
+        result += "NextExpected: "+nextExpected.get().toString()+"\n";
+	result += "PENDING:\n";
+        for (Status<Request> rq : pending)
+            result += rq.toString()+"\n";
+        
+        if (missing!=null){
+            result += "MISSING LSN:\n";
+            for (Status<LSN> mLSN : missing)
+                result += mLSN.toString()+"\n";
+        }
+        
+        if (missingChunks!=null){
+            result += "MISSING CHUNK:\n";
+            for (Status<Chunk> mChunk : missingChunks)
+        	result += mChunk.toString()+"\n";
+        }
+        
+        return result;
     }
 }
