@@ -46,7 +46,7 @@ public final class BufferPool {
      * if true all allocate/free operations record the stack trace.
      * Useful to find memory leaks but slow.
      */
-    protected static final boolean recordStackTraces = false;
+    protected static final boolean recordStackTraces = true;
 
     /**
      * Creates a new instance of BufferPool

@@ -194,8 +194,6 @@ class Status<T> {
     void cancel() throws ReplicationException {     
         assert (statusListener!=null) : "A dummy cannot be obsolete!";
         synchronized(state){
-            assert(state.get().equals(PENDING)) : "An open request cannot be done!";
-            
             if (!state.equals(DONE)) {
         	statusListener.remove(this);
         	state.set(DONE);

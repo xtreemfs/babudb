@@ -37,14 +37,14 @@ public class BabuDBRandomSlaveTest {
 	public final static int P_CCHECK = 100-(P_RESTART+P_CLEAN_RESTART);
 	
 	// the interval to sleep, if consistency-check has occurred before
-	public final static int CCHECK_SLEEP_INTERVAL = 3*60*1000;
+	public final static int CCHECK_SLEEP_INTERVAL = 30*1000; // 3*60*1000
 	
 	// the interval to sleep, if any other event occurred before
-	public final static int MIN_SLEEP_INTERVAL = 20*60*1000;
-	public final static int MAX_SLEEP_INTERVAL = 30*60*1000;
+	public final static int MIN_SLEEP_INTERVAL = 3*60*1000; // 20*60*1000 
+	public final static int MAX_SLEEP_INTERVAL = 5*60*1000; // 30*60*1000
 	
-	public final static int MIN_DOWN_TIME = 60*1000;
-	public final static int MAX_DOWN_TIME = 10*60*1000;
+	public final static int MIN_DOWN_TIME = 60*1000;	
+	public final static int MAX_DOWN_TIME = 2*60*1000;	// 10*60*1000
 	
 	public final static String PATH = "/tmp/babuDB/slave"; // /scratch/babuDB/data/slave
 	public final static int NUM_WKS = 1;
@@ -93,7 +93,7 @@ public class BabuDBRandomSlaveTest {
             	else
             		sleepInterval = random.nextInt(MAX_SLEEP_INTERVAL-MIN_SLEEP_INTERVAL)+MIN_SLEEP_INTERVAL;
             	
-            	System.out.println("Thread will be suspended for "+sleepInterval/60000+" minutes.");
+            	System.out.println("Thread will be suspended for "+sleepInterval/60000.0+" minutes.");
             	Thread.sleep(sleepInterval);
             
             	int event = random.nextInt(100);
@@ -175,7 +175,7 @@ public class BabuDBRandomSlaveTest {
 		}
 		System.out.println("SUCCESSFUL for LSN ("+last.toString()+").");
 	    } else 
-		System.err.println("No 'last LSN' could be retrieved.");
+		System.err.println("No 'last LSN' could be retrieved, because the slave is LOADING from the master.");
 	    
 	    DBS.replication_resume();
 	}

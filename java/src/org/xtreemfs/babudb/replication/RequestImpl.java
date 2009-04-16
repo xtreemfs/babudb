@@ -181,8 +181,7 @@ class RequestImpl implements Request {
                 return source.equals(rq.getSource());
                 
             case LOAD_RP:
-                return (source.equals(rq.getSource())
-                        && lsmDbMetaData.equals(rq.getLsmDbMetaData()));
+                return source.equals(rq.getSource());
                 
             case LOAD_RQ: return true;
                 

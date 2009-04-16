@@ -18,6 +18,7 @@ import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.replication.Replication.CONDITION;
 import org.xtreemfs.babudb.replication.ReplicationThread.ReplicationException;
 import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
@@ -164,6 +165,12 @@ class RequestPreProcessor {
         case LOAD:
             if (!frontEnd.isDesignatedSlave(result.source))
                 throw THIS.new PreProcessException(masterSecurityMsg,HTTPUtils.SC_UNAUTHORIZED); 
+            
+            try {
+                result.lsn = new LSN(new String(theRequest.getBody()));
+            }catch (Exception e) {
+                throw THIS.new PreProcessException("The LSN of a LOAD could not be decoded because: "+e.getMessage()+" | Source: "+result.getSource());
+            }
             break;   
             
        // for slave    
@@ -190,10 +197,11 @@ class RequestPreProcessor {
             
             try {
                 // parse details
-                JSONString jsonString = new JSONString(new String(theRequest.getBody()));
-                result.lsmDbMetaData = (Map<String, List<Long>>) JSONParser.parseJSON(jsonString);
-            	
-                assert(result.lsmDbMetaData!=null);
+        	byte[] data = theRequest.getBody();
+            	if (data != null){
+                    JSONString jsonString = new JSONString(new String(theRequest.getBody()));
+                    result.lsmDbMetaData = (Map<String, List<Long>>) JSONParser.parseJSON(jsonString);
+        	}
             } catch (Exception e){
             	throw THIS.new PreProcessException("The data of a LOAD_RP could not be retrieved because: "+e.getMessage()+" | Source: "+result.getSource().toString());
             }
@@ -224,7 +232,10 @@ class RequestPreProcessor {
                 jsonString = new JSONString(new String(theRequest.getBody()));
                 data = (List<Object>) JSONParser.parseJSON(jsonString);
                 
-                frontEnd.dbInterface.proceedCreate((String) data.get(0),Integer.parseInt((String) data.get(1)) );
+                if (frontEnd.getCondition()!=CONDITION.LOADING)
+                    frontEnd.dbInterface.proceedCreate((String) data.get(0),Integer.parseInt((String) data.get(1)) );
+                else 
+                    throw new Exception ("Slave is busy because of an initial LOAD. Try again later.");
             } catch (Exception e) {
                 throw THIS.new PreProcessException("CREATE could not be performed because: "+e.getMessage()+" | Source: "+result.getSource());
             }
@@ -239,7 +250,10 @@ class RequestPreProcessor {
                 jsonString = new JSONString(new String(theRequest.getBody()));
                 data = (List<Object>) JSONParser.parseJSON(jsonString);
                 
-                frontEnd.dbInterface.proceedCopy((String) data.get(0),(String) data.get(1), null, null);
+                if (frontEnd.getCondition()!=CONDITION.LOADING)
+                    frontEnd.dbInterface.proceedCopy((String) data.get(0),(String) data.get(1), null, null);
+                else
+                    throw new Exception ("Slave is busy because of an initial LOAD. Try again later.");
             } catch (Exception e) {
                 throw THIS.new PreProcessException("COPY could not be performed because: "+e.getMessage()+" | Source: "+result.getSource());
             }
@@ -254,7 +268,10 @@ class RequestPreProcessor {
                 jsonString = new JSONString(new String(theRequest.getBody()));
                 data = (List<Object>) JSONParser.parseJSON(jsonString);
                 
-                frontEnd.dbInterface.proceedDelete((String) data.get(0),Boolean.valueOf((String) data.get(1)));
+                if (frontEnd.getCondition()!=CONDITION.LOADING)
+                    frontEnd.dbInterface.proceedDelete((String) data.get(0),Boolean.valueOf((String) data.get(1)));
+                else
+                    throw new Exception ("Slave is busy because of an initial LOAD. Try again later.");
             } catch (Exception e) {
                 throw THIS.new PreProcessException("DELETE could not be performed because: "+e.getMessage()+" | Source: "+result.getSource());
             }
@@ -674,8 +691,10 @@ class RequestPreProcessor {
         if (error!=null){
             if ((error.getErrorCode().equals(ErrorCode.NO_SUCH_DB) || 
                  error.getErrorCode().equals(ErrorCode.NO_SUCH_INDEX))){
-
-                return new RequestImpl(LOAD_RQ);               
+        	
+        	RequestImpl rq = new RequestImpl(LOAD_RQ);
+        	rq.lsn = new LSN(0,0L);
+                return rq;               
             }
         }
         return null;
@@ -689,11 +708,13 @@ class RequestPreProcessor {
     }
     
     /**
-     * 
+     * @param lastLSN
      * @return a new load {@link Request}.
      */
-    static Request getLOAD_RQ(){
-        return new RequestImpl(LOAD_RQ);
+    static Request getLOAD_RQ(LSN lastLSN){
+        RequestImpl rq = new RequestImpl(LOAD_RQ);
+	rq.lsn = lastLSN;
+        return rq;
     }
     
     /**

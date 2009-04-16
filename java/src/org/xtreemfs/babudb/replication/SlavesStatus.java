@@ -127,4 +127,17 @@ class SlavesStatus extends Hashtable<InetSocketAddress,LSN> {
     	listeners.add(listener);
     	statusListener.put(key, listeners);
     }
+    
+    /**
+     * @return the state of all registered slaves.
+     */
+    @Override
+    public synchronized String toString() {
+	String result = "Slaves-Status:\n";
+	result +="Slave's Address || Least acknowledged LSN\n";
+        for (InetSocketAddress slave : keySet())
+            result += slave.toString()+" || "+get(slave).toString()+"\n";
+            
+        return result;
+    }
 }
