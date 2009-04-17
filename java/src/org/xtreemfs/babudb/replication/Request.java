@@ -56,12 +56,12 @@ interface Request {
     LogEntry getLogEntry();
     
     /**
-     * @return the identification of a {@link Chunk}.
+     * @return a {@link Chunk}.
      */
-    Chunk getChunkDetails();
+    Chunk getChunk();
     
     /**
-     * @return {@link Chunk} data or a {@link LogEntry} to send.
+     * @return a {@link LogEntry} to send, or meta-operation in JSON representation.
      */
     byte[] getData();
     

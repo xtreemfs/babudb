@@ -7,8 +7,17 @@
 */
 package org.xtreemfs.babudb.replication;
 
+import java.nio.charset.Charset;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.zip.Checksum;
+
+import org.xtreemfs.include.common.buffer.BufferPool;
+import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.include.foundation.json.JSONException;
+import org.xtreemfs.include.foundation.json.JSONParser;
+import org.xtreemfs.include.foundation.json.JSONString;
 
 /**
  * <p>Holds necessary informations for identifying a Chunk (a piece of a file) explicit.</p>
@@ -16,19 +25,22 @@ import java.util.List;
  * @author flangner
  */
 class Chunk implements Comparable<Chunk> {
-    /**
-     * name of the file, where the chunk is located at
-     */
-    private String fileName = null;
+    /** name of the file, where the chunk is located at */
+    private final String fileName;
     
-    /**
-     * start inclusive of the byte-range
-     */
-    private Long begin = 0L;
-    /**
-     * end inclusive of the byte-range
-     */
-    private Long end = 0L;
+    /** start inclusive of the byte-range */
+    private final Long begin;
+    
+    /** end inclusive of the byte-range */
+    private final Long end;
+    
+    /** the data of the fileChunk */
+    private ReusableBuffer data;
+    
+    /** default encoding of the chunkData */
+    private static final Charset  ENC_UTF8 = Charset.forName("utf8");
+    
+    private static final boolean USE_CHECKSUMS = true;
     
     /**
      * <p>Allocates the given range (<code>r1</code>,<code>r2</code>) in the
@@ -42,28 +54,6 @@ class Chunk implements Comparable<Chunk> {
         assert(fName!=null) : "The name of a chunk can't be null!";
         
         fileName = fName;
-        saveByteRange(r1,r2);
-    }
-    
-    /**
-     * <p>Converts the given <code>json</code> back to a {@link Chunk}.</p>
-     * 
-     * @param json
-     */
-    Chunk(List<Object> json) {
-        fileName = (String) json.get(0);
-        assert (fileName!=null) : "The name of a chunk can't be null!";
-        saveByteRange((Long) json.get(1), (Long) json.get(2));
-    }
-    
-    /**
-     * <p>Allocates the given range (<code>r1</code>,<code>r2</code>) in the
-     * correct order to begin and end of the byte range.</p>
-     * 
-     * @param r1
-     * @param r2
-     */
-    private void saveByteRange(long r1,long r2) {
         if (r1<=r2) {
             begin = r1;
             end = r2;
@@ -77,21 +67,155 @@ class Chunk implements Comparable<Chunk> {
     }
     
     /**
-     * @return a JSON convertible Map with the chunk informations. 
+     * @param csumAlgo
+     * @return a Pinky/Speedy compatible {@link ReusableBuffer} representation of the Chunk. 
+     * @throws JSONException if conversion was not successful.
      */
-    List<Object> toJSON(){
-        List<Object> result = new LinkedList<Object>();
-        result.add(fileName);
-        result.add(begin);
-        result.add(end);        
+    ReusableBuffer serialize(Checksum csumAlgo) throws JSONException{
+	// convert the chunk-metadata to JSON
+	List<Object> metadata = new LinkedList<Object>();
+        metadata.add(fileName);
+        metadata.add(begin);
+        metadata.add(end);
+        String metaString = JSONParser.writeJSON(metadata);
+
+        // allocate the buffer
+        final int headerLength = metaString.getBytes(ENC_UTF8).length+Integer.SIZE/8*5;
+        final int bufSize = headerLength+((data != null) ? data.remaining() : 0);
+        ReusableBuffer result = BufferPool.allocate(bufSize);
+        
+        // put the data on the buffer
+        result.putInt(bufSize);
+        result.putInt(0); // placeholder for the checksum
+        result.putInt(headerLength);
+        result.putString(metaString);
+        if (data!=null){
+            result.put(data);
+            data.flip(); // otherwise payload is not reusable
+        }
+        result.putInt(bufSize);
+        result.flip();
+        
+        if (USE_CHECKSUMS) {           
+            csumAlgo.update(result.array(),0,result.limit());
+            int cPos = result.position();
+            result.position(Integer.SIZE/8);
+            result.putInt((int)csumAlgo.getValue());
+            result.position(cPos);
+        } 
+        
         return result;
+    }
+
+    /**
+     * Checks the integrity of the {@link Chunk}-buffer.
+     * 
+     * @param data
+     * @throws Exception if integrityCheck was not successful.
+     */
+    static void checkIntegrity(ReusableBuffer data) throws Exception{
+        int cPos = data.position();
+        
+        if (data.remaining() < Integer.SIZE/8)
+            throw new Exception("Empty data. Cannot read log entry.");
+        
+        int length1 = data.getInt();
+        
+        if ((length1-Integer.SIZE/8) > data.remaining()) {
+            data.position(cPos);
+            Logging.logMessage(Logging.LEVEL_DEBUG, null,"not long enough");
+            throw new Exception("The log entry is incomplete. The length indicated in the header "+
+                    "exceeds the available data.");
+        }
+        
+        data.position(cPos+length1-Integer.SIZE/8);
+        
+        int length2 = data.getInt();
+        
+        data.position(cPos);
+        
+        if (length1 != length2) {
+            throw new Exception("Invalid Frame. The length entries do not match.");
+        }
+    } 
+    
+    /**
+     * <p>Converts the given <code>buffer</code> back to a {@link Chunk}.</p>
+     * 
+     * @param buffer
+     * @param csumAlgo
+     * @throws Exception if Chunk could not be retrieved.
+     * @return the retrieved {@link Chunk}.
+     */
+    @SuppressWarnings("unchecked")
+    static Chunk deserialize(ReusableBuffer buffer,Checksum csumAlgo) throws Exception{
+	Chunk result;
+	
+	final int bufSize = buffer.getInt();
+	int chkSum = buffer.getInt();
+	final int headerLength = buffer.getInt();
+	String metaData = buffer.getString();
+	
+        List<Object> json = (List<Object>) JSONParser.parseJSON(new JSONString(metaData));
+        result = new Chunk((String) json.get(0), (Long) json.get(1), (Long) json.get(2));
+        
+        final int dataSize = bufSize - headerLength;
+	if (dataSize != 0){
+    	int dataPosition = buffer.position();
+            ReusableBuffer data = buffer.createViewBuffer();
+            data.range(dataPosition, dataSize);
+            result.addData(data);
+	}
+        
+        if (USE_CHECKSUMS) {
+            buffer.position(Integer.SIZE/8);
+            buffer.putInt(0);
+            buffer.position(0);
+            csumAlgo.update(buffer.array(),0,buffer.limit());
+
+            int csum = (int)csumAlgo.getValue();        
+
+            if (csum != chkSum) {
+                throw new Exception("Invalid Checksum. Checksum in log entry and calculated checksum do not match.");
+            }
+        } 
+        
+        return result;
+    }
+    
+    /**
+     * Returns the data-buffer to the {@link BufferPool}.
+     */
+    void free(){
+	if (data!=null) BufferPool.free(data);
+    }
+    
+    /**
+     * Adds the given data to the fileChunk meta informations.
+     * 
+     * @param data
+     */
+    void addData(byte[] data){
+	addData(ReusableBuffer.wrap(data));
+    }
+    
+    /**
+     * Adds the given data to the fileChunk meta informations.
+     * 
+     * @param data
+     */
+    void addData(ReusableBuffer data){
+	assert (data != null);
+	assert (this.data == null);
+	
+	this.data = data;
     }
     
     /**
      * 
      * @return the byte-range beginning position.
      */
-    public long getBegin() {
+    long getBegin() {
         return begin;
     }
     
@@ -99,7 +223,7 @@ class Chunk implements Comparable<Chunk> {
      * 
      * @return the byte-range ending position.
      */
-    public long getEnd() {
+    long getEnd() {
         return end;
     }
     
@@ -107,8 +231,16 @@ class Chunk implements Comparable<Chunk> {
      * 
      * @return the fileName, where the chunk is located at.
      */
-    public String getFileName() {
+    String getFileName() {
         return fileName;
+    }
+    
+    /**
+     * 
+     * @return the data of the fileChunk given by its meta-data.
+     */
+    byte[] getData(){
+	return data.array();
     }
 
     /*
@@ -147,6 +279,6 @@ class Chunk implements Comparable<Chunk> {
      */
     @Override
     public String toString() {
-        return "Chunk of '"+fileName+"': ["+begin+";"+end+"]";
+        return "Chunk of '"+fileName+"': ["+begin+";"+end+"]"+"|"+((data==null) ? "Without" : "With")+" data attached.";
     }
 }

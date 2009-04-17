@@ -35,13 +35,13 @@ class RequestImpl implements Request {
     /** the identification of a {@link LogEntry} */
     LSN                         lsn                     = null;
   
-    /** the identifier for a {@link Chunk} */
-    Chunk                       chunkDetails            = null;
+    /** a {@link Chunk} */
+    Chunk                       chunk	                = null;
     
     /** the {@link LogEntry} received as answer of an request */
     LogEntry                    logEntry                = null;
     
-    /** {@link Chunk} data or a serialized {@link LogEntry} to send */
+    /** a serialized {@link LogEntry} to send, or meta-operation in JSON representation. */
     byte[]                      data                    = null;
 
     /** for response issues and to be checked into the DB */
@@ -70,6 +70,11 @@ class RequestImpl implements Request {
         if (logEntry!=null){
             logEntry.free();
             logEntry = null;
+        }
+        
+        if (chunk!=null){
+            chunk.free();
+            chunk = null;
         }
     }
  
@@ -105,8 +110,8 @@ class RequestImpl implements Request {
      * (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.Request#getChunkDetails()
      */
-    public Chunk getChunkDetails() {
-        return chunkDetails;
+    public Chunk getChunk() {
+        return chunk;
     }
    
     /*
@@ -171,11 +176,11 @@ class RequestImpl implements Request {
                 
             case CHUNK:
                 return (source.equals(rq.getSource())
-                        && chunkDetails.equals(rq.getChunkDetails()));
+                        && chunk.equals(rq.getChunk()));
                 
             case CHUNK_RP:
                 return (source.equals(rq.getSource())
-                        && chunkDetails.equals(rq.getChunkDetails()));
+                        && chunk.equals(rq.getChunk()));
                 
             case LOAD:
                 return source.equals(rq.getSource());
@@ -223,7 +228,7 @@ class RequestImpl implements Request {
         if (source!=null)           string+="Source: '"+source.toString()+"',";
         if (lsn!=null)              string+="LSN: '"+lsn.toString()+"',";  
         if (logEntry!=null)         string+="LogEntry: '"+logEntry.toString()+"',"; 
-        if (chunkDetails!=null)     string+="ChunkDetails: '"+chunkDetails.toString()+"',";
+        if (chunk!=null)     string+="ChunkDetails: '"+chunk.toString()+"',";
         if (Logging.tracingEnabled()) {
             if (data!=null)             string+="data : "+data.toString()+"',";
             if (lsmDbMetaData!=null)    string+="LSM DB metaData: "+lsmDbMetaData.toString()+"',";

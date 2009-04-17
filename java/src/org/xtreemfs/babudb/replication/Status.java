@@ -240,7 +240,7 @@ class Status<T> {
 	            retry();
 	        } else {
 	            // it has really failed
-	            Logging.logMessage(Logging.LEVEL_TRACE, this, "Giving up after '"+maxTries+"' attempts to: "+rq.toString());
+	            Logging.logMessage(Logging.LEVEL_TRACE, this, "Giving up after '"+maxTries+"' attempts to: "+rq.toString()+" reason: "+reason);
 	            statusListener.failed(this,reason);
 	            state.set(DONE);
 	            state.notifyAll();
