@@ -154,11 +154,12 @@ class RequestPreProcessor {
                 throw THIS.new PreProcessException(masterSecurityMsg,HTTPUtils.SC_UNAUTHORIZED);
             
             try {
-               // parse details
-                JSONString jsonString = new JSONString(new String(theRequest.getBody()));
-                result.chunkDetails = new Chunk((List<Object>) JSONParser.parseJSON(jsonString));
+               // parse the chunk
+                result.chunk = Chunk.deserialize(ReusableBuffer.wrap(theRequest.getBody()),checksum);
             } catch (Exception e) {
                 throw THIS.new PreProcessException("Chunk details could for a CHUNK_RQ not be decoded because: "+e.getMessage()+" | Source: "+result.getSource());
+            } finally {
+                checksum.reset();
             }
             break;    
             
@@ -180,14 +181,13 @@ class RequestPreProcessor {
             
             try {
                 result.logEntry = LogEntry.deserialize(ReusableBuffer.wrap(theRequest.getBody()), checksum);
-                checksum.reset();
                 result.lsn = result.logEntry.getLSN();   
                 
                 assert (result.lsn!=null) : "The LSN of a received replica cannot be null!";
             } catch (Exception e) {
-                checksum.reset();
-                result.free();
                 throw THIS.new PreProcessException("The data of a REPLICA could not be retrieved because: "+e.getMessage()+" | Source: "+result.getSource().toString());
+            } finally {
+                checksum.reset();
             }
             break; 
             
@@ -211,14 +211,12 @@ class RequestPreProcessor {
             if (!frontEnd.isDesignatedMaster(result.source)) 
                 throw THIS.new PreProcessException(slaveSecurityMsg,HTTPUtils.SC_UNAUTHORIZED);
             
-            JSONString jsonString = new JSONString(new String(theRequest.getBody()));
-            List<Object> data;
             try {
-		data = (List<Object>) JSONParser.parseJSON(jsonString);
-	        result.data = (byte[]) data.remove(data.size()-1);
-	        result.chunkDetails = new Chunk(data);
-            } catch (JSONException e) {
+	        result.chunk = Chunk.deserialize(ReusableBuffer.wrap(theRequest.getBody()), checksum);
+            } catch (Exception e) {
                 throw THIS.new PreProcessException("CHUNK_RP could not be performed because: "+e.getMessage()+" | Source: "+result.getSource());
+            } finally {
+                checksum.reset();
             }
 
             break;
@@ -227,6 +225,8 @@ class RequestPreProcessor {
             if (!frontEnd.isDesignatedMaster(result.source))
                 throw THIS.new PreProcessException(slaveSecurityMsg,HTTPUtils.SC_UNAUTHORIZED);
 
+            JSONString jsonString;
+            List<Object> data;
             try {
                // parse details
                 jsonString = new JSONString(new String(theRequest.getBody()));
@@ -466,6 +466,16 @@ class RequestPreProcessor {
             }
             break;
             
+        case LOAD_RP:
+            if (!frontEnd.isDesignatedSlave(source))
+                throw THIS.new PreProcessException(masterSecurityMsg); 
+            break;
+            
+        case CHUNK_RP:
+            if (!frontEnd.isDesignatedSlave(source))
+                throw THIS.new PreProcessException(masterSecurityMsg); 
+            break;
+            
        // for slave:    
         case ACK: // ignore answers to an ACK-Request (necessary for pinky/speedy communication compatibility)
             break;
@@ -555,7 +565,8 @@ class RequestPreProcessor {
             String msg = "Unknown Response received: ";
             if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
             else msg += theResponse.statusCode;   
-        
+            msg += " Request: "+token.toString();
+            
             throw THIS.new PreProcessException(msg);
         }
         
@@ -665,12 +676,12 @@ class RequestPreProcessor {
             result.data = buf.array();
             result.destinations = slaves;
             BufferPool.free(buf);
-            checksum.reset();
             le.free();
         } catch (Exception e) {
-            checksum.reset();
             if (buf!=null) BufferPool.free(buf);
             throw THIS.new PreProcessException("LogEntry could not be serialized because: "+e.getLocalizedMessage());
+        } finally {
+            checksum.reset();
         }    
         
         assert (result.lsn!=null) : "BROADCAST misses a LSN.";
@@ -748,7 +759,7 @@ class RequestPreProcessor {
      */
     static Request getExpectedCHUNK_RP(Chunk chunk) {
         RequestImpl result = new RequestImpl(CHUNK_RP);
-        result.chunkDetails = chunk;
+        result.chunk = chunk;
         return result;
     }
     

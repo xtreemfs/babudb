@@ -45,9 +45,9 @@ public class RandomGenerator {
     public final static int MAX_VALUE_LENGTH = 30;
     public final static int MIN_VALUE_LENGTH = 10;
     
-    public final static int MAX_VIEWID = 11;
+    public final static int MAX_VIEWID = 29;
     public final static long MAX_SEQUENCENO;
-    public final static long MIN_SEQUENCENO = 300L;
+    public final static long MIN_SEQUENCENO = 1000L;
 	
     // table of tables of meta operations ordered by their viewId
     public final Map<Integer,List<List<Object>>> operationsScenario = new HashMap<Integer,List<List<Object>>>();
@@ -85,7 +85,27 @@ public class RandomGenerator {
         prims[8] = 3079L;
         prims[9] = 3083L;
         prims[10] = 3089L;
-        MAX_SEQUENCENO = 1000;
+        prims[11] = 3109L;
+        prims[12] = 3119L;  
+        prims[13] = 3121L;
+        prims[14] = 3137L;
+        prims[15] = 3163L;
+        prims[16] = 3167L;
+        prims[17] = 3169L;
+        prims[18] = 3181L;
+        prims[19] = 3187L;
+        prims[20] = 3191L;
+        prims[21] = 3203L; 
+        prims[20] = 3209L;
+        prims[21] = 3217L;
+        prims[22] = 3221L;
+        prims[23] = 3229L;
+        prims[24] = 3251L;
+        prims[25] = 3253L;
+        prims[26] = 3257L;
+        prims[27] = 3259L;
+        prims[28] = 3271L;
+        MAX_SEQUENCENO = prims[0];
         
         dbPrefixes = new String[5];
         dbPrefixes[0] = "db";

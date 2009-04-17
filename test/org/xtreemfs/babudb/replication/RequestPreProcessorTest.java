@@ -97,7 +97,7 @@ public class RequestPreProcessorTest {
          */
         
         Request broadcastRQ = RequestPreProcessor.getReplicationRequest(testLogEntry,new LinkedList<InetSocketAddress>());       
-        assertNull(broadcastRQ.getChunkDetails());
+        assertNull(broadcastRQ.getChunk());
         assertNull(broadcastRQ.getLsmDbMetaData());
         assertNull(broadcastRQ.getSource());
         assertEquals(Token.REPLICA_BROADCAST, broadcastRQ.getToken());

@@ -408,6 +408,24 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
         return null;
     }
     
+    /**
+     * sets the inner state
+     * 
+     * @param c
+     */
+    void switchCondition(CONDITION c){  	
+        this.condition = c;
+        Logging.logMessage(Logging.LEVEL_TRACE, this, "Condition changed to '"+c.toString()+"'.");
+    }
+    
+    /**
+     * 
+     * @return the inner state
+     */
+    CONDITION getCondition() {
+        return this.condition;
+    }
+    
 /*
  * ResponseListener   
  */
@@ -480,9 +498,8 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
             // send an ACK for the replicated entry
             replication.enqueueRequest(RequestPreProcessor.getACK_RQ(rq.getValue().getLSN(), rq.getValue().getSource()));
             
-            // XXX changed logLevel to LEVEL_ERROR for testing purpose
-            if ((rq.getValue().getLSN().getSequenceNo() % 10) == 0)
-        	Logging.logMessage(Logging.LEVEL_ERROR, replication, "LogEntry inserted successfully: "+rq.getValue().getLSN().toString());
+            // XXX changed logLevel to LEVEL_ERROR for testing purpose || if ((rq.getValue().getLSN().getSequenceNo() % 10) == 0)
+            Logging.logMessage(Logging.LEVEL_TRACE, replication, "LogEntry inserted successfully: "+rq.getValue().getLSN().toString());
             
             rq.finished();           
         }catch (ReplicationException e) {
@@ -731,25 +748,7 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
         }
         Logging.logMessage(Logging.LEVEL_TRACE, replication, "Replication: SyncMode has been changed. New mode: "+mode+" @: "+slaves.size()+" slaves.");
     }
-    
-    /**
-     * sets the inner state
-     * 
-     * @param c
-     */
-    public void switchCondition(CONDITION c){  	
-        this.condition = c;
-        Logging.logMessage(Logging.LEVEL_TRACE, this, "Condition changed to '"+c.toString()+"'.");
-    }
-    
-    /**
-     * 
-     * @return the inner state
-     */
-    public CONDITION getCondition() {
-        return this.condition;
-    }
-    
+       
     /**
      * <p>Sets a new readLock for contextSwitches on babuDB in case of a babuDB reset.</p>
      * 

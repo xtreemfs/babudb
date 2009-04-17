@@ -128,6 +128,8 @@ class ReplicationThread extends LifeCycleThread{
     /** <p>All current open master requests.</p> */
     private final AtomicInteger openMasterRequest = new AtomicInteger(0);
     
+    private LSN viewIdIncrementTo = null;
+    
     /**
      * <p>Default constructor. Synchronous start-up for pinky and speedy component.</p>
      * 
@@ -162,8 +164,7 @@ class ReplicationThread extends LifeCycleThread{
         final Checksum checkSum = new CRC32(); 
         Chunk chunk;
         LSMDBRequest context;
-        InetSocketAddress source;         
-        byte[] data;
+        InetSocketAddress source;  
         LSN lsn;
         Map<String, List<Long>> metaDataLSM;
         boolean idle;
@@ -186,8 +187,7 @@ class ReplicationThread extends LifeCycleThread{
           //initializing...
             chunk = null;
             context = null;
-            source = null;         
-            data = null;
+            source = null;      
             lsn = null;
             metaDataLSM = null;
             idle = true;
@@ -201,11 +201,12 @@ class ReplicationThread extends LifeCycleThread{
                         missingChunk.pending();
                         idle = false;
                         try {
-                            sendCHUNK(missingChunk); 
+                            sendCHUNK(missingChunk,checkSum); 
                             openMasterRequest.incrementAndGet();
                         } catch (Exception e) {
-                        	missingChunk.failed(e.getMessage(), frontEnd.maxTries);
-                        		
+                            missingChunk.failed(e.getMessage(), frontEnd.maxTries);		
+                        } finally {
+                            checkSum.reset();
                         }
                         
                     } else {                   
@@ -234,13 +235,11 @@ class ReplicationThread extends LifeCycleThread{
             if (newRequest != null && hasHighPriority(newRequest) && !newRequest.isPending()) {              
                 try{
                     newRequest.pending();
-                    resetNextExpected();
                     idle = false;
                 	
-                    chunk = newRequest.getValue().getChunkDetails();
+                    chunk = newRequest.getValue().getChunk();
                     source = newRequest.getValue().getSource();
                     context = newRequest.getValue().getContext();
-                    data = newRequest.getValue().getData();
                     lsn = newRequest.getValue().getLSN();
                     metaDataLSM = newRequest.getValue().getLsmDbMetaData();
                     
@@ -319,17 +318,16 @@ class ReplicationThread extends LifeCycleThread{
                                 try {
                                     sendResponse(newRequest,REPLICA,le.serialize(checkSum));
                                     notFound = false;
-                                    checkSum.reset();
-                                    le.free();
                                 } catch (IOException e) {
-                                    checkSum.reset();
-                                    le.free();
                                     try {
                                         diskLogFile.close();
                                     }catch (IOException ioe) { /* ignored in this case */ }
                                     frontEnd.babuDBcontextSwitchLock.unlock();
                                     throw new ReplicationException("The requested LogEntry is damaged. Reason: "+e.getMessage());
-                                }  
+                                } finally {
+                                    le.free();
+                                    checkSum.reset();
+                                }
                                 break;
                             } 
                             if (le!=null) le.free();
@@ -391,7 +389,9 @@ class ReplicationThread extends LifeCycleThread{
                             File f = new File(chunk.getFileName());
                             if (!f.exists()) {
                                 Logging.logMessage(Logging.LEVEL_INFO, this, "A requested chunk does not exist anymore: "+chunk.toString());
-                                sendResponse(newRequest, CHUNK_NA, ReusableBuffer.wrap(JSONParser.writeJSON(chunk.toJSON()).getBytes()));
+                                
+                                sendResponse(newRequest, CHUNK_NA, chunk.serialize(checkSum));
+                                checkSum.reset();
                                 break;
                             }
                             if (f.length()<length)
@@ -400,12 +400,13 @@ class ReplicationThread extends LifeCycleThread{
                              // get the requested chunk 
                             in.read(bbuf, ((int) chunk.getBegin()), length);
                                          
-                            List<Object> chunkBuffer = chunk.toJSON();
-                            chunkBuffer.add(bbuf);
+                            chunk.addData(bbuf);
                             
-                            sendResponse(newRequest, CHUNK_RP, ReusableBuffer.wrap(JSONParser.writeJSON(chunkBuffer).getBytes()));
-                        } catch (Exception e){     
-                        	throw new ReplicationException("CHUNK request could not be answered: '"+newRequest.toString()+"', because: "+e.getMessage());
+                            sendResponse(newRequest, CHUNK_RP, chunk.serialize(checkSum));
+                        } catch (Exception e){  
+                            throw new ReplicationException("CHUNK request could not be answered: '"+newRequest.toString()+"', because: "+e.getMessage());
+                        } finally {
+                            checkSum.reset();
                         }
                         break;   
                         
@@ -505,9 +506,7 @@ class ReplicationThread extends LifeCycleThread{
                             // get an initial copy from the master, if necessary
                             } else if (latestLSN.getViewId() < lsn.getViewId()){
                         	// store the LogEntry, if it is expected
-                        	if (nextExpected.get().getValue()!=null && 
-                        	    nextExpected.get().getValue().getLSN()!=null && 
-                        	    lsn.equals(nextExpected.get().getValue().getLSN())){
+                        	if (viewIdIncrementTo != null && lsn.equals(viewIdIncrementTo)){
                                     try {
                                         writeLogEntry(newRequest,context);
                                     } catch (InterruptedException e) {
@@ -546,7 +545,7 @@ class ReplicationThread extends LifeCycleThread{
                 	    frontEnd.switchCondition(CONDITION.RUNNING);
                 	    
                 	    // make a higher restriction for the nextExpected request
-                            setNextExpected(RequestPreProcessor.getExpectedREPLICA(new LSN(frontEnd.getLastWrittenLSN().getViewId()+1,1L)));
+                	    viewIdIncrementTo = new LSN(frontEnd.getLastWrittenLSN().getViewId()+1,1L);
                 	}else{
                            // make chunks and store them at the missingChunks                       
                            // for each file 
@@ -608,12 +607,12 @@ class ReplicationThread extends LifeCycleThread{
                         try {
                              // insert the file input
                             FileOutputStream fO = new FileOutputStream(getFile(chunk));
-                            fO.write(data, (int) chunk.getBegin(), length);
+                            fO.write(chunk.getData(), (int) chunk.getBegin(), length);
                         } catch (Exception e) {
                             throw new ReplicationException("Chunk could not be written to disk: "+chunk.toString()+"\n"+
                                     			   "because: "+e.getMessage());
                         }
-                        Logging.logMessage(Logging.LEVEL_ERROR, this, "Chunk written: "+chunk.toString());  
+                        Logging.logMessage(Logging.LEVEL_TRACE, this, "Chunk written: "+chunk.toString());  
                         openMasterRequest.decrementAndGet();
                         break;
                         
@@ -638,7 +637,9 @@ class ReplicationThread extends LifeCycleThread{
                 	} catch (ReplicationException e) {
                 		Logging.logMessage(Logging.LEVEL_ERROR, this, "Request did not fail properly: "+e.getMessage());
                 	}
-                }     
+                }finally{
+                    resetNextExpected();
+                }
             } 
             
             // sleep, if idle 
@@ -745,13 +746,14 @@ class ReplicationThread extends LifeCycleThread{
      * <p>Sends an {@link Token}.CHUNK_RQ for the given <code>chunk</code> to the master.</p>
      * <p>Sets the nextExpected flag to a higher priority, if necessary.</p>
      * 
+     * @param checksum
      * @param chunk
      * @throws JSONException if an error occurs.
      * @throws BabuDBConnectionException if an error occurs.
      */
-    private void sendCHUNK(Status<Chunk> chunk) throws JSONException, BabuDBConnectionException {   
-        frontEnd.connectionControl.sendRequest(CHUNK, JSONParser.writeJSON(chunk.getValue().toJSON()).getBytes(), chunk, frontEnd.master);
-        
+    private void sendCHUNK(Status<Chunk> chunk,Checksum checksum) throws JSONException, BabuDBConnectionException { 
+	frontEnd.connectionControl.sendRequest(CHUNK, chunk.getValue().serialize(checksum), chunk, frontEnd.master);
+
         // make a higher restriction for the nextExpected request
         Request dummy = RequestPreProcessor.getExpectedCHUNK_RP(chunk.getValue());
         if (hasHighPriority(new Status<Request>(dummy,this))) setNextExpected(dummy);            
@@ -778,7 +780,7 @@ class ReplicationThread extends LifeCycleThread{
                 rq.finished();
             }else{
                 try{
-                	frontEnd.connectionControl.sendRequest(t, rq.getValue().getData(), rq, slave);
+                    frontEnd.connectionControl.sendRequest(t, rq.getValue().getData(), rq, slave);
                 } catch (BabuDBConnectionException e){
                     replicasFailed++;
                     Logging.logMessage(Logging.LEVEL_WARN, this, t.toString()+" could not be send to slave: '"+slave.toString()+"', because: "+e.getMessage());
@@ -810,7 +812,7 @@ class ReplicationThread extends LifeCycleThread{
      */
     private void sendResponse(Status<Request> rq, Token t, ReusableBuffer value) throws ReplicationException {
     	try {
-    		frontEnd.connectionControl.sendRequest(t, value, null, rq.getValue().getSource());
+    	    frontEnd.connectionControl.sendRequest(t, value, null, rq.getValue().getSource());
         } catch (BabuDBConnectionException e) {
             throw new ReplicationException(t.toString()+" could not be send to : '"+rq.getValue().getSource().toString()+"', because: "+e.getMessage());   
         }
@@ -844,7 +846,7 @@ class ReplicationThread extends LifeCycleThread{
             
             request.finished();
         } catch (Exception e) {
-        	request.failed("ACK ("+request.getValue().getLSN().toString()+") could not be send to master: '"+frontEnd.master.toString()+"', because: "+e.getMessage(), frontEnd.maxTries);
+            request.failed("ACK ("+request.getValue().getLSN().toString()+") could not be send to master: '"+frontEnd.master.toString()+"', because: "+e.getMessage(), frontEnd.maxTries);
         } 
     }
     
@@ -861,7 +863,7 @@ class ReplicationThread extends LifeCycleThread{
         if (LSMDatabase.isSnapshotFilename(fName)) {
              // create the db-name directory, if necessary
             new File(frontEnd.dbInterface.configuration.getBaseDir() + 
-                    chnk.getParentFile().getName() + File.separatorChar).mkdirs();
+        	    chnk.getParentFile().getName() + File.separatorChar).mkdirs();
              // create the file if necessary
             result = new File(frontEnd.dbInterface.configuration.getBaseDir() + 
                     chnk.getParentFile().getName() + File.separatorChar + fName);
@@ -931,7 +933,7 @@ class ReplicationThread extends LifeCycleThread{
         Logging.logMessage(Logging.LEVEL_TRACE, this, "Removing: "+rq.toString());
         if (rq.getValue() instanceof Request) {
             pending.remove((Status<Request>) rq);
-            Chunk chunk = ((Request)rq.getValue()).getChunkDetails();
+            Chunk chunk = ((Request)rq.getValue()).getChunk();
             LSN lsn = ((Request)rq.getValue()).getLSN();
             
             if (hasHighPriority((Status<Request>) rq)) resetNextExpected();
@@ -1010,7 +1012,7 @@ class ReplicationThread extends LifeCycleThread{
         }
         
         remove(rq);
-        Logging.logMessage(Logging.LEVEL_WARN, this, "Request failed! Reason: "+reason+"\nRequest-details: "+rq.toString());
+        Logging.logMessage(Logging.LEVEL_ERROR, this, "Request failed! Reason: "+reason+"\nRequest-details: "+rq.toString());
     }
     
     /**
