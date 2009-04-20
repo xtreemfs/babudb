@@ -506,13 +506,16 @@ class ReplicationThread extends LifeCycleThread{
                             // get an initial copy from the master, if necessary
                             } else if (latestLSN.getViewId() < lsn.getViewId()){
                         	// store the LogEntry, if it is expected
-                        	if (viewIdIncrementTo != null && lsn.equals(viewIdIncrementTo)){
-                                    try {
-                                        writeLogEntry(newRequest,context);
-                                    } catch (InterruptedException e) {
-                                    	throw new ReplicationException("LogEntry could not be written and will" +
-                                    			" be put back into the pending queue,"+
-                                                "\r\n\t because: "+e.getMessage());
+                        	if (viewIdIncrementTo != null){
+                        	    if (lsn.equals(viewIdIncrementTo)){
+                        		viewIdIncrementTo = null;
+                        		try {
+                                            writeLogEntry(newRequest,context);
+                                        } catch (InterruptedException e) {
+                                        	throw new ReplicationException("LogEntry could not be written and will" +
+                                        			" be put back into the pending queue,"+
+                                                    "\r\n\t because: "+e.getMessage());
+                                        }
                                     }
                                 // send the load
                         	} else {
@@ -546,7 +549,12 @@ class ReplicationThread extends LifeCycleThread{
                 	    
                 	    // make a higher restriction for the nextExpected request
                 	    viewIdIncrementTo = new LSN(frontEnd.getLastWrittenLSN().getViewId()+1,1L);
+                	    
+                	    mLSN =  new Status<LSN>(viewIdIncrementTo,this);
+                            if (!missing.contains(mLSN) && !pending.contains(new Status<Request>(RequestPreProcessor.getExpectedREPLICA(viewIdIncrementTo))))
+                                missing.add(mLSN);
                 	}else{
+                	    viewIdIncrementTo = null;
                            // make chunks and store them at the missingChunks                       
                            // for each file 
                             for (String fName : metaDataLSM.keySet()) {
@@ -1095,9 +1103,7 @@ class ReplicationThread extends LifeCycleThread{
      * @param rq - set as nextExpected.
      */
     private void setNextExpected(Status<Request> rq) {
-    	synchronized (nextExpected) {
-			nextExpected.set(rq);
-		}
+	nextExpected.set(rq);
     	Logging.logMessage(Logging.LEVEL_TRACE, this, "The next-expected request is '"+rq.toString()+"'");
     }
     

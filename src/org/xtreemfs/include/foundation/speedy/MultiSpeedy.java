@@ -788,6 +788,7 @@ public class MultiSpeedy extends LifeCycleThread {
                         	cs.channel.close();
 //   							closeConnection(cs);
                             cancelRequests(cs);
+                            cs.freeBuffers();
                         }
                     }
                 }

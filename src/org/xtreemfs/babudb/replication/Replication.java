@@ -443,20 +443,19 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
             if (rq!=null && !replication.enqueueRequest(rq))
         	throw replication.new ReplicationException("The received request could not be appended to the pending queue. \n"+rq.toString());            	
             
-            connectionControl.sendResponse(theRequest);
         }catch (PreProcessException e){
            // if a request could not be parsed for any reason
             if (rq!=null) rq.free();
             Logging.logMessage(Logging.LEVEL_ERROR, this, e.getMessage());
             if (!theRequest.responseSet) theRequest.setResponse(e.status,e.getMessage());
             else assert(false) : "This request must not have already set a response: "+theRequest.toString();
-            connectionControl.sendResponse(theRequest);
         }catch (ReplicationException re){
            // if a request could not be parsed because,or the queue limit was reached
             if (rq!=null) rq.free();
             Logging.logMessage(Logging.LEVEL_WARN, this, re.getMessage());
             if (!theRequest.responseSet) theRequest.setResponse(HTTPUtils.SC_SERV_UNAVAIL, re.getMessage());
-            else assert(false) : "This request must not have already set a response: "+theRequest.toString();
+            else assert(false) : "This request must not have already set a response: "+theRequest.toString();           
+        } finally {
             connectionControl.sendResponse(theRequest);
         }
     }
@@ -474,8 +473,9 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
         }catch (Exception e){
             dbInterface.replication_runtime_failure(e.getMessage());
             Logging.logMessage(Logging.LEVEL_ERROR, this, e.getMessage());
-        }   
-        theRequest.freeBuffer();
+        } finally {
+            theRequest.freeBuffer();
+        }
     }
 
     /*
@@ -770,9 +770,13 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
 	    replication.halt.wait();
 	}
 	    
-        if (getCondition()!=LOADING)
-            return getLastWrittenLSN();
-        else return null;
+        if (getCondition()!=LOADING) {
+            LSN last = getLastWrittenLSN();
+            if (!last.equals(new LSN(1,0L)))
+        	return last;
+        }
+
+        return null;
     }
     
     /**

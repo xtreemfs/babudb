@@ -234,8 +234,12 @@ class RequestPreProcessor {
                 
                 if (frontEnd.getCondition()!=CONDITION.LOADING)
                     frontEnd.dbInterface.proceedCreate((String) data.get(0),Integer.parseInt((String) data.get(1)) );
-                else 
-                    throw new Exception ("Slave is busy because of an initial LOAD. Try again later.");
+                else {
+                    // make a load request
+                    result.token = LOAD_RQ;
+                    Logging.logMessage(Logging.LEVEL_WARN, THIS, "DELETE could not be performed; DB will be loaded soon.");
+                    break;
+                }
             } catch (Exception e) {
                 throw THIS.new PreProcessException("CREATE could not be performed because: "+e.getMessage()+" | Source: "+result.getSource());
             }
@@ -252,8 +256,12 @@ class RequestPreProcessor {
                 
                 if (frontEnd.getCondition()!=CONDITION.LOADING)
                     frontEnd.dbInterface.proceedCopy((String) data.get(0),(String) data.get(1), null, null);
-                else
-                    throw new Exception ("Slave is busy because of an initial LOAD. Try again later.");
+                else {
+                    // make a load request
+                    result.token = LOAD_RQ;
+                    Logging.logMessage(Logging.LEVEL_WARN, THIS, "COPY could not be performed; DB will be loaded soon.");
+                    break;
+                }
             } catch (Exception e) {
                 throw THIS.new PreProcessException("COPY could not be performed because: "+e.getMessage()+" | Source: "+result.getSource());
             }
@@ -270,8 +278,12 @@ class RequestPreProcessor {
                 
                 if (frontEnd.getCondition()!=CONDITION.LOADING)
                     frontEnd.dbInterface.proceedDelete((String) data.get(0),Boolean.valueOf((String) data.get(1)));
-                else
-                    throw new Exception ("Slave is busy because of an initial LOAD. Try again later.");
+                else {
+                    // make a load request
+                    result.token = LOAD_RQ;
+                    Logging.logMessage(Logging.LEVEL_WARN, THIS, "DELETE could not be performed; DB will be loaded soon.");
+                    break;
+                }
             } catch (Exception e) {
                 throw THIS.new PreProcessException("DELETE could not be performed because: "+e.getMessage()+" | Source: "+result.getSource());
             }
@@ -284,7 +296,7 @@ class RequestPreProcessor {
              // make a load request
             result.token = LOAD_RQ;
             Logging.logMessage(Logging.LEVEL_WARN, THIS, "Requested logEntry was not found; DB will be loaded soon.");
-        	break;
+            break;
         	
         case CHUNK_NA:
             if (!frontEnd.isDesignatedMaster(result.source)) 
@@ -302,7 +314,9 @@ class RequestPreProcessor {
             break;
             
         default:
-            throw THIS.new PreProcessException("Unknown Request received: "+result.toString(),HTTPUtils.SC_BAD_REQUEST);
+            Logging.logMessage(Logging.LEVEL_ERROR, frontEnd, "Unknown Request received: "+result.toString());
+            throw new RuntimeException ("Unknown Request received: "+result.toString());
+            // throw THIS.new PreProcessException("Unknown Request received: "+result.toString(),HTTPUtils.SC_BAD_REQUEST); XXX
         } 
         
         Logging.logMessage(Logging.LEVEL_TRACE, frontEnd, "Request received: "+token.toString()+((result.lsn!=null) ? " "+result.lsn.toString() : ""));
@@ -476,10 +490,17 @@ class RequestPreProcessor {
                 throw THIS.new PreProcessException(masterSecurityMsg); 
             break;
             
-       // for slave:    
-        case ACK: // ignore answers to an ACK-Request (necessary for pinky/speedy communication compatibility)
+        case REPLICA_NA:
+            if (!frontEnd.isDesignatedSlave(source))
+                throw THIS.new PreProcessException(masterSecurityMsg);
             break;
             
+        case CHUNK_NA:
+            if (!frontEnd.isDesignatedSlave(source))
+                throw THIS.new PreProcessException(masterSecurityMsg);
+            break;
+            
+       // for slave:                
         case RQ:
             if (!frontEnd.isDesignatedMaster(source))
                 throw THIS.new PreProcessException(slaveSecurityMsg);
@@ -561,13 +582,31 @@ class RequestPreProcessor {
             }
             break;
             
+       // undefined and ignored
+        case ACK: // ignore answers to an ACK-Request (necessary for pinky/speedy communication compatibility)
+            break;         
+            
+        case ACK_RQ:
+            break;
+            
+        case LOAD_RQ:
+            break;
+            
+        case STATE_BROADCAST:
+            break;
+            
+        case REPLICA_BROADCAST:
+            break;     
+            
         default:
             String msg = "Unknown Response received: ";
             if (theResponse.getResponseBody()!=null) msg += new String(theResponse.getResponseBody());
             else msg += theResponse.statusCode;   
             msg += " Request: "+token.toString();
             
-            throw THIS.new PreProcessException(msg);
+            Logging.logMessage(Logging.LEVEL_ERROR, frontEnd, msg);
+            throw new RuntimeException(msg);
+            // throw THIS.new PreProcessException(msg); XXX
         }
         
         Logging.logMessage(Logging.LEVEL_TRACE, frontEnd, "Response received: "+token.toString()+" from: "+source.toString());
