@@ -86,6 +86,7 @@ public class BabuDBRandomSlaveTest {
             System.out.println("BabuDBRandomSlave-Longruntest-----------------------");
             
             boolean ccheck = true;
+            boolean checkSuccessful = true;
             while (true) {
             	int sleepInterval = 0;
             	if (ccheck)
@@ -98,9 +99,9 @@ public class BabuDBRandomSlaveTest {
             
             	int event = random.nextInt(100);
 
-            	if (event<P_CCHECK) {
+            	if (event<P_CCHECK || !checkSuccessful) {
             	    System.out.print("CONISTENCY CHECK:");
-            	    performConsistencyCheck();        		
+            	    checkSuccessful = performConsistencyCheck();        		
             	    ccheck = true;
             	}else{
             	    try {
@@ -171,9 +172,11 @@ public class BabuDBRandomSlaveTest {
 	
 	/**
 	 * Checks the last insert group of consistency.
+	 * @return true, if the check was successful. false, otherwise.
 	 * @throws Exception
 	 */
-	private static void performConsistencyCheck() throws Exception{
+	private static boolean performConsistencyCheck() throws Exception{
+	    boolean result = false;
 	    LSN last = DBS.replication_pause();
 	    
 	    if (last!=null){
@@ -187,10 +190,13 @@ public class BabuDBRandomSlaveTest {
 		    }
 		}
 		System.out.println("SUCCESSFUL for LSN ("+last.toString()+").");
+		result = true;
 	    } else 
 		System.out.println("Check could not be performed, because of the slave is LOADING from the master.");
 	    
 	    DBS.replication_resume();
+	    
+	    return result;
 	}
     
 	/**
