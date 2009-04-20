@@ -97,28 +97,31 @@ public class BabuDBRandomSlaveTest {
             	Thread.sleep(sleepInterval);
             
             	int event = random.nextInt(100);
-            	try {
-            	    if (event<P_CCHECK) {
-            		System.out.println("CONISTENCY CHECK:");
-            		performConsistencyCheck();        		
-            		ccheck = true;
-            	    }else if (event<(P_CCHECK+P_CLEAN_RESTART)){
-            		System.out.println("CLEAN RESTART:");
-            		performCleanAndRestart(random, master, slaves);
-            		ccheck = false;
-            	    }else{
-            		System.out.println("RESTART:");
-            		performRestart(random, master, slaves);
-            		ccheck = false;
-            	    }
-            	}catch (RuntimeException re){
-            	    System.out.println("The files on disk are inconsistent. They will be removed to perform a Clean Start");
+
+            	if (event<P_CCHECK) {
+            	    System.out.print("CONISTENCY CHECK:");
+            	    performConsistencyCheck();        		
+            	    ccheck = true;
+            	}else{
+            	    try {
+            		if (event<(P_CCHECK+P_CLEAN_RESTART)){
+            		    System.out.print("CLEAN RESTART:");
+            		    performCleanAndRestart(random, master, slaves);
+            		    ccheck = false;
+            		}else{
+            		    System.out.print("RESTART:");
+            		    performRestart(random, master, slaves);
+            		    ccheck = false;
+            		}
+            	    }catch (RuntimeException re){
+            		System.out.println("The files on disk are inconsistent. They will be removed to perform a clean start.");
             	    
-                    // delete existing files
-                    p = Runtime.getRuntime().exec("rm -rf "+PATH);
-                    p.waitFor();
+            		// delete existing files
+            		p = Runtime.getRuntime().exec("rm -rf "+PATH);
+            		p.waitFor();
                 
-                    DBS = (BabuDBImpl) BabuDBFactory.getSlaveBabuDB(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, master, slaves, Replication.SLAVE_PORT, null, Replication.DEFAULT_MAX_Q);
+            		DBS = (BabuDBImpl) BabuDBFactory.getSlaveBabuDB(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, master, slaves, Replication.SLAVE_PORT, null, Replication.DEFAULT_MAX_Q);
+            	    }
             	}
             }
 	}
