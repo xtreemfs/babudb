@@ -294,31 +294,6 @@ public class BabuDBImpl implements BabuDB {
         
         loadDBs();
         
-        LSN dbLsn = null;
-        for (LSMDatabase db : databases.values()) {
-            if (dbLsn == null)
-                dbLsn = db.getOndiskLSN();
-            else {
-                if (!dbLsn.equals(db.getOndiskLSN()))
-                    throw new RuntimeException("databases have different LSNs!");
-            }
-        }
-        if (dbLsn == null) {
-            //empty babudb
-            dbLsn = new LSN(0,0);
-        } else {
-            //need next LSN which is onDisk + 1
-            dbLsn = new LSN(dbLsn.getViewId(),dbLsn.getSequenceNo()+1);
-        }
-        
-        Logging.logMessage(Logging.LEVEL_INFO, this, "starting log replay");
-        LSN nextLSN = replayLogs();
-
-        if (dbLsn.compareTo(nextLSN) > 0) {
-            nextLSN = dbLsn;
-        }
-        Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done, using LSN: "+nextLSN);
-        
         try {
             logger = new DiskLogger(configuration.getDbLogDir(), latest.getViewId(), 
                     latest.getSequenceNo()+1L, configuration.getSyncMode(), configuration.getPseudoSyncWait(),

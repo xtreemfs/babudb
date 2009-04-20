@@ -235,8 +235,7 @@ class RequestImpl implements Request {
             if (context!=null)          string+="context: "+context.toString()+"',";         
         } else 
             string += "\nEnable tracing for more informations.";
-
-        string+="Object's id: "+super.toString();
+        
         return string;
     }
 }

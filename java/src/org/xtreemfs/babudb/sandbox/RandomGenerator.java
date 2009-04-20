@@ -47,7 +47,7 @@ public class RandomGenerator {
     
     public final static int MAX_VIEWID = 29;
     public final static long MAX_SEQUENCENO;
-    public final static long MIN_SEQUENCENO = 1000L;
+    public final static long MIN_SEQUENCENO = BabuDBLongrunTestConfig.MIN_SEQUENCENO;
 	
     // table of tables of meta operations ordered by their viewId
     public final Map<Integer,List<List<Object>>> operationsScenario = new HashMap<Integer,List<List<Object>>>();

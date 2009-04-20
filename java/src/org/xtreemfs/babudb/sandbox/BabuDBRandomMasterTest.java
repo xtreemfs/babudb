@@ -33,7 +33,7 @@ import org.xtreemfs.include.common.logging.Logging;
  */
 
 public class BabuDBRandomMasterTest {
-    public final static String PATH = "/tmp/babuDB/master"; // /scratch/babuDB/data/master
+    public final static String PATH = BabuDBLongrunTestConfig.PATH+"master";
     public final static int NUM_WKS = 1;
 	
     private final static RandomGenerator generator = new RandomGenerator();

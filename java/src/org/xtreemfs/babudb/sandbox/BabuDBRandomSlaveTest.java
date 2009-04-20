@@ -32,21 +32,21 @@ import org.xtreemfs.include.common.logging.Logging;
 public class BabuDBRandomSlaveTest {
 	
 	// sum of P_* has to be 100, these values are probabilities for the events '*' stands for
-	public final static int P_RESTART = 0;
-	public final static int P_CLEAN_RESTART = 0;
+	public final static int P_RESTART = 10;
+	public final static int P_CLEAN_RESTART = 5;
 	public final static int P_CCHECK = 100-(P_RESTART+P_CLEAN_RESTART);
 	
 	// the interval to sleep, if consistency-check has occurred before
-	public final static int CCHECK_SLEEP_INTERVAL = 3*60*1000; // 30*1000
+	public final static int CCHECK_SLEEP_INTERVAL = BabuDBLongrunTestConfig.CCHECK_SLEEP_INTERVAL;
 	
 	// the interval to sleep, if any other event occurred before
-	public final static int MIN_SLEEP_INTERVAL = 20*60*1000; // 3*60*1000 
-	public final static int MAX_SLEEP_INTERVAL = 30*60*1000; // 5*60*1000
+	public final static int MIN_SLEEP_INTERVAL = BabuDBLongrunTestConfig.MIN_SLEEP_INTERVAL; 
+	public final static int MAX_SLEEP_INTERVAL = BabuDBLongrunTestConfig.MAX_SLEEP_INTERVAL;
 	
 	public final static int MIN_DOWN_TIME = 60*1000;	
-	public final static int MAX_DOWN_TIME = 10*60*1000;	// 2*60*1000
+	public final static int MAX_DOWN_TIME = BabuDBLongrunTestConfig.MAX_DOWN_TIME;
 	
-	public final static String PATH = "/scratch/babuDB/data/slave"; // /tmp/babuDB/slave
+	public final static String PATH = BabuDBLongrunTestConfig.PATH+"slave";
 	public final static int NUM_WKS = 1;
 	
 	private final static RandomGenerator generator = new RandomGenerator();
@@ -97,18 +97,28 @@ public class BabuDBRandomSlaveTest {
             	Thread.sleep(sleepInterval);
             
             	int event = random.nextInt(100);
-            	if (event<P_CCHECK) {
-            	    System.out.println("CONISTENCY CHECK:");
-            	    performConsistencyCheck();        		
-            	    ccheck = true;
-            	}else if (event<(P_CCHECK+P_CLEAN_RESTART)){
-            	    System.out.println("CLEAN RESTART:");
-            	    performCleanAndRestart(random, master, slaves);
-            	    ccheck = false;
-            	}else{
-            	    System.out.println("RESTART:");
-            	    performRestart(random, master, slaves);
-            	    ccheck = false;
+            	try {
+            	    if (event<P_CCHECK) {
+            		System.out.println("CONISTENCY CHECK:");
+            		performConsistencyCheck();        		
+            		ccheck = true;
+            	    }else if (event<(P_CCHECK+P_CLEAN_RESTART)){
+            		System.out.println("CLEAN RESTART:");
+            		performCleanAndRestart(random, master, slaves);
+            		ccheck = false;
+            	    }else{
+            		System.out.println("RESTART:");
+            		performRestart(random, master, slaves);
+            		ccheck = false;
+            	    }
+            	}catch (RuntimeException re){
+            	    System.out.println("The files on disk are inconsistent. They will be removed to perform a Clean Start");
+            	    
+                    // delete existing files
+                    p = Runtime.getRuntime().exec("rm -rf "+PATH);
+                    p.waitFor();
+                
+                    DBS = (BabuDBImpl) BabuDBFactory.getSlaveBabuDB(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, master, slaves, Replication.SLAVE_PORT, null, Replication.DEFAULT_MAX_Q);
             	}
             }
 	}
@@ -175,7 +185,7 @@ public class BabuDBRandomSlaveTest {
 		}
 		System.out.println("SUCCESSFUL for LSN ("+last.toString()+").");
 	    } else 
-		System.err.println("No 'last LSN' could be retrieved, because the slave is LOADING from the master.");
+		System.out.println("Check could not be performed, because of the slave is LOADING from the master.");
 	    
 	    DBS.replication_resume();
 	}

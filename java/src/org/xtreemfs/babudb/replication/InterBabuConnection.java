@@ -172,21 +172,20 @@ class InterBabuConnection implements UncaughtExceptionHandler, LifeCycleListener
      * @param destination
      * @throws BabuDBConnectionException if request could not be send.
      */
-    void sendRequest(Token token, ReusableBuffer buffer, Object attachment, InetSocketAddress destination) throws BabuDBConnectionException{
-	    SpeedyRequest sReq = new SpeedyRequest(HTTPUtils.POST_TOKEN,
-	            token.toString(),null,null,
-	            buffer,DATA_TYPE.BINARY);
+    void sendRequest(Token token, ReusableBuffer buffer, Object attachment, InetSocketAddress destination) throws BabuDBConnectionException{  
+	SpeedyRequest sReq = null;    
+	try{
+	    sReq = new SpeedyRequest(HTTPUtils.POST_TOKEN,
+		token.toString(),null,null,buffer,DATA_TYPE.BINARY);
 	    sReq.genericAttatchment = attachment;
-	    
-	    try{
-	    	speedy.sendRequest(sReq, destination);  
-	    } catch (Exception e) {
-	    	sReq.freeBuffer();
-	    	throw new BabuDBConnectionException("'"+token.toString()+"' could not be send to '"+destination.toString()+"' because: "+e.getMessage());
-	    }
-	    
-	    Logging.logMessage(Logging.LEVEL_TRACE, this, "'"+token.toString()+"' was send to '"+destination.toString()+"'");
-	}
+		    
+	    speedy.sendRequest(sReq, destination);  
+	} catch (Exception e) {
+	    if (sReq!=null) sReq.freeBuffer();
+	    throw new BabuDBConnectionException("'"+token.toString()+"' could not be send to '"+destination.toString()+"' because: "+e.getMessage());
+	}    
+	Logging.logMessage(Logging.LEVEL_TRACE, this, "'"+token.toString()+"' was send to '"+destination.toString()+"'");
+    }
     
 /*
  * LifeCycleListener for Pinky & Speedy
