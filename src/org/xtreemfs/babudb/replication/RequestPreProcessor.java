@@ -315,8 +315,7 @@ class RequestPreProcessor {
             
         default:
             Logging.logMessage(Logging.LEVEL_ERROR, frontEnd, "Unknown Request received: "+result.toString());
-            throw new RuntimeException ("Unknown Request received: "+result.toString());
-            // throw THIS.new PreProcessException("Unknown Request received: "+result.toString(),HTTPUtils.SC_BAD_REQUEST); XXX
+            throw THIS.new PreProcessException("Unknown Request received: "+result.toString(),HTTPUtils.SC_BAD_REQUEST);
         } 
         
         Logging.logMessage(Logging.LEVEL_TRACE, frontEnd, "Request received: "+token.toString()+((result.lsn!=null) ? " "+result.lsn.toString() : ""));
@@ -593,10 +592,7 @@ class RequestPreProcessor {
             break;
             
         case STATE_BROADCAST:
-            break;
-            
-        case REPLICA_BROADCAST:
-            break;     
+            break;    
             
         default:
             String msg = "Unknown Response received: ";
@@ -605,11 +601,10 @@ class RequestPreProcessor {
             msg += " Request: "+token.toString();
             
             Logging.logMessage(Logging.LEVEL_ERROR, frontEnd, msg);
-            throw new RuntimeException(msg);
-            // throw THIS.new PreProcessException(msg); XXX
+            throw THIS.new PreProcessException(msg);
         }
         
-        Logging.logMessage(Logging.LEVEL_TRACE, frontEnd, "Response received: "+token.toString()+" from: "+source.toString());
+        Logging.logMessage(Logging.LEVEL_TRACE, THIS, "Response received: "+token.toString()+" from: "+source.toString());
     }
 
     /**
@@ -626,7 +621,7 @@ class RequestPreProcessor {
         data.add(databaseName);
         data.add(String.valueOf(numIndices));
         try {
-            result.data = JSONParser.writeJSON(data).getBytes();
+            result.data = ReusableBuffer.wrap(JSONParser.writeJSON(data).getBytes());
             result.destinations = slaves;
         } catch (JSONException e) {
             throw THIS.new PreProcessException("CREATE request could not be encoded. Because: "+e.getMessage());
@@ -648,7 +643,7 @@ class RequestPreProcessor {
         data.add(sourceDB);
         data.add(destDB);
         try {
-            result.data = JSONParser.writeJSON(data).getBytes();
+            result.data = ReusableBuffer.wrap(JSONParser.writeJSON(data).getBytes());
             result.destinations = slaves;
         } catch (JSONException e) {
             throw THIS.new PreProcessException("COPY request could not be encoded. Because: "+e.getMessage());
@@ -670,7 +665,7 @@ class RequestPreProcessor {
         data.add(databaseName);
         data.add(String.valueOf(deleteFiles));
         try {
-            result.data = JSONParser.writeJSON(data).getBytes();
+            result.data = ReusableBuffer.wrap(JSONParser.writeJSON(data).getBytes());
             result.destinations = slaves;
         } catch (JSONException e) {
             throw THIS.new PreProcessException("DELETE request could not be encoded. Because: "+e.getMessage());
@@ -712,9 +707,8 @@ class RequestPreProcessor {
         ReusableBuffer buf = null;
         try {
             buf = le.serialize(checksum);
-            result.data = buf.array();
+            result.data = buf;
             result.destinations = slaves;
-            BufferPool.free(buf);
             le.free();
         } catch (Exception e) {
             if (buf!=null) BufferPool.free(buf);

@@ -14,6 +14,8 @@ import java.util.Map;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.include.common.buffer.BufferPool;
+import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
@@ -42,7 +44,7 @@ class RequestImpl implements Request {
     LogEntry                    logEntry                = null;
     
     /** a serialized {@link LogEntry} to send, or meta-operation in JSON representation. */
-    byte[]                      data                    = null;
+    ReusableBuffer              data                    = null;
 
     /** for response issues and to be checked into the DB */
     LSMDBRequest                context                 = null;
@@ -66,7 +68,7 @@ class RequestImpl implements Request {
      * (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.Request#free()
      */
-    public void free() {       
+    public synchronized void free() {       
         if (logEntry!=null){
             logEntry.free();
             logEntry = null;
@@ -75,6 +77,11 @@ class RequestImpl implements Request {
         if (chunk!=null){
             chunk.free();
             chunk = null;
+        }
+        
+        if (data!=null){
+            BufferPool.free(data);
+            data = null;
         }
     }
  
@@ -118,7 +125,7 @@ class RequestImpl implements Request {
      * (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.Request#getData()
      */
-    public byte[] getData() {
+    public ReusableBuffer getData() {
         return data;
     }
 

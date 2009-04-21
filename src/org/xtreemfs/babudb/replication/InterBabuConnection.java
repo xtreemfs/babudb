@@ -10,6 +10,7 @@ package org.xtreemfs.babudb.replication;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.net.InetSocketAddress;
 
+import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.foundation.LifeCycleListener;
@@ -160,14 +161,17 @@ class InterBabuConnection implements UncaughtExceptionHandler, LifeCycleListener
      * @throws BabuDBConnectionException if request could not be send.
      */
     void sendRequest(Token token, byte[] value, Object attachment, InetSocketAddress destination) throws BabuDBConnectionException {
-    	sendRequest(token,ReusableBuffer.wrap(value),attachment,destination);
+    	ReusableBuffer buf = ReusableBuffer.wrap(value);
+	sendRequest(token, buf,attachment,destination);
+	BufferPool.free(buf);
+	buf = null;
     }
     
     /**
      * <p>Builds up a {@link SpeedyRequest} and sends it to the given destination.</p>
      * 
      * @param token
-     * @param buffer
+     * @param buffer - creates a viewBuffer on the given.
      * @param attachment
      * @param destination
      * @throws BabuDBConnectionException if request could not be send.
@@ -176,12 +180,12 @@ class InterBabuConnection implements UncaughtExceptionHandler, LifeCycleListener
 	SpeedyRequest sReq = null;    
 	try{
 	    sReq = new SpeedyRequest(HTTPUtils.POST_TOKEN,
-		token.toString(),null,null,buffer,DATA_TYPE.BINARY);
+		token.toString(),null,null,buffer.createViewBuffer(),DATA_TYPE.BINARY);
 	    sReq.genericAttatchment = attachment;
 		    
 	    speedy.sendRequest(sReq, destination);  
 	} catch (Exception e) {
-	    if (sReq!=null) sReq.freeBuffer();
+	    if (sReq != null) sReq.freeBuffer();
 	    throw new BabuDBConnectionException("'"+token.toString()+"' could not be send to '"+destination.toString()+"' because: "+e.getMessage());
 	}    
 	Logging.logMessage(Logging.LEVEL_TRACE, this, "'"+token.toString()+"' was send to '"+destination.toString()+"'");
