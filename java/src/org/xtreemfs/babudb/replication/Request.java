@@ -63,7 +63,7 @@ interface Request {
     /**
      * @return a {@link LogEntry} to send, or meta-operation in JSON representation.
      */
-    byte[] getData();
+    ReusableBuffer getData();
     
     /**
      * @return the context for response issues.

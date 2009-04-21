@@ -104,7 +104,7 @@ public class RequestPreProcessorTest {
         assertEquals(testLSN,broadcastRQ.getLSN());
         assertEquals(context,broadcastRQ.getContext());
         
-        LogEntry rqLe = LogEntry.deserialize(ReusableBuffer.wrap(broadcastRQ.getData()), new CRC32());
+        LogEntry rqLe = LogEntry.deserialize(broadcastRQ.getData(), new CRC32());
         assertEquals(testLogEntry.getLSN(), rqLe.getLSN()); 
         assertEquals(testData,new String(rqLe.getPayload().array()));
         rqLe.free();
@@ -300,7 +300,7 @@ public class RequestPreProcessorTest {
         
         Request rq = RequestPreProcessor.getReplicationRequest(testDBName, testNumIndices,new LinkedList<InetSocketAddress>());
         assertEquals(Token.CREATE,rq.getToken());
-        List<Object> load = (List<Object>) JSONParser.parseJSON(new JSONString(new String(rq.getData())));
+        List<Object> load = (List<Object>) JSONParser.parseJSON(new JSONString(new String(rq.getData().array())));
         assertEquals(testDBName,(String) load.get(0));
         assertEquals(testNumIndices,Integer.parseInt((String) load.get(1)));
         rq.free();
@@ -314,7 +314,7 @@ public class RequestPreProcessorTest {
         
         Request rq = RequestPreProcessor.getReplicationRequest(testSource, testDestination,new LinkedList<InetSocketAddress>());
         assertEquals(Token.COPY,rq.getToken());
-        List<Object> load = (List<Object>) JSONParser.parseJSON(new JSONString(new String(rq.getData())));
+        List<Object> load = (List<Object>) JSONParser.parseJSON(new JSONString(new String(rq.getData().array())));
         assertEquals(testSource,(String) load.get(0));
         assertEquals(testDestination,(String) load.get(1));
         rq.free();
@@ -328,7 +328,7 @@ public class RequestPreProcessorTest {
         
         Request rq = RequestPreProcessor.getReplicationRequest(testDBName, testDeleteAll, new LinkedList<InetSocketAddress>());
         assertEquals(Token.DELETE,rq.getToken());
-        List<Object> load = (List<Object>) JSONParser.parseJSON(new JSONString(new String(rq.getData())));
+        List<Object> load = (List<Object>) JSONParser.parseJSON(new JSONString(new String(rq.getData().array())));
         assertEquals(testDBName,(String) load.get(0));
         assertEquals(testDeleteAll,Boolean.valueOf((String) load.get(1)));
         rq.free();
