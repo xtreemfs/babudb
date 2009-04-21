@@ -788,7 +788,7 @@ class ReplicationThread extends LifeCycleThread{
                 rq.finished();
             }else{
                 try{
-                    frontEnd.connectionControl.sendRequest(t, rq.getValue().getData(), rq, slave);
+                    frontEnd.connectionControl.sendRequest(t, rq.getValue().getData().createViewBuffer(), rq, slave);
                 } catch (BabuDBConnectionException e){
                     replicasFailed++;
                     Logging.logMessage(Logging.LEVEL_WARN, this, t.toString()+" could not be send to slave: '"+slave.toString()+"', because: "+e.getMessage());

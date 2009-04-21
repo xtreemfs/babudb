@@ -10,7 +10,6 @@ package org.xtreemfs.babudb.replication;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.net.InetSocketAddress;
 
-import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.foundation.LifeCycleListener;
@@ -155,23 +154,20 @@ class InterBabuConnection implements UncaughtExceptionHandler, LifeCycleListener
      * <p>Builds up a {@link SpeedyRequest} and sends it to the given destination.</p>
      * 
      * @param token
-     * @param value
+     * @param value - creates a viewBuffer on the given value.
      * @param attachment
      * @param destination
      * @throws BabuDBConnectionException if request could not be send.
      */
     void sendRequest(Token token, byte[] value, Object attachment, InetSocketAddress destination) throws BabuDBConnectionException {
-    	ReusableBuffer buf = ReusableBuffer.wrap(value);
-	sendRequest(token, buf,attachment,destination);
-	BufferPool.free(buf);
-	buf = null;
+	sendRequest(token, ReusableBuffer.wrap(value),attachment,destination);
     }
-    
+
     /**
      * <p>Builds up a {@link SpeedyRequest} and sends it to the given destination.</p>
      * 
      * @param token
-     * @param buffer - creates a viewBuffer on the given.
+     * @param buffer
      * @param attachment
      * @param destination
      * @throws BabuDBConnectionException if request could not be send.
@@ -180,7 +176,7 @@ class InterBabuConnection implements UncaughtExceptionHandler, LifeCycleListener
 	SpeedyRequest sReq = null;    
 	try{
 	    sReq = new SpeedyRequest(HTTPUtils.POST_TOKEN,
-		token.toString(),null,null,buffer.createViewBuffer(),DATA_TYPE.BINARY);
+		token.toString(),null,null,buffer,DATA_TYPE.BINARY);
 	    sReq.genericAttatchment = attachment;
 		    
 	    speedy.sendRequest(sReq, destination);  
