@@ -237,6 +237,7 @@ class RequestPreProcessor {
                 else {
                     // make a load request
                     result.token = LOAD_RQ;
+                    result.lsn = new LSN(0,0L);
                     Logging.logMessage(Logging.LEVEL_WARN, THIS, "DELETE could not be performed; DB will be loaded soon.");
                     break;
                 }
@@ -259,6 +260,7 @@ class RequestPreProcessor {
                 else {
                     // make a load request
                     result.token = LOAD_RQ;
+                    result.lsn = new LSN(0,0L);
                     Logging.logMessage(Logging.LEVEL_WARN, THIS, "COPY could not be performed; DB will be loaded soon.");
                     break;
                 }
@@ -281,6 +283,7 @@ class RequestPreProcessor {
                 else {
                     // make a load request
                     result.token = LOAD_RQ;
+                    result.lsn = new LSN(0,0L);
                     Logging.logMessage(Logging.LEVEL_WARN, THIS, "DELETE could not be performed; DB will be loaded soon.");
                     break;
                 }
@@ -295,6 +298,7 @@ class RequestPreProcessor {
             
              // make a load request
             result.token = LOAD_RQ;
+            result.lsn = new LSN(0,0L);
             Logging.logMessage(Logging.LEVEL_WARN, THIS, "Requested logEntry was not found; DB will be loaded soon.");
             break;
         	
@@ -304,6 +308,7 @@ class RequestPreProcessor {
             
             // make a load request
             result.token = LOAD_RQ;
+            result.lsn = new LSN(0,0L);
             Logging.logMessage(Logging.LEVEL_WARN, THIS, "Requested chunk was not found; DB will be loaded soon.");
             break;
             

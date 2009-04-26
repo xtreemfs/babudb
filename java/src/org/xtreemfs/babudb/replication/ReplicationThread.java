@@ -42,9 +42,6 @@ import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.foundation.LifeCycleThread;
 import org.xtreemfs.include.foundation.json.JSONException;
 import org.xtreemfs.include.foundation.json.JSONParser;
-import org.xtreemfs.include.foundation.pinky.PipelinedPinky;
-import org.xtreemfs.include.foundation.speedy.MultiSpeedy;
-import org.xtreemfs.include.foundation.speedy.SpeedyRequest;
 
 import static org.xtreemfs.babudb.replication.Token.*;
 
@@ -55,10 +52,6 @@ import static org.xtreemfs.babudb.replication.Token.*;
  * receiving such changes from the Master.</p>
  * 
  * <p>Thread-safe.</p>
- * 
- * <p>Handles a {@link PipelinedPinky}, and a {@link MultiSpeedy} for bidirectional
- * communication with slaves, if the DB is configured as master, or with the master,
- * if it is configured as slave.</p>
  * 
  * @author flangner
  *
@@ -439,23 +432,11 @@ class ReplicationThread extends LifeCycleThread{
                 		Logging.logMessage(Logging.LEVEL_WARN, this, "A missingChunk-request could not be canceled.");
                     	    }
                     	}
-                    	
-                        // delete all previews loaded files 
-                        if (frontEnd.getCondition().equals(CONDITION.LOADING)) {
-                            frontEnd.switchCondition(CONDITION.RUNNING);
-                            
-                            Status<Chunk> c=null;
-                            while ((c = missingChunks.poll())!=null) {
-                                try {
-                                    getFile(c.getValue()).delete();
-                                }catch (IOException e) { /* ignored in this case */ }
-                            } 
-                        }
                         
                         // finally send the LOAD-request
                         try {
                             sendLOAD(newRequest);
-                        } catch (Exception e){
+                        } catch (BabuDBConnectionException e){
                             throw new ReplicationException("LOAD could not be send to master: '"+frontEnd.master.toString()+"', because: "+e.getMessage());
                         }
                         break;
@@ -544,7 +525,39 @@ class ReplicationThread extends LifeCycleThread{
                         
                      // evaluates the load details from the master
                     case LOAD_RP :
-                	if (metaDataLSM == null){
+                        // change state of the loadRq to finished
+                	boolean discardNewRequest = false;
+                	Status<Request> loadRq = null;
+                	for (Status<Request> rq : pending){
+                	    if (rq.getValue().getToken().equals(LOAD_RQ)){
+                		if (loadRq == null) loadRq = rq;
+                		else if (metaDataLSM == null){
+                		    discardNewRequest = true;
+                		    break;
+                		} else if (rq.isOpen()) {
+                		    // cancel open requests
+                		    try {
+                			rq.cancel();
+                		    }catch (ReplicationException e) { /* ignore */ }
+                		}
+                	    }
+                        }
+                	if (loadRq == null){
+                	    CONDITION actual = frontEnd.getCondition();
+                	    if (actual.equals(CONDITION.LOADING))
+                		Logging.logMessage(Logging.LEVEL_ERROR, this, "LOAD_RP received without finding a corresponding LOAD_RQ! Programmatic error!");                	    
+                	    else
+                		// ignore the unrequested LOAD_RP
+                		break;
+                	}
+                	loadRq.finished();
+                	
+                	// discard the LOAD_RP if there is another request pending 
+    		    	// and the response had no informations attached
+    		    	if (discardNewRequest) break;
+                	
+                	// evaluate the details
+                	if (metaDataLSM == null && missingChunks.isEmpty()){
                 	    frontEnd.switchCondition(CONDITION.RUNNING);
                 	    
                 	    // make a higher restriction for the nextExpected request
@@ -553,7 +566,24 @@ class ReplicationThread extends LifeCycleThread{
                 	    mLSN =  new Status<LSN>(viewIdIncrementTo,this);
                             if (!missing.contains(mLSN) && !pending.contains(new Status<Request>(RequestPreProcessor.getExpectedREPLICA(viewIdIncrementTo))))
                                 missing.add(mLSN);
-                	}else{
+                	} else if (metaDataLSM != null) {
+                	    // erase data of the previous LOAD, if necessary
+                	    if (!missingChunks.isEmpty()){
+                            	// delete also all existing chunk-requests, because there will be some new
+                            	mChunk = null;
+                            	while ((mChunk = missingChunks.peek()) != null){
+                            	    try {                   		
+                            		mChunk.cancel();
+                            	    } catch (Exception e) {
+                        		Logging.logMessage(Logging.LEVEL_WARN, this, "A missingChunk-request could not be canceled.");
+                            	    }
+                            	}
+                            	
+                            	try{
+                            	    frontEnd.dbInterface.replication_LOAD_cleanUp();
+                            	} catch (Exception e){ /* ignored */ }
+                	    }
+                	    
                 	    viewIdIncrementTo = null;
                            // make chunks and store them at the missingChunks                       
                            // for each file 
@@ -592,16 +622,6 @@ class ReplicationThread extends LifeCycleThread{
                             // make a higher restriction for the nextExpected request
                             setNextExpected(RequestPreProcessor.getExpectedCHUNK_RP(chunk));
                 	}
-                        // change state of the loadRq to finished
-                	Status<Request> loadRq = null;
-                	for (Status<Request> rq : pending){
-                	    if (rq.getValue().getToken().equals(LOAD_RQ)){
-                		loadRq = rq;
-                        	break;
-                	    }
-                        }
-                	assert (loadRq!=null) : "LOAD_RP received without sending a request!";
-                	loadRq.finished();
                         break;
                         
                      // saves a chunk send by the master
@@ -621,7 +641,8 @@ class ReplicationThread extends LifeCycleThread{
                                     			   "because: "+e.getMessage());
                         }
                         Logging.logMessage(Logging.LEVEL_TRACE, this, "Chunk written: "+chunk.toString());  
-                        openMasterRequest.decrementAndGet();
+                	if (0 == openMasterRequest.getAndDecrement()) 
+                	    openMasterRequest.set(0);
                         break;
                         
                   // shared logic
@@ -720,7 +741,7 @@ class ReplicationThread extends LifeCycleThread{
      * <p>Generates and enqueues an original LOAD_RQ.</p>
      * <p>Sends an {@link Token}.LOAD request to the master.</p>
      * <p>Sets the nextExpected flag to a higher priority.</p>
-     * <p>Appends the original {@link Request} to the {@link SpeedyRequest}.</p>
+     * <p>Cleans up existing files.</p>
      * 
      * @param lsn - the last acknowledged LSN.
      * @throws ReplicationException if the request status could not be switched.
@@ -736,13 +757,16 @@ class ReplicationThread extends LifeCycleThread{
     /**
      * <p>Sends an {@link Token}.LOAD request to the master.</p>
      * <p>Sets the nextExpected flag to a higher priority.</p>
-     * <p>Appends the original {@link Request} to the {@link SpeedyRequest}.</p>
+     * <p>Cleans up existing files.</p>
      * 
      * @param rq - the original {@link Request}.
      * @throws BabuDBConnectionException if an error occurs.
      */
-    private void sendLOAD(Status<Request> rq) throws BabuDBConnectionException { 
+    private void sendLOAD(Status<Request> rq) throws BabuDBConnectionException{ 
         frontEnd.switchCondition(CONDITION.LOADING);
+        try {
+            frontEnd.dbInterface.replication_LOAD_cleanUp();
+        } catch (Exception e) { /* ignore */ }
         frontEnd.connectionControl.sendRequest(LOAD, 
         	rq.getValue().getLSN().toString().getBytes(), rq, frontEnd.master);
         
@@ -987,7 +1011,9 @@ class ReplicationThread extends LifeCycleThread{
             if (lsmDBRq!=null)
             	lsmDBRq.getListener().insertFinished(lsmDBRq);
             
-            if (req.getToken() == REPLICA) openMasterRequest.decrementAndGet();
+            if (req.getToken() == REPLICA) 
+        	if (0 == openMasterRequest.getAndDecrement()) 
+        	    openMasterRequest.set(0);
         }
         
         remove(rq);
