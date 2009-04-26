@@ -83,6 +83,10 @@ class Status<T> {
     	return this.state.get().equals(PENDING);
     }
     
+    boolean isOpen(){
+	return this.state.get().equals(OPEN);
+    }
+    
     T getValue(){
         return rq;
     }

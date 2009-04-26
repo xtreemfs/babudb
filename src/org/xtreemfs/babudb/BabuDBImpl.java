@@ -1430,6 +1430,29 @@ public class BabuDBImpl implements BabuDB {
     }
     
     /**
+     * <p>Clean Up operation to avoid file ambiguity.</p> 
+     * @throws InterruptedException 
+     * @throws IOException 
+     */
+    public void replication_LOAD_cleanUp() throws InterruptedException, IOException{
+	// delete existing files
+	Process p = Runtime.getRuntime().exec("rm -rf "+configuration.getBaseDir());
+	p.waitFor();
+	
+	// recreate the directory
+	p = Runtime.getRuntime().exec("mkdir -p "+configuration.getBaseDir());
+	p.waitFor();
+	
+	// delete existing files
+	p = Runtime.getRuntime().exec("rm -rf "+configuration.getDbLogDir());
+	p.waitFor();
+	
+	// recreate the directory
+	p = Runtime.getRuntime().exec("mkdir -p "+configuration.getDbLogDir());
+	p.waitFor();
+    }
+    
+    /**
      * <p>Makes a new checkPoint and increments the viewID.</p>
      * 
      * @throws BabuDBException 
