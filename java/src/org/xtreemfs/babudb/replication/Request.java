@@ -79,15 +79,25 @@ interface Request {
      * @return a list of destinations, where the request should be send to.
      */
     List<InetSocketAddress> getDestinations();
+    
     /*
      * (non-Javadoc)
      * @see java.lang.Object#equals(java.lang.Object)
      */
-    boolean equals(Object obj);
+    @Override
+    public boolean equals(Object obj);
 
     /*
      * (non-Javadoc)
      * @see java.lang.Object#toString()
      */
-    String toString();
+    @Override
+    public String toString();
+    
+    /*
+     * (non-Javadoc)
+     * @see java.lang.Object#hashCode()
+     */
+    @Override
+    public int hashCode();
 }
