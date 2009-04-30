@@ -273,6 +273,11 @@ class Chunk implements Comparable<Chunk> {
         return fileName.equals(o.fileName) && begin.equals(o.begin) && end.equals(o.end);
     }
     
+    @Override
+    public int hashCode() {
+        return fileName.hashCode()+begin.hashCode()+end.hashCode();
+    }
+    
     /*
      * (non-Javadoc)
      * @see java.lang.Object#toString()

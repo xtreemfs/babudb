@@ -14,7 +14,7 @@ package org.xtreemfs.babudb.sandbox;
  */
 
 public class BabuDBLongrunTestConfig {
-    public static final boolean CLUSTER = true;
+    public static final boolean CLUSTER = false;
 	
     // the interval to sleep, if consistency-check has occurred before
     public final static int CCHECK_SLEEP_INTERVAL;

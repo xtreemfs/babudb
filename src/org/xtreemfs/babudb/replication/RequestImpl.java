@@ -18,6 +18,8 @@ import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
 
+import static org.xtreemfs.babudb.replication.Token.*;
+
 /**
  * <p><b>To get instances of that use the {@link RequestPreProcessor}!</b></p>
  * 
@@ -195,7 +197,8 @@ class RequestImpl implements Request {
             case LOAD_RP:
                 return source.equals(rq.getSource());
                 
-            case LOAD_RQ: return true;
+            case LOAD_RQ: 
+        	return (lsn.equals(rq.getLSN()));
                 
             case REPLICA:
                 return (lsn.equals(rq.getLSN()));
@@ -244,5 +247,25 @@ class RequestImpl implements Request {
             string += "\nEnable tracing for more informations.";
         
         return string;
+    }
+    
+    /*
+     * (non-Javadoc)
+     * @see java.lang.Object#hashCode()
+     */
+    @Override
+    public int hashCode() {
+        int hashCode = token.hashCode()+((source == null) ? 0 : source.hashCode());
+        
+        if (token == LOAD_RQ || token == ACK_RQ || token == ACK || token == RQ)
+            hashCode += lsn.hashCode();
+        else if (token == CHUNK || token == CHUNK_RP)    
+            hashCode += chunk.hashCode();
+        else if (token == REPLICA || token == REPLICA_BROADCAST)
+            hashCode += (lsn == null) ? Math.random() :lsn.hashCode();
+        else if (token == CREATE || token == COPY || token == DELETE)
+            hashCode += data.hashCode();
+                
+        return hashCode;
     }
 }

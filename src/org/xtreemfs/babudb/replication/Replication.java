@@ -49,6 +49,20 @@ import static org.xtreemfs.babudb.replication.Replication.CONDITION.*;
 public class Replication implements PinkyRequestListener,SpeedyResponseListener,LifeCycleListener,BabuDBRequestListener { 
     
     /**
+     * <p>The replication is stateful. Because some operations require mutual exclusion.</p>
+     * 
+     * @author flangner
+     *
+     */
+    public enum STATE {
+        RUNNING,
+        STOPPED,
+        LOADING,
+        RESETTING,
+        DEAD
+    }
+    
+    /**
      * <p>The inner state of the {@link ReplicationThread}.</p>
      * 
      * @author flangner
@@ -498,7 +512,6 @@ public class Replication implements PinkyRequestListener,SpeedyResponseListener,
             // send an ACK for the replicated entry
             replication.enqueueRequest(RequestPreProcessor.getACK_RQ(rq.getValue().getLSN(), rq.getValue().getSource()));
             
-            // XXX changed logLevel to LEVEL_ERROR for testing purpose || if ((rq.getValue().getLSN().getSequenceNo() % 10) == 0)
             Logging.logMessage(Logging.LEVEL_TRACE, replication, "LogEntry inserted successfully: "+rq.getValue().getLSN().toString());
             
             rq.finished();           

@@ -280,4 +280,13 @@ class Status<T> {
         
         return string;       
     }
+    
+    /*
+     * (non-Javadoc)
+     * @see java.lang.Object#hashCode()
+     */
+    @Override
+    public int hashCode() {
+        return rq.hashCode();
+    }
 }
