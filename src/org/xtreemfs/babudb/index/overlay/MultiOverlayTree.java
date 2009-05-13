@@ -278,8 +278,7 @@ public class MultiOverlayTree<K, V> {
         for (; list != null; list = list.next) {
             
             V value = list.tree.get(key);
-            if (value == nullValue)
-                return null;
+                        
             if (value != null)
                 return value;
         }
