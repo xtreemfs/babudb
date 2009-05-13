@@ -46,7 +46,7 @@ public class MultiOverlayTreeTest extends TestCase {
         tree.insert("7", "bar");
         tree.insert("4", "quark");
         
-        assertNull(tree.lookup("3"));
+        assertEquals("\0", tree.lookup("3"));
         assertEquals("bla", tree.lookup("3", snap1));
         assertEquals("wuerg", tree.lookup("10"));
         assertEquals("foo", tree.lookup("10", snap1));
@@ -194,6 +194,7 @@ public class MultiOverlayTreeTest extends TestCase {
             tree.insert(key, val);
         }
         
+        // look up each key
         for (int i = 0; i < numElements; i++) {
             
             String keyString = Integer.toHexString(i);
@@ -202,9 +203,11 @@ public class MultiOverlayTreeTest extends TestCase {
             assertEquals(tree.lookup(key), map1.get(keyString));
         }
         
+        // create a new overlay
         int snap1 = tree.newOverlay();
         final SortedMap<String, byte[]> map2 = new TreeMap<String, byte[]>(map1);
         
+        // remove every second element
         for (int i = 0; i < numElements; i += 2) {
             
             String keyString = Integer.toHexString(i);
@@ -214,17 +217,25 @@ public class MultiOverlayTreeTest extends TestCase {
             map2.remove(keyString);
         }
         
+        // look up all elements
         for (int i = 0; i < numElements; i++) {
             
             String keyString = Integer.toHexString(i);
             byte[] key = keyString.getBytes();
             
-            assertEquals(tree.lookup(key), map2.get(keyString));
+            byte[] mapVal = map2.get(keyString);
+            byte[] val = tree.lookup(key);
+            if (mapVal != null)
+                assertEquals(mapVal, val);
+            else
+                assertTrue(val == null || val.length == 0);
         }
         
+        // create a new overlay
         int snap2 = tree.newOverlay();
         final SortedMap<String, byte[]> map3 = new TreeMap<String, byte[]>(map2);
         
+        // overwrite every 5th element
         for (int i = 0; i < numElements; i += 5) {
             
             String keyString = Integer.toHexString(i);
@@ -235,12 +246,18 @@ public class MultiOverlayTreeTest extends TestCase {
             map3.put(keyString, val);
         }
         
+        // look up all elements
         for (int i = 0; i < numElements; i++) {
             
             String keyString = Integer.toHexString(i);
             byte[] key = keyString.getBytes();
             
-            assertEquals(tree.lookup(key), map3.get(keyString));
+            byte[] mapVal = map3.get(keyString);
+            byte[] val = tree.lookup(key);
+            if (mapVal != null)
+                assertEquals(mapVal, val);
+            else
+                assertTrue(val == null || val.length == 0);
         }
         
         Iterator<Entry<byte[], byte[]>> it = tree.prefixLookup(null, false);
@@ -279,6 +296,17 @@ public class MultiOverlayTreeTest extends TestCase {
         
         String e = new String(expected.array());
         String v = new String(val.array());
+        
+        assertEquals(e, v);
+    }
+    
+    protected void assertEquals(byte[] expected, byte[] val) {
+        
+        if (expected == null && val == null)
+            return;
+        
+        String e = new String(expected);
+        String v = new String(val);
         
         assertEquals(e, v);
     }
