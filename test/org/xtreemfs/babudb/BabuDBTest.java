@@ -220,7 +220,18 @@ public class BabuDBTest {
         Iterator<Entry<byte[], byte[]>> iter = database.syncPrefixLookup("test", 3, "Key3"
                 .getBytes());
         assertNotNull(iter);
-        
+        ir = database.createInsertGroup("test");
+        ir.addDelete(0, "Key1".getBytes());
+        ir.addInsert(1, "Key2".getBytes(),
+                "Value2.2".getBytes());
+        ir.addInsert(2, "Key3".getBytes(),
+                "Value2.3".getBytes());
+        database.syncInsert(ir);
+        database.checkpoint();
+
+        iter = database.syncPrefixLookup("test", 0, "Key3".getBytes());
+        assertNotNull(iter);
+
         System.out.println("shutting down database...");
         
         database.shutdown();
@@ -283,6 +294,65 @@ public class BabuDBTest {
             
             assertEquals("bla", new String(v0));
             assertEquals("bla", new String(v1));
+        }
+    }
+
+    @Test
+    public void testInsDelGet() throws Exception {
+
+        database = (BabuDBImpl) BabuDBFactory.getBabuDB(baseDir, baseDir, 1, 0, 0, SyncMode.ASYNC,
+            0, 0);
+        database.createDatabase("test", 3);
+
+        for (int i = 0; i < 1000; i++) {
+            BabuDBInsertGroup ir = database.createInsertGroup("test");
+            ir.addInsert(0, (i + "").getBytes(), "bla".getBytes());
+            ir.addInsert(1, (i + "").getBytes(), "bla".getBytes());
+            ir.addInsert(2, (i + "").getBytes(), "bla".getBytes());
+            database.directInsert(ir);
+        }
+
+        byte[] data = new byte[2048];
+        for (int i = 0; i < 1000; i++) {
+            BabuDBInsertGroup ir = database.createInsertGroup("test");
+            ir.addInsert(0, (i + "").getBytes(), data);
+            ir.addInsert(1, (i + "").getBytes(), data);
+            ir.addInsert(2, (i + "").getBytes(), data);
+            database.directInsert(ir);
+        }
+
+        database.checkpoint();
+
+        for (int i = 0; i < 1000; i++) {
+
+            byte[] v0 = database.directLookup("test", 0, (i + "").getBytes());
+            byte[] v1 = database.directLookup("test", 1, (i + "").getBytes());
+            byte[] v2 = database.directLookup("test", 2, (i + "").getBytes());
+
+            assertNotNull(v0);
+            assertNotNull(v1);
+            assertNotNull(v2);
+        }
+
+        for (int i = 0; i < 1000; i++) {
+            BabuDBInsertGroup ir = database.createInsertGroup("test");
+            ir.addDelete(0, (i + "").getBytes());
+            ir.addDelete(1, (i + "").getBytes());
+            ir.addDelete(2, (i + "").getBytes());
+            database.directInsert(ir);
+        }
+
+        
+
+        for (int i = 0; i < 1000; i++) {
+
+            byte[] v0 = database.directLookup("test", 0, (i + "").getBytes());
+            byte[] v1 = database.directLookup("test", 1, (i + "").getBytes());
+            byte[] v2 = database.directLookup("test", 2, (i + "").getBytes());
+
+            assertNull(v0);
+            assertNull(v1);
+            assertNull(v2);
         }
     }
     
