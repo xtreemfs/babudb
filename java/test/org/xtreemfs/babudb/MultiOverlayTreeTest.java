@@ -55,11 +55,15 @@ public class MultiOverlayTreeTest extends TestCase {
         assertEquals("blub", tree.lookup("4", snap1));
         assertEquals("blub", tree.lookup("4", snap2));
         assertEquals("quark", tree.lookup("4"));
+    }
+    
+    public void testRangeLookups() {
         
         // randomly insert 200 elements in a map
+        
         final int numElements = 200;
         
-        tree = new MultiOverlayTree<String, String>("\0");
+        MultiOverlayTree<String, String> tree = new MultiOverlayTree<String, String>("\0");
         
         final SortedMap<String, String> map1 = new TreeMap<String, String>();
         for (int i = 0x10; i < numElements; i++) {
@@ -69,7 +73,7 @@ public class MultiOverlayTreeTest extends TestCase {
             tree.insert(key, val);
         }
         
-        snap1 = tree.newOverlay();
+        int snap1 = tree.newOverlay();
         final SortedMap<String, String> map2 = new TreeMap<String, String>(map1);
         
         for (int i = 0x10; i < numElements; i += 2) {
@@ -78,7 +82,7 @@ public class MultiOverlayTreeTest extends TestCase {
             map2.remove(key);
         }
         
-        snap2 = tree.newOverlay();
+        int snap2 = tree.newOverlay();
         final SortedMap<String, String> map3 = new TreeMap<String, String>(map2);
         
         for (int i = 0x10; i < numElements; i += 5) {
@@ -88,26 +92,114 @@ public class MultiOverlayTreeTest extends TestCase {
             map3.put(key, val);
         }
         
-        Iterator<Entry<String, String>> it = tree.rangeLookup(null, null, false);
+        // perform range lookups
+        
+        Iterator<Entry<String, String>> it = tree.rangeLookup(null, null, false, true);
         Iterator<String> itExpected = map3.values().iterator();
         while (it.hasNext())
             assertEquals(itExpected.next(), it.next().getValue());
         assertFalse(itExpected.hasNext());
         
-        it = tree.rangeLookup(null, null, snap1, false);
+        it = tree.rangeLookup(null, null, snap1, false, true);
         itExpected = map1.values().iterator();
         while (it.hasNext())
             assertEquals(itExpected.next(), it.next().getValue());
         assertFalse(itExpected.hasNext());
         
-        it = tree.rangeLookup(null, null, snap2, false);
+        it = tree.rangeLookup(null, null, snap2, false, true);
         itExpected = map2.values().iterator();
         while (it.hasNext())
             assertEquals(itExpected.next(), it.next().getValue());
         assertFalse(itExpected.hasNext());
         
-        it = tree.rangeLookup("3", "4", false);
+        it = tree.rangeLookup("4", null, snap2, false, true);
+        itExpected = map2.subMap("4", "x").values().iterator();
+        while (it.hasNext())
+            assertEquals(itExpected.next(), it.next().getValue());
+        assertFalse(itExpected.hasNext());
+        
+        it = tree.rangeLookup(null, "4", snap2, false, true);
+        itExpected = map2.subMap("", "4").values().iterator();
+        while (it.hasNext())
+            assertEquals(itExpected.next(), it.next().getValue());
+        assertFalse(itExpected.hasNext());
+        
+        it = tree.rangeLookup("3", "4", false, true);
         itExpected = map3.subMap("3", "4").values().iterator();
+        while (it.hasNext())
+            assertEquals(itExpected.next(), it.next().getValue());
+        assertFalse(itExpected.hasNext());
+    }
+    
+    public void testDescendingRangeLookups() {
+        
+        // randomly insert 200 elements in a map
+        
+        final int numElements = 200;
+        
+        MultiOverlayTree<String, String> tree = new MultiOverlayTree<String, String>("\0");
+        
+        final TreeMap<String, String> map1 = new TreeMap<String, String>();
+        for (int i = 0x10; i < numElements; i++) {
+            String key = Integer.toHexString(i);
+            String val = Integer.toHexString((int) (Math.random() * Integer.MAX_VALUE));
+            map1.put(key, val);
+            tree.insert(key, val);
+        }
+        
+        int snap1 = tree.newOverlay();
+        final TreeMap<String, String> map2 = new TreeMap<String, String>(map1);
+        
+        for (int i = 0x10; i < numElements; i += 2) {
+            String key = Integer.toHexString(i);
+            tree.insert(key, null);
+            map2.remove(key);
+        }
+        
+        int snap2 = tree.newOverlay();
+        final TreeMap<String, String> map3 = new TreeMap<String, String>(map2);
+        
+        for (int i = 0x10; i < numElements; i += 5) {
+            String key = Integer.toHexString(i);
+            String val = Integer.toHexString((int) (Math.random() * Integer.MAX_VALUE));
+            tree.insert(key, val);
+            map3.put(key, val);
+        }
+        
+        // peform range lookups
+        
+        Iterator<Entry<String, String>> it = tree.rangeLookup(null, null, false, false);
+        Iterator<String> itExpected = map3.descendingMap().values().iterator();
+        while (it.hasNext())
+            assertEquals(itExpected.next(), it.next().getValue());
+        assertFalse(itExpected.hasNext());
+        
+        it = tree.rangeLookup(null, null, snap1, false, false);
+        itExpected = map1.descendingMap().values().iterator();
+        while (it.hasNext())
+            assertEquals(itExpected.next(), it.next().getValue());
+        assertFalse(itExpected.hasNext());
+        
+        it = tree.rangeLookup(null, null, snap2, false, false);
+        itExpected = map2.descendingMap().values().iterator();
+        while (it.hasNext())
+            assertEquals(itExpected.next(), it.next().getValue());
+        assertFalse(itExpected.hasNext());
+        
+        it = tree.rangeLookup("4", null, snap2, false, false);
+        itExpected = map2.descendingMap().tailMap("4").values().iterator();
+        while (it.hasNext())
+            assertEquals(itExpected.next(), it.next().getValue());
+        assertFalse(itExpected.hasNext());
+        
+        it = tree.rangeLookup(null, "4", snap2, false, false);
+        itExpected = map2.descendingMap().headMap("4").values().iterator();
+        while (it.hasNext())
+            assertEquals(itExpected.next(), it.next().getValue());
+        assertFalse(itExpected.hasNext());
+        
+        it = tree.rangeLookup("4", "3", false, false);
+        itExpected = map3.descendingMap().subMap("4", "3").values().iterator();
         while (it.hasNext())
             assertEquals(itExpected.next(), it.next().getValue());
         assertFalse(itExpected.hasNext());
@@ -149,25 +241,25 @@ public class MultiOverlayTreeTest extends TestCase {
             map3.put(key, val);
         }
         
-        Iterator<Entry<String, String>> it = tree.prefixLookup(null, false);
+        Iterator<Entry<String, String>> it = tree.prefixLookup(null, false, true);
         Iterator<String> itExpected = map3.values().iterator();
         while (it.hasNext())
             assertEquals(itExpected.next(), it.next().getValue());
         assertFalse(itExpected.hasNext());
         
-        it = tree.prefixLookup(null, snap1, false);
+        it = tree.prefixLookup(null, snap1, false, true);
         itExpected = map1.values().iterator();
         while (it.hasNext())
             assertEquals(itExpected.next(), it.next().getValue());
         assertFalse(itExpected.hasNext());
         
-        it = tree.prefixLookup(null, snap2, false);
+        it = tree.prefixLookup(null, snap2, false, true);
         itExpected = map2.values().iterator();
         while (it.hasNext())
             assertEquals(itExpected.next(), it.next().getValue());
         assertFalse(itExpected.hasNext());
         
-        it = tree.prefixLookup("3", false);
+        it = tree.prefixLookup("3", false, true);
         itExpected = map3.subMap("3", "4").values().iterator();
         while (it.hasNext())
             assertEquals(itExpected.next(), it.next().getValue());
@@ -260,25 +352,25 @@ public class MultiOverlayTreeTest extends TestCase {
                 assertTrue(val == null || val.length == 0);
         }
         
-        Iterator<Entry<byte[], byte[]>> it = tree.prefixLookup(null, false);
+        Iterator<Entry<byte[], byte[]>> it = tree.prefixLookup(null, false, true);
         Iterator<byte[]> itExpected = map3.values().iterator();
         while (it.hasNext())
             assertEquals(itExpected.next(), it.next().getValue());
         assertFalse(itExpected.hasNext());
         
-        it = tree.prefixLookup(null, snap1, false);
+        it = tree.prefixLookup(null, snap1, false, true);
         itExpected = map1.values().iterator();
         while (it.hasNext())
             assertEquals(itExpected.next(), it.next().getValue());
         assertFalse(itExpected.hasNext());
         
-        it = tree.prefixLookup(null, snap2, false);
+        it = tree.prefixLookup(null, snap2, false, true);
         itExpected = map2.values().iterator();
         while (it.hasNext())
             assertEquals(itExpected.next(), it.next().getValue());
         assertFalse(itExpected.hasNext());
         
-        it = tree.prefixLookup("3".getBytes(), false);
+        it = tree.prefixLookup("3".getBytes(), false, true);
         itExpected = map3.subMap("3", "4").values().iterator();
         while (it.hasNext())
             assertEquals(itExpected.next(), it.next().getValue());

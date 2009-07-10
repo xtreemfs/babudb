@@ -22,21 +22,22 @@ public class MultiOverlayBufferTree extends MultiOverlayTree<byte[], byte[]> {
         this.comp = comp;
     }
     
-    public Iterator<Entry<byte[], byte[]>> prefixLookup(byte[] prefix, boolean includeDeletedEntries) {
+    public Iterator<Entry<byte[], byte[]>> prefixLookup(byte[] prefix, boolean includeDeletedEntries,
+        boolean ascending) {
         
-        byte[][] keyRange = comp.prefixToRange(prefix);
+        byte[][] keyRange = comp.prefixToRange(prefix, ascending);
         assert (keyRange.length == 2);
         
-        return rangeLookup(keyRange[0], keyRange[1], includeDeletedEntries);
+        return rangeLookup(keyRange[0], keyRange[1], includeDeletedEntries, ascending);
     }
     
     public Iterator<Entry<byte[], byte[]>> prefixLookup(byte[] prefix, int overlayId,
-        boolean includeDeletedEntries) {
+        boolean includeDeletedEntries, boolean ascending) {
         
-        byte[][] keyRange = comp.prefixToRange(prefix);
+        byte[][] keyRange = comp.prefixToRange(prefix, ascending);
         assert (keyRange.length == 2);
         
-        return rangeLookup(keyRange[0], keyRange[1], overlayId, includeDeletedEntries);
+        return rangeLookup(keyRange[0], keyRange[1], overlayId, includeDeletedEntries, ascending);
     }
     
 }

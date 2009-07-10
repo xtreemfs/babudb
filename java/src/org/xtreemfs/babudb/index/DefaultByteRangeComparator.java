@@ -11,7 +11,7 @@ package org.xtreemfs.babudb.index;
 public class DefaultByteRangeComparator implements ByteRangeComparator {
     
     @Override
-    public byte[][] prefixToRange(byte[] prefix) {
+    public byte[][] prefixToRange(byte[] prefix, boolean ascending) {
         
         if (prefix == null)
             return new byte[][] { null, null };
@@ -27,7 +27,7 @@ public class DefaultByteRangeComparator implements ByteRangeComparator {
                 break;
         }
         
-        return new byte[][] { prefix, bytes };
+        return ascending ? new byte[][] { prefix, bytes } : new byte[][] { bytes, prefix };
     }
     
     @Override

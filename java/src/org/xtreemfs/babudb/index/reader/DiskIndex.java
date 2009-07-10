@@ -49,8 +49,7 @@ public class DiskIndex {
         dbFile.seek(dbFile.length() - Integer.SIZE / 8);
         blockIndexOffset = dbFile.readInt();
         
-        blockIndexBuf = ByteBuffer
-                .allocate((int) (dbFile.length() - Integer.SIZE / 8 - blockIndexOffset));
+        blockIndexBuf = ByteBuffer.allocate((int) (dbFile.length() - Integer.SIZE / 8 - blockIndexOffset));
         FileChannel channel = dbFile.getChannel();
         channel.position(blockIndexOffset);
         channel.read(blockIndexBuf);
@@ -91,7 +90,32 @@ public class DiskIndex {
         return val == null ? null : val.toBuffer();
     }
     
-    public Iterator<Entry<byte[], byte[]>> rangeLookup(final byte[] from, final byte[] to) {
+    public long numKeys() {
+        
+        int numBlocks = blockIndex.getNumEntries();
+        
+        // return 0 if no keys are contained
+        if (numBlocks == 0)
+            return 0;
+        
+        int lastBlockStartOffset = getBlockOffset(numBlocks - 1, blockIndex);
+        int lastBlockEndOffset = -1;
+        BlockReader lastBlock = getBlock(lastBlockStartOffset, lastBlockEndOffset, mappedFile);
+        long lastBlockEntryCount = lastBlock.getNumEntries();
+        
+        if (numBlocks == 1)
+            return lastBlockEntryCount;
+        
+        int firstBlockStartOffset = 0;
+        int firstBlockEndBlockOffset = getBlockOffset(1, blockIndex);
+        BlockReader firstBlock = getBlock(firstBlockStartOffset, firstBlockEndBlockOffset, mappedFile);
+        long firstBlocksEntryCount = (long) firstBlock.getNumEntries() * (numBlocks - 1);
+        
+        return firstBlocksEntryCount + lastBlockEntryCount;
+    }
+    
+    public Iterator<Entry<byte[], byte[]>> rangeLookup(final byte[] from, final byte[] to,
+        final boolean ascending) {
         
         final BlockReader itBlockIndex = blockIndex.clone();
         mappedFile.position(0);
@@ -106,8 +130,7 @@ public class DiskIndex {
         
         // determine the last potential block containing entries w/ keys in the
         // range
-        tmp = to == null ? itBlockIndex.getNumEntries() - 1 : getBlockIndexPosition(to,
-            itBlockIndex);
+        tmp = to == null ? itBlockIndex.getNumEntries() - 1 : getBlockIndexPosition(to, itBlockIndex);
         if (tmp > itBlockIndex.getNumEntries() - 1)
             tmp = itBlockIndex.getNumEntries() - 1;
         final int blockIndexEnd = tmp;
@@ -121,7 +144,7 @@ public class DiskIndex {
             private BlockReader                           currentBlock;
             
             {
-                currentBlockIndex = blockIndexStart;
+                currentBlockIndex = ascending ? blockIndexStart : blockIndexEnd;
                 getNextBlockData();
             }
             
@@ -133,7 +156,11 @@ public class DiskIndex {
                     if (currentBlockIterator.hasNext())
                         return true;
                     
-                    currentBlockIndex++;
+                    if (ascending)
+                        currentBlockIndex++;
+                    else
+                        currentBlockIndex--;
+                    
                     getNextBlockData();
                 }
                 
@@ -186,10 +213,19 @@ public class DiskIndex {
                 if (blockIndexStart == -1 && blockIndexEnd == -1)
                     return;
                 
-                if (currentBlockIndex > blockIndexEnd) {
-                    currentBlock = null;
-                    currentBlockIterator = null;
-                    return;
+                if (ascending) {
+                    if (currentBlockIndex > blockIndexEnd) {
+                        currentBlock = null;
+                        currentBlockIterator = null;
+                        return;
+                    }
+                    
+                } else {
+                    if (currentBlockIndex < blockIndexStart) {
+                        currentBlock = null;
+                        currentBlockIterator = null;
+                        return;
+                    }
                 }
                 
                 int startOffset = getBlockOffset(currentBlockIndex, itBlockIndex);
@@ -198,7 +234,7 @@ public class DiskIndex {
                 
                 currentBlock = getBlock(startOffset, endOffset, map);
                 currentBlockIterator = currentBlock == null ? null : currentBlock.rangeLookup(
-                    from == null ? null : from, to == null ? null : to);
+                    from == null ? null : from, to == null ? null : to, ascending);
             }
             
         };
