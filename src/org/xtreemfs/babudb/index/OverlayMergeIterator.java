@@ -4,7 +4,7 @@
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
-*/
+ */
 
 package org.xtreemfs.babudb.index;
 
@@ -48,11 +48,15 @@ public class OverlayMergeIterator<K, V> implements Iterator<Entry<K, V>> {
     
     private V                           nullValue;
     
-    public OverlayMergeIterator(List<Iterator<Entry<K, V>>> itList, Comparator<K> comp, V nullValue) {
+    private boolean                     ascending;
+    
+    public OverlayMergeIterator(List<Iterator<Entry<K, V>>> itList, Comparator<K> comp, V nullValue,
+        boolean ascending) {
         
         this.itList = itList;
         this.comp = comp;
         this.nullValue = nullValue;
+        this.ascending = ascending;
         
         nextElements = new Entry[itList.size()];
         for (int i = 0; i < nextElements.length; i++)
@@ -96,7 +100,8 @@ public class OverlayMergeIterator<K, V> implements Iterator<Entry<K, V>> {
                 // if a smaller element was found, next element is the
                 // smallest
                 if (nextElements[smallest] == null
-                    || comp.compare(nextElements[i].getKey(), nextElements[smallest].getKey()) < 0)
+                    || (ascending && comp.compare(nextElements[i].getKey(), nextElements[smallest].getKey()) < 0)
+                    || (!ascending && comp.compare(nextElements[i].getKey(), nextElements[smallest].getKey()) > 0))
                     smallest = i;
                 
                 // if the smallest element is equal to the current one, remove

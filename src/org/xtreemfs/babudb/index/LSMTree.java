@@ -32,6 +32,16 @@ public class LSMTree {
     
     private final Object              lock;
     
+    /**
+     * Creates a new LSM tree.
+     * 
+     * @param indexFile
+     *            the on-disk index file - may be <code>null</code>
+     * @param comp
+     *            a comparator for byte ranges
+     * @throws IOException
+     *             if an I/O error occurs when accessing the on-disk index file
+     */
     public LSMTree(String indexFile, ByteRangeComparator comp) throws IOException {
         
         this.comp = comp;
@@ -84,6 +94,50 @@ public class LSMTree {
     }
     
     /**
+     * Returns the first entry.
+     * 
+     * @return the first entry
+     */
+    public Entry<byte[], byte[]> firstEntry() {
+        Iterator<Entry<byte[], byte[]>> it = prefixLookup(new byte[0]);
+        return it.hasNext() ? it.next() : null;
+    }
+    
+    /**
+     * Returns the first entry in the given snapshot.
+     * 
+     * @param snapId
+     *            the snapshot ID
+     * @return the first entry
+     */
+    public Entry<byte[], byte[]> firstEntry(int snapId) {
+        Iterator<Entry<byte[], byte[]>> it = prefixLookup(new byte[0], snapId, true);
+        return it.hasNext() ? it.next() : null;
+    }
+    
+    /**
+     * Returns the last entry.
+     * 
+     * @return the last entry
+     */
+    public Entry<byte[], byte[]> lastEntry() {
+        Iterator<Entry<byte[], byte[]>> it = prefixLookup(new byte[0], false);
+        return it.hasNext() ? it.next() : null;
+    }
+    
+    /**
+     * Returns the last entry in the given snapshot.
+     * 
+     * @param snapId
+     *            the snapshot ID
+     * @return the last entry
+     */
+    public Entry<byte[], byte[]> lastEntry(int snapId) {
+        Iterator<Entry<byte[], byte[]>> it = prefixLookup(new byte[0], snapId, false);
+        return it.hasNext() ? it.next() : null;
+    }
+    
+    /**
      * Performs a prefix lookup. Key-value paris are returned in an iterator in
      * ascending key order, where only such keys are returned with a matching
      * prefix according to the comparator.
@@ -93,19 +147,34 @@ public class LSMTree {
      * @return an iterator with key-value pairs
      */
     public Iterator<Entry<byte[], byte[]>> prefixLookup(byte[] prefix) {
+        return prefixLookup(prefix, true);
+    }
+    
+    /**
+     * Performs a prefix lookup. Key-value paris are returned in an iterator in
+     * the given key order, where only such keys are returned with a matching
+     * prefix according to the comparator.
+     * 
+     * @param prefix
+     *            the prefix
+     * @param ascending
+     *            if <code>true</code>, entries will be returned in ascending
+     *            order; otherwise, they will be returned in descending order
+     * @return an iterator with key-value pairs
+     */
+    public Iterator<Entry<byte[], byte[]>> prefixLookup(byte[] prefix, boolean ascending) {
         
         if (prefix.length == 0)
             prefix = null;
         
-        List<Iterator<Entry<byte[], byte[]>>> list = new ArrayList<Iterator<Entry<byte[], byte[]>>>(
-            2);
-        list.add(overlay.prefixLookup(prefix, true));
+        List<Iterator<Entry<byte[], byte[]>>> list = new ArrayList<Iterator<Entry<byte[], byte[]>>>(2);
+        list.add(overlay.prefixLookup(prefix, true, ascending));
         if (index != null) {
-            byte[][] rng = comp.prefixToRange(prefix);
-            list.add(index.rangeLookup(rng[0], rng[1]));
+            byte[][] rng = comp.prefixToRange(prefix, ascending);
+            list.add(index.rangeLookup(rng[0], rng[1], ascending));
         }
         
-        return new OverlayMergeIterator<byte[], byte[]>(list, comp, NULL_ELEMENT);
+        return new OverlayMergeIterator<byte[], byte[]>(list, comp, NULL_ELEMENT, ascending);
     }
     
     /**
@@ -115,22 +184,41 @@ public class LSMTree {
      * 
      * @param prefix
      *            the prefix
+     * @param snapId
+     *            the snapshot ID
      * @return an iterator with key-value pairs
      */
     public Iterator<Entry<byte[], byte[]>> prefixLookup(byte[] prefix, int snapId) {
+        return prefixLookup(prefix, snapId, true);
+    }
+    
+    /**
+     * Performs a prefix lookup in a given snapshot. Key-value paris are
+     * returned in an iterator in the given key order, where only such keys are
+     * returned with a matching prefix according to the comparator.
+     * 
+     * @param prefix
+     *            the prefix
+     * @param snapId
+     *            the snapshot ID
+     * @param ascending
+     *            if <code>true</code>, entries will be returned in ascending
+     *            order; otherwise, they will be returned in descending order
+     * @return an iterator with key-value pairs
+     */
+    public Iterator<Entry<byte[], byte[]>> prefixLookup(byte[] prefix, int snapId, boolean ascending) {
         
         if (prefix != null && prefix.length == 0)
             prefix = null;
         
-        List<Iterator<Entry<byte[], byte[]>>> list = new ArrayList<Iterator<Entry<byte[], byte[]>>>(
-            2);
-        list.add(overlay.prefixLookup(prefix, snapId, true));
+        List<Iterator<Entry<byte[], byte[]>>> list = new ArrayList<Iterator<Entry<byte[], byte[]>>>(2);
+        list.add(overlay.prefixLookup(prefix, snapId, true, ascending));
         if (index != null) {
-            byte[][] rng = comp.prefixToRange(prefix);
-            list.add(index.rangeLookup(rng[0], rng[1]));
+            byte[][] rng = comp.prefixToRange(prefix, ascending);
+            list.add(index.rangeLookup(rng[0], rng[1], ascending));
         }
         
-        return new OverlayMergeIterator<byte[], byte[]>(list, comp, NULL_ELEMENT);
+        return new OverlayMergeIterator<byte[], byte[]>(list, comp, NULL_ELEMENT, ascending);
     }
     
     /**
@@ -181,7 +269,7 @@ public class LSMTree {
      */
     public void materializeSnapshot(String targetFile, int snapId) throws IOException {
         DiskIndexWriter writer = new DiskIndexWriter(targetFile, MAX_ENTRIES_PER_BLOCK);
-        writer.writeIndex(prefixLookup(null, snapId));
+        writer.writeIndex(prefixLookup(null, snapId, true));
     }
     
     /**
@@ -200,6 +288,17 @@ public class LSMTree {
             index = new DiskIndex(snapshotFile, comp);
             if (oldIndex != null)
                 oldIndex.destroy();
+            overlay.cleanup();
+        }
+    }
+    
+    /**
+     * Destroys the LSM tree. Frees all in-memory indices plus the on-disk tree.
+     */
+    public void destroy() throws IOException {
+        
+        synchronized (lock) {
+            index.destroy();
             overlay.cleanup();
         }
     }

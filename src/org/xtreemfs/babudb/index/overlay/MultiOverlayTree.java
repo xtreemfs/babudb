@@ -186,10 +186,13 @@ public class MultiOverlayTree<K, V> {
      *            will be included in the iterator. The value of such entries
      *            will be the <code>nullValue</code> specified in the
      *            constructor method.
+     * @param ascending
+     *            If <code>true</code>, entries will be returned in ascending
+     *            order; otherwise, they will be returned in descending order
      * @return an iterator with values
      */
-    public Iterator<Entry<K, V>> rangeLookup(K from, K to, boolean includeDeletedEntries) {
-        return rangeLookup(from, to, treeList, includeDeletedEntries);
+    public Iterator<Entry<K, V>> rangeLookup(K from, K to, boolean includeDeletedEntries, boolean ascending) {
+        return rangeLookup(from, to, treeList, includeDeletedEntries, ascending);
     }
     
     /**
@@ -210,67 +213,14 @@ public class MultiOverlayTree<K, V> {
      *            will be included in the iterator. The value of such entries
      *            will be the <code>nullValue</code> specified in the
      *            constructor method.
+     * @param ascending
+     *            If <code>true</code>, entries will be returned in ascending
+     *            order; otherwise, they will be returned in descending order
      * @return an iterator with key-value pairs
      */
-    public Iterator<Entry<K, V>> rangeLookup(K from, K to, int overlayId,
-        boolean includeDeletedEntries) {
-        return rangeLookup(from, to, overlayMap.get(overlayId), includeDeletedEntries);
-    }
-    
-    /**
-     * Returns the first (smallest) key stored in the overlay tree.
-     * 
-     * @return the last key in the overlay tree
-     */
-    public K firstKey() {
-        
-        OverlayTreeList list = treeList;
-        
-        K firstKey = null;
-        for (; list != null; list = list.next) {
-            
-            Entry<K, V> firstEntry = list.tree.firstEntry();
-            for (;;) {
-                if (firstEntry == null) {
-                    break;
-                } else if (firstEntry.getValue() != nullValue) {
-                    if (firstKey == null || comparator.compare(firstEntry.getKey(), firstKey) < 0)
-                        firstKey = firstEntry.getKey();
-                    break;
-                } else
-                    firstEntry = list.tree.higherEntry(firstEntry.getKey());
-            }
-        }
-        
-        return firstKey;
-    }
-    
-    /**
-     * Returns the last (largest) key stored in the overlay tree.
-     * 
-     * @return the last key in the overlay tree
-     */
-    public K lastKey() {
-        
-        OverlayTreeList list = treeList;
-        
-        K lastKey = null;
-        for (; list != null; list = list.next) {
-            
-            Entry<K, V> lastEntry = list.tree.lastEntry();
-            for (;;) {
-                if (lastEntry == null) {
-                    break;
-                } else if (lastEntry.getValue() != nullValue) {
-                    if (lastKey == null || comparator.compare(lastEntry.getKey(), lastKey) > 0)
-                        lastKey = lastEntry.getKey();
-                    break;
-                } else
-                    lastEntry = list.tree.lowerEntry(lastEntry.getKey());
-            }
-        }
-        
-        return lastKey;
+    public Iterator<Entry<K, V>> rangeLookup(K from, K to, int overlayId, boolean includeDeletedEntries,
+        boolean ascending) {
+        return rangeLookup(from, to, overlayMap.get(overlayId), includeDeletedEntries, ascending);
     }
     
     private V lookup(K key, OverlayTreeList list) {
@@ -278,7 +228,7 @@ public class MultiOverlayTree<K, V> {
         for (; list != null; list = list.next) {
             
             V value = list.tree.get(key);
-                        
+            
             if (value != null)
                 return value;
         }
@@ -287,22 +237,39 @@ public class MultiOverlayTree<K, V> {
     }
     
     private Iterator<Entry<K, V>> rangeLookup(K from, K to, OverlayTreeList treeList,
-        boolean includeDeletedEntries) {
+        boolean includeDeletedEntries, boolean ascending) {
         
         // initialize a final list w/ submap iterators of all overlays
         final List<Iterator<Entry<K, V>>> itList = new ArrayList<Iterator<Entry<K, V>>>();
         for (OverlayTreeList list = treeList; list != null; list = list.next) {
-            if (from != null && to != null)
-                itList.add(list.tree.subMap(from, to).entrySet().iterator());
-            else if (from == null && to == null)
-                itList.add(list.tree.entrySet().iterator());
-            else if (from != null && to == null)
-                itList.add(list.tree.tailMap(from).entrySet().iterator());
-            else
-                itList.add(list.tree.headMap(to).entrySet().iterator());
+            if (from != null && to != null) {
+                // both boundaries are provided
+                if (ascending)
+                    itList.add(list.tree.subMap(from, to).entrySet().iterator());
+                else
+                    itList.add(list.tree.descendingMap().subMap(from, to).entrySet().iterator());
+            } else if (from == null && to == null) {
+                // no boundary is provided
+                if (ascending)
+                    itList.add(list.tree.entrySet().iterator());
+                else
+                    itList.add(list.tree.descendingMap().entrySet().iterator());
+            } else if (from != null && to == null) {
+                // only 'from' obundary is provided
+                if (ascending)
+                    itList.add(list.tree.tailMap(from).entrySet().iterator());
+                else
+                    itList.add(list.tree.descendingMap().tailMap(from).entrySet().iterator());
+            } else {
+                // only 'to' boundary is provided
+                if (ascending)
+                    itList.add(list.tree.headMap(to).entrySet().iterator());
+                else
+                    itList.add(list.tree.descendingMap().headMap(to).entrySet().iterator());
+            }
         }
         
-        return new OverlayMergeIterator<K, V>(itList, comparator, includeDeletedEntries ? null
-            : nullValue);
+        return new OverlayMergeIterator<K, V>(itList, comparator, includeDeletedEntries ? null : nullValue,
+            ascending);
     }
 }

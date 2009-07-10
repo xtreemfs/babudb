@@ -17,13 +17,14 @@ public class MultiOverlayStringTree<V> extends MultiOverlayTree<String, V> {
         super(markerElement);
     }
     
-    public Iterator<Entry<String, V>> prefixLookup(String prefix, boolean includeDeletedEntries) {
-        return rangeLookup(prefix, getNextPrefix(prefix), includeDeletedEntries);
+    public Iterator<Entry<String, V>> prefixLookup(String prefix, boolean includeDeletedEntries,
+        boolean ascending) {
+        return rangeLookup(prefix, getNextPrefix(prefix), includeDeletedEntries, ascending);
     }
     
     public Iterator<Entry<String, V>> prefixLookup(String prefix, int overlayId,
-        boolean includeDeletedEntries) {
-        return rangeLookup(prefix, getNextPrefix(prefix), overlayId, includeDeletedEntries);
+        boolean includeDeletedEntries, boolean ascending) {
+        return rangeLookup(prefix, getNextPrefix(prefix), overlayId, includeDeletedEntries, ascending);
     }
     
     private String getNextPrefix(String prefix) {

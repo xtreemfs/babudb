@@ -154,7 +154,7 @@ public class DiskIndexPerformanceTest {
             //    System.out.println(i);
         }
         
-        Iterator<Entry<byte[], byte[]>> it = diskIndex.rangeLookup(null, null);
+        Iterator<Entry<byte[], byte[]>> it = diskIndex.rangeLookup(null, null, true);
         
         /* iterate over all data in the disk index to measure the prefix lookup throughput */
         long iterStart = System.currentTimeMillis();

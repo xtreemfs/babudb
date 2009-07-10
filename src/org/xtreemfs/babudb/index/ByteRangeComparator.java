@@ -4,7 +4,7 @@
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
-*/
+ */
 
 package org.xtreemfs.babudb.index;
 
@@ -41,10 +41,13 @@ public interface ByteRangeComparator extends Comparator<byte[]> {
      * 
      * @param prefix
      *            a buffer representing the prefix to query
+     * @param ascending
+     *            if <code>true</code>, the lower bound is the first value in
+     *            the range; otherwise, it is the second value
      * @return an array consisting of two buffers, the first being the inclusive
      *         lower bound of the range, the second being the exclusive upper
      *         bound of the range
      */
-    public byte[][] prefixToRange(byte[] prefix);
+    public byte[][] prefixToRange(byte[] prefix, boolean ascending);
     
 }
