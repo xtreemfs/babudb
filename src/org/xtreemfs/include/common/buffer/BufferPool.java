@@ -1,10 +1,26 @@
-/*
- * Copyright (c) 2008, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
- *                     Felix Hupfeld, Zuse Institute Berlin
- * 
- * Licensed under the BSD License, see LICENSE file for details.
- * 
+/*  Copyright (c) 2008 Konrad-Zuse-Zentrum fuer Informationstechnik Berlin.
+
+    This file is part of XtreemFS. XtreemFS is part of XtreemOS, a Linux-based
+    Grid Operating System, see <http://www.xtreemos.eu> for more details.
+    The XtreemOS project has been developed with the financial support of the
+    European Commission's IST program under contract #FP6-033576.
+
+    XtreemFS is free software: you can redistribute it and/or modify it under
+    the terms of the GNU General Public License as published by the Free
+    Software Foundation, either version 2 of the License, or (at your option)
+    any later version.
+
+    XtreemFS is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with XtreemFS. If not, see <http://www.gnu.org/licenses/>.
 */
+/*
+ * AUTHORS: Björn Kolbeck (ZIB), Jan Stender (ZIB)
+ */
 
 package org.xtreemfs.include.common.buffer;
 
@@ -24,7 +40,7 @@ public final class BufferPool {
 
     /** max pool size for each class
      */
-    public static final int[] MAX_POOL_SIZES = { 4000, 6, 10, 5 };
+    public static final int[] MAX_POOL_SIZES = { 2000, 6, 10, 5 };
 
     /** queues to store buffers in
      */
@@ -51,6 +67,7 @@ public final class BufferPool {
     /**
      * Creates a new instance of BufferPool
      */
+    @SuppressWarnings("unchecked")
     private BufferPool() {
         pools = new ConcurrentLinkedQueue[BUFF_SIZES.length];
         requests = new long[BUFF_SIZES.length+1];
@@ -58,7 +75,7 @@ public final class BufferPool {
         deletes = new long[BUFF_SIZES.length+1];
         poolSizes = new AtomicInteger[BUFF_SIZES.length];
         for (int i = 0; i < BUFF_SIZES.length; i++) {
-            pools[i] = new ConcurrentLinkedQueue();
+            pools[i] = new ConcurrentLinkedQueue<ByteBuffer>();
             poolSizes[i] = new AtomicInteger(0);
         }
     }
@@ -147,7 +164,7 @@ public final class BufferPool {
                 return new ReusableBuffer(buf,size);
             }
         } catch (OutOfMemoryError ex) {
-            System.out.println(this.getStatus());
+            System.out.println(getStatus());
             throw ex;
         }
     }
@@ -238,10 +255,10 @@ public final class BufferPool {
         String str = "";
         for (int i = 0; i < 4; i++) {
             str += String.format("%8d:      poolSize = %5d    numRequests = %8d    creates = %8d   deletes = %8d\n",
-                                        instance.BUFF_SIZES[i], instance.poolSizes[i].get(),
+                                        BUFF_SIZES[i], instance.poolSizes[i].get(),
                                         instance.requests[i], instance.creates[i], instance.deletes[i]);
         }
-        str += String.format("unpooled (> %8d)    numRequests = creates = %8d   deletes = %8d",instance.BUFF_SIZES[3],instance.requests[4],instance.deletes[4]);
+        str += String.format("unpooled (> %8d)    numRequests = creates = %8d   deletes = %8d",BUFF_SIZES[3],instance.requests[4],instance.deletes[4]);
         return str;
     }
 

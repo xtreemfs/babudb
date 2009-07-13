@@ -1,18 +1,34 @@
-/*
- * Copyright (c) 2008, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
- *                     Felix Hupfeld, Zuse Institute Berlin
- * 
- * Licensed under the BSD License, see LICENSE file for details.
- * 
+/*  Copyright (c) 2008 Konrad-Zuse-Zentrum fuer Informationstechnik Berlin.
+
+    This file is part of XtreemFS. XtreemFS is part of XtreemOS, a Linux-based
+    Grid Operating System, see <http://www.xtreemos.eu> for more details.
+    The XtreemOS project has been developed with the financial support of the
+    European Commission's IST program under contract #FP6-033576.
+
+    XtreemFS is free software: you can redistribute it and/or modify it under
+    the terms of the GNU General Public License as published by the Free
+    Software Foundation, either version 2 of the License, or (at your option)
+    any later version.
+
+    XtreemFS is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with XtreemFS. If not, see <http://www.gnu.org/licenses/>.
 */
+/*
+ * AUTHORS: Björn Kolbeck (ZIB), Jan Stender (ZIB)
+ */
 
 package org.xtreemfs.include.common.buffer;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.include.foundation.pinky.HTTPUtils;
 
 /**
  *
@@ -45,8 +61,6 @@ public final class ReusableBuffer {
     protected ReusableBuffer viewParent;
 
     protected String         freeStack, allocStack;
-    
-    protected static final Charset  ENC_UTF8 = Charset.forName("utf8");
 
     /**
      * reference count
@@ -108,7 +122,6 @@ public final class ReusableBuffer {
     /**
      * Creates a new view buffer. This view buffer shares the same data (i.e.
      * backing byte buffer) but has independet position, limit etc.
-     * Sets the position of buffer to 0.
      */
     public ReusableBuffer createViewBuffer() {
         
@@ -189,11 +202,11 @@ public final class ReusableBuffer {
     /** Returns the byte array of the buffer, creating a copy if the buffer is not backed by an array
      *  @return a byte array with a copy of the data
      */
-    public byte [] array() {
+    public byte[] array() {
         assert(!returned) : "Buffer was already freed and cannot be used anymore"+this.freeStack;
-        byte [] array;
+        byte[] array = null;
 
-        if (this.hasArray() && (viewParent == null)) {
+        if (this.hasArray() && (this.viewParent == null)) {
             array = buffer.array();
         } else {
             array = new byte[this.limit()];
@@ -368,13 +381,24 @@ public final class ReusableBuffer {
         return this;
     }
 
+    public double getDouble() {
+        assert(!returned) : "Buffer was already freed and cannot be used anymore"+this.freeStack;
+        return buffer.getDouble();
+    }
+
+    public ReusableBuffer putDouble(double d) {
+        assert(!returned) : "Buffer was already freed and cannot be used anymore"+this.freeStack;
+        buffer.putDouble(d);
+        return this;
+    }
+
     public String getString() {
         assert(!returned) : "Buffer was already freed and cannot be used anymore"+this.freeStack;
         int length = buffer.getInt();
         if (length > 0) {
             byte[] bytes = new byte[length];
             buffer.get(bytes);
-            return new String(bytes,ENC_UTF8);
+            return new String(bytes,HTTPUtils.ENC_UTF8);
         } else if (length == 0) {
             return "";
         } else {
@@ -385,8 +409,21 @@ public final class ReusableBuffer {
     public ReusableBuffer putString(String str) {
         assert(!returned) : "Buffer was already freed and cannot be used anymore"+this.freeStack;
         if (str != null) {
-            byte[] bytes = str.getBytes(ENC_UTF8);
+            byte[] bytes = str.getBytes(HTTPUtils.ENC_UTF8);
             buffer.putInt(bytes.length);
+            buffer.put(bytes);
+        } else {
+            buffer.putInt(-1);
+        }
+        return this;
+    }
+    
+    public ReusableBuffer putShortString(String str) {
+        assert(!returned) : "Buffer was already freed and cannot be used anymore"+this.freeStack;
+        assert(str.length() <= Short.MAX_VALUE);
+        if (str != null) {
+            byte[] bytes = str.getBytes(HTTPUtils.ENC_UTF8);
+            buffer.putShort((short) bytes.length);
             buffer.put(bytes);
         } else {
             buffer.putInt(-1);
@@ -419,6 +456,7 @@ public final class ReusableBuffer {
         assert(!returned) : "Buffer was already freed and cannot be used anymore"+this.freeStack;
         return buffer.getShort();
     }
+
 
     /** @see java.nio.ByteBuffer#isDirect
      */
@@ -524,6 +562,10 @@ public final class ReusableBuffer {
         int position = parentBuffer.position();
         int limit = parentBuffer.limit();
         
+        // ensure that the subsequent 'position' does not fail
+        if (offset > limit)
+            parentBuffer.limit(offset);
+        
         parentBuffer.position(offset);
         parentBuffer.limit(offset+length);
         this.buffer = parentBuffer.slice();
@@ -557,8 +599,14 @@ public final class ReusableBuffer {
         if (!returned && reusable) {
             Logging.logMessage(Logging.LEVEL_ERROR, this,
                 "buffer was finalized but not freed before! this=" + this);
-            
-            String content = new String(this.array());
+
+
+            byte[] data = new byte[(this.capacity() > 128) ? 128 : this.capacity()];
+
+            this.position(0);
+            this.limit(this.capacity());
+            this.get(data);
+            String content = new String(data);
             
             Logging.logMessage(Logging.LEVEL_ERROR, this, "content: " + content);
             Logging.logMessage(Logging.LEVEL_ERROR, this, "stacktrace: " + allocStack);
@@ -572,5 +620,9 @@ public final class ReusableBuffer {
             }
             
         }
+    }
+
+    public String toString() {
+        return "ReusableBuffer( capacity="+this.capacity()+" limit="+this.limit()+" position="+this.position()+")";
     }
 }

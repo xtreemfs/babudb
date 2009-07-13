@@ -19,7 +19,7 @@
     along with XtreemFS. If not, see <http://www.gnu.org/licenses/>.
 */
 /*
- * AUTHORS: BjÃ¶rn Kolbeck (ZIB), Jan Stender (ZIB)
+ * AUTHORS: Björn Kolbeck (ZIB), Jan Stender (ZIB)
  */
 
 package org.xtreemfs.include.foundation.speedy;
@@ -29,7 +29,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-
+import org.xtreemfs.include.common.TimeSync;
 import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
@@ -210,7 +210,7 @@ public class ConnectionState {
 
         this.numReconnectCycles = 0;
         
-        this.lastUsed = System.currentTimeMillis();//TimeSync.getLocalSystemTime();
+        this.lastUsed = TimeSync.getLocalSystemTime();
     }
 
     public void successfulConnect() {
@@ -225,7 +225,7 @@ public class ConnectionState {
             waitt = MAX_RETRY_WAIT;
         Logging.logMessage(Logging.LEVEL_DEBUG,this,"next reconnect possible after "+(waitt/1000)+" s, "+this.numReconnectCycles);
         this.nextReconnectTime = System.currentTimeMillis()+waitt;
-        this.lastUsed = System.currentTimeMillis();//TimeSync.getLocalSystemTime();
+        this.lastUsed = TimeSync.getLocalSystemTime();
     }
 
     public boolean canReconnect() {

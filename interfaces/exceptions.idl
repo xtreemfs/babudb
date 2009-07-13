@@ -1,0 +1,17 @@
+module org
+{
+  module xtreemfs
+  {
+    module babudb
+    {
+      module interfaces
+      {
+        interface Exceptions # 1
+        {
+	  exception ProtocolException { uint32_t accept_stat; uint32_t error_code; string stack_trace; };
+	  exception errnoException { uint32_t error_code; string error_message; string stack_trace; };
+        };
+      };
+    };
+  };
+};

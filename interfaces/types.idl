@@ -1,0 +1,47 @@
+module org
+{
+  module xtreemfs
+  {
+    module babudb
+    {
+      module interfaces
+      {
+	struct DBFileMetaData 
+	{
+	  string fileName;
+	  uint64_t fileSize;
+	  uint32_t maxChunkSize;
+	};
+
+	typedef sequence<DBFileMetaData> DBFileMetaDataSet;
+
+	struct LogEntry
+	{
+	  buffer payload;
+	};
+
+	typedef sequence<LogEntry> LogEntries;
+
+	struct LSN
+	{
+	  uint32_t viewId;
+	  uint64_t sequenceNo;
+	};
+
+	struct Chunk
+	{
+	  string fileName;
+	  uint64_t begin;
+	  uint64_t end;
+	};
+
+	struct LSNRange
+	{
+	  uint32_t viewId;
+	  uint64_t sequenceStart;
+	  uint64_t sequenceEnd;
+	};
+      };
+    };
+  };
+};

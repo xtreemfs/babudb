@@ -19,7 +19,7 @@
     along with XtreemFS. If not, see <http://www.gnu.org/licenses/>.
 */
 /*
- * AUTHORS: BjÃ¶rn Kolbeck (ZIB), Jan Stender (ZIB), Christian Lorenz (ZIB)
+ * AUTHORS: Björn Kolbeck (ZIB), Jan Stender (ZIB), Christian Lorenz (ZIB)
  */
 
 package org.xtreemfs.include.foundation.pinky;
@@ -29,7 +29,6 @@ import java.nio.channels.Selector;
 import java.util.Iterator;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
@@ -96,7 +95,7 @@ public class ConnectionRemover extends Thread {
                                 conIt.remove();
                             }
                         } catch (IOException e) {
-                            Logging.logMessage(Logging.LEVEL_ERROR, this, e);
+                            Logging.logMessage(Logging.LEVEL_ERROR, this, e.getMessage());
                         }
                     }
                 } else {
@@ -104,7 +103,7 @@ public class ConnectionRemover extends Thread {
                 }
             }
             try {
-                ConnectionRemover.sleep(cleanupInterval);
+                sleep(cleanupInterval);
             } catch (InterruptedException ex) {
             }
         }

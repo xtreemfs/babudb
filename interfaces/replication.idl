@@ -1,0 +1,40 @@
+#include "types.idl"
+
+
+module org
+{
+  module xtreemfs
+  {
+    module babudb
+    {
+      module interfaces
+      {
+	interface ReplicationInterface #1
+	{
+	  // Constants
+	  const uint32_t DEFAULT_MASTER_PORT = 35666;
+	  const uint32_t DEFAULT_MASTERS_PORT = 35666;
+	  const uint32_t DEFAULT_SLAVE_PORT = 35667;
+	  const uint32_t DEFAULT_SLAVES_PORT = 35667;
+
+	  // Functions	
+	  // shared
+	  LSN state() # 1;							// state request from master/slave 
+
+	  // master
+	  LogEntries replica (LSNRange range) # 2;				// getReplica request from the slave
+	  DBFileMetaDataSet load (LSN lsn) # 3;					// load request from the slave
+	  buffer chunk (Chunk chunk) # 4;					// chunk request from the slave
+	  void heartbeat(LSN lsn) # 5;	  					// heartbeat message from the slave
+
+	  // slave
+	  void replicate (LSN lsn, LogEntry logEntry) # 6;			// replicate request from the master
+	  void create (LSN lsn, string databaseName, uint32_t numIndices) # 7;	// create request from the master
+	  void copy (LSN lsn, string sourceDB, string destDB) # 8;		// copy request from the master
+	  void delete (LSN lsn, string databaseName, boolean deleteFiles) # 9;	// delete request from the master
+	};
+      };
+    };
+  };
+};
+	  

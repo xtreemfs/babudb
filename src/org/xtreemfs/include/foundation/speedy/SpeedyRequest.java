@@ -19,16 +19,16 @@
     along with XtreemFS. If not, see <http://www.gnu.org/licenses/>.
 */
 /*
- * AUTHORS: BjÃ¶rn Kolbeck (ZIB), Jan Stender (ZIB)
+ * AUTHORS: Björn Kolbeck (ZIB), Jan Stender (ZIB)
  */
 
 package org.xtreemfs.include.foundation.speedy;
 
 import java.net.InetSocketAddress;
-
 import java.security.MessageDigest;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import org.xtreemfs.include.common.Request;
 import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
@@ -97,7 +97,7 @@ public class SpeedyRequest {
     /**
      * status code sent by the server
      *
-     * @see org.xtreemos.wp34.mrc.pinky.HTTPUtils
+     * @see org.xtreemfs.include.foundation.pinky.xtreemos.wp34.mrc.pinky.HTTPUtils
      */
     public int        statusCode;
 
@@ -195,7 +195,7 @@ public class SpeedyRequest {
      *  @param method Requested method
      *  @param URI Requested URI
      *  @param headers Headers for the request
-     *  @autor JesÃºs Malo (jmalo)
+     *  @autor Jesús Malo (jmalo)
      */
     public SpeedyRequest(String method, HTTPHeaders headers, String URI) {
         this(method,URI,null,null,null,null,headers);
@@ -303,7 +303,7 @@ public class SpeedyRequest {
     /** It provides the byte array of the body
      *  @return The array of bytes contained in the body of the request or null if there wasn't body in the message
      *
-     *  @author JesÃºs Malo (jmalo)
+     *  @author Jesús Malo (jmalo)
      */
     public byte[] getBody() {
         byte body[] = null;
@@ -324,7 +324,7 @@ public class SpeedyRequest {
     /** It provides the byte array of the body
      *  @return The array of bytes contained in the body of the response or null if there wasn't body in the message
      *
-     *  @author JesÃºs Malo (jmalo)
+     *  @author Jesús Malo (jmalo)
      */
     public byte[] getResponseBody() {
 
@@ -395,7 +395,6 @@ public class SpeedyRequest {
         
         //parse headers
         final String hdrStr = new String(requestHeaders.array());
-        hdrStr.isEmpty(); // TODO
         
         final String credentials = createCredentials(serverAuthHdr,username,password);
         

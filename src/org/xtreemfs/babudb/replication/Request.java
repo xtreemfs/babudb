@@ -7,97 +7,83 @@
  */
 package org.xtreemfs.babudb.replication;
 
-import java.net.InetSocketAddress;
-import java.util.List;
-import java.util.Map;
-
-import org.xtreemfs.babudb.log.LogEntry;
-import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
-import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.include.foundation.oncrpc.server.ONCRPCRequest;
+import org.xtreemfs.babudb.interfaces.Exceptions.errnoException;
+import org.xtreemfs.babudb.interfaces.utils.ONCRPCException;
+import org.xtreemfs.babudb.interfaces.utils.Serializable;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 /**
- * <p>Interface for a replication request.</p>
+ * Request object.
  * 
- * <p>Replication requests are holding all necessary informations for the {@link ReplicationThread} to
- * handle it.</p>
- * 
+ * @since 05/02/2009
  * @author flangner
  */
 
-interface Request {
+public class Request {
+    
+    private final ONCRPCRequest rpcRequest;
+    
+    private Serializable        requestMessage;
+    
+    private Object              attachment;
+    
+    public Request(ONCRPCRequest rpcRequest) {
+        this.rpcRequest = rpcRequest;
+    }
 
-    /**
-     * <p>Recycle {@link ReusableBuffer}s.</p>
-     */
-    void free();
-/*
- * getter/setter    
- */
-    
-    /**
-     * @return the identification for this request.
-     */
-    Token getToken();
-    
-    /**
-     * @return the source, where the request comes from.
-     */
-    InetSocketAddress getSource();
-    
-    /**
-     * @return the identification of a {@link LogEntry}.
-     */
-    LSN getLSN();
-    
-    /**
-     * @return the {@link LogEntry} received as answer of an request.
-     */
-    LogEntry getLogEntry();
-    
-    /**
-     * @return a {@link Chunk}.
-     */
-    Chunk getChunk();
-    
-    /**
-     * @return a {@link LogEntry} to send, or meta-operation in JSON representation.
-     */
-    ReusableBuffer getData();
-    
-    /**
-     * @return the context for response issues.
-     */
-    LSMDBRequest getContext();
-    
-    /**
-     * @return the lsmDbMetaData
-     */
-    Map<String, List<Long>> getLsmDbMetaData();
-    
-    /**
-     * @return a list of destinations, where the request should be send to.
-     */
-    List<InetSocketAddress> getDestinations();
-    
-    /*
-     * (non-Javadoc)
-     * @see java.lang.Object#equals(java.lang.Object)
-     */
-    @Override
-    public boolean equals(Object obj);
+    public void deserializeMessage(Serializable message) {
+        final ReusableBuffer payload = rpcRequest.getRequestFragment();
+        message.deserialize(payload);
+        requestMessage = message;
+    }
 
-    /*
-     * (non-Javadoc)
-     * @see java.lang.Object#toString()
-     */
-    @Override
-    public String toString();
+    public Serializable getRequestMessage() {
+        return requestMessage;
+    }
+
+    public void sendSuccess(Serializable response) {
+        rpcRequest.sendResponse(response);
+    }
+
+    public void sendInternalServerError(Throwable rootCause) {
+        rpcRequest.sendInternalServerError(rootCause);
+    }
+
+    public void sendException(ONCRPCException exception) {
+        if (Logging.isDebug()) {
+            Logging.logMessage(Logging.LEVEL_DEBUG, this,"sending exception return value: "+exception);
+        }
+        rpcRequest.sendGenericException(exception);
+    }
     
-    /*
-     * (non-Javadoc)
-     * @see java.lang.Object#hashCode()
+    public void sendReplicationException(int errno, String message) {
+        errnoException ex = new errnoException(errno, message, "");
+        if (Logging.isDebug()) {
+            Logging.logMessage(Logging.LEVEL_DEBUG, this,"sending errno exception "+ex);
+        }
+        getRPCRequest().sendGenericException(ex);
+    }
+    
+    /**
+     * @return the rpcRequest
      */
-    @Override
-    public int hashCode();
+    public ONCRPCRequest getRPCRequest() {
+        return rpcRequest;
+    }
+    
+    /**
+     * @param attachment to set
+     */
+    public void setAttachment(Object attachment) {
+        this.attachment = attachment;
+    }
+    
+    /**
+     * @return the attachment
+     */
+    public Object getAttachment() {
+        return attachment;
+    }
 }

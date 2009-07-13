@@ -19,7 +19,7 @@
     along with XtreemFS. If not, see <http://www.gnu.org/licenses/>.
 */
 /*
- * AUTHORS: BjÃ¶rn Kolbeck (ZIB), Jan Stender (ZIB), Christian Lorenz (ZIB)
+ * AUTHORS: Björn Kolbeck (ZIB), Jan Stender (ZIB), Christian Lorenz (ZIB)
  */
 
 package org.xtreemfs.include.foundation.pinky;
@@ -311,7 +311,7 @@ public class PinkyRequest {
     /** It provides the byte array of the body
      *  @return The array of bytes contained in the body of the request or null if there wasn't body in the message
      *
-     *  @author JesÃºs Malo (jmalo)
+     *  @author Jesús Malo (jmalo)
      */
     public byte[] getBody() {
         byte[] body = null;
@@ -332,15 +332,11 @@ public class PinkyRequest {
     }
     
     public InetSocketAddress getClientAddress() {
-        try{
-        	SocketAddress addr = this.client.channel.socket().getRemoteSocketAddress();
-        	if(addr instanceof InetSocketAddress)
-        		return (InetSocketAddress) addr;
-        	else
-        		return null;
-        }catch (NullPointerException e){
-            return null;
-        }
+    	SocketAddress addr = this.client.channel.socket().getRemoteSocketAddress();
+    	if(addr instanceof InetSocketAddress)
+    		return (InetSocketAddress) addr;
+    	else
+    		return null;
     }
 
     public String toString() {
@@ -427,7 +423,6 @@ public class PinkyRequest {
                 Matcher m = p.matcher(authHeader);
                 m.find();
                 final String cUsername = m.group(1);
-                cUsername.isEmpty(); // TODO
                 
                 p = Pattern.compile("uri=\\\"(\\S+)\\\"");
                 m = p.matcher(authHeader);

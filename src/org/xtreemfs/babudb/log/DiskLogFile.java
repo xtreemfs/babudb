@@ -58,7 +58,7 @@ public class DiskLogFile {
         try {
             return (channel.size()-channel.position()) > 0;
         } catch (IOException ex) {
-            Logging.logMessage(Logging.LEVEL_DEBUG, this,ex);
+            Logging.logMessage(Logging.LEVEL_DEBUG, this,ex.getMessage());
             return false;
         }
     }
@@ -81,7 +81,7 @@ public class DiskLogFile {
             BufferPool.free(item);
             return e;
         } catch (IOException ex) {
-            Logging.logMessage(Logging.LEVEL_DEBUG, this,ex);
+            Logging.logMessage(Logging.LEVEL_DEBUG, this,ex.getMessage());
             BufferPool.free(item);
             throw new LogEntryException("Cannot read log entry: "+ex);
         }

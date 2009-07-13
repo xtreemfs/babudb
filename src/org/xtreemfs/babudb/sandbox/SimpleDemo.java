@@ -7,17 +7,17 @@ package org.xtreemfs.babudb.sandbox;
 
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.BabuDBInsertGroup;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
+import org.xtreemfs.include.common.config.BabuDBConfig;
 
 public class SimpleDemo {
 
     public static void main(String[] args) {
         try {
             //start the database
-            BabuDB database = BabuDBFactory.getBabuDB("myDatabase/", "myDatabase/", 2, 1024 * 1024 * 16, 5 * 60, SyncMode.SYNC_WRITE,0,0);
-
+            BabuDB database = BabuDB.getBabuDB(new BabuDBConfig("myDatabase/", "myDatabase/", 2, 1024 * 1024 * 16, 5 * 60, SyncMode.SYNC_WRITE,0,0));
+            
             //create a new database called myDB
             database.createDatabase("myDB", 2);
 

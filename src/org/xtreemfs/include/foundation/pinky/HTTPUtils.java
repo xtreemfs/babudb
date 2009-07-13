@@ -19,7 +19,7 @@
  along with XtreemFS. If not, see <http://www.gnu.org/licenses/>.
  */
 /*
- * AUTHORS: BjÃ¶rn Kolbeck (ZIB), Jan Stender (ZIB), Christian Lorenz (ZIB)
+ * AUTHORS: Björn Kolbeck (ZIB), Jan Stender (ZIB), Christian Lorenz (ZIB)
  */
 
 package org.xtreemfs.include.foundation.pinky;
@@ -168,6 +168,16 @@ public class HTTPUtils {
         @Override
         public String toString() {
             return name;
+        }
+
+        public static DATA_TYPE toDataType(String s) throws IllegalArgumentException {
+            if(s.equals(BIN_TYPE))
+        	return BINARY;
+            else if (s.equals(JSON_TYPE))
+        	return JSON;
+            else if (s.equals(HTML_TYPE))
+        	return HTML;
+            else throw new IllegalArgumentException();
         }
     };
 

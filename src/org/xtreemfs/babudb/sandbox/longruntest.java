@@ -17,10 +17,10 @@ import java.util.TreeMap;
 
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.BabuDBInsertGroup;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.include.common.buffer.BufferPool;
+import org.xtreemfs.include.common.config.BabuDBConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
@@ -45,8 +45,9 @@ public class longruntest {
 
     private final TreeMap<String, String>[] controlIndices;
 
+    @SuppressWarnings("unchecked")
     public longruntest(String basedir, String dictFile, int numIndices) throws IOException, BabuDBException {
-        dictionary = new ArrayList(maxdictentries);
+        dictionary = new ArrayList<String>(maxdictentries);
 
         FileReader fr = new FileReader(dictFile);
         BufferedReader bfr = new BufferedReader(fr);
@@ -65,13 +66,13 @@ public class longruntest {
         this.numIndices = numIndices;
 
         //checkpoint every 1m and check every 1 min
-        database = BabuDBFactory.getBabuDB(basedir, basedir, 2, 1024 * 128 , 60 * 1, SyncMode.SYNC_WRITE,0,0);
-
+        database = BabuDB.getBabuDB(new BabuDBConfig(basedir, basedir, 2, 1024 * 128 , 60 * 1, SyncMode.SYNC_WRITE,0,0));
+        
         database.createDatabase(dbname, numIndices);
 
         controlIndices = new TreeMap[numIndices];
         for (int i = 0; i < numIndices; i++) {
-            controlIndices[i] = new TreeMap();
+            controlIndices[i] = new TreeMap<String, String>();
         }
     }
 

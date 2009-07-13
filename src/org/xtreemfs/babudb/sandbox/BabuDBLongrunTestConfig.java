@@ -30,20 +30,20 @@ public class BabuDBLongrunTestConfig {
     public final static long MIN_SEQUENCENO;
     
     static {
-	if (CLUSTER){
-	    CCHECK_SLEEP_INTERVAL = 3*60*1000;
-	    MIN_SLEEP_INTERVAL = 20*60*1000;
-	    MAX_SLEEP_INTERVAL = 30*60*1000;
-	    MAX_DOWN_TIME = 10*60*1000;
-	    PATH = "/scratch/babuDB/data/";
-	    MIN_SEQUENCENO = 1000L;
-	}else{
-	    CCHECK_SLEEP_INTERVAL = 30*1000;
-	    MIN_SLEEP_INTERVAL = 3*60*1000;
-	    MAX_SLEEP_INTERVAL = 5*60*1000;
-	    MAX_DOWN_TIME = 2*60*1000;
-	    PATH = "/tmp/babuDB/";
-	    MIN_SEQUENCENO = 100L;
-	}
+    	if (CLUSTER){
+    	    CCHECK_SLEEP_INTERVAL = 3*60*1000;
+    	    MIN_SLEEP_INTERVAL = 20*60*1000;
+    	    MAX_SLEEP_INTERVAL = 30*60*1000;
+    	    MAX_DOWN_TIME = 10*60*1000;
+    	    PATH = "/scratch/babuDB/data/";
+    	    MIN_SEQUENCENO = 1000L;
+    	}else{
+    	    CCHECK_SLEEP_INTERVAL = 30*1000;
+    	    MIN_SLEEP_INTERVAL = 3*60*1000;
+    	    MAX_SLEEP_INTERVAL = 5*60*1000;
+    	    MAX_DOWN_TIME = 2*60*1000;
+    	    PATH = "/tmp/babuDB/";
+    	    MIN_SEQUENCENO = 100L;
+    	}
     }
 }
