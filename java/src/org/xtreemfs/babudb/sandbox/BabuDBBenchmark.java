@@ -9,14 +9,18 @@
 package org.xtreemfs.babudb.sandbox;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
+import org.xtreemfs.babudb.sandbox.CLIParser.CliOption;
+import org.xtreemfs.include.common.config.BabuDBConfig;
+import org.xtreemfs.include.common.config.MasterConfig;
+import org.xtreemfs.include.common.config.SlaveConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
@@ -43,6 +47,8 @@ public class BabuDBBenchmark {
     private final int numKeys;
     private final int minKeyLength;
     private final int maxKeyLength;
+    
+    //private final BabuDB slaveDB;
 
     private final byte[] payload;
 
@@ -51,7 +57,7 @@ public class BabuDBBenchmark {
     private final int numThreads;
 
     public BabuDBBenchmark(String dbDir, SyncMode syncMode, int pseudoModeWait, int maxQ, int numThreads, int numDBWorkers,
-            int numKeys, int valueLength, int minKeyLength, int maxKeyLength) throws BabuDBException {
+            int numKeys, int valueLength, int minKeyLength, int maxKeyLength) throws BabuDBException, IOException {
         this.numKeys = numKeys;
         this.minKeyLength = minKeyLength;
         this.maxKeyLength = maxKeyLength;
@@ -64,8 +70,15 @@ public class BabuDBBenchmark {
         if (numKeys > Math.pow(CHARS.length, maxKeyLength))
             throw new IllegalArgumentException(maxKeyLength+" is too short to create enough unique keys for "+numKeys+" keys");
 
-        //use one worker because we use one database
-        database = BabuDBFactory.getBabuDB(dbDir, dbDir, numDBWorkers, 1, 0, syncMode, pseudoModeWait, maxQ);
+        //use one worker because we use one database TODO rebuild
+        database = BabuDB.getBabuDB(new BabuDBConfig(dbDir, dbDir, numDBWorkers, 1, 0, syncMode, pseudoModeWait, maxQ));
+        SlaveConfig sConf = new SlaveConfig("config/slave.properties");
+        sConf.read();
+        MasterConfig conf = new MasterConfig("config/master.properties");
+        conf.read();
+        //database = BabuDB.getMasterBabuDB(conf);
+        //slaveDB = BabuDB.getSlaveBabuDB(sConf);
+        
         for (int i = 1; i <= numThreads; i++)
         database.createDatabase(""+i, 1);
 
@@ -92,8 +105,18 @@ public class BabuDBBenchmark {
         return (tEnd-tStart)/1000.0;
     }
 
-    public void shutdown() {
+    public void shutdown() {  
         database.shutdown();
+        /*
+        try {
+            // wait until the queue is runs empty
+            Thread.sleep(20000);
+            
+            slaveDB.checkpoint();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        slaveDB.shutdown(); */
     }
 
     public double benchmarkInserts() throws Exception {
@@ -172,17 +195,6 @@ public class BabuDBBenchmark {
         return throughput;
     }
 
-    private byte[] createRandomKey() {
-        final int length = (int) (Math.random() * ((double)(maxKeyLength - minKeyLength)) + minKeyLength);
-        assert(length >= minKeyLength);
-        assert(length <= maxKeyLength);
-
-        byte[] key = new byte[length];
-        for (int i = 0; i < length; i++)
-            key[i] = CHARS[(int)(Math.random()*(CHARS.length-1))];
-        return key;
-    }
-
     public static void usage() {
         System.out.println("BabuDBBenchmark <options> <numKeysPerThread>");
         System.out.println("  "+"<numKeysPerThread> number of keys inserted/looked-up by");
@@ -208,7 +220,7 @@ public class BabuDBBenchmark {
         try {
             Logging.start(Logging.LEVEL_WARN);
 
-            Map<String,CLIParser.CliOption> options = new HashMap();
+            Map<String,CLIParser.CliOption> options = new HashMap<String, CliOption>();
             options.put("path",new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.FILE,new File("/tmp/babudb_benchmark")));
             options.put("sync",new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.STRING,SyncMode.FSYNC.name()));
             options.put("wait", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,0));
@@ -222,7 +234,7 @@ public class BabuDBBenchmark {
             options.put("h", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH,false));
             options.put("warmcache", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH,false));
 
-            List<String> arguments = new ArrayList(1);
+            List<String> arguments = new ArrayList<String>(1);
             CLIParser.parseCLI(args, options, arguments);
 
             if ((arguments.size() != 1) || (options.get("h").switchValue)) {

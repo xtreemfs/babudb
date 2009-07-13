@@ -19,11 +19,12 @@
     along with XtreemFS. If not, see <http://www.gnu.org/licenses/>.
 */
 /*
- * AUTHORS: BjÃ¶rn Kolbeck (ZIB), Jan Stender (ZIB), Christian Lorenz (ZIB)
+ * AUTHORS: Björn Kolbeck (ZIB), Jan Stender (ZIB), Christian Lorenz (ZIB)
  */
 
 package org.xtreemfs.include.foundation.pinky;
 
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
@@ -172,7 +173,7 @@ public class ConnectionState {
 
         toSend = null;
 
-        pipeline = new LinkedList<PinkyRequest>();
+        pipeline = new LinkedList();
 
     }
 

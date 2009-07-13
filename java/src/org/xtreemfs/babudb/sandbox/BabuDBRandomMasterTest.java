@@ -14,15 +14,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.BabuDBImpl;
 import org.xtreemfs.babudb.BabuDBInsertGroup;
-import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.Replication;
 import org.xtreemfs.babudb.sandbox.RandomGenerator.InsertGroup;
 import org.xtreemfs.babudb.sandbox.RandomGenerator.Operation;
+import org.xtreemfs.include.common.config.MasterConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
@@ -65,7 +64,8 @@ public class BabuDBRandomMasterTest {
                 slaves.add(parseAddress(adr));
 		
         
-        DBS = (BabuDBImpl) BabuDBFactory.getMasterBabuDB(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, slaves, Replication.MASTER_PORT, null, 0, Replication.DEFAULT_MAX_Q);
+        DBS = (BabuDBImpl) BabuDB.getMasterBabuDB(new MasterConfig());
+                                //getMasterBabuDB(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, slaves, Replication.MASTER_PORT, null, 0, Replication.DEFAULT_MAX_Q);
         Map<Integer, List<List<Object>>> scenario = generator.initialize(seed);
         Random random = new Random();
         assert (RandomGenerator.MAX_SEQUENCENO<((long) Integer.MAX_VALUE)) : "This test cannot handle such a big MAX_SEQUENCENO.";
@@ -101,7 +101,7 @@ public class BabuDBRandomMasterTest {
             insertOpTime += System.currentTimeMillis() - time;
             System.out.println("done. Last insert was LSN ("+lsn.toString()+").");
 			
-            DBS.replication_toMaster();
+            // TODO : DBS.replication_toMaster();
 	}
 	double metaTroughput = ((double)nOmetaOp)/(((double) metaOpTime)/1000.0);
         double insertThroughput = ((double)nOinsertOp)/(((double) insertOpTime)/1000.0);

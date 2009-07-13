@@ -554,7 +554,7 @@ public class RandomGenerator {
 	    	}
 	    	string += "\n\r";
 	    	
-	    	if (Logging.tracingEnabled()){
+	    	if (Logging.isNotice()){
 	    		string += "DB history:\n";
 	    		string += "ViewID | #Indices | DB Name\n";
 	    		for (int i=1;i<=prims.length;i++){

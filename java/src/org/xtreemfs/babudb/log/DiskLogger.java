@@ -304,13 +304,13 @@ public class DiskLogger extends Thread {
                 }
                 
             } catch (SyncFailedException ex) {
-                Logging.logMessage(Logging.LEVEL_ERROR, this, ex);
+                Logging.logMessage(Logging.LEVEL_ERROR, this, ex.getMessage());
                 for (LogEntry le : tmpE) {
                     le.getListener().failed(le, ex);
                 }
                 tmpE.clear();
             } catch (IOException ex) {
-                Logging.logMessage(Logging.LEVEL_ERROR, this, ex);
+                Logging.logMessage(Logging.LEVEL_ERROR, this, ex.getMessage());
                 for (LogEntry le : tmpE) {
                     le.getListener().failed(le, ex);
                 }

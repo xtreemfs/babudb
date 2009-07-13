@@ -12,6 +12,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
+import org.xtreemfs.include.common.config.BabuDBConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
 import static org.junit.Assert.*;
@@ -45,7 +46,7 @@ public class CopyDatabaseTest {
         
         final int NUMIDX = 5;
         
-        database = BabuDBFactory.getBabuDB(baseDir,baseDir,1,0,0,SyncMode.ASYNC,0,0);
+        database = BabuDB.getBabuDB(new BabuDBConfig(baseDir,baseDir,1,0,0,SyncMode.ASYNC,0,0));
         
         database.createDatabase("testDB", NUMIDX);
         

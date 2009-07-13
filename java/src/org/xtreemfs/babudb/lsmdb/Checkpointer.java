@@ -38,7 +38,7 @@ public class Checkpointer extends Thread {
     private final BabuDB        master;
     
     /**
-     * From the replication designated checkpoint.
+     * TODO From the replication designated checkpoint.
      */
     private volatile LSN        recommended;
     
@@ -102,7 +102,7 @@ public class Checkpointer extends Thread {
                 Logging.logMessage(Logging.LEVEL_DEBUG, this,"CHECKPOINT WAS ABORTED!");
             } catch (BabuDBException ex) {
                 Logging.logMessage(Logging.LEVEL_ERROR, this,"AUTOMATIC DATABASE CHECKPOINT FAILED!");
-                Logging.logMessage(Logging.LEVEL_ERROR, this, ex);
+                Logging.logMessage(Logging.LEVEL_ERROR, this, ex.getMessage());
             }
         }
         Logging.logMessage(Logging.LEVEL_DEBUG,this,"shutdown complete");

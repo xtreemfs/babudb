@@ -23,6 +23,10 @@ public class LSN implements Comparable<LSN> {
         this.sequenceNo = sequenceNo;
     }
     
+    public LSN(byte[] lsn) throws NumberFormatException{
+        this(new String(lsn));
+    }
+    
     /**
      * <p>Gets the LSN from given string representation.</p>
      * <p>Pattern: "'viewId':'sequenceNo'"</p>

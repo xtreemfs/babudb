@@ -34,9 +34,9 @@ public class LogEntry {
      * view ID of the log entry. The view ID is an epoch number which
      * creates a total order on the log entries (viewId.logSequenceNo).
      */
-    protected int             viewId;
+    protected int             viewId = -1;
     
-    protected long            logSequenceNo;
+    protected long            logSequenceNo = -1L;
     
     protected int             checksum;
     

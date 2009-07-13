@@ -19,7 +19,7 @@
     along with XtreemFS. If not, see <http://www.gnu.org/licenses/>.
 */
 /*
- * AUTHORS: BjÃ¶rn Kolbeck (ZIB), Jan Stender (ZIB)
+ * AUTHORS: Björn Kolbeck (ZIB), Jan Stender (ZIB)
  */
 
 package org.xtreemfs.include.foundation.speedy;
@@ -30,9 +30,6 @@ package org.xtreemfs.include.foundation.speedy;
  */
 public class SpeedyException extends java.lang.Exception {
 
-    /***/
-    private static final long serialVersionUID = 7360960184632232379L;
-    
     boolean abortConnection;
 
     /**

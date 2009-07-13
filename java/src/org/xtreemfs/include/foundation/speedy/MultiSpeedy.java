@@ -19,7 +19,7 @@
     along with XtreemFS. If not, see <http://www.gnu.org/licenses/>.
 */
 /*
- * AUTHORS: BjÃ¶rn Kolbeck (ZIB), Jan Stender (ZIB)
+ * AUTHORS: Björn Kolbeck (ZIB), Jan Stender (ZIB)
  */
 
 package org.xtreemfs.include.foundation.speedy;
@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import org.xtreemfs.include.common.TimeSync;
 import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.foundation.LifeCycleThread;
@@ -293,7 +294,7 @@ public class MultiSpeedy extends LifeCycleThread {
                                         + server);
                     reconnect(con);
                 }
-                con.lastUsed = System.currentTimeMillis();//TimeSync.getLocalSystemTime();
+                con.lastUsed = TimeSync.getLocalSystemTime();
                 rq.registerConnection(con);
                 rq.status = SpeedyRequest.RequestStatus.PENDING;
                 con.sendQ.add(rq);
@@ -337,8 +338,7 @@ public class MultiSpeedy extends LifeCycleThread {
                 while (conIter.hasNext()) {
                     ConnectionState con = conIter.next();
                     
-                    //if (con.lastUsed < (TimeSync.getLocalSystemTime()-CONNECTION_REMOVE_TIMEOUT)) {
-                    if (con.lastUsed < (System.currentTimeMillis()-CONNECTION_REMOVE_TIMEOUT)) {
+                    if (con.lastUsed < (TimeSync.getLocalSystemTime()-CONNECTION_REMOVE_TIMEOUT)) {
                         Logging.logMessage(Logging.LEVEL_DEBUG, this,"removing idle connection from speedy: "+con.endpoint);
                         try {
                             conIter.remove();
@@ -376,7 +376,7 @@ public class MultiSpeedy extends LifeCycleThread {
                                         conIter.remove();
                                         cancelRequests(rq.con);
                                     } catch (Exception ex2) {
-                                        Logging.logMessage(Logging.LEVEL_DEBUG,this,ex2);
+                                        Logging.logMessage(Logging.LEVEL_DEBUG,this,ex2.getMessage());
                                     }
                                 }
                             }
@@ -422,9 +422,9 @@ public class MultiSpeedy extends LifeCycleThread {
             con.channel = channel;
             selector.wakeup();
         } catch (SocketException ex) {
-            Logging.logMessage(Logging.LEVEL_ERROR,this,ex);
+            Logging.logMessage(Logging.LEVEL_ERROR,this,ex.getMessage());
         } catch (IOException ex) {
-            Logging.logMessage(Logging.LEVEL_ERROR,this,ex);
+            Logging.logMessage(Logging.LEVEL_ERROR,this,ex.getMessage());
         }
     }
 
@@ -444,7 +444,7 @@ public class MultiSpeedy extends LifeCycleThread {
             }
             con.channel.keyFor(selector).cancel();
         } catch (Exception ex) {
-            Logging.logMessage(Logging.LEVEL_DEBUG,this,ex);
+            Logging.logMessage(Logging.LEVEL_DEBUG,this,ex.getMessage());
         }
         cancelRequests(con);
       	Logging.logMessage(Logging.LEVEL_DEBUG, this, "connection to " + con.channel.socket().getRemoteSocketAddress() + " closed");
@@ -468,7 +468,7 @@ public class MultiSpeedy extends LifeCycleThread {
                     numKeys = selector.select(TIMEOUT_GRANULARITY);
                     
                 } catch (IOException ex) {
-                    Logging.logMessage(Logging.LEVEL_ERROR, this, ex);
+                    Logging.logMessage(Logging.LEVEL_ERROR, this, ex.getMessage());
                     continue;
                 }
 
@@ -478,7 +478,7 @@ public class MultiSpeedy extends LifeCycleThread {
                     try {
                         cs.channel.register(selector, SelectionKey.OP_CONNECT | SelectionKey.OP_WRITE | SelectionKey.OP_READ, cs);
                     } catch (ClosedChannelException ex) {
-                        Logging.logMessage(Logging.LEVEL_ERROR, this, ex);
+                        Logging.logMessage(Logging.LEVEL_ERROR, this, ex.getMessage());
                     }
                 }
 
@@ -580,7 +580,7 @@ public class MultiSpeedy extends LifeCycleThread {
                                                 con.channel.close();
                                             } catch (IOException ex) {
                                                 // no one cares!
-                                                Logging.logMessage(Logging.LEVEL_DEBUG, this, ex);
+                                                Logging.logMessage(Logging.LEVEL_DEBUG, this, ex.getMessage());
                                             }
 
                                             if (!con.sendQ.isEmpty()) {
@@ -659,7 +659,7 @@ public class MultiSpeedy extends LifeCycleThread {
                                                 con.data.compact();
 
                                             } catch (SpeedyException ex) {
-                                                Logging.logMessage(Logging.LEVEL_ERROR, this, ex);
+                                                Logging.logMessage(Logging.LEVEL_ERROR, this, ex.getMessage());
                                                 if (ex.isAbort()) {
                                                     try {
                                                         con.channel.close();
@@ -765,7 +765,7 @@ public class MultiSpeedy extends LifeCycleThread {
                         if (con.channel != null) {
                             con.channel.close();
                         }
-                        Logging.logMessage(Logging.LEVEL_ERROR, this, e);
+                        Logging.logMessage(Logging.LEVEL_ERROR, this, e.getMessage());
                         con.sendQ.poll();
                     }
 
@@ -788,20 +788,19 @@ public class MultiSpeedy extends LifeCycleThread {
                         	cs.channel.close();
 //   							closeConnection(cs);
                             cancelRequests(cs);
-                            cs.freeBuffers();
                         }
                     }
                 }
                 selector.close();
             } catch (IOException ex) {
-                Logging.logMessage(Logging.LEVEL_ERROR, this, ex);
+                Logging.logMessage(Logging.LEVEL_ERROR, this, ex.getMessage());
             }
             //pThread.shutdown();
             Logging.logMessage(Logging.LEVEL_DEBUG, this, "shutdown complete");
             notifyStopped();
 
         } catch (Throwable th) {
-            Logging.logMessage(Logging.LEVEL_DEBUG, this, th);
+            Logging.logMessage(Logging.LEVEL_ERROR, this, th.getMessage());
             notifyCrashed(th instanceof Exception ? (Exception) th
                     : new Exception(th));
         }

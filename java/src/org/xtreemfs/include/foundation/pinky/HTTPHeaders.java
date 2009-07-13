@@ -19,7 +19,7 @@
     along with XtreemFS. If not, see <http://www.gnu.org/licenses/>.
 */
 /*
- * AUTHORS: BjÃ¶rn Kolbeck (ZIB), Jan Stender (ZIB), Christian Lorenz (ZIB)
+ * AUTHORS: Björn Kolbeck (ZIB), Jan Stender (ZIB), Christian Lorenz (ZIB)
  */
 
 package org.xtreemfs.include.foundation.pinky;
@@ -109,7 +109,7 @@ public class HTTPHeaders implements Iterable<HTTPHeaders.HeaderEntry> {
      * Creates a new instance of HTTPHeaders
      */
     public HTTPHeaders() {
-        hdrs = new ArrayList<HeaderEntry>(INIT_NUM_HDRS);
+        hdrs = new ArrayList(INIT_NUM_HDRS);
     }
 
     /** adds an entry to the header list

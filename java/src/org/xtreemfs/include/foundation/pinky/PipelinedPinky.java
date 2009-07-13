@@ -19,7 +19,7 @@
     along with XtreemFS. If not, see <http://www.gnu.org/licenses/>.
 */
 /*
- * AUTHORS: BjÃ¶rn Kolbeck (ZIB), Jan Stender (ZIB), Christian Lorenz (ZIB)
+ * AUTHORS: Björn Kolbeck (ZIB), Jan Stender (ZIB), Christian Lorenz (ZIB)
  */
 
 package org.xtreemfs.include.foundation.pinky;
@@ -276,7 +276,7 @@ public class PipelinedPinky extends LifeCycleThread implements PinkyInterface {
             crThr.join();
             selector.wakeup();
         } catch (InterruptedException exc) {
-            Logging.logMessage(Logging.LEVEL_ERROR, this, exc);
+            Logging.logMessage(Logging.LEVEL_ERROR, this, exc.getMessage());
         }
     }
 
@@ -287,7 +287,7 @@ public class PipelinedPinky extends LifeCycleThread implements PinkyInterface {
                 key.interestOps(key.interestOps() | SelectionKey.OP_READ);
             } catch (CancelledKeyException ex) {
                 // don't care
-                Logging.logMessage(Logging.LEVEL_WARN, this, ex);
+                Logging.logMessage(Logging.LEVEL_WARN, this, ex.getMessage());
             }
         }
         selector.wakeup();
@@ -678,17 +678,17 @@ public class PipelinedPinky extends LifeCycleThread implements PinkyInterface {
                 selector.close();
                 socket.close();
             } catch (IOException ex) {
-                Logging.logMessage(Logging.LEVEL_ERROR, this, ex);
+                Logging.logMessage(Logging.LEVEL_ERROR, this, ex.getMessage());
                 return;
             }
             Logging.logMessage(Logging.LEVEL_INFO, this, "shutdown complete");
             notifyStopped();
         } catch (OutOfMemoryError ex) {
-            Logging.logMessage(Logging.LEVEL_ERROR, this, ex);
+            Logging.logMessage(Logging.LEVEL_ERROR, this, ex.getMessage());
             Logging.logMessage(Logging.LEVEL_ERROR, this, BufferPool.getStatus());
             notifyCrashed(new Exception(ex));
         } catch (Throwable th) {
-            Logging.logMessage(Logging.LEVEL_ERROR, this, th);
+            Logging.logMessage(Logging.LEVEL_ERROR, this, th.getMessage());
             notifyCrashed(th instanceof Exception ? (Exception) th
                     : new Exception(th));
         }
