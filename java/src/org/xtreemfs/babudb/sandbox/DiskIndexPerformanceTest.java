@@ -21,16 +21,19 @@ import java.util.Map.Entry;
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.index.reader.DiskIndex;
 import org.xtreemfs.babudb.index.writer.DiskIndexWriter;
+import org.xtreemfs.include.common.logging.Logging;
 
 public class DiskIndexPerformanceTest {
     
     public static void main(String[] args) throws Exception {
-
+   	
         Map<String,CLIParser.CliOption> options = new HashMap();
         options.put("path",new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.FILE,new File("/tmp/babudb_benchmark")));
         options.put("blocksize", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,16));
         // hitrate in percent
         options.put("hitrate", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,10));
+        options.put("keylength", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,8));
+        options.put("debug", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,Logging.LEVEL_EMERG));
         options.put("h", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH, false));
 
         List<String> arguments = new ArrayList(1);
@@ -42,12 +45,15 @@ public class DiskIndexPerformanceTest {
             System.exit(1);
         }
 
+    	// start logging when executing this without the entire BabuDB stack
+    	Logging.start(options.get("debug").numValue.intValue());
+    	
         final String path = arguments.get(0);
         final Long entriesPerBlock = options.get("blocksize").numValue;
         final int hitrate = options.get("hitrate").numValue.intValue();
         
         final int minStrLen = 1;
-        final int maxStrLen = 8;
+        final int maxStrLen = options.get("keylength").numValue.intValue();
         final char minChar = 48;
         final char maxChar = 122;
         
@@ -120,6 +126,13 @@ public class DiskIndexPerformanceTest {
         // read the disk index
         DiskIndex diskIndex = new DiskIndex(path, new DefaultByteRangeComparator());
         
+        Iterator<Entry<byte[], byte[]>> it = diskIndex.rangeLookup(null, null, true);
+        
+        /* iterate over all data in the disk index to measure the prefix lookup throughput */
+        long iterStart = System.currentTimeMillis();
+        while(it.hasNext()) it.next();
+        long iterTime = System.currentTimeMillis() - iterStart;
+
         // Iterator<Entry<ReusableBuffer, ReusableBuffer>> it =
         // diskIndex.rangeLookup(null, null);
         // while (it.hasNext())
@@ -153,13 +166,6 @@ public class DiskIndexPerformanceTest {
             //if (i % 100000 == 0 && verbose)
             //    System.out.println(i);
         }
-        
-        Iterator<Entry<byte[], byte[]>> it = diskIndex.rangeLookup(null, null, true);
-        
-        /* iterate over all data in the disk index to measure the prefix lookup throughput */
-        long iterStart = System.currentTimeMillis();
-        while(it.hasNext()) it.next();
-        long iterTime = System.currentTimeMillis() - iterStart;
         
         System.out.print(size + ", ");
         System.out.print(lookups + ", ");
