@@ -14,7 +14,7 @@ import java.net.SocketAddress;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
 
-import org.xtreemfs.babudb.BabuDBImpl;
+import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.clients.SlaveClient;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.SlavesStates.NotEnoughAvailableSlavesException;
@@ -62,7 +62,7 @@ public class MasterRequestDispatcher extends RequestDispatcher {
      * @param initial
      * @throws IOException
      */
-    public MasterRequestDispatcher(MasterConfig config, BabuDBImpl db, LSN initial) throws IOException {
+    public MasterRequestDispatcher(MasterConfig config, BabuDB db, LSN initial) throws IOException {
         super("Master", config, db);
         this.syncN = config.getSyncN();
         this.chunkSize = config.getChunkSize();

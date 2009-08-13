@@ -15,10 +15,12 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.TreeMap;
 
-import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBInsertGroup;
+import org.xtreemfs.babudb.BabuDBFactory;
+import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
+import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
+import org.xtreemfs.babudb.lsmdb.Database;
 import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.config.BabuDBConfig;
 import org.xtreemfs.include.common.logging.Logging;
@@ -66,9 +68,9 @@ public class longruntest {
         this.numIndices = numIndices;
 
         //checkpoint every 1m and check every 1 min
-        database = BabuDB.getBabuDB(new BabuDBConfig(basedir, basedir, 2, 1024 * 128 , 60 * 1, SyncMode.SYNC_WRITE,0,0));
+        database = BabuDBFactory.createBabuDB(new BabuDBConfig(basedir, basedir, 2, 1024 * 128 , 60 * 1, SyncMode.SYNC_WRITE,0,0));
         
-        database.createDatabase(dbname, numIndices);
+        database.getDatabaseManager().createDatabase(dbname, numIndices);
 
         controlIndices = new TreeMap[numIndices];
         for (int i = 0; i < numIndices; i++) {
@@ -77,6 +79,9 @@ public class longruntest {
     }
 
     public void startTest(int numHours) throws Exception {
+        
+        final Database db = database.getDatabaseManager().getDatabase(dbname);
+        
         tStart = System.currentTimeMillis();
         tEnd = tStart + numHours * 60 * 60 * 1000;
         while (System.currentTimeMillis() < tEnd) {
@@ -93,7 +98,7 @@ public class longruntest {
                         final String value = getRandomDictEntry();
                         
                         controlIndices[index].put(key, value);
-                        database.syncSingleInsert(dbname, index, key.getBytes(),
+                        db.syncSingleInsert(index, key.getBytes(),
                                 value.getBytes());
                         
                         numIns++;
@@ -105,7 +110,7 @@ public class longruntest {
                      {
                         //groupInsert
                         final int numInGroup = (int) Math.round(Math.random() * (9)) + 1;
-                        final BabuDBInsertGroup ig = database.createInsertGroup(dbname);
+                        final BabuDBInsertGroup ig = db.createInsertGroup();
                         for (int i = 0; i < numInGroup; i++) {
                             final int index = getRandomIndex();
                             final String key = getRandomDictEntry();
@@ -114,7 +119,7 @@ public class longruntest {
                             ig.addInsert(index, key.getBytes(), value.getBytes());
                         }
                         
-                        database.syncInsert(ig);
+                        db.syncInsert(ig);
                         
                         numInsGroup++;
                         System.out.print("x");
@@ -131,7 +136,7 @@ public class longruntest {
                             highKey = randKey;
                         }
                         final String controlResult = controlIndices[index].get(highKey);
-                        final byte[] result = database.syncLookup(dbname, index, highKey.getBytes());
+                        final byte[] result = db.syncLookup(index, highKey.getBytes());
                         if (((controlResult == null) && (result != null)) ||
                                 ((controlResult != null) && (result == null))) {
                             printIndex(index);
@@ -158,7 +163,7 @@ public class longruntest {
                             final int index = getRandomIndex();
                             final String ftKey = controlIndices[index].firstKey();
                             controlIndices[index].remove(ftKey);
-                            database.syncSingleInsert(dbname, index, ftKey.getBytes(), null);
+                            db.syncSingleInsert(index, ftKey.getBytes(), null);
                             
                             numRem++;
                             System.out.print("-");
@@ -179,7 +184,7 @@ public class longruntest {
     public void checkIntegrity() throws Exception {
         for (int index = 0; index < controlIndices.length; index++) {
             for (String key : controlIndices[index].keySet()) {
-                final byte[] babuResult = database.syncLookup(dbname, index, key.getBytes());
+                final byte[] babuResult = database.getDatabaseManager().getDatabase(dbname).syncLookup(index, key.getBytes());
                 String bValue = null;
                 if (babuResult != null) {
                     bValue = new String(babuResult);
@@ -196,7 +201,7 @@ public class longruntest {
     }
 
     public void shutdown() throws Exception {
-        database.checkpoint();
+        database.getCheckpointer().checkpoint();
         database.shutdown();
     }
 
@@ -259,7 +264,7 @@ public class longruntest {
             System.out.println("-------------------------------------------------------");
             System.out.println("TREE INDEX " + index);
             for (String key : controlIndices[index].keySet()) {
-                final byte[] babuResult = database.syncLookup(dbname, index, key.getBytes());
+                final byte[] babuResult = database.getDatabaseManager().getDatabase(dbname).syncLookup(index, key.getBytes());
                 String bValue = null;
                 if (babuResult != null) {
                     bValue = new String(babuResult);

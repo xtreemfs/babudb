@@ -303,6 +303,40 @@ public class LSMTreeTest extends TestCase {
         
     }
     
+    public void testSnapshotMaterialization() throws Exception {
+        
+        // randomly insert 200 elements in a map
+        
+        final DefaultByteRangeComparator comp = new DefaultByteRangeComparator();
+        final byte[] value = "value".getBytes();
+        final String[] keys = { "a", "v", "blub", "blubber", "ertz", "yagga", "zwum", "x" };
+        
+        LSMTree tree = new LSMTree(null, comp);
+        for (String k : keys)
+            tree.insert(k.getBytes(), value);
+        
+        int snapId = tree.createSnapshot();
+        tree.materializeSnapshot(SNAP_FILE, snapId, new byte[][] { "a".getBytes(), "bl".getBytes(),
+            "zwum".getBytes() });
+        tree.linkToSnapshot(SNAP_FILE);
+        
+        assertEquals(value, tree.lookup("a".getBytes()));
+        assertEquals(null, tree.lookup("v".getBytes()));
+        assertEquals(value, tree.lookup("blub".getBytes()));
+        assertEquals(value, tree.lookup("blubber".getBytes()));
+        assertEquals(null, tree.lookup("ertz".getBytes()));
+        assertEquals(null, tree.lookup("yaggaa".getBytes()));
+        assertEquals(value, tree.lookup("zwum".getBytes()));
+        assertEquals(null, tree.lookup("x".getBytes()));
+        
+        Iterator<Entry<byte[], byte[]>> it = tree.prefixLookup(new byte[0]);
+        int i = 0;
+        for(; it.hasNext(); i++)
+            it.next();
+        
+        assertEquals(4, i);
+    }
+    
     private void assertEquals(byte[] expected, byte[] result) {
         
         if (expected == null && result == null)

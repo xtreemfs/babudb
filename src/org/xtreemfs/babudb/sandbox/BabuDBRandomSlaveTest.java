@@ -13,9 +13,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 
-import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBImpl;
+import org.xtreemfs.babudb.BabuDBFactory;
+import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.sandbox.RandomGenerator.LookupGroup;
 import org.xtreemfs.include.common.config.SlaveConfig;
@@ -49,7 +49,7 @@ public class BabuDBRandomSlaveTest {
 	public final static int NUM_WKS = 1;
 	
 	private final static RandomGenerator generator = new RandomGenerator();
-	private static BabuDBImpl DBS;
+	private static BabuDB DBS;
 
 	private BabuDBRandomSlaveTest() {}
 	
@@ -78,7 +78,7 @@ public class BabuDBRandomSlaveTest {
             Process p = Runtime.getRuntime().exec("rm -rf "+PATH);
             p.waitFor();
             
-            DBS = (BabuDBImpl) BabuDB.getSlaveBabuDB(new SlaveConfig());
+            DBS = (BabuDB) BabuDBFactory.createSlaveBabuDB(new SlaveConfig());
                                     //getSlaveBabuDB(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, master, slaves, Replication.SLAVE_PORT, null, Replication.DEFAULT_MAX_Q);
             generator.initialize(seed);
             Random random = new Random();
@@ -121,7 +121,7 @@ public class BabuDBRandomSlaveTest {
             		p = Runtime.getRuntime().exec("rm -rf "+PATH);
             		p.waitFor();
                 
-            		DBS = (BabuDBImpl) BabuDB.getSlaveBabuDB(new SlaveConfig());
+            		DBS = (BabuDB) BabuDBFactory.createSlaveBabuDB(new SlaveConfig());
             		                        //getSlaveBabuDB(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, master, slaves, Replication.SLAVE_PORT, null, Replication.DEFAULT_MAX_Q);
             	    }
             	}
@@ -144,7 +144,7 @@ public class BabuDBRandomSlaveTest {
 	    System.out.println("Slave is down for "+downTime/60000+" minutes.");
 	    Thread.sleep(downTime);
 		
-            DBS = (BabuDBImpl) BabuDB.getSlaveBabuDB(new SlaveConfig());
+            DBS = (BabuDB) BabuDBFactory.createSlaveBabuDB(new SlaveConfig());
                                     //getSlaveBabuDB(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, master, slaves, Replication.SLAVE_PORT, null, Replication.DEFAULT_MAX_Q);
 	}
 	
@@ -169,7 +169,7 @@ public class BabuDBRandomSlaveTest {
             Process p = Runtime.getRuntime().exec("rm -rf "+PATH);
             p.waitFor();
         
-            DBS = (BabuDBImpl) BabuDB.getSlaveBabuDB(new SlaveConfig());
+            DBS = (BabuDB) BabuDBFactory.createSlaveBabuDB(new SlaveConfig());
                                     //getSlaveBabuDB(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, master, slaves, Replication.SLAVE_PORT, null, Replication.DEFAULT_MAX_Q);
 	}
 	

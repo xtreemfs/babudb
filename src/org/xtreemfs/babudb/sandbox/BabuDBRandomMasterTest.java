@@ -14,10 +14,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBImpl;
-import org.xtreemfs.babudb.BabuDBInsertGroup;
+import org.xtreemfs.babudb.BabuDBFactory;
+import org.xtreemfs.babudb.BabuDB;
+import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
+import org.xtreemfs.babudb.lsmdb.Database;
+import org.xtreemfs.babudb.lsmdb.DatabaseManager;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.sandbox.RandomGenerator.InsertGroup;
 import org.xtreemfs.babudb.sandbox.RandomGenerator.Operation;
@@ -36,7 +38,7 @@ public class BabuDBRandomMasterTest {
     public final static int NUM_WKS = 1;
 	
     private final static RandomGenerator generator = new RandomGenerator();
-    private static BabuDBImpl DBS;
+    private static BabuDB DBS;
 
     private BabuDBRandomMasterTest() {}
 	
@@ -64,7 +66,7 @@ public class BabuDBRandomMasterTest {
                 slaves.add(parseAddress(adr));
 		
         
-        DBS = (BabuDBImpl) BabuDB.getMasterBabuDB(new MasterConfig());
+        DBS = (BabuDB) BabuDBFactory.createMasterBabuDB(new MasterConfig());
                                 //getMasterBabuDB(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, slaves, Replication.MASTER_PORT, null, 0, Replication.DEFAULT_MAX_Q);
         Map<Integer, List<List<Object>>> scenario = generator.initialize(seed);
         Random random = new Random();
@@ -120,18 +122,20 @@ public class BabuDBRandomMasterTest {
 	 * @throws BabuDBException
 	 * @throws IOException
 	 */
-	private static void performOperation(List<Object> op) throws BabuDBException, IOException{
+	private static void performOperation(List<Object> op) throws BabuDBException, IOException, InterruptedException {
 		Operation opName = (Operation) op.get(0);
+		
+		DatabaseManager dbm = DBS.getDatabaseManager();
 		
 		switch (opName){
 		case create:
-			DBS.createDatabase((String) op.get(1), (Integer) op.get(2));
+			dbm.createDatabase((String) op.get(1), (Integer) op.get(2));
 			break;
 		case copy:
-			DBS.copyDatabase((String) op.get(1), (String) op.get(2), null, null);
+		        dbm.copyDatabase((String) op.get(1), (String) op.get(2), null, null);
 			break;
 		case delete:
-			DBS.deleteDatabase((String) op.get(1), true);
+		        dbm.deleteDatabase((String) op.get(1), true);
 			break;
 		default : throw new UnsupportedOperationException(opName.toString());
 		}
@@ -144,14 +148,16 @@ public class BabuDBRandomMasterTest {
 	 */
 	private static void performInsert(LSN lsn) throws Exception{
 		InsertGroup isg = generator.getInsertGroup(lsn);
-		BabuDBInsertGroup babuDBinsert = DBS.createInsertGroup(isg.dbName);
+		
+		Database db = DBS.getDatabaseManager().getDatabase(isg.dbName);
+		BabuDBInsertGroup babuDBinsert = db.createInsertGroup();
 		for (int i=0;i<isg.size();i++){
 			if (i<isg.getNoInserts())
 				babuDBinsert.addInsert(isg.getIndex(i), isg.getKey(i), isg.getValue(i));
 			else
 				babuDBinsert.addDelete(isg.getIndex(i), isg.getKey(i));
 		}
-		DBS.syncInsert(babuDBinsert);
+		db.syncInsert(babuDBinsert);
 	}
 	
 	/**

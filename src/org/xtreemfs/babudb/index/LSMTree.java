@@ -10,8 +10,10 @@ package org.xtreemfs.babudb.index;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.index.overlay.MultiOverlayBufferTree;
@@ -273,6 +275,71 @@ public class LSMTree {
     }
     
     /**
+     * Writes a certain part of an in-memory snapshot to a file on disk.
+     * 
+     * @param targetFile
+     *            the file to which to write the snapshot
+     * @param snapId
+     *            the snapshot ID
+     * @param keyPrefixes
+     *            A list of non-overlapping prefixes that restricts the set of
+     *            key-value pairs. Only those key-value pairs having a key that
+     *            starts with any of the given prefixes will be written to the
+     *            snapshot file.
+     * @throws IOException
+     *             if an I/O error occurs while writing the snapshot
+     */
+    public void materializeSnapshot(String targetFile, final int snapId, final byte[][] keyPrefixes)
+        throws IOException {
+        DiskIndexWriter writer = new DiskIndexWriter(targetFile, MAX_ENTRIES_PER_BLOCK);
+        writer.writeIndex(new Iterator<Entry<byte[], byte[]>>() {
+            
+            private Iterator<Entry<byte[], byte[]>>[] iterators;
+            
+            private int                               currentIt;
+            
+            {
+                // sort the prefixs, such that they are in ascending order
+                if (keyPrefixes != null)
+                    Arrays.sort(keyPrefixes, comp);
+                
+                currentIt = 0;
+                
+                if (keyPrefixes != null) {
+                    iterators = new Iterator[keyPrefixes.length];
+                    for (int i = 0; i < keyPrefixes.length; i++)
+                        iterators[i] = prefixLookup(keyPrefixes[i], snapId, true);
+                } else {
+                    iterators = new Iterator[] { prefixLookup(null, snapId, true) };
+                }
+            }
+            
+            @Override
+            public boolean hasNext() {
+                
+                while (currentIt < iterators.length && !iterators[currentIt].hasNext())
+                    currentIt++;
+                
+                return currentIt < iterators.length;
+            }
+            
+            @Override
+            public Entry<byte[], byte[]> next() {
+                
+                if (!hasNext())
+                    throw new NoSuchElementException();
+                
+                return iterators[currentIt].next();
+            }
+            
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException();
+            }
+        });
+    }
+    
+    /**
      * Links the LSM tree to a new snapshot file. The on-disk index is replaced
      * with the index stored in the given snapshot file, and all in-memory
      * snapshots are discarded.
@@ -298,7 +365,8 @@ public class LSMTree {
     public void destroy() throws IOException {
         
         synchronized (lock) {
-            index.destroy();
+            if (index != null)
+                index.destroy();
             overlay.cleanup();
         }
     }

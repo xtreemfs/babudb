@@ -7,265 +7,541 @@
  */
 package org.xtreemfs.babudb;
 
+import java.io.File;
+import java.io.FilenameFilter;
 import java.io.IOException;
-import java.util.Iterator;
-import java.util.Map.Entry;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import org.xtreemfs.babudb.index.ByteRangeComparator;
+import org.xtreemfs.babudb.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.index.LSMTree;
+import org.xtreemfs.babudb.log.DiskLogFile;
+import org.xtreemfs.babudb.log.DiskLogger;
+import org.xtreemfs.babudb.log.LogEntry;
+import org.xtreemfs.babudb.log.LogEntryException;
+import org.xtreemfs.babudb.lsmdb.Checkpointer;
+import org.xtreemfs.babudb.lsmdb.Database;
+import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
+import org.xtreemfs.babudb.lsmdb.DatabaseManager;
+import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
+import org.xtreemfs.babudb.lsmdb.LSMDBWorker;
+import org.xtreemfs.babudb.lsmdb.LSMDatabase;
+import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
+import org.xtreemfs.babudb.replication.BabuDBReplication;
+import org.xtreemfs.babudb.snapshots.SnapshotManager;
+import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.config.BabuDBConfig;
 import org.xtreemfs.include.common.config.MasterConfig;
 import org.xtreemfs.include.common.config.SlaveConfig;
+import org.xtreemfs.include.common.logging.Logging;
 
 /**
- * <p>Interface for an instance of the BabuDB.</p>
- * 
+ * <p>
+ * <b>Please use the {@link BabuDBFactory} for retrieving an instance of
+ * {@link BabuDB}.</b>
+ * </p>
  * 
  * @author bjko
  * @author flangner
- *
+ * 
  */
-public abstract class BabuDB {
-
+public class BabuDB {
+    
     /**
      * Version (name)
      */
-    public static final String BABUDB_VERSION = "0.1.0 RC";
+    public static final String      BABUDB_VERSION           = "0.2.0";
+    
     /**
      * Version of the DB on-disk format (to detect incompatibilities).
      */
-    public static final int BABUDB_DB_FORMAT_VERSION = 1;
-
+    public static final int         BABUDB_DB_FORMAT_VERSION = 1;
+    
     /**
-     * shuts down the database.
-     * @attention: does not create a final checkpoint!
+     * the disk logger is used to write InsertRecordGroups persistently to disk
+     * - visibility changed to public, because the replication needs access to
+     * the {@link DiskLogger}
      */
-    public abstract void shutdown();
-
+    public DiskLogger               logger;
+    
     /**
-     * Inserts a single key value pair (synchronously)
-     * @param database name of database
-     * @param indexId index id (0..NumIndices-1)
+     * object used for locking to ensure that switch of log file and overlay
+     * trees is atomic and not interrupted by inserts
+     */
+    public ReadWriteLock            overlaySwitchLock;
+    
+    private LSMDBWorker[]           worker;
+    
+    private final BabuDBReplication replication;
+    
+    /**
+     * Checkpointer thread for automatic checkpointing -has to be public for
+     * replication issues
+     */
+    public Checkpointer             dbCheckptr;
+    
+    /**
+     * the component that manages database snapshots
+     */
+    private final SnapshotManager   snapshotManager;
+    
+    /**
+     * the component that manages databases
+     */
+    private final DatabaseManager   databaseManager;
+    
+    /**
+     * All necessary parameters to run the BabuDB.
+     */
+    public final BabuDBConfig       configuration;
+    
+    /**
+     * Starts the BabuDB database. If conf is instance of MasterConfig it comes
+     * with replication in master-mode. If conf is instance of SlaveConfig it
+     * comes with replication in slave-mode.
+     * 
+     * @param conf
+     * @throws BabuDBException
+     */
+    BabuDB(BabuDBConfig conf) throws BabuDBException {
+        Logging.start(conf.getDebugLevel());
+        
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "base dir: " + conf.getBaseDir());
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "db log dir: " + conf.getDbLogDir());
+        
+        this.overlaySwitchLock = new ReentrantReadWriteLock();
+        this.configuration = conf;
+        
+        this.databaseManager = new DatabaseManager(this);
+        this.snapshotManager = new SnapshotManager(this);
+        
+        // determine the last LSN and replay the log
+        LSN dbLsn = null;
+        for (Database db : databaseManager.getDatabases()) {
+            if (dbLsn == null)
+                dbLsn = ((DatabaseImpl) db).getLSMDB().getOndiskLSN();
+            else {
+                if (!dbLsn.equals(((DatabaseImpl) db).getLSMDB().getOndiskLSN()))
+                    throw new RuntimeException("databases have different LSNs!");
+            }
+        }
+        if (dbLsn == null) {
+            // empty babudb
+            dbLsn = new LSN(0, 0);
+        } else {
+            // need next LSN which is onDisk + 1
+            dbLsn = new LSN(dbLsn.getViewId(), dbLsn.getSequenceNo() + 1);
+        }
+        
+        Logging.logMessage(Logging.LEVEL_INFO, this, "starting log replay");
+        LSN nextLSN = replayLogs();
+        if (dbLsn.compareTo(nextLSN) > 0) {
+            nextLSN = dbLsn;
+        }
+        Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done, using LSN: " + nextLSN);
+        
+        // setup the replication service
+        try {
+            if (conf instanceof MasterConfig)
+                this.replication = new BabuDBReplication((MasterConfig) conf, this, nextLSN);
+            else if (conf instanceof SlaveConfig)
+                this.replication = new BabuDBReplication((SlaveConfig) conf, this, nextLSN);
+            else
+                this.replication = null;
+        } catch (IOException e) {
+            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
+        }
+        
+        // start the replication service
+        if (this.replication != null)
+            this.replication.initialize();
+        
+        // set up and start the disk logger
+        try {
+            this.logger = new DiskLogger(conf.getDbLogDir(), nextLSN.getViewId(), nextLSN.getSequenceNo(),
+                conf.getSyncMode(), conf.getPseudoSyncWait(), conf.getMaxQueueLength() * conf.getNumThreads());
+            this.logger.start();
+        } catch (IOException ex) {
+            throw new BabuDBException(ErrorCode.IO_ERROR, "cannot start database operations logger", ex);
+        }
+        
+        worker = new LSMDBWorker[conf.getNumThreads()];
+        for (int i = 0; i < conf.getNumThreads(); i++) {
+            worker[i] = new LSMDBWorker(logger, i, overlaySwitchLock, (conf.getPseudoSyncWait() > 0), conf
+                    .getMaxQueueLength(), replication);
+            worker[i].start();
+        }
+        
+        dbCheckptr = new Checkpointer(this, logger, conf.getCheckInterval(), conf.getMaxLogfileSize());
+        dbCheckptr.start();
+        
+        Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running (version " + BABUDB_VERSION
+            + ")");
+    }
+    
+    /**
+     * DUMMY - constructor for testing only!
+     */
+    public BabuDB() {
+        replication = null;
+        configuration = null;
+        snapshotManager = null;
+        databaseManager = null;
+    }
+    
+    /**
+     * <p>
+     * Needed for the initial load process of the babuDB, done by the
+     * replication.
+     * </p>
+     * 
+     * @param latest
+     *            - {@link LSN} until which the loading is done.
+     * @throws BabuDBException
+     */
+    public void reset(LSN latest) throws BabuDBException {
+        for (LSMDBWorker w : worker) {
+            w.shutdown();
+        }
+        logger.shutdown();
+        dbCheckptr.shutdown();
+        
+        try {
+            logger.waitForShutdown();
+            for (LSMDBWorker w : worker) {
+                w.waitForShutdown();
+            }
+            if (dbCheckptr != null) {
+                dbCheckptr.waitForShutdown();
+            }
+        } catch (InterruptedException ex) {
+        }
+        Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB has been stopped by the Replication.");
+        
+        databaseManager.reset();
+        
+        try {
+            logger = new DiskLogger(configuration.getDbLogDir(), latest.getViewId(),
+                latest.getSequenceNo() + 1L, configuration.getSyncMode(), configuration.getPseudoSyncWait(),
+                configuration.getMaxQueueLength() * configuration.getNumThreads());
+            logger.start();
+        } catch (IOException ex) {
+            throw new BabuDBException(ErrorCode.IO_ERROR, "cannot start database operations logger", ex);
+        }
+        
+        overlaySwitchLock = new ReentrantReadWriteLock();
+        
+        worker = new LSMDBWorker[configuration.getNumThreads()];
+        for (int i = 0; i < configuration.getNumThreads(); i++) {
+            worker[i] = new LSMDBWorker(logger, i, overlaySwitchLock,
+                (configuration.getPseudoSyncWait() > 0), configuration.getMaxQueueLength(), replication);
+            worker[i].start();
+        }
+        
+        dbCheckptr = new Checkpointer(this, logger, configuration.getCheckInterval(), configuration
+                .getMaxLogfileSize());
+        dbCheckptr.start();
+        
+        Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running (version " + BABUDB_VERSION
+            + ")");
+    }
+    
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.xtreemfs.babudb.BabuDBInterface#shutdown()
+     */
+    public void shutdown() throws BabuDBException {
+        for (LSMDBWorker w : worker) {
+            w.shutdown();
+        }
+        
+        // stop the replication
+        if (replication != null) {
+            replication.shutdown();
+        }
+        
+        logger.shutdown();
+        dbCheckptr.shutdown();
+        databaseManager.shutdown();
+        snapshotManager.shutdown();
+        
+        try {
+            logger.waitForShutdown();
+            for (LSMDBWorker w : worker) {
+                w.waitForShutdown();
+            }
+            dbCheckptr.waitForShutdown();
+        } catch (InterruptedException ex) {
+        }
+        Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB shutdown complete.");
+    }
+    
+    /**
+     * NEVER USE THIS EXCEPT FOR UNIT TESTS! Kills the database.
+     */
+    @SuppressWarnings("deprecation")
+    public void __test_killDB_dangerous() {
+        try {
+            logger.stop();
+            for (LSMDBWorker w : worker) {
+                w.stop();
+            }
+        } catch (IllegalMonitorStateException ex) {
+            // we will probably get that when we kill a thread because we do
+            // evil stuff here ;-)
+        }
+    }
+    
+    public Checkpointer getCheckpointer() {
+        return dbCheckptr;
+    }
+    
+    public DiskLogger getLogger() {
+        return logger;
+    }
+    
+    public BabuDBReplication getReplicationManager() {
+        return replication;
+    }
+    
+    public DatabaseManager getDatabaseManager() {
+        return databaseManager;
+    }
+    
+    public BabuDBConfig getConfig() {
+        return configuration;
+    }
+    
+    /**
+     * @return the path to the DB-configuration-file, if available, null
+     *         otherwise.
+     */
+    public String getDBConfigPath() {
+        String result = configuration.getBaseDir() + configuration.getDbCfgFile();
+        File f = new File(result);
+        if (f.exists())
+            return result;
+        return null;
+    }
+    
+    /**
+     * Replay the database operations log.
+     * 
+     * @return the LSN to assign to the next operation
+     * @throws BabuDBException
+     */
+    private LSN replayLogs() throws BabuDBException {
+        if (databaseManager.getDatabases().size() == 0) {
+            return new LSN(1, 1);
+        }
+        
+        try {
+            File f = new File(configuration.getDbLogDir());
+            String[] logs = f.list(new FilenameFilter() {
+                
+                public boolean accept(File dir, String name) {
+                    return name.endsWith(".dbl");
+                }
+            });
+            LSN nextLSN = null;
+            if (logs != null) {
+                // read list of logs and create a list ordered from min LSN to
+                // max LSN
+                SortedSet<LSN> orderedLogList = new TreeSet<LSN>();
+                Pattern p = Pattern.compile("(\\d+)\\.(\\d+)\\.dbl");
+                for (String log : logs) {
+                    Matcher m = p.matcher(log);
+                    m.matches();
+                    String tmp = m.group(1);
+                    int viewId = Integer.valueOf(tmp);
+                    tmp = m.group(2);
+                    int seqNo = Integer.valueOf(tmp);
+                    orderedLogList.add(new LSN(viewId, seqNo));
+                }
+                // apply log entries to databases...
+                for (LSN logLSN : orderedLogList) {
+                    DiskLogFile dlf = new DiskLogFile(configuration.getDbLogDir(), logLSN);
+                    LogEntry le = null;
+                    while (dlf.hasNext()) {
+                        le = dlf.next();
+                        // do something
+                        ReusableBuffer payload = le.getPayload();
+                        if (payload.array().length != 0) {
+                            InsertRecordGroup ai = InsertRecordGroup.deserialize(payload);
+                            insert(ai);
+                        }
+                        le.free();
+                    }
+                    // set lsn'
+                    if (le != null) {
+                        nextLSN = new LSN(le.getViewId(), le.getLogSequenceNo() + 1);
+                    }
+                }
+            }
+            if (nextLSN != null) {
+                return nextLSN;
+            } else {
+                return new LSN(1, 1);
+            }
+            
+        } catch (IOException ex) {
+            throw new BabuDBException(ErrorCode.IO_ERROR,
+                "cannot load database operations log, file might be corrupted", ex);
+        } catch (LogEntryException ex) {
+            throw new BabuDBException(ErrorCode.IO_ERROR,
+                "corrupted/incomplete log entry in database operations log", ex);
+        } catch (Exception ex) {
+            throw new BabuDBException(ErrorCode.INTERNAL_ERROR,
+                "cannot load database operations log, unexpected error", ex);
+        }
+        
+    }
+    
+    /**
+     * Insert a full record group. Only to be used by log replay.
+     * 
+     * @param ins
+     */
+    private void insert(InsertRecordGroup ins) {
+        final LSMDatabase db = ((DatabaseImpl) databaseManager.getDatabase(ins.getDatabaseId())).getLSMDB();
+        // ignore deleted databases when recovering!
+        if (db == null) {
+            return;
+        }
+        
+        for (InsertRecord ir : ins.getInserts()) {
+            LSMTree tree = db.getIndex(ir.getIndexId());
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "insert " + new String(ir.getKey()) + "="
+                + (ir.getValue() == null ? null : new String(ir.getValue())) + " into "
+                + db.getDatabaseName() + " " + ir.getIndexId());
+            tree.insert(ir.getKey(), ir.getValue());
+        }
+        
+    }
+    
+    /**
+     * FOR TESTING PURPOSE ONLY!
+     * 
+     * @param databaseName the database name
+     * @param indexId the ID of the index
      * @param key the key
-     * @param value the value
-     * @throws BabuDBException if the operation failed
-     */
-    public abstract void syncSingleInsert(String database, int indexId, byte[] key,
-            byte[] value) throws BabuDBException;
-
-    /**
-     * Inserts a group of key value pair (synchronously)
-     * @param irg the insert record group to execute
-     * @throws BabuDBException if the operation failed
-     */
-    public abstract void syncInsert(BabuDBInsertGroup irg) throws BabuDBException;
-
-    /**
-     * lookup a single key (synchronously)
-     * @param database name of database
-     * @param indexId index id (0..NumIndices-1)
-     * @param key the key to look up
-     * @return a view buffer to the result or null if there is no such entry
-     * @throws BabuDBException if the operation failed
-     */
-    public abstract byte[] syncLookup(String database, int indexId, byte[] key)
-            throws BabuDBException;
-
-    /**
-     * synchronous wrapper for asyncUserDefinedLookup
-     * @param database
-     * @param udl the method to be executed
-     * @return the result generated by the user defined lookup method
+     * @return the value
      * @throws BabuDBException
      */
-    public abstract Object syncUserDefinedLookup(String database, UserDefinedLookup udl)
-            throws BabuDBException;
-
-    /**
-     * executes a user defined lookup method
-     * @param database name of database
-     * @param indexId index id (0..NumIndices-1)
-     * @param key the key to start the iterator at
-     * @return an iterator to the database starting at the first matching key. Returns key/value pairs in ascending order.
-     * @throws BabuDBException if the operation failed
-     */
-    public abstract Iterator<Entry<byte[], byte[]>> syncPrefixLookup(String database,
-            int indexId, byte[] key) throws BabuDBException;
-
-    /**
-     * Creates a database using the default comparator (bytewise/ASCII string comparator)
-     * @param databaseName name of the database
-     * @param numIndices number of indices in the database
-     * @throws BabuDBException if the database directory cannot be created or the config cannot be saved
-     */
-    public abstract void createDatabase(String databaseName, int numIndices)
-            throws BabuDBException;
-
-    /**
-     * Creates a new database
-     * @param databaseName name, must be unique
-     * @param numIndices the number of indices (cannot be changed afterwards)
-     * @param comparators an array of ByteRangeComparators for each index (use only one instance)
-     * @throws BabuDBException if the database directory cannot be created or the config cannot be saved
-     */
-    public abstract void createDatabase(String databaseName, int numIndices,
-            ByteRangeComparator[] comparators) throws BabuDBException;
-
-    /**
-     * Deletes a database
-     * @param databaseName name of database to delete
-     * @param deleteFiles if true, all snapshots are deleted as well
-     * @throws BabuDBException
-     */
-    public abstract void deleteDatabase(String databaseName, boolean deleteFiles)
-            throws BabuDBException;
-
-    /**
-     * Creates a copy of database sourceDB by taking a snapshot, materializing it
-     * and loading it as destDB. This does not interrupt operations on sourceDB.
-     * @param sourceDB the database to copy
-     * @param destDB the new database's name
-     * @param rangeStart
-     * @param rangeEnd
-     * @throws BabuDBException
-     * @throws IOException
-     */
-    public abstract void copyDatabase(String sourceDB, String destDB, byte[] rangeStart,
-            byte[] rangeEnd) throws BabuDBException, IOException;
-
-    /**
-     * Creates a checkpoint of all databases. The in-memory data is merged with the on-disk data and
-     * is written to a new snapshot file. Database logs are truncated. This operation is thread-safe.
-     * @throws BabuDBException if the checkpoint was not successful
-     * @throws InterruptedException
-     */
-    public abstract void checkpoint() throws BabuDBException, InterruptedException;
-
-    /**
-     * Creates a snapshot of all indices in a single database. The snapshot is
-     * not materialized (use writeSnapshot)
-     * and will be removed upon next checkpointing or shutdown.
-     * @param dbName
-     * @throws BabuDBException if the checkpoint was not successful
-     * @throws InterruptedException
-     * @return an array with the snapshot ID for each index in the database
-     */
-    public abstract int[] createSnapshot(String dbName) throws BabuDBException,
-            InterruptedException;
-
-    /**
-     * Writes a snapshot to disk.
-     * @param dbName the database name
-     * @param snapIds the snapshot IDs obtained from createSnapshot
-     * @param directory the directory in which the snapshots are written
-     * @throws org.xtreemfs.babudb.BabuDBException if the snapshot cannot be written
-     */
-    public abstract void writeSnapshot(String dbName, int[] snapIds, String directory)
-            throws BabuDBException;
-
-    /**
-     * Insert an group of inserts asynchronously.
-     * @param ig the group of inserts
-     * @param listener a callback for the result
-     * @param context optional context object which is passed to the listener
-     * @throws BabuDBException
-     */
-    public abstract void asyncInsert(BabuDBInsertGroup ig,
-            BabuDBRequestListener listener, Object context)
-            throws BabuDBException;
-
-    /**
-     * Executes a  user defined method in the database worker's thread.
-     * This can be more efficient than executing multiple individual lookups
-     * (only a single enqueue operations).
-     * @param databaseName the database in which to execute the method
-     * @param listener a result listener
-     * @param udl the method to be executed
-     * @param context arbitrary context which is passed to the listener
-     * @throws org.xtreemfs.babudb.BabuDBException
-     */
-    public abstract void asyncUserDefinedLookup(String databaseName,
-            BabuDBRequestListener listener, UserDefinedLookup udl,
-            Object context) throws BabuDBException;
-
-    /**
-     * Creates a new group of inserts.
-     * @param databaseName the database to which the inserts are applied
-     * @return a insert record group
-     * @throws BabuDBException
-     */
-    public abstract BabuDBInsertGroup createInsertGroup(String databaseName)
-            throws BabuDBException;
-
-    /**
-     * Lookup a key=value asynchronously
-     * @param databaseName database which is queried
-     * @param indexId the lookup index
-     * @param key the key to lookup
-     * @param listener a callback for the result
-     * @param context optional context object which is passed to the listener
-     * @throws BabuDBException
-     */
-    public abstract void asyncLookup(String databaseName, int indexId, byte[] key,
-            BabuDBRequestListener listener, Object context)
-            throws BabuDBException;
-
-    /**
-     * Asynchronously prefix lookup for a key.
-     * @param databaseName database which is queried
-     * @param indexId the lookup index
-     * @param key the key to lookup
-     * @param listener a callback for the result
-     * @param context optional context object which is passed to the listener
-     * @throws BabuDBException
-     */
-    public abstract void asyncPrefixLookup(String databaseName, int indexId, byte[] key,
-            BabuDBRequestListener listener, Object context)
-            throws BabuDBException;
-
-    /**
-     * Looks up a key in the database. Similar to syncLookup but executes in the
-     * context of the calling thread.
-     * @attention direct... methods should not be mixed with the other sync/async... operations
-     *            and developers must make sure that readers and writers are synchronized correctly!
-     * @param databaseName
-     * @param indexId
-     * @param key
-     * @return
-     * @throws org.xtreemfs.babudb.BabuDBException
-     */
-    public abstract byte[] directLookup(String databaseName, int indexId, byte[] key) throws BabuDBException;
-
-    public abstract Iterator<Entry<byte[], byte[]>> directPrefixLookup(String databaseName, int indexId, byte[] key) throws BabuDBException;
-
-    public abstract void directInsert(BabuDBInsertGroup ig) throws BabuDBException;
-
-    /**
-     * Starts the BabuDB database.
-     * 
-     * @param conf
-     * @throws BabuDBException
-     */
-    public static BabuDB getBabuDB(BabuDBConfig configuration) throws BabuDBException {
-        return new BabuDBImpl(configuration);
+    public byte[] hiddenLookup(String databaseName, int indexId, byte[] key) throws BabuDBException {
+        final LSMDatabase db = ((DatabaseImpl) databaseManager.getDatabase(databaseName)).getLSMDB();
+        
+        if (db == null) {
+            throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database does not exist");
+        }
+        if ((indexId >= db.getIndexCount()) || (indexId < 0)) {
+            throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
+        }
+        return db.getIndex(indexId).lookup(key);
+    }
+    
+    public SnapshotManager getSnapshotManager() {
+        return snapshotManager;
     }
     
     /**
-     * Starts BabuDB with replication in master-mode.
+     * Returns the number of worker threads.
      * 
-     * @param conf
-     * @throws BabuDBException 
+     * @return the number of worker threads.
      */
-    public static BabuDB getMasterBabuDB(MasterConfig configuration) throws BabuDBException {
-        return new BabuDBImpl(configuration);
+    public int getWorkerCount() {
+        return worker.length;
     }
     
     /**
-     * Starts BabuDB with replication in slave-mode.
      * 
-     * @param conf
-     * @throws BabuDBException 
+     * @param dbId
+     * @return a worker Thread, responsible for the DB given by its ID.
      */
-    public static BabuDB getSlaveBabuDB(SlaveConfig configuration) throws BabuDBException {
-        return new BabuDBImpl(configuration);
+    public LSMDBWorker getWorker(int dbId) {
+        return worker[dbId % worker.length];
     }
+    
+    /**
+     * 
+     * @return true, if replication runs in slave-mode, false otherwise.
+     */
+    public boolean replication_isSlave() {
+        if (replication == null) {
+            return false;
+        }
+        return !replication.isMaster();
+    }
+    
+    /**
+     * <p>
+     * Dangerous function. Just for testing purpose!
+     * </p>
+     * 
+     * @return the LSN of the last written insert.
+     * @throws InterruptedException
+     * 
+     *             public LSN replication_pause() throws InterruptedException{
+     *             return replication.pause(); }
+     */
+    
+    /**
+     * <p>
+     * Dangerous function. Just for testing purpose!
+     * </p>
+     * 
+     * public void replication_resume(){ replication.resume(); }
+     * */
+    
+    /**
+     * <p>
+     * Makes a new checkPoint and increments the viewID.
+     * </p>
+     * 
+     * @throws BabuDBException
+     * @throws InterruptedException
+     * 
+     *             public void replication_toMaster() throws
+     *             InterruptedException, BabuDBException{ assert
+     *             (replication!=null); checkpoint(true);
+     *             replication.setSlaves(configuration.replication_slaves); }
+     */
+    
+    /**
+     * <p>
+     * Operation to switch the synchronization policy while replication is
+     * running.
+     * </p>
+     * 
+     * @see {@link Replication}.setSyncMode(int)
+     * @param n
+     * @throws BabuDBException
+     * @throws InterruptedException
+     * 
+     *             public void replication_switchSyncMode(int n) throws
+     *             BabuDBException, InterruptedException{ if (replication !=
+     *             null) replication.setSyncMode(n); else throw new
+     *             UnsupportedOperationException ("Replication is not enabled! That's why it does not make sense to change the replication policies."
+     *             ); }
+     */
+    
+    /**
+     * TODO failover-strategy
+     * 
+     * @param msg
+     * 
+     *            public void replication_runtime_failure(String msg) {
+     * 
+     *            String message = "BabuDB in "+((replication_isSlave()) ?
+     *            "slave" : "master")+"-mode has failed: "+msg;
+     *            Logging.logMessage(Logging.LEVEL_ERROR, this, message);
+     *            shutdown(); }
+     */
+    
 }

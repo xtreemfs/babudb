@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.sandbox.CLIParser.CliOption;
 import org.xtreemfs.include.common.config.BabuDBConfig;
@@ -71,7 +72,7 @@ public class BabuDBBenchmark {
             throw new IllegalArgumentException(maxKeyLength+" is too short to create enough unique keys for "+numKeys+" keys");
 
         //use one worker because we use one database TODO rebuild
-        database = BabuDB.getBabuDB(new BabuDBConfig(dbDir, dbDir, numDBWorkers, 1, 0, syncMode, pseudoModeWait, maxQ));
+        database = BabuDBFactory.createBabuDB(new BabuDBConfig(dbDir, dbDir, numDBWorkers, 1, 0, syncMode, pseudoModeWait, maxQ));
         SlaveConfig sConf = new SlaveConfig("config/slave.properties");
         sConf.read();
         MasterConfig conf = new MasterConfig("config/master.properties");
@@ -80,7 +81,7 @@ public class BabuDBBenchmark {
         //slaveDB = BabuDB.getSlaveBabuDB(sConf);
         
         for (int i = 1; i <= numThreads; i++)
-        database.createDatabase(""+i, 1);
+        database.getDatabaseManager().createDatabase(""+i, 1);
 
         System.out.println("BabuDBBenchmark version "+VER+" ==============================\n");
         System.out.println("Configuration ----------------------------------");
@@ -100,12 +101,12 @@ public class BabuDBBenchmark {
 
     public double checkpoint() throws BabuDBException, InterruptedException {
         long tStart = System.currentTimeMillis();
-        database.checkpoint();
+        database.getCheckpointer().checkpoint();
         long tEnd = System.currentTimeMillis();
         return (tEnd-tStart)/1000.0;
     }
 
-    public void shutdown() {  
+    public void shutdown() throws Exception {  
         database.shutdown();
         /*
         try {

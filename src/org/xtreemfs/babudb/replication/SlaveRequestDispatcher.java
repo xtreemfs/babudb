@@ -9,7 +9,7 @@ package org.xtreemfs.babudb.replication;
 
 import java.io.IOException;
 
-import org.xtreemfs.babudb.BabuDBImpl;
+import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.clients.MasterClient;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
@@ -51,7 +51,7 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
      * @param db
      * @throws IOException
      */
-    public SlaveRequestDispatcher(SlaveConfig config, BabuDBImpl db, LSN initial) throws IOException {
+    public SlaveRequestDispatcher(SlaveConfig config, BabuDB db, LSN initial) throws IOException {
         super("Slave", config, db);
         this.configuration = config;
         

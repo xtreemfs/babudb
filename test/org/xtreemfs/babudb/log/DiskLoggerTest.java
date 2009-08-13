@@ -11,6 +11,10 @@ package org.xtreemfs.babudb.log;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import junit.framework.TestCase;
+import junit.textui.TestRunner;
+
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -19,13 +23,14 @@ import org.junit.Test;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
 import org.junit.Assert;
+import org.xtreemfs.babudb.BabuDBTest;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 
 /**
  *
  * @author bjko
  */
-public class DiskLoggerTest {
+public class DiskLoggerTest extends TestCase {
 
     public static final String testdir = "/tmp/xtfs-dbtest/dbl/";
     
@@ -243,5 +248,9 @@ public class DiskLoggerTest {
         } catch (LogEntryException ex) {
         }
                 
+    }
+    
+    public static void main(String[] args) {
+        TestRunner.run(DiskLoggerTest.class);
     }
 }

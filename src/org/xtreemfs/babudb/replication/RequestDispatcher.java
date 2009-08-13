@@ -17,7 +17,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import org.xtreemfs.babudb.BabuDBImpl;
+import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.interfaces.Exceptions.ProtocolException;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.ReplicationInterface;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCRequestHeader;
@@ -69,7 +69,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
     protected final List<InetAddress>       permittedClients; 
 
     /** interface for babuDB core-components */
-    public final BabuDBImpl                 db;
+    public final BabuDB                 db;
     
 /*
  * stages
@@ -82,7 +82,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
      * @param db
      * @throws IOException
      */
-    public RequestDispatcher(String name, ReplicationConfig config, BabuDBImpl db) throws IOException {
+    public RequestDispatcher(String name, ReplicationConfig config, BabuDB db) throws IOException {
         this.name = name;
         this.db = db;
         this.permittedClients = new LinkedList<InetAddress>();
