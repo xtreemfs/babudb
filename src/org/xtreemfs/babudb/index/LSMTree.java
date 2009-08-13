@@ -34,6 +34,8 @@ public class LSMTree {
     
     private final Object              lock;
     
+    private boolean                   compressed;
+    
     /**
      * Creates a new LSM tree.
      * 
@@ -41,15 +43,17 @@ public class LSMTree {
      *            the on-disk index file - may be <code>null</code>
      * @param comp
      *            a comparator for byte ranges
+     * @param compressed Compression of disk-index
      * @throws IOException
      *             if an I/O error occurs when accessing the on-disk index file
      */
-    public LSMTree(String indexFile, ByteRangeComparator comp) throws IOException {
+    public LSMTree(String indexFile, ByteRangeComparator comp, boolean compressed) throws IOException {
         
         this.comp = comp;
+        this.compressed = compressed;
         
         overlay = new MultiOverlayBufferTree(NULL_ELEMENT, comp);
-        index = indexFile == null ? null : new DiskIndex(indexFile, comp);
+        index = indexFile == null ? null : new DiskIndex(indexFile, comp, false);
         lock = new Object();
     }
     
@@ -270,7 +274,7 @@ public class LSMTree {
      *             if an I/O error occurs while writing the snapshot
      */
     public void materializeSnapshot(String targetFile, int snapId) throws IOException {
-        DiskIndexWriter writer = new DiskIndexWriter(targetFile, MAX_ENTRIES_PER_BLOCK);
+        DiskIndexWriter writer = new DiskIndexWriter(targetFile, MAX_ENTRIES_PER_BLOCK, false);
         writer.writeIndex(prefixLookup(null, snapId, true));
     }
     
@@ -291,7 +295,7 @@ public class LSMTree {
      */
     public void materializeSnapshot(String targetFile, final int snapId, final byte[][] keyPrefixes)
         throws IOException {
-        DiskIndexWriter writer = new DiskIndexWriter(targetFile, MAX_ENTRIES_PER_BLOCK);
+        DiskIndexWriter writer = new DiskIndexWriter(targetFile, MAX_ENTRIES_PER_BLOCK, false);
         writer.writeIndex(new Iterator<Entry<byte[], byte[]>>() {
             
             private Iterator<Entry<byte[], byte[]>>[] iterators;
@@ -352,7 +356,7 @@ public class LSMTree {
     public void linkToSnapshot(String snapshotFile) throws IOException {
         final DiskIndex oldIndex = index;
         synchronized (lock) {
-            index = new DiskIndex(snapshotFile, comp);
+            index = new DiskIndex(snapshotFile, comp, false);
             if (oldIndex != null)
                 oldIndex.destroy();
             overlay.cleanup();

@@ -45,7 +45,7 @@ public class LSMTreePerformanceTest {
             System.out.println("creating new database with " + size + " random entries ...");
             
             // write the map to a disk index
-            DiskIndexWriter index = new DiskIndexWriter(path, entriesPerBlock);
+            DiskIndexWriter index = new DiskIndexWriter(path, entriesPerBlock, false);
             index.writeIndex(new Iterator<Entry<byte[], byte[]>>() {
                 
                 private int    count;
@@ -94,7 +94,7 @@ public class LSMTreePerformanceTest {
         }
         
         // read the LSM tree
-        LSMTree tree = new LSMTree(path, new DefaultByteRangeComparator());
+        LSMTree tree = new LSMTree(path, new DefaultByteRangeComparator(), false);
         
         System.out.println("inserting " + inserts + " random elements ...");
         for (int i = 0; i < inserts; i++) {

@@ -26,15 +26,19 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
  */
 public class DiskIndexWriter {
     
-    private String path;
+    private String 	path;
     
-    private int    maxBlockEntries;
+    private int    	maxBlockEntries;
     
-    public DiskIndexWriter(String path, int maxBlockEntries) throws IOException {
-        
+    private boolean compressed;
+    
+    public DiskIndexWriter(String path, int maxBlockEntries, boolean compressed) throws IOException {
+
         if (new File(path).exists())
             throw new IOException("index already exists");
-        
+
+    	this.compressed = compressed;
+    	
         this.path = path;
         this.maxBlockEntries = maxBlockEntries;
     }
@@ -54,8 +58,13 @@ public class DiskIndexWriter {
         FileChannel channel = new FileOutputStream(path).getChannel();
         channel.truncate(0);
         
-        BlockWriter blockIndex = new BlockWriter(true, false);
-        BlockWriter block = new BlockWriter(true, true);
+        BlockWriter blockIndex = new DefaultBlockWriter(true, false);
+        BlockWriter block;
+        
+        if(compressed)
+        	block = new CompressedBlockWriter(true, true);
+        else
+        	block = new DefaultBlockWriter(true, true);
         
         int entryCount = 0;
         int blockOffset = 0;
@@ -91,7 +100,10 @@ public class DiskIndexWriter {
                 BufferPool.free(serializedBlock);
                 
                 if (iterator.hasNext())
-                    block = new BlockWriter(true, true);
+                    if(compressed)
+                    	block = new CompressedBlockWriter(true, true);
+                    else
+                    	block = new DefaultBlockWriter(true, true);
             }
             
         }

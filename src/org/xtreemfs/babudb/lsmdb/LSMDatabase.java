@@ -103,7 +103,7 @@ public class LSMDatabase {
             try {
                 for (int i = 0; i < numIndices; i++) {
                     assert (comparators[i] != null);
-                    trees.add(new LSMTree(null, comparators[i]));
+                    trees.add(new LSMTree(null, comparators[i], false));
                 }
                 ondiskLSN = new LSN(0, 0);
             } catch (IOException ex) {
@@ -173,14 +173,14 @@ public class LSMDatabase {
                         + maxSeq);
                     assert (comparators[index] != null);
                     trees.set(index, new LSMTree(databaseDir + getSnapshotFilename(index, maxView, maxSeq),
-                        comparators[index]));
+                        comparators[index], false));
                     ondiskLSN = new LSN(maxView, maxSeq);
                 } else {
                     ondiskLSN = new LSN(0, 0);
                     Logging.logMessage(Logging.LEVEL_DEBUG, this, "no snapshot for database "
                         + this.databaseName);
                     assert (comparators[index] != null);
-                    trees.set(index, new LSMTree(null, comparators[index]));
+                    trees.set(index, new LSMTree(null, comparators[index], false));
                 }
             } catch (IOException ex) {
                 throw new BabuDBException(ErrorCode.IO_ERROR, "cannot load index from disk", ex);

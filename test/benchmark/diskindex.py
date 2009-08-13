@@ -14,7 +14,7 @@ if __name__ == '__main__':
         'hitrate': 10,
         'keylength': 8,
         'path': '/tmp/babudb_diskindex_benchmark',
-        'num_entries': 10000000,
+        'num_entries': 100000,
         'num_lookups': 0,
         'base_dir': base_path,
         'seed': 0
@@ -32,12 +32,12 @@ if __name__ == '__main__':
 #    config['base_dir'] = centralized_path
 
 #    ranges = {'num_entries': [1000,10000,100000, 1000000], 'blocksize': [32,64], 'keylength': [8, 12]}
-#    ranges = {'num_entries': [1000,10000,100000, 1000000]}
+    ranges = {'num_entries': [1000,10000,100000]} # ,1000000
 
-    ranges = {'blocksize': [16,32,64,128,256]} # ,512,1024,2048,4096
+#    ranges = {'blocksize': [16]} # ,512,1024,2048,4096
     attrs = list(ranges.keys())
 
-    df = DataFile(os.path.join(base_path, 'stats_%s.dat' % '_'.join(attrs)), ['entries', 'lookups', 'hits', 'total time', 'lookup time', 'iter time'] + attrs, overwrite=True)
+    df = DataFile(os.path.join(base_path, 'stats_%s.dat' % '_'.join(attrs)), ['entries', 'lookups', 'hits', 'total time', 'lookup time', 'iter time', 'iter throughput'] + attrs, overwrite=True)
 
     results = exec_ranges(cmd, config, ranges, num_reps=10, config=base_path)
 
@@ -45,9 +45,12 @@ if __name__ == '__main__':
         cfg = dict(config)
         # TODO: avg. over the reps
         avg_iter_time = []
+        avg_iter_tp = []
+
         for data in reps:
-            entries, lookups, hits, total_time, lookup_time, iter_time = data.split(", ")
+            entries, lookups, hits, total_time, lookup_time, iter_time, iter_tp = data.split(", ")
             avg_iter_time.append(int(iter_time))
+            avg_iter_tp.append(int(iter_tp))
 
         for attr in ranges:
             df[attr] = cfg[attr]
@@ -58,6 +61,7 @@ if __name__ == '__main__':
         df['total time'] = total_time
         df['lookup time'] = lookup_time
         df['iter time'] = float(sum(avg_iter_time))/len(avg_iter_time)
+        df['iter throughput'] = float(sum(avg_iter_tp))/len(avg_iter_tp)
         df.save()
 
         print(avg_iter_time)

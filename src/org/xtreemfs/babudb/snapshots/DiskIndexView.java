@@ -58,7 +58,7 @@ public class DiskIndexView implements BabuDBView {
             
             for (String file : files) {
                 int index = Integer.parseInt(file.substring(file.indexOf("IX") + 2, file.indexOf('V')));
-                indexMap.put(index, new DiskIndex(dir + "/" + file, comps[index]));
+                indexMap.put(index, new DiskIndex(dir + "/" + file, comps[index], false));
             }
             
         } catch (IOException exc) {
