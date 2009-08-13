@@ -10,6 +10,8 @@ package org.xtreemfs.babudb;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.SortedMap;
@@ -37,6 +39,8 @@ public class DiskIndexTest extends TestCase {
     
     private static final ByteRangeComparator COMP              = new DefaultByteRangeComparator();
     
+    private static final boolean             COMPRESSED        = true;
+    
     public void setUp() throws Exception {
         Logging.start(Logging.LEVEL_ERROR);
     }
@@ -51,7 +55,7 @@ public class DiskIndexTest extends TestCase {
         // create a new disk index and look up each key
         byte[][] entries = { new byte[] { '\0' }, "word".getBytes(), new byte[] { '#' } };
         populateDiskIndex(entries);
-        DiskIndex diskIndex = new DiskIndex(PATH2, new DefaultByteRangeComparator());
+        DiskIndex diskIndex = new DiskIndex(PATH2, new DefaultByteRangeComparator(), COMPRESSED);
         
         for (byte[] entry : entries)
             assertEquals(0, COMP.compare(entry, diskIndex.lookup(entry)));
@@ -61,7 +65,7 @@ public class DiskIndexTest extends TestCase {
         // create an empty disk index
         entries = new byte[][] {};
         populateDiskIndex(entries);
-        diskIndex = new DiskIndex(PATH2, new DefaultByteRangeComparator());
+        diskIndex = new DiskIndex(PATH2, new DefaultByteRangeComparator(), COMPRESSED);
         
         assertEquals(entries.length, diskIndex.numKeys());
         diskIndex.destroy();
@@ -69,7 +73,7 @@ public class DiskIndexTest extends TestCase {
         // create a disk index with a single entry and look up the key
         entries = new byte[][] { "test".getBytes() };
         populateDiskIndex(entries);
-        diskIndex = new DiskIndex(PATH2, new DefaultByteRangeComparator());
+        diskIndex = new DiskIndex(PATH2, new DefaultByteRangeComparator(), COMPRESSED);
         
         for (byte[] entry : entries)
             assertEquals(0, COMP.compare(entry, diskIndex.lookup(entry)));
@@ -80,7 +84,7 @@ public class DiskIndexTest extends TestCase {
         entries = new byte[][] { "fdsaf".getBytes(), "blubberbla".getBytes(), "zzz".getBytes(),
             "aaa".getBytes(), "aab".getBytes() };
         populateDiskIndex(entries);
-        diskIndex = new DiskIndex(PATH2, new DefaultByteRangeComparator());
+        diskIndex = new DiskIndex(PATH2, new DefaultByteRangeComparator(), COMPRESSED);
         
         for (byte[] entry : entries)
             assertEquals(0, COMP.compare(entry, diskIndex.lookup(entry)));
@@ -88,7 +92,7 @@ public class DiskIndexTest extends TestCase {
         diskIndex.destroy();
     }
     
-    public void testCompleteLookup() throws Exception {
+    public void estCompleteLookup() throws Exception {
         
         // initialize a map w/ random strings
         SortedMap<byte[], byte[]> map = new TreeMap<byte[], byte[]>(COMP);
@@ -99,11 +103,11 @@ public class DiskIndexTest extends TestCase {
         new File(PATH1).delete();
         
         // write the map to a disk index
-        DiskIndexWriter index = new DiskIndexWriter(PATH1, MAX_BLOCK_ENTRIES);
+        DiskIndexWriter index = new DiskIndexWriter(PATH1, MAX_BLOCK_ENTRIES, COMPRESSED);
         index.writeIndex(map.entrySet().iterator());
         
         // read the disk index
-        DiskIndex diskIndex = new DiskIndex(PATH1, new DefaultByteRangeComparator());
+        DiskIndex diskIndex = new DiskIndex(PATH1, new DefaultByteRangeComparator(), COMPRESSED);
         
         // look up each element
         Iterator<Entry<byte[], byte[]>> it = map.entrySet().iterator();
@@ -124,7 +128,7 @@ public class DiskIndexTest extends TestCase {
         diskIndex.destroy();
     }
     
-    public void testPrefixLookup() throws Exception {
+    public void estPrefixLookup() throws Exception {
         
         final String[] keys = { "bla", "brabbel", "foo", "kfdkdkdf", "ouuou", "yagga", "yyy", "z" };
         final String[] vals = { "blub", "233222", "bar", "34", "nnnnn", "ertz", "zzzzzz", "wuerg" };
@@ -135,11 +139,11 @@ public class DiskIndexTest extends TestCase {
         
         // write the map to a disk index
         new File(PATH2).delete();
-        DiskIndexWriter index = new DiskIndexWriter(PATH2, 4);
+        DiskIndexWriter index = new DiskIndexWriter(PATH2, 4, COMPRESSED);
         index.writeIndex(testMap.entrySet().iterator());
         
         // read the disk index
-        DiskIndex diskIndex = new DiskIndex(PATH2, new DefaultByteRangeComparator());
+        DiskIndex diskIndex = new DiskIndex(PATH2, new DefaultByteRangeComparator(), COMPRESSED);
         
         // create an iterator w/ matching start and end buffers
         Iterator<Entry<byte[], byte[]>> it = diskIndex.rangeLookup(keys[1].getBytes(), keys[5].getBytes(),
@@ -170,10 +174,10 @@ public class DiskIndexTest extends TestCase {
         assertFalse(it.hasNext());
         
         // create a disk index from an empty index file
-        index = new DiskIndexWriter(PATH1, 4);
+        index = new DiskIndexWriter(PATH1, 4, COMPRESSED);
         index.writeIndex(new HashMap().entrySet().iterator());
         
-        diskIndex = new DiskIndex(PATH1, new DefaultByteRangeComparator());
+        diskIndex = new DiskIndex(PATH1, new DefaultByteRangeComparator(), COMPRESSED);
         
         // check ranges; should all be empty
         it = diskIndex.rangeLookup(new byte[0], new byte[0], true);
@@ -192,7 +196,7 @@ public class DiskIndexTest extends TestCase {
         assertFalse(it.hasNext());
     }
     
-    public void testDescendingPrefixLookup() throws Exception {
+    public void estDescendingPrefixLookup() throws Exception {
         
         final String[] keys = { "bla", "brabbel", "foo", "kfdkdkdf", "ouuou", "yagga", "yyy", "z" };
         final String[] vals = { "blub", "233222", "bar", "34", "nnnnn", "ertz", "zzzzzz", "wuerg" };
@@ -203,11 +207,11 @@ public class DiskIndexTest extends TestCase {
         
         // write the map to a disk index
         new File(PATH2).delete();
-        DiskIndexWriter index = new DiskIndexWriter(PATH2, 4);
+        DiskIndexWriter index = new DiskIndexWriter(PATH2, 4, COMPRESSED);
         index.writeIndex(testMap.entrySet().iterator());
         
         // read the disk index
-        DiskIndex diskIndex = new DiskIndex(PATH2, new DefaultByteRangeComparator());
+        DiskIndex diskIndex = new DiskIndex(PATH2, new DefaultByteRangeComparator(), COMPRESSED);
         
         // create an iterator w/ matching start and end buffers
         Iterator<Entry<byte[], byte[]>> it = diskIndex.rangeLookup(keys[1].getBytes(), keys[5].getBytes(),
@@ -238,10 +242,10 @@ public class DiskIndexTest extends TestCase {
         assertFalse(it.hasNext());
         
         // create a disk index from an empty index file
-        index = new DiskIndexWriter(PATH1, 4);
+        index = new DiskIndexWriter(PATH1, 4, COMPRESSED);
         index.writeIndex(new HashMap().entrySet().iterator());
         
-        diskIndex = new DiskIndex(PATH1, new DefaultByteRangeComparator());
+        diskIndex = new DiskIndex(PATH1, new DefaultByteRangeComparator(), COMPRESSED);
         
         // check ranges; should all be empty
         it = diskIndex.rangeLookup(new byte[0], new byte[0], false);
@@ -260,7 +264,7 @@ public class DiskIndexTest extends TestCase {
         assertFalse(it.hasNext());
     }
     
-    public void testLargeScalePrefixLookup() throws Exception {
+    public void estLargeScalePrefixLookup() throws Exception {
         
         // initialize a map w/ random strings
         SortedMap<byte[], byte[]> map = new TreeMap<byte[], byte[]>(COMP);
@@ -271,11 +275,11 @@ public class DiskIndexTest extends TestCase {
         new File(PATH1).delete();
         
         // write the map to a disk index
-        DiskIndexWriter index = new DiskIndexWriter(PATH1, MAX_BLOCK_ENTRIES);
+        DiskIndexWriter index = new DiskIndexWriter(PATH1, MAX_BLOCK_ENTRIES, COMPRESSED);
         index.writeIndex(map.entrySet().iterator());
         
         // read the disk index
-        DiskIndex diskIndex = new DiskIndex(PATH1, new DefaultByteRangeComparator());
+        DiskIndex diskIndex = new DiskIndex(PATH1, new DefaultByteRangeComparator(), COMPRESSED);
         
         {
             // look up the complete list of elements
@@ -345,7 +349,7 @@ public class DiskIndexTest extends TestCase {
         
     }
     
-    public void testLargeScaleDescendingPrefixLookup() throws Exception {
+    public void estLargeScaleDescendingPrefixLookup() throws Exception {
         
         // initialize a map w/ random strings
         TreeMap<byte[], byte[]> map = new TreeMap<byte[], byte[]>(COMP);
@@ -356,11 +360,11 @@ public class DiskIndexTest extends TestCase {
         new File(PATH1).delete();
         
         // write the map to a disk index
-        DiskIndexWriter index = new DiskIndexWriter(PATH1, MAX_BLOCK_ENTRIES);
+        DiskIndexWriter index = new DiskIndexWriter(PATH1, MAX_BLOCK_ENTRIES, COMPRESSED);
         index.writeIndex(map.entrySet().iterator());
         
         // read the disk index
-        DiskIndex diskIndex = new DiskIndex(PATH1, new DefaultByteRangeComparator());
+        DiskIndex diskIndex = new DiskIndex(PATH1, new DefaultByteRangeComparator(), COMPRESSED);
         
         {
             // look up the complete list of elements
@@ -447,7 +451,7 @@ public class DiskIndexTest extends TestCase {
         
         // write the map to a disk index
         new File(PATH2).delete();
-        DiskIndexWriter index = new DiskIndexWriter(PATH2, 2);
+        DiskIndexWriter index = new DiskIndexWriter(PATH2, 2, COMPRESSED);
         index.writeIndex(testMap.entrySet().iterator());
     }
     

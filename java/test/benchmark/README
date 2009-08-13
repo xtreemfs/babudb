@@ -1,0 +1,5 @@
+Benchmark execution
+
+- Create an executable jar-file called babudb.jar with DiskIndexPerformanceTest as the main class
+- Place the file in this directory
+- Edit and then run python diskindex.py

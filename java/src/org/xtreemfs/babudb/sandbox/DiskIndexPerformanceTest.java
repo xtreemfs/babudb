@@ -72,7 +72,7 @@ public class DiskIndexPerformanceTest {
             	System.out.println("creating new database with " + size + " random entries ...");
             
             // write the map to a disk index
-            DiskIndexWriter index = new DiskIndexWriter(path, entriesPerBlock.intValue());
+            DiskIndexWriter index = new DiskIndexWriter(path, entriesPerBlock.intValue(), false);
             index.writeIndex(new Iterator<Entry<byte[], byte[]>>() {
                 
                 private int    count = 0;
@@ -124,7 +124,7 @@ public class DiskIndexPerformanceTest {
         }
         
         // read the disk index
-        DiskIndex diskIndex = new DiskIndex(path, new DefaultByteRangeComparator());
+        DiskIndex diskIndex = new DiskIndex(path, new DefaultByteRangeComparator(), false);
         
         Iterator<Entry<byte[], byte[]>> it = diskIndex.rangeLookup(null, null, true);
         
@@ -172,6 +172,7 @@ public class DiskIndexPerformanceTest {
         System.out.print(hits + ", ");
         System.out.print(sumLookups + ", ");
         System.out.print((int) Math.ceil(((double) lookups / (double) sumLookups) * 1000.0) + ", ");
+        System.out.print((int) Math.ceil(((double) iterTime) * 1000.0) + ", ");
         System.out.println((int) Math.ceil(((double) size / (double) iterTime) * 1000.0));
         
         diskIndex.destroy();

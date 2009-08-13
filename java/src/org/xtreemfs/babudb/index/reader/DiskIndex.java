@@ -35,10 +35,12 @@ public class DiskIndex {
     
     private ByteRangeComparator comp;
     
-    public DiskIndex(String path, ByteRangeComparator comp) throws IOException {
+    private boolean	            compressed;
+    
+    public DiskIndex(String path, ByteRangeComparator comp, boolean compressed) throws IOException {
         
         this.comp = comp;
-        
+        this.compressed = compressed;
         Logging.logMessage(Logging.LEVEL_INFO, this, "loading index ...");
         
         // First, read the block index into a buffer. For performance reasons,
@@ -54,7 +56,7 @@ public class DiskIndex {
         channel.position(blockIndexOffset);
         channel.read(blockIndexBuf);
         
-        blockIndex = new BlockReader(blockIndexBuf, 0, blockIndexBuf.limit(), comp);
+        blockIndex = new DefaultBlockReader(blockIndexBuf, 0, blockIndexBuf.limit(), comp);
         
         // Second, mmap the potentially huge 'blocks' region.
         
@@ -256,7 +258,14 @@ public class DiskIndex {
         if (endBlockOffset == -1)
             endBlockOffset = map.limit();
         
-        BlockReader targetBlock = new BlockReader(map, startBlockOffset, endBlockOffset, comp);
+        BlockReader targetBlock;
+        
+        if(compressed) {
+        	targetBlock = new CompressedBlockReader(map, startBlockOffset, endBlockOffset, comp);
+        } else {
+        	targetBlock = new DefaultBlockReader(map, startBlockOffset, endBlockOffset, comp);
+        }
+        	
         return targetBlock;
     }
     
