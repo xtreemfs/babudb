@@ -102,7 +102,7 @@ public class BasicLogic extends Logic {
                                 if (error == null) stage.dispatcher.updateLatestLSN(lsn); 
                                 stage.finalizeRequest(op);
                             }
-                        }, this, stage.dispatcher.db.databases);
+                        }, this, stage.dispatcher.db.getDatabaseManager().getDatabaseMap());
                         
                         // start the request
                         SharedLogic.writeLogEntry(rq, stage.dispatcher.db);
@@ -113,21 +113,21 @@ public class BasicLogic extends Logic {
                     
                 case CREATE : 
                     stage.dispatcher.db.logger.append(noOp);
-                    stage.dispatcher.db.proceedCreate((String) op.getArgs()[1], (Integer) op.getArgs()[2], null);
+                    stage.dispatcher.db.getDatabaseManager().proceedCreate((String) op.getArgs()[1], (Integer) op.getArgs()[2], null);
                     stage.dispatcher.updateLatestLSN(lsn);
                     stage.finalizeRequest(op);
                     break;
                     
                 case COPY :
                     stage.dispatcher.db.logger.append(noOp);
-                    stage.dispatcher.db.proceedCopy((String) op.getArgs()[1], (String) op.getArgs()[2], null, null);
+                    stage.dispatcher.db.getDatabaseManager().proceedCopy((String) op.getArgs()[1], (String) op.getArgs()[2], null, null);
                     stage.dispatcher.updateLatestLSN(lsn);
                     stage.finalizeRequest(op);
                     break;
                     
                 case DELETE :
                     stage.dispatcher.db.logger.append(noOp);
-                    stage.dispatcher.db.proceedDelete((String) op.getArgs()[1], (Boolean) op.getArgs()[2]);
+                    stage.dispatcher.db.getDatabaseManager().proceedDelete((String) op.getArgs()[1], (Boolean) op.getArgs()[2]);
                     stage.dispatcher.updateLatestLSN(lsn);
                     stage.finalizeRequest(op);
                     break;

@@ -11,8 +11,9 @@ package org.xtreemfs.babudb.sandbox;
 import java.util.Iterator;
 import java.util.Random;
 import java.util.Map.Entry;
-import org.xtreemfs.babudb.BabuDB;
+
 import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.UserDefinedLookup;
 import org.xtreemfs.babudb.lsmdb.LSMLookupInterface;
 
@@ -110,7 +111,7 @@ public class BenchmarkWorkerThread extends Thread {
         byte[] key = null;
         for (int i = 0; i < numKeys; i++) {
             key = createRandomKey();
-            database.syncSingleInsert(dbName, 0, key, payload);
+            database.getDatabaseManager().getDatabase(dbName).syncSingleInsert(0, key, payload);
         }
         long tEnd = System.currentTimeMillis();
         double dur = (tEnd-tStart);
@@ -126,7 +127,7 @@ public class BenchmarkWorkerThread extends Thread {
 
     public void countKeys() throws BabuDBException {
         long tStart = System.currentTimeMillis();
-        Iterator<Entry<byte[],byte[]>> iter = database.syncPrefixLookup(dbName, 0, new byte[]{});
+        Iterator<Entry<byte[],byte[]>> iter = database.getDatabaseManager().getDatabase(dbName).syncPrefixLookup(0, new byte[]{});
         int count = 0;
         while (iter.hasNext()) {
             Entry<byte[],byte[]> e = iter.next();
@@ -147,7 +148,7 @@ public class BenchmarkWorkerThread extends Thread {
         int hits = 0;
         for (int i = 0; i < numKeys; i++) {
             key = createRandomKey();
-            byte[] value = database.syncLookup(dbName, 0, key);
+            byte[] value = database.getDatabaseManager().getDatabase(dbName).syncLookup(0, key);
             if (value != null)
                 hits++;
         }
@@ -170,7 +171,7 @@ public class BenchmarkWorkerThread extends Thread {
         int hits = 0;
         for (int i = 0; i < numKeys; i++) {
             key = createRandomKey();
-            byte[] value = database.directLookup(dbName, 0, key);
+            byte[] value = database.getDatabaseManager().getDatabase(dbName).directLookup(0, key);
             if (value != null)
                 hits++;
         }
@@ -192,7 +193,7 @@ public class BenchmarkWorkerThread extends Thread {
         int hits = 0;
         for (int i = 0; i < numKeys; i++) {
             final byte[] key = createRandomKey();
-            byte[] value = (byte[]) database.syncUserDefinedLookup(dbName, new UserDefinedLookup() {
+            byte[] value = (byte[]) database.getDatabaseManager().getDatabase(dbName).syncUserDefinedLookup(new UserDefinedLookup() {
 
                 public Object execute(LSMLookupInterface database) throws BabuDBException {
                     byte[] result = null;

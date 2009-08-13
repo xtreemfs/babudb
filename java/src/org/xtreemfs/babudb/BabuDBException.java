@@ -40,6 +40,11 @@ public class BabuDBException extends Exception {
         REPLICATION_FAILURE,
         
         /**
+         * The requested snapshot does not exist in the database
+         */
+        NO_SUCH_SNAPSHOT,
+        
+        /**
          * Everything else that went wrong
          */
         INTERNAL_ERROR

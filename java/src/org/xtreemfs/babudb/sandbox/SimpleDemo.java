@@ -7,8 +7,11 @@ package org.xtreemfs.babudb.sandbox;
 
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBInsertGroup;
+import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
+import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
+import org.xtreemfs.babudb.lsmdb.Database;
+import org.xtreemfs.babudb.lsmdb.DatabaseManager;
 import org.xtreemfs.include.common.config.BabuDBConfig;
 
 public class SimpleDemo {
@@ -16,32 +19,32 @@ public class SimpleDemo {
     public static void main(String[] args) {
         try {
             //start the database
-            BabuDB database = BabuDB.getBabuDB(new BabuDBConfig("myDatabase/", "myDatabase/", 2, 1024 * 1024 * 16, 5 * 60, SyncMode.SYNC_WRITE,0,0));
-            
+            BabuDB database = BabuDBFactory.createBabuDB(new BabuDBConfig("myDatabase/", "myDatabase/", 2, 1024 * 1024 * 16, 5 * 60, SyncMode.SYNC_WRITE,0,0));
+            DatabaseManager dbm = database.getDatabaseManager();
+                        
             //create a new database called myDB
-            database.createDatabase("myDB", 2);
+            dbm.createDatabase("myDB", 2);
+            Database db = dbm.getDatabase("myDB");
 
             //create an insert group for atomic inserts
-            BabuDBInsertGroup group = database.createInsertGroup("myDB");
+            BabuDBInsertGroup group = db.createInsertGroup();
 
             //insert one key in each index
             group.addInsert(0, "Key1".getBytes(), "Value1".getBytes());
             group.addInsert(1, "Key2".getBytes(), "Value2".getBytes());
 
             //and execute group insert
-            database.syncInsert(group);
+            db.syncInsert(group);
 
             //now do a lookup
-            byte[] result = database.syncLookup("myDB", 0, "Key1".getBytes());
+            byte[] result = db.syncLookup(0, "Key1".getBytes());
 
             //create a checkpoint for faster start-ups
-            database.checkpoint();
+            database.getCheckpointer().checkpoint();
 
             //shutdown database
             database.shutdown();
         } catch (BabuDBException ex) {
-            ex.printStackTrace();
-        } catch (InterruptedException ex) {
             ex.printStackTrace();
         }
         

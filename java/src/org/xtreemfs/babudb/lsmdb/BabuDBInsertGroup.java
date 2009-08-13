@@ -6,10 +6,8 @@
  * 
 */
 
-package org.xtreemfs.babudb;
+package org.xtreemfs.babudb.lsmdb;
 
-import org.xtreemfs.babudb.lsmdb.*;
-import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 /**
  *

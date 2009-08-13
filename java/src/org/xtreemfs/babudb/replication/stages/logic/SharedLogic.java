@@ -12,10 +12,12 @@ import java.util.Map;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
-import org.xtreemfs.babudb.BabuDBImpl;
+import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBRequestListener;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
+import org.xtreemfs.babudb.lsmdb.Database;
+import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
 import org.xtreemfs.babudb.lsmdb.LSMDBWorker;
@@ -43,7 +45,7 @@ final class SharedLogic {
      * @throws IOException
      *             if the DB is not consistent and should be loaded.
      */
-    static LSMDBRequest retrieveRequest(LogEntry le, BabuDBRequestListener listener, Object context, Map<Integer, LSMDatabase> dbs) throws IOException {       
+    static LSMDBRequest retrieveRequest(LogEntry le, BabuDBRequestListener listener, Object context, Map<Integer, Database> dbs) throws IOException {       
         // build a LSMDBRequest
         ReusableBuffer buf = le.getPayload().createViewBuffer();
         InsertRecordGroup irg = InsertRecordGroup.deserialize(buf);
@@ -52,7 +54,7 @@ final class SharedLogic {
         if (!dbs.containsKey(irg.getDatabaseId()))
             throw new IOException("Database does not exist.Load DB!");
 
-        return new LSMDBRequest(dbs.get(irg.getDatabaseId()), 
+        return new LSMDBRequest(((DatabaseImpl) dbs.get(irg.getDatabaseId())).getLSMDB(), 
                 listener, irg, context);
     }
     
@@ -65,7 +67,7 @@ final class SharedLogic {
      * @throws IOException
      *             if the DB is not consistent and should be loaded.
      */
-    static LSMDBRequest retrieveRequest(ReusableBuffer buffer, BabuDBRequestListener listener, Object context, Map<Integer, LSMDatabase> dbs) throws IOException {
+    static LSMDBRequest retrieveRequest(ReusableBuffer buffer, BabuDBRequestListener listener, Object context, Map<Integer, Database> dbs) throws IOException {
         // parse logEntry
         LogEntry le = null;
         try {
@@ -89,7 +91,7 @@ final class SharedLogic {
      * @throws InterruptedException
      *             if an error occurs.
      */
-    static void writeLogEntry(LSMDBRequest rq, BabuDBImpl db) throws InterruptedException {
+    static void writeLogEntry(LSMDBRequest rq, BabuDB db) throws InterruptedException {
         int dbId = rq.getInsertData().getDatabaseId();
         LSMDBWorker w = db.getWorker(dbId);
         w.addRequest(rq);

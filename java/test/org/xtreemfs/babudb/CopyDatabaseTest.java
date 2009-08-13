@@ -7,72 +7,76 @@ package org.xtreemfs.babudb;
 
 import java.util.Iterator;
 import java.util.Map.Entry;
+
+import junit.framework.TestCase;
+import junit.textui.TestRunner;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
+import org.xtreemfs.babudb.lsmdb.Database;
 import org.xtreemfs.include.common.config.BabuDBConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
-import static org.junit.Assert.*;
-
 /**
- *
+ * 
  * @author bjko
  */
-public class CopyDatabaseTest {
-
+public class CopyDatabaseTest extends TestCase {
+    
     public static final String baseDir = "/tmp/lsmdb-test/";
-
-    private BabuDB database;
+    
+    private BabuDB             database;
     
     public CopyDatabaseTest() {
     }
-
+    
     @Before
     public void setUp() throws Exception {
         Logging.start(Logging.LEVEL_DEBUG);
-        Process p = Runtime.getRuntime().exec("rm -rf "+baseDir);
+        Process p = Runtime.getRuntime().exec("rm -rf " + baseDir);
         p.waitFor();
     }
     
     @After
-    public void tearDown() {
+    public void tearDown() throws Exception {
+        database.shutdown();
     }
-
+    
     @Test
     public void testCopyDatabase() throws Exception {
         
         final int NUMIDX = 5;
         
-        database = BabuDB.getBabuDB(new BabuDBConfig(baseDir,baseDir,1,0,0,SyncMode.ASYNC,0,0));
+        database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0, SyncMode.ASYNC, 0,
+            0));
         
-        database.createDatabase("testDB", NUMIDX);
+        Database db = database.getDatabaseManager().createDatabase("testDB", NUMIDX);
         
-        //fill database with random entries
+        // fill database with random entries
         for (int i = 0; i < NUMIDX; i++) {
             for (int e = 0; e < 100; e++) {
-                int randnum = (int)(Math.random()*Integer.MAX_VALUE);
+                int randnum = (int) (Math.random() * Integer.MAX_VALUE);
                 final String key = String.valueOf(randnum);
-                final String value = "VALUE_"+randnum;
-                database.syncSingleInsert("testDB", i, key.getBytes(), value.getBytes());
+                final String value = "VALUE_" + randnum;
+                db.syncSingleInsert(i, key.getBytes(), value.getBytes());
             }
         }
         
         System.out.println("starting copy");
-        //copy database
-        database.copyDatabase("testDB", "copyDB", null, null);
+        // copy database
+        database.getDatabaseManager().copyDatabase("testDB", "copyDB", null, null);
         
         System.out.println("copy complete");
-        //check entries
+        // check entries
         for (int i = 0; i < NUMIDX; i++) {
-            System.out.println("checking index "+i);
-            Iterator<Entry<byte[],byte[]>> values = database.syncPrefixLookup("testDB", i, "1".getBytes());
+            System.out.println("checking index " + i);
+            Iterator<Entry<byte[], byte[]>> values = db.syncPrefixLookup(i, "1".getBytes());
             
             while (values.hasNext()) {
-                Entry<byte[],byte[]> e = values.next();
-                byte[] v = database.syncLookup("copyDB", i, e.getKey());
+                Entry<byte[], byte[]> e = values.next();
+                byte[] v = database.getDatabaseManager().getDatabase("copyDB").syncLookup(i, e.getKey());
                 assertNotNull(v);
                 assertEquals(v.length, e.getValue().length);
                 for (int p = 0; p < v.length; p++)
@@ -81,5 +85,9 @@ public class CopyDatabaseTest {
             System.out.println("checking complete.");
         }
     }
-
+    
+    public static void main(String[] args) {
+        TestRunner.run(CopyDatabaseTest.class);
+    }
+    
 }

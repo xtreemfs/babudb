@@ -15,9 +15,8 @@ import java.util.Map;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
-import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBImpl;
+import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.clients.StateClient;
 import org.xtreemfs.babudb.log.LogEntry;
@@ -55,7 +54,7 @@ public class BabuDBReplication {
      * @param initial
      * @throws IOException
      */
-    public BabuDBReplication(MasterConfig config, BabuDBImpl db, LSN initial) throws IOException {
+    public BabuDBReplication(MasterConfig config, BabuDB db, LSN initial) throws IOException {
         isMaster = true;
         TimeSync.initialize(config.getLocalTimeRenew());
         this.dispatcher = new MasterRequestDispatcher(config,db,initial);
@@ -69,7 +68,7 @@ public class BabuDBReplication {
      * @param initial
      * @throws IOException
      */
-    public BabuDBReplication(SlaveConfig config, BabuDBImpl db, LSN initial) throws IOException {
+    public BabuDBReplication(SlaveConfig config, BabuDB db, LSN initial) throws IOException {
         isMaster = false;
         TimeSync.initialize(config.getLocalTimeRenew());
         this.dispatcher = new SlaveRequestDispatcher(config,db,initial);

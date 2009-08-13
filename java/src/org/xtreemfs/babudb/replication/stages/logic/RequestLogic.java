@@ -71,7 +71,7 @@ public class RequestLogic extends Logic {
                             }
                         }
                     }
-                }, null, stage.dispatcher.db.databases);
+                }, null, stage.dispatcher.db.getDatabaseManager().getDatabaseMap());
                 SharedLogic.writeLogEntry(dbRq, stage.dispatcher.db);
             }
             

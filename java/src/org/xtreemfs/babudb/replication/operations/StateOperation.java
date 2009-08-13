@@ -7,7 +7,6 @@
  */
 package org.xtreemfs.babudb.replication.operations;
 
-import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.interfaces.LSN;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.stateRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.stateResponse;

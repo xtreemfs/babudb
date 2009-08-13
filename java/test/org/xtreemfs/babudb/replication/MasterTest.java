@@ -7,6 +7,23 @@
  */
 package org.xtreemfs.babudb.replication;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.xtreemfs.babudb.replication.TestData.copyOperation;
+import static org.xtreemfs.babudb.replication.TestData.copyTestDB;
+import static org.xtreemfs.babudb.replication.TestData.createOperation;
+import static org.xtreemfs.babudb.replication.TestData.deleteOperation;
+import static org.xtreemfs.babudb.replication.TestData.replicateOperation;
+import static org.xtreemfs.babudb.replication.TestData.testDB;
+import static org.xtreemfs.babudb.replication.TestData.testDBID;
+import static org.xtreemfs.babudb.replication.TestData.testDBIndices;
+import static org.xtreemfs.babudb.replication.TestData.testKey1;
+import static org.xtreemfs.babudb.replication.TestData.testKey2;
+import static org.xtreemfs.babudb.replication.TestData.testKey3;
+import static org.xtreemfs.babudb.replication.TestData.testValue;
+
 import java.io.File;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -24,7 +41,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBInsertGroup;
+import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.BabuDBRequestListener;
 import org.xtreemfs.babudb.clients.MasterClient;
 import org.xtreemfs.babudb.interfaces.Chunk;
@@ -43,6 +60,8 @@ import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateResponse;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
+import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
+import org.xtreemfs.babudb.lsmdb.Database;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
@@ -58,9 +77,6 @@ import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
 import org.xtreemfs.include.foundation.oncrpc.server.ONCRPCRequest;
 import org.xtreemfs.include.foundation.oncrpc.server.RPCNIOSocketServer;
 import org.xtreemfs.include.foundation.oncrpc.server.RPCServerRequestListener;
-
-import static org.junit.Assert.*;
-import static org.xtreemfs.babudb.replication.TestData.*;
 
 public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         
@@ -89,7 +105,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         assertEquals(0, p.waitFor());
         
         try {
-            db = BabuDB.getMasterBabuDB(conf);
+            db = BabuDBFactory.createMasterBabuDB(conf);
             assert (!conf.isUsingSSL());
             rpcClient = new RPCNIOSocketClient(null,5000,10000);
             rpcClient.setLifeCycleListener(this);
@@ -318,7 +334,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
     
     private void makeDB() throws Exception {
         synchronized (response) {
-            db.createDatabase(testDB, testDBIndices);
+            db.getDatabaseManager().createDatabase(testDB, testDBIndices);
             
             while (response.get()!=createOperation)
                 response.wait();
@@ -329,7 +345,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
     
     private void copyDB() throws Exception {
         synchronized (response) {
-            db.copyDatabase(testDB, copyTestDB, null, null);
+            db.getDatabaseManager().copyDatabase(testDB, copyTestDB, null, null);
             
             while (response.get()!=copyOperation)
                 response.wait();
@@ -340,7 +356,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
     
     private void deleteDB() throws Exception {
         synchronized (response) {
-            db.deleteDatabase(copyTestDB, true);
+            db.getDatabaseManager().deleteDatabase(copyTestDB, true);
             
             while (response.get()!=deleteOperation)
                 response.wait();
@@ -350,13 +366,14 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
     }
     
     private void insertData() throws Exception {
-        BabuDBInsertGroup testInsert = db.createInsertGroup(testDB);
+        Database dbase = db.getDatabaseManager().getDatabase(testDB);
+        BabuDBInsertGroup testInsert = dbase.createInsertGroup();
         testInsert.addInsert(0, testKey1.getBytes(), testValue.getBytes());
         testInsert.addInsert(0, testKey2.getBytes(), testValue.getBytes());
         testInsert.addInsert(0, testKey3.getBytes(), testValue.getBytes());
            
         synchronized (response) {
-            db.asyncInsert(testInsert, new BabuDBRequestListener() {
+            dbase.asyncInsert(testInsert, new BabuDBRequestListener() {
             
                 @Override
                 public void userDefinedLookupFinished(Object context, Object result) {

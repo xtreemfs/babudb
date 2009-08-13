@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
+ * 
+ * Licensed under the BSD License, see LICENSE file for details.
+ * 
+ */
 package org.xtreemfs.babudb.replication;
 
 
@@ -15,6 +22,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.xtreemfs.babudb.BabuDB;
+import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.clients.SlaveClient;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.heartbeatRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.heartbeatResponse;
@@ -82,7 +90,7 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
             rpcServer.start();
             rpcServer.waitForStartup();
             
-            db = BabuDB.getSlaveBabuDB(conf);
+            db = BabuDBFactory.createSlaveBabuDB(conf);
             
             rpcClient.start();
             rpcClient.waitForStartup();

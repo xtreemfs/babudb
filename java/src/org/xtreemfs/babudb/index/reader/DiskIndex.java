@@ -240,6 +240,10 @@ public class DiskIndex {
         };
     }
     
+    public ByteRangeComparator getComparator() {
+        return comp;
+    }
+    
     public void destroy() throws IOException {
         dbFile.close();
     }
