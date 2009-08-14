@@ -232,8 +232,8 @@ public class DiskLogger extends Thread {
         File lf = new File(this.currentLogFileName);
         String openMode = "";
         switch (syncMode) {
-            case ASYNC: break;
-            case FSYNC: break;
+            case ASYNC:
+            case FSYNC: 
             case FDATASYNC: {openMode = "rw"; break;}
             case SYNC_WRITE : {openMode = "rwd"; break;}
             case SYNC_WRITE_METADATA : {openMode = "rws"; break;}
@@ -301,13 +301,13 @@ public class DiskLogger extends Thread {
                 }
                 
             } catch (SyncFailedException ex) {
-                Logging.logMessage(Logging.LEVEL_ERROR, this, ex.getMessage());
+                Logging.logError(Logging.LEVEL_ERROR, this, ex);
                 for (LogEntry le : tmpE) {
                     le.getListener().failed(le, ex);
                 }
                 tmpE.clear();
             } catch (IOException ex) {
-                Logging.logMessage(Logging.LEVEL_ERROR, this, ex.getMessage());
+                Logging.logError(Logging.LEVEL_ERROR, this, ex);
                 for (LogEntry le : tmpE) {
                     le.getListener().failed(le, ex);
                 }
@@ -316,7 +316,7 @@ public class DiskLogger extends Thread {
             }
 
         }
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "shutdown complete");
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "shutdown %s","complete");
         synchronized (down) {
             down.set(true);
             down.notifyAll();
