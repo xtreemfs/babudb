@@ -54,6 +54,7 @@ public class DiskIndexTest extends TestCase {
         
         // create a new disk index and look up each key
         byte[][] entries = { new byte[] { '\0' }, "word".getBytes(), new byte[] { '#' } };
+
         populateDiskIndex(entries);
         DiskIndex diskIndex = new DiskIndex(PATH2, new DefaultByteRangeComparator(), COMPRESSED);
         

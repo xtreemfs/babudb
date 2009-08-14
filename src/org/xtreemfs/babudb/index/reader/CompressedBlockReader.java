@@ -50,8 +50,10 @@ public class CompressedBlockReader implements BlockReader {
         int valEntrySize = buf.getInt(position + 16);
         
         // read in the prefix string
-        prefix = new byte[keysOffset - PREFIX_OFFSET];
+        prefix = new byte[(keysOffset - position) - PREFIX_OFFSET];
         buf.get(prefix);
+        
+        System.out.println("read block: " + PREFIX_OFFSET + ", " + keysOffset + ", " + valsOffset + " prefix: " + this.printBytes(prefix));
         
         keys = keyEntrySize == -1 ? new VarLenMiniPage(numEntries, buf, keysOffset, valsOffset, comp)
             : new FixedLenMiniPage(keyEntrySize, numEntries, buf, keysOffset, valsOffset, comp);

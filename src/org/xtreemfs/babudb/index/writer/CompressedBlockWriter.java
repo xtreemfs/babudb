@@ -11,7 +11,6 @@ package org.xtreemfs.babudb.index.writer;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.xtreemfs.babudb.index.reader.DefaultBlockReader;
 import org.xtreemfs.babudb.index.reader.CompressedBlockReader;
 import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
@@ -43,8 +42,12 @@ public class CompressedBlockWriter implements BlockWriter {
     }
     
     public ReusableBuffer serialize() {
+        for(byte[] k: keys) {
+        	System.out.println("key: " + printBytes(k));	
+        }
+
         List<byte[]> compressedKeys = compress(keys);
-    	
+    	        
         ReusableBuffer keyBuf = varLenKeys ? serializeVarLenPage(compressedKeys)
             : serializeFixedLenPage(keys);
         ReusableBuffer valBuf = varLenVals ? serializeVarLenPage(values)
@@ -64,12 +67,18 @@ public class CompressedBlockWriter implements BlockWriter {
          * k : prefix
          * ... start of keys
          */
+        
+        System.out.println("write block: " + CompressedBlockReader.PREFIX_OFFSET + ", " + keysOffset + ", " + valsOffset + ", " + entries + " prefix: " + this.printBytes(prefix));
+        
         returnBuf.putInt(valsOffset);
         returnBuf.putInt(keysOffset);
         returnBuf.putInt(entries);
         returnBuf.putInt(varLenKeys ? -1 : entries == 0 ? 0 : (keyBuf.limit() / entries));
         returnBuf.putInt(varLenVals ? -1 : entries == 0 ? 0 : (valBuf.limit() / entries));
-        returnBuf.put(this.prefix);
+        
+        if(this.prefix.length > 0)
+        	returnBuf.put(this.prefix);
+        
         returnBuf.put(keyBuf);
         returnBuf.put(valBuf);
         
@@ -101,6 +110,14 @@ public class CompressedBlockWriter implements BlockWriter {
     	
     	List<byte[]> results = new LinkedList<byte[]>();
     	
+    	/* special case when list has only one element 
+    	 * this ensures that there will be no prefix
+    	 */
+    	if(list.size() == 1) {
+    		this.prefix = new byte[0];
+    		return list;
+    	}
+    	
     	byte[] prefix = list.get(0);
     	    	
     	/* find the longest common prefix (lcp) */
@@ -111,6 +128,7 @@ public class CompressedBlockWriter implements BlockWriter {
     		int prefixIndex = 0;
     		int entryIndex = 0;
     		int maxLen = Math.min(prefix.length, entry.length);
+    		System.out.println("entry: " + printBytes(entry));
     		
     		while(prefixLen < maxLen && prefix[prefixIndex++] == entry[entryIndex++]) {
     			prefixLen++;
@@ -126,9 +144,9 @@ public class CompressedBlockWriter implements BlockWriter {
 		System.arraycopy(prefix, 0, LCP, 0, longestPrefixLen);
 		this.prefix = LCP;
 
-		System.out.println("LCP: " + printBytes(this.prefix) + " prefix len: " + longestPrefixLen);
+		System.out.println("LCP: " + printBytes(this.prefix) + " prefix len: " + longestPrefixLen + " list size " + list.size());
 
-		// add the entries without the prefix
+		// add the entries, removing the prefix
     	for(byte[] entry : list) {
     		if(longestPrefixLen <= 0) {
     			results.add(entry);
