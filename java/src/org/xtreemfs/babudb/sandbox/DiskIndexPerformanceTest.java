@@ -34,6 +34,7 @@ public class DiskIndexPerformanceTest {
         options.put("hitrate", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,10));
         options.put("keylength", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,8));
         options.put("debug", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,Logging.LEVEL_EMERG));
+        options.put("compression", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH, false));
         options.put("h", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH, false));
 
         List<String> arguments = new ArrayList(1);
@@ -61,6 +62,8 @@ public class DiskIndexPerformanceTest {
         final int lookups = Integer.parseInt(arguments.get(2));
         final Random generator = new Random();
         
+        final boolean compress = options.get("compression").switchValue.booleanValue();
+        	
         boolean verbose = false;
         final ArrayList<byte[]> lookupHits = new ArrayList<byte[]>((int) (hitrate*size) + 1);
         
@@ -72,7 +75,7 @@ public class DiskIndexPerformanceTest {
             	System.out.println("creating new database with " + size + " random entries ...");
             
             // write the map to a disk index
-            DiskIndexWriter index = new DiskIndexWriter(path, entriesPerBlock.intValue(), false);
+            DiskIndexWriter index = new DiskIndexWriter(path, entriesPerBlock.intValue(), compress);
             index.writeIndex(new Iterator<Entry<byte[], byte[]>>() {
                 
                 private int    count = 0;
@@ -124,7 +127,7 @@ public class DiskIndexPerformanceTest {
         }
         
         // read the disk index
-        DiskIndex diskIndex = new DiskIndex(path, new DefaultByteRangeComparator(), false);
+        DiskIndex diskIndex = new DiskIndex(path, new DefaultByteRangeComparator(), compress);
         
         Iterator<Entry<byte[], byte[]>> it = diskIndex.rangeLookup(null, null, true);
         
@@ -171,8 +174,10 @@ public class DiskIndexPerformanceTest {
         System.out.print(lookups + ", ");
         System.out.print(hits + ", ");
         System.out.print(sumLookups + ", ");
+        // lookups/s (lookup throughput)
         System.out.print((int) Math.ceil(((double) lookups / (double) sumLookups) * 1000.0) + ", ");
         System.out.print((int) Math.ceil(((double) iterTime) * 1000.0) + ", ");
+        // entries/s (scan throughput)
         System.out.println((int) Math.ceil(((double) size / (double) iterTime) * 1000.0));
         
         diskIndex.destroy();

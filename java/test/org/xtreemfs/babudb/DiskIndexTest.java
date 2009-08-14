@@ -51,7 +51,6 @@ public class DiskIndexTest extends TestCase {
     }
     
     public void testLookup() throws Exception {
-        
         // create a new disk index and look up each key
         byte[][] entries = { new byte[] { '\0' }, "word".getBytes(), new byte[] { '#' } };
 
@@ -93,7 +92,7 @@ public class DiskIndexTest extends TestCase {
         diskIndex.destroy();
     }
     
-    public void estCompleteLookup() throws Exception {
+    public void testCompleteLookup() throws Exception {
         
         // initialize a map w/ random strings
         SortedMap<byte[], byte[]> map = new TreeMap<byte[], byte[]>(COMP);
@@ -129,7 +128,7 @@ public class DiskIndexTest extends TestCase {
         diskIndex.destroy();
     }
     
-    public void estPrefixLookup() throws Exception {
+    public void testPrefixLookup() throws Exception {
         
         final String[] keys = { "bla", "brabbel", "foo", "kfdkdkdf", "ouuou", "yagga", "yyy", "z" };
         final String[] vals = { "blub", "233222", "bar", "34", "nnnnn", "ertz", "zzzzzz", "wuerg" };
@@ -197,7 +196,7 @@ public class DiskIndexTest extends TestCase {
         assertFalse(it.hasNext());
     }
     
-    public void estDescendingPrefixLookup() throws Exception {
+    public void testDescendingPrefixLookup() throws Exception {
         
         final String[] keys = { "bla", "brabbel", "foo", "kfdkdkdf", "ouuou", "yagga", "yyy", "z" };
         final String[] vals = { "blub", "233222", "bar", "34", "nnnnn", "ertz", "zzzzzz", "wuerg" };
@@ -265,7 +264,7 @@ public class DiskIndexTest extends TestCase {
         assertFalse(it.hasNext());
     }
     
-    public void estLargeScalePrefixLookup() throws Exception {
+    public void testLargeScalePrefixLookup() throws Exception {
         
         // initialize a map w/ random strings
         SortedMap<byte[], byte[]> map = new TreeMap<byte[], byte[]>(COMP);
@@ -350,7 +349,7 @@ public class DiskIndexTest extends TestCase {
         
     }
     
-    public void estLargeScaleDescendingPrefixLookup() throws Exception {
+    public void testLargeScaleDescendingPrefixLookup() throws Exception {
         
         // initialize a map w/ random strings
         TreeMap<byte[], byte[]> map = new TreeMap<byte[], byte[]>(COMP);

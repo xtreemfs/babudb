@@ -50,10 +50,16 @@ public class CompressedBlockReader implements BlockReader {
         int valEntrySize = buf.getInt(position + 16);
         
         // read in the prefix string
-        prefix = new byte[(keysOffset - position) - PREFIX_OFFSET];
-        buf.get(prefix);
+        int prefixSize = (keysOffset - position) - PREFIX_OFFSET;
+        prefix = new byte[prefixSize];
         
-        System.out.println("read block: " + PREFIX_OFFSET + ", " + keysOffset + ", " + valsOffset + " prefix: " + this.printBytes(prefix));
+        if(prefixSize > 0) {
+        	// move to the position to perform the read
+        	buf.position(position + PREFIX_OFFSET);
+        	buf.get(prefix);
+        	// reset to original position
+        	buf.position(position);
+        }
         
         keys = keyEntrySize == -1 ? new VarLenMiniPage(numEntries, buf, keysOffset, valsOffset, comp)
             : new FixedLenMiniPage(keyEntrySize, numEntries, buf, keysOffset, valsOffset, comp);
@@ -74,7 +80,7 @@ public class CompressedBlockReader implements BlockReader {
      */
     private byte[] usableSuffix(byte[] key) {
     	// key cant contain the prefix
-    	if(prefix.length > key.length)
+    	if(key == null || prefix.length > key.length)
     		return null;
 
     	// no prefix exist, use the key as is
@@ -93,16 +99,6 @@ public class CompressedBlockReader implements BlockReader {
     	return suffixKey;
     }
 
-    private String printBytes(byte[] a) {
-    	StringBuffer s = new StringBuffer();
-    	for(byte b:a) {
-    		s.append(b);
-    		s.append(", ");
-    	}
-    	
-    	return s.toString();
-    }
-
     public ByteRange lookup(byte[] key) {
     	// if the key contains prefix check if the block 
     	// contains what remains after removing the prefix
@@ -113,8 +109,6 @@ public class CompressedBlockReader implements BlockReader {
     		return null;
     	
     	int index = keys.getPosition(suffixKey);
-
-    	System.out.println("key: " + printBytes(key) + "suffixKey: " + printBytes(suffixKey) + " prefix:" + printBytes(prefix) + " index: " + index);    	
 
     	if (index == -1)
     		return null;

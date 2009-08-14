@@ -42,10 +42,6 @@ public class CompressedBlockWriter implements BlockWriter {
     }
     
     public ReusableBuffer serialize() {
-        for(byte[] k: keys) {
-        	System.out.println("key: " + printBytes(k));	
-        }
-
         List<byte[]> compressedKeys = compress(keys);
     	        
         ReusableBuffer keyBuf = varLenKeys ? serializeVarLenPage(compressedKeys)
@@ -67,9 +63,7 @@ public class CompressedBlockWriter implements BlockWriter {
          * k : prefix
          * ... start of keys
          */
-        
-        System.out.println("write block: " + CompressedBlockReader.PREFIX_OFFSET + ", " + keysOffset + ", " + valsOffset + ", " + entries + " prefix: " + this.printBytes(prefix));
-        
+                
         returnBuf.putInt(valsOffset);
         returnBuf.putInt(keysOffset);
         returnBuf.putInt(entries);
@@ -128,7 +122,6 @@ public class CompressedBlockWriter implements BlockWriter {
     		int prefixIndex = 0;
     		int entryIndex = 0;
     		int maxLen = Math.min(prefix.length, entry.length);
-    		System.out.println("entry: " + printBytes(entry));
     		
     		while(prefixLen < maxLen && prefix[prefixIndex++] == entry[entryIndex++]) {
     			prefixLen++;
@@ -144,8 +137,6 @@ public class CompressedBlockWriter implements BlockWriter {
 		System.arraycopy(prefix, 0, LCP, 0, longestPrefixLen);
 		this.prefix = LCP;
 
-		System.out.println("LCP: " + printBytes(this.prefix) + " prefix len: " + longestPrefixLen + " list size " + list.size());
-
 		// add the entries, removing the prefix
     	for(byte[] entry : list) {
     		if(longestPrefixLen <= 0) {
@@ -154,22 +145,11 @@ public class CompressedBlockWriter implements BlockWriter {
     			int newLen = entry.length - longestPrefixLen;
     			byte[] newEntry = new byte[newLen];
     			System.arraycopy(entry, longestPrefixLen, newEntry, 0, newLen);
-    			System.out.println("adding entry: " + printBytes(entry) + " suffix: " + printBytes(newEntry));
     			results.add(newEntry);
     		}
     	}
 		
     	return results;
-    }
-    
-    private String printBytes(byte[] a) {
-    	StringBuffer s = new StringBuffer();
-    	for(byte b:a) {
-    		s.append(b);
-    		s.append(", ");
-    	}
-    	
-    	return s.toString();
     }
     
     private static ReusableBuffer serializeVarLenPage(List<byte[]> list) {
