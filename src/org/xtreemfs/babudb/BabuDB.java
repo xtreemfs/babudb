@@ -12,8 +12,6 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,10 +31,12 @@ import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
 import org.xtreemfs.babudb.replication.BabuDBReplication;
+import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherBackupState;
 import org.xtreemfs.babudb.snapshots.SnapshotManager;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.config.BabuDBConfig;
 import org.xtreemfs.include.common.config.MasterConfig;
+import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.config.SlaveConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
@@ -67,14 +67,8 @@ public class BabuDB {
      * - visibility changed to public, because the replication needs access to
      * the {@link DiskLogger}
      */
-    public DiskLogger               logger;
-    
-    /**
-     * object used for locking to ensure that switch of log file and overlay
-     * trees is atomic and not interrupted by inserts
-     */
-    public ReadWriteLock            overlaySwitchLock;
-    
+    private DiskLogger               logger;
+        
     private LSMDBWorker[]           worker;
     
     private final BabuDBReplication replication;
@@ -83,7 +77,7 @@ public class BabuDB {
      * Checkpointer thread for automatic checkpointing -has to be public for
      * replication issues
      */
-    public Checkpointer             dbCheckptr;
+    private Checkpointer             dbCheckptr;
     
     /**
      * the component that manages database snapshots
@@ -98,7 +92,7 @@ public class BabuDB {
     /**
      * All necessary parameters to run the BabuDB.
      */
-    public final BabuDBConfig       configuration;
+    private final BabuDBConfig       configuration;
     
     /**
      * Starts the BabuDB database. If conf is instance of MasterConfig it comes
@@ -114,9 +108,7 @@ public class BabuDB {
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "base dir: " + conf.getBaseDir());
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "db log dir: " + conf.getDbLogDir());
         
-        this.overlaySwitchLock = new ReentrantReadWriteLock();
         this.configuration = conf;
-        
         this.databaseManager = new DatabaseManager(this);
         this.snapshotManager = new SnapshotManager(this);
         
@@ -172,8 +164,7 @@ public class BabuDB {
         
         worker = new LSMDBWorker[conf.getNumThreads()];
         for (int i = 0; i < conf.getNumThreads(); i++) {
-            worker[i] = new LSMDBWorker(logger, i, overlaySwitchLock, (conf.getPseudoSyncWait() > 0), conf
-                    .getMaxQueueLength(), replication);
+            worker[i] = new LSMDBWorker(logger, i, (conf.getPseudoSyncWait() > 0), conf.getMaxQueueLength(), replication);
             worker[i].start();
         }
         
@@ -195,22 +186,19 @@ public class BabuDB {
     }
     
     /**
-     * <p>
-     * Needed for the initial load process of the babuDB, done by the
-     * replication.
-     * </p>
+     * <p>Needed for the initial load process of the babuDB, done by the replication.</p>
      * 
-     * @param latest
-     *            - {@link LSN} until which the loading is done.
-     * @throws BabuDBException
+     * @throws BabuDBException 
+     * @return the next LSN.
      */
-    public void reset(LSN latest) throws BabuDBException {
+    public LSN reset() throws BabuDBException{
         for (LSMDBWorker w : worker) {
             w.shutdown();
         }
         logger.shutdown();
-        dbCheckptr.shutdown();
-        
+        if (dbCheckptr != null) {
+            dbCheckptr.shutdown();
+        }
         try {
             logger.waitForShutdown();
             for (LSMDBWorker w : worker) {
@@ -225,32 +213,58 @@ public class BabuDB {
         
         databaseManager.reset();
         
+        LSN dbLsn = null;
+        for (Database dbRaw : databaseManager.getDatabases()) {
+            DatabaseImpl db = (DatabaseImpl) dbRaw;
+            if (dbLsn == null)
+                dbLsn = db.getLSMDB().getOndiskLSN();
+            else {
+                if (!dbLsn.equals(db.getLSMDB().getOndiskLSN()))
+                    throw new RuntimeException("databases have different LSNs!");
+            }
+        }
+        if (dbLsn == null) {
+            //empty babudb
+            dbLsn = new LSN(0,0);
+        } else {
+            //need next LSN which is onDisk + 1
+            dbLsn = new LSN(dbLsn.getViewId(),dbLsn.getSequenceNo()+1);
+        }
+        
+        Logging.logMessage(Logging.LEVEL_INFO, this, "starting log replay");
+        LSN nextLSN = replayLogs();
+        if (dbLsn.compareTo(nextLSN) > 0) {
+            nextLSN = dbLsn;
+        }
+        Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done, using LSN: "+nextLSN);
+        
         try {
-            logger = new DiskLogger(configuration.getDbLogDir(), latest.getViewId(),
-                latest.getSequenceNo() + 1L, configuration.getSyncMode(), configuration.getPseudoSyncWait(),
-                configuration.getMaxQueueLength() * configuration.getNumThreads());
+            logger = new DiskLogger(configuration.getDbLogDir(), nextLSN.getViewId(), 
+                    nextLSN.getSequenceNo()+1L, configuration.getSyncMode(), configuration.getPseudoSyncWait(),
+                    configuration.getMaxQueueLength() * configuration.getNumThreads());
             logger.start();
         } catch (IOException ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot start database operations logger", ex);
         }
-        
-        overlaySwitchLock = new ReentrantReadWriteLock();
-        
+
         worker = new LSMDBWorker[configuration.getNumThreads()];
         for (int i = 0; i < configuration.getNumThreads(); i++) {
-            worker[i] = new LSMDBWorker(logger, i, overlaySwitchLock,
-                (configuration.getPseudoSyncWait() > 0), configuration.getMaxQueueLength(), replication);
+            worker[i] = new LSMDBWorker(logger, i, (configuration.getPseudoSyncWait() > 0), 
+                    configuration.getMaxQueueLength(), replication);
             worker[i].start();
         }
+
+        if (configuration.getCheckInterval() > 0) {
+            dbCheckptr = new Checkpointer(this, logger, configuration.getCheckInterval(), configuration.getMaxLogfileSize());
+            dbCheckptr.start();
+        } else {
+            dbCheckptr = null;
+        }
         
-        dbCheckptr = new Checkpointer(this, logger, configuration.getCheckInterval(), configuration
-                .getMaxLogfileSize());
-        dbCheckptr.start();
+        Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running (version " + BABUDB_VERSION + ")");
         
-        Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running (version " + BABUDB_VERSION
-            + ")");
-    }
-    
+        return nextLSN;
+    }    
     /*
      * (non-Javadoc)
      * 
@@ -480,68 +494,41 @@ public class BabuDB {
     }
     
     /**
-     * <p>
-     * Dangerous function. Just for testing purpose!
-     * </p>
+     * <p>Stops all currently running replication operations.
+     * Incoming requests will be rejected, even if the replication
+     * was running in master-mode and the request was a user operation,
+     * like inserts or create, copy, delete operation.</p>
      * 
-     * @return the LSN of the last written insert.
-     * @throws InterruptedException
-     * 
-     *             public LSN replication_pause() throws InterruptedException{
-     *             return replication.pause(); }
+     * @return dispatcher backup state.
      */
+    public DispatcherBackupState replication_stop() {
+        return replication.shutdown();
+    }
     
     /**
-     * <p>
-     * Dangerous function. Just for testing purpose!
-     * </p>
+     * <p>Changes the replication configuration.</p>
+     * <p>Makes a new checkPoint and increments the viewID, 
+     * if a <code>config</code> is a {@link MasterConfig}, 
+     * or {@link SlaveConfig}.</p>
      * 
-     * public void replication_resume(){ replication.resume(); }
-     * */
-    
-    /**
-     * <p>
-     * Makes a new checkPoint and increments the viewID.
-     * </p>
+     * <p><b>The replication has to be stopped before!</b></p>
      * 
-     * @throws BabuDBException
-     * @throws InterruptedException
+     * @param config
      * 
-     *             public void replication_toMaster() throws
-     *             InterruptedException, BabuDBException{ assert
-     *             (replication!=null); checkpoint(true);
-     *             replication.setSlaves(configuration.replication_slaves); }
+     * @throws IOException
+     * @throws BabuDBException 
+     * @throws InterruptedException 
+     * @see replication_stop()
      */
-    
-    /**
-     * <p>
-     * Operation to switch the synchronization policy while replication is
-     * running.
-     * </p>
-     * 
-     * @see {@link Replication}.setSyncMode(int)
-     * @param n
-     * @throws BabuDBException
-     * @throws InterruptedException
-     * 
-     *             public void replication_switchSyncMode(int n) throws
-     *             BabuDBException, InterruptedException{ if (replication !=
-     *             null) replication.setSyncMode(n); else throw new
-     *             UnsupportedOperationException ("Replication is not enabled! That's why it does not make sense to change the replication policies."
-     *             ); }
-     */
-    
-    /**
-     * TODO failover-strategy
-     * 
-     * @param msg
-     * 
-     *            public void replication_runtime_failure(String msg) {
-     * 
-     *            String message = "BabuDB in "+((replication_isSlave()) ?
-     *            "slave" : "master")+"-mode has failed: "+msg;
-     *            Logging.logMessage(Logging.LEVEL_ERROR, this, message);
-     *            shutdown(); }
-     */
-    
+    public void replication_changeConfiguration(ReplicationConfig config) throws IOException, BabuDBException, InterruptedException{
+        assert (replication!=null);
+        
+        if (config instanceof MasterConfig) {
+            getCheckpointer().checkpoint(true);
+            replication.set((MasterConfig) config);
+        } else if (config instanceof SlaveConfig) {
+            getCheckpointer().checkpoint(false);
+            replication.set((SlaveConfig) config);
+        } else assert(false);
+    } 
 }

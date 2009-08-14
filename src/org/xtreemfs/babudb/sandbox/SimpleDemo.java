@@ -16,7 +16,7 @@ import org.xtreemfs.include.common.config.BabuDBConfig;
 
 public class SimpleDemo {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         try {
             //start the database
             BabuDB database = BabuDBFactory.createBabuDB(new BabuDBConfig("myDatabase/", "myDatabase/", 2, 1024 * 1024 * 16, 5 * 60, SyncMode.SYNC_WRITE,0,0));

@@ -23,9 +23,11 @@ import org.xtreemfs.include.common.config.SlaveConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
 public class SecurityTest {
+
+    private final static String DB_NAME = "test";
+    
     private BabuDB slave;
     private SlaveConfig conf;
-    
     
     @Before
     public void setUp() throws Exception {   
@@ -48,7 +50,8 @@ public class SecurityTest {
         
         // start the slave
         try {
-        slave = BabuDBFactory.createSlaveBabuDB(conf);
+            slave = BabuDBFactory.createSlaveBabuDB(conf);
+            slave.getDatabaseManager().proceedCreate(DB_NAME, 2, null);
         } catch (Exception e){
         	System.out.println("ERROR: "+e.getMessage());
         }
@@ -65,123 +68,123 @@ public class SecurityTest {
      */
     @Test
     public void slaveDBAccessSecurityTest() throws Exception {   
-//        try{
-//            slave.asyncInsert(null, null, null);
-//        }catch (BabuDBException be){
-//            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-//            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
-//        }
-//        
-//        try{
-//            slave.asyncLookup(null, 0, null, null, null);
-//        }catch (BabuDBException be){
-//            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-//            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
-//        }
-//        
-//        try{
-//            slave.asyncPrefixLookup(null, 0, null, null, null);
-//        }catch (BabuDBException be){
-//            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-//            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
-//        }
-//        
-//        try{
-//            slave.asyncUserDefinedLookup(null, null, null, null);
-//        }catch (BabuDBException be){
-//            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-//            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
-//        }
-//        
-//        try{
-//            slave.checkpoint();
-//        }catch (BabuDBException be){
-//            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-//            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
-//        }
-//        
-//        try{
-//            slave.copyDatabase(null, null, null, null);
-//        }catch (BabuDBException be){
-//            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-//            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
-//        }
-//        
-//        try{
-//            slave.createDatabase(null, 0);
-//        }catch (BabuDBException be){
-//            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-//            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
-//        }
-//        
-//        try{
-//            slave.createDatabase(null, 0, null);
-//        }catch (BabuDBException be){
-//            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-//            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
-//        }
-//        
-//        try{
-//            slave.createInsertGroup(null);
-//        }catch (BabuDBException be){
-//            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-//            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
-//        }
-//        
-//        try{
-//            slave.deleteDatabase(null, true);
-//        }catch (BabuDBException be){
-//            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-//            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
-//        }
-//        
-//        try{
-//            slave.directInsert(null);
-//        }catch (BabuDBException be){
-//            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-//            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
-//        }
-//        
-//        try{
-//            slave.directLookup(null, 0, null);
-//        }catch (BabuDBException be){
-//            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-//            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
-//        }
-//        
-//        try{
-//            slave.directPrefixLookup(null, 0, null);
-//        }catch (BabuDBException be){
-//            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-//            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
-//        }
-//        
-//        try{
-//            slave.syncInsert(null);
-//        }catch (BabuDBException be){
-//            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-//            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
-//        }
-//        
-//        try{
-//            slave.syncPrefixLookup(null, 0, null);
-//        }catch (BabuDBException be){
-//            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-//            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
-//        }
-//        
-//        try{
-//            slave.syncSingleInsert(null, 0, null, null);
-//        }catch (BabuDBException be){
-//            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-//            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
-//        }
-//        
-//        try{
-//            slave.syncUserDefinedLookup(null, null);
-//        }catch (BabuDBException be){
-//            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-//            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
-//        }
+        try{
+            slave.getDatabaseManager().getDatabase(DB_NAME).asyncInsert(null, null, null);
+        }catch (BabuDBException be){
+            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
+            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
+        }
+        
+        try{
+            slave.getDatabaseManager().getDatabase(DB_NAME).asyncLookup(0, null, null, null);
+        }catch (BabuDBException be){
+            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
+            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
+        }
+        
+        try{
+            slave.getDatabaseManager().getDatabase(DB_NAME).asyncPrefixLookup(0, null, null, null);
+        }catch (BabuDBException be){
+            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
+            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
+        }
+        
+        try{
+            slave.getDatabaseManager().getDatabase(DB_NAME).asyncUserDefinedLookup(null, null, null);
+        }catch (BabuDBException be){
+            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
+            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
+        }
+        
+        try{
+            slave.getCheckpointer().checkpoint();
+        }catch (BabuDBException be){
+            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
+            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
+        }
+        
+        try{
+            slave.getDatabaseManager().copyDatabase(null, null);
+        }catch (BabuDBException be){
+            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
+            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
+        }
+        
+        try{
+            slave.getDatabaseManager().createDatabase(null, 0);
+        }catch (BabuDBException be){
+            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
+            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
+        }
+        
+        try{
+            slave.getDatabaseManager().createDatabase(null, 0, null);
+        }catch (BabuDBException be){
+            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
+            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
+        }
+        
+        try{
+            slave.getDatabaseManager().getDatabase(DB_NAME).createInsertGroup();
+        }catch (BabuDBException be){
+            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
+            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
+        }
+        
+        try{
+            slave.getDatabaseManager().deleteDatabase(null, true);
+        }catch (BabuDBException be){
+            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
+            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
+        }
+        
+        try{
+            slave.getDatabaseManager().getDatabase(DB_NAME).directInsert(null);
+        }catch (BabuDBException be){
+            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
+            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
+        }
+        
+        try{
+            slave.getDatabaseManager().getDatabase(DB_NAME).directLookup(0, null);
+        }catch (BabuDBException be){
+            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
+            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
+        }
+        
+        try{
+            slave.getDatabaseManager().getDatabase(DB_NAME).directPrefixLookup(0, null);
+        }catch (BabuDBException be){
+            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
+            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
+        }
+        
+        try{
+            slave.getDatabaseManager().getDatabase(DB_NAME).syncInsert(null);
+        }catch (BabuDBException be){
+            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
+            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
+        }
+        
+        try{
+            slave.getDatabaseManager().getDatabase(DB_NAME).syncPrefixLookup(0, null);
+        }catch (BabuDBException be){
+            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
+            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
+        }
+        
+        try{
+            slave.getDatabaseManager().getDatabase(DB_NAME).syncSingleInsert(0, null, null);
+        }catch (BabuDBException be){
+            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
+            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
+        }
+        
+        try{
+            slave.getDatabaseManager().getDatabase(DB_NAME).syncUserDefinedLookup(null);
+        }catch (BabuDBException be){
+            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
+            assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());
+        }
     }
 }

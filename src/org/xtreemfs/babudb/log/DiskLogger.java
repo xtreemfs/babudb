@@ -120,8 +120,6 @@ public class DiskLogger extends Thread {
 
     private final int pseudoSyncWait;
 
-    private final boolean pseudoSyncModeEnabled;
-
     /**
      * Max number of LogEntries to write before sync.
      */
@@ -148,7 +146,6 @@ public class DiskLogger extends Thread {
         }
 
         this.pseudoSyncWait = pseudoSyncWait;
-        this.pseudoSyncModeEnabled = (pseudoSyncWait > 0);
 
         this.currentViewId = new AtomicInteger(viewId);
 
@@ -235,8 +232,8 @@ public class DiskLogger extends Thread {
         File lf = new File(this.currentLogFileName);
         String openMode = "";
         switch (syncMode) {
-            case ASYNC:
-            case FSYNC:
+            case ASYNC: break;
+            case FSYNC: break;
             case FDATASYNC: {openMode = "rw"; break;}
             case SYNC_WRITE : {openMode = "rwd"; break;}
             case SYNC_WRITE_METADATA : {openMode = "rws"; break;}

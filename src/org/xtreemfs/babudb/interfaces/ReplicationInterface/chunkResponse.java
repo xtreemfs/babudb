@@ -12,6 +12,9 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class chunkResponse implements org.xtreemfs.babudb.interfaces.utils.Response
 {
+    public static final int TAG = 1014;
+
+    
     public chunkResponse() { returnValue = null; }
     public chunkResponse( ReusableBuffer returnValue ) { this.returnValue = returnValue; }
     public chunkResponse( Object from_hash_map ) { returnValue = null; this.deserialize( from_hash_map ); }
@@ -20,14 +23,15 @@ public class chunkResponse implements org.xtreemfs.babudb.interfaces.utils.Respo
     public ReusableBuffer getReturnValue() { return returnValue; }
     public void setReturnValue( ReusableBuffer returnValue ) { this.returnValue = returnValue; }
 
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::chunkResponse"; }    
-    public long getTypeId() { return 4; }
-
+    // Object
     public String toString()
     {
         return "chunkResponse( " + "\"" + returnValue + "\"" + " )";
     }
 
+    // Serializable
+    public int getTag() { return 1014; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::chunkResponse"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -68,11 +72,8 @@ public class chunkResponse implements org.xtreemfs.babudb.interfaces.utils.Respo
         return my_size;
     }
 
-    // Response
-    public int getOperationNumber() { return 4; }
 
-
-    private ReusableBuffer returnValue;
+    private ReusableBuffer returnValue;    
 
 }
 

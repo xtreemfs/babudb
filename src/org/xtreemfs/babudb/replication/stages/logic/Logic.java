@@ -8,6 +8,7 @@
 package org.xtreemfs.babudb.replication.stages.logic;
 
 import org.xtreemfs.babudb.replication.stages.ReplicationStage;
+import org.xtreemfs.babudb.replication.stages.ReplicationStage.ConnectionLostException;
 
 /**
  * Interface for replication-behavior classes.
@@ -32,7 +33,8 @@ public abstract class Logic {
     /**
      * Function to execute, if logic is needed.
      * 
-     * @throws Exception if unexpected behavior occurred.
+     * @throws ConnectionLostException if the connection to the participant is lost.
+     * @throws InterruptedException if the execution was interrupted.
      */
-    public abstract void run() throws Exception;
+    public abstract void run() throws ConnectionLostException, InterruptedException;
 }

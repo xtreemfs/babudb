@@ -25,6 +25,7 @@ import static org.xtreemfs.babudb.replication.TestData.testKey3;
 import static org.xtreemfs.babudb.replication.TestData.testValue;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Iterator;
@@ -49,7 +50,7 @@ import org.xtreemfs.babudb.interfaces.DBFileMetaData;
 import org.xtreemfs.babudb.interfaces.DBFileMetaDataSet;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.interfaces.LogEntries;
-import org.xtreemfs.babudb.interfaces.Exceptions.errnoException;
+import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.copyRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.copyResponse;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.createRequest;
@@ -58,6 +59,8 @@ import org.xtreemfs.babudb.interfaces.ReplicationInterface.deleteRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.deleteResponse;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateResponse;
+import org.xtreemfs.babudb.interfaces.utils.ONCRPCError;
+import org.xtreemfs.babudb.interfaces.utils.ONCRPCException;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
@@ -106,7 +109,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         
         try {
             db = BabuDBFactory.createMasterBabuDB(conf);
-            assert (!conf.isUsingSSL());
+            assertTrue (conf.getSSLOptions() == null);
             rpcClient = new RPCNIOSocketClient(null,5000,10000);
             rpcClient.setLifeCycleListener(this);
             client = new MasterClient(rpcClient,new InetSocketAddress(conf.getAddress(),conf.getPort()));
@@ -147,7 +150,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
     }
     
     @Test
-    public void testHeartBeat () {
+    public void testHeartBeat () throws ONCRPCException, IOException, InterruptedException {
         System.out.println("Test: heartbeat");
         dummyHeartbeat(0);
     }
@@ -203,6 +206,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         
         assertNotNull(le.getPayload());
         
+        result.freeBuffers();
         le.free();
     }
     
@@ -217,8 +221,10 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         RPCResponse<LogEntries> result = client.getReplica(new LSNRange(1,seqToRequest,seqToRequest));
         try {
             result.get();
-        } catch (errnoException e) {
-            assertEquals(ErrNo.SERVICE_CALL_MISSED.ordinal(), e.getError_code());
+        } catch (ONCRPCError e) {
+            assertEquals(ErrNo.SERVICE_CALL_MISSED.ordinal(), e.getAcceptStat());
+        } finally {
+            result.freeBuffers();
         }
     }
     
@@ -245,12 +251,14 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
             assertEquals(size, buf.capacity());
             
             BufferPool.free(buf);
+            chunkRp.freeBuffers();
         }
+        result.freeBuffers();
     }
 
     @Override
     public void receiveRecord(ONCRPCRequest rq) {
-        int opNum = rq.getRequestHeader().getOperationNumber();
+        int opNum = rq.getRequestHeader().getProcedure();
         final Checksum chksm = new CRC32();
         
         synchronized (response) {
@@ -320,7 +328,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
 
                 rq.sendResponse(new deleteResponse());
             } else {
-                rq.sendInternalServerError(new Throwable("TEST-DUMMY-RESPONSE"));
+                rq.sendInternalServerError(new Throwable("TEST-DUMMY-RESPONSE"), new errnoException("TEST-DUMMY-RESPONSE"));
                 fail();
             }   
             response.set(opNum);
@@ -328,8 +336,10 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         }
     }
     
-    private void dummyHeartbeat(long sequence) {
-        client.heartbeat(new LSN(viewID,sequence));
+    private void dummyHeartbeat(long sequence) throws ONCRPCException, IOException, InterruptedException {
+        RPCResponse<?> rp = client.heartbeat(new LSN(viewID,sequence));
+        rp.get();
+        rp.freeBuffers();
     }
     
     private void makeDB() throws Exception {
@@ -345,7 +355,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
     
     private void copyDB() throws Exception {
         synchronized (response) {
-            db.getDatabaseManager().copyDatabase(testDB, copyTestDB, null, null);
+            db.getDatabaseManager().copyDatabase(testDB, copyTestDB);
             
             while (response.get()!=copyOperation)
                 response.wait();

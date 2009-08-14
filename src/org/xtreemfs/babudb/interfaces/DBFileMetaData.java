@@ -11,6 +11,9 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class DBFileMetaData implements org.xtreemfs.babudb.interfaces.utils.Serializable
 {
+    public static final int TAG = 1020;
+
+    
     public DBFileMetaData() { fileName = ""; fileSize = 0; maxChunkSize = 0; }
     public DBFileMetaData( String fileName, long fileSize, int maxChunkSize ) { this.fileName = fileName; this.fileSize = fileSize; this.maxChunkSize = maxChunkSize; }
     public DBFileMetaData( Object from_hash_map ) { fileName = ""; fileSize = 0; maxChunkSize = 0; this.deserialize( from_hash_map ); }
@@ -23,14 +26,15 @@ public class DBFileMetaData implements org.xtreemfs.babudb.interfaces.utils.Seri
     public int getMaxChunkSize() { return maxChunkSize; }
     public void setMaxChunkSize( int maxChunkSize ) { this.maxChunkSize = maxChunkSize; }
 
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::DBFileMetaData"; }    
-    public long getTypeId() { return 0; }
-
+    // Object
     public String toString()
     {
         return "DBFileMetaData( " + "\"" + fileName + "\"" + ", " + Long.toString( fileSize ) + ", " + Integer.toString( maxChunkSize ) + " )";
     }
 
+    // Serializable
+    public int getTag() { return 1020; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::DBFileMetaData"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -40,15 +44,15 @@ public class DBFileMetaData implements org.xtreemfs.babudb.interfaces.utils.Seri
     public void deserialize( HashMap<String, Object> from_hash_map )
     {
         this.fileName = ( String )from_hash_map.get( "fileName" );
-        this.fileSize = ( ( Long )from_hash_map.get( "fileSize" ) ).longValue();
-        this.maxChunkSize = ( ( Integer )from_hash_map.get( "maxChunkSize" ) ).intValue();
+        this.fileSize = ( from_hash_map.get( "fileSize" ) instanceof Integer ) ? ( ( Integer )from_hash_map.get( "fileSize" ) ).longValue() : ( ( Long )from_hash_map.get( "fileSize" ) ).longValue();
+        this.maxChunkSize = ( from_hash_map.get( "maxChunkSize" ) instanceof Integer ) ? ( ( Integer )from_hash_map.get( "maxChunkSize" ) ).intValue() : ( ( Long )from_hash_map.get( "maxChunkSize" ) ).intValue();
     }
     
     public void deserialize( Object[] from_array )
     {
         this.fileName = ( String )from_array[0];
-        this.fileSize = ( ( Long )from_array[1] ).longValue();
-        this.maxChunkSize = ( ( Integer )from_array[2] ).intValue();        
+        this.fileSize = ( from_array[1] instanceof Integer ) ? ( ( Integer )from_array[1] ).longValue() : ( ( Long )from_array[1] ).longValue();
+        this.maxChunkSize = ( from_array[2] instanceof Integer ) ? ( ( Integer )from_array[2] ).intValue() : ( ( Long )from_array[2] ).intValue();        
     }
 
     public void deserialize( ReusableBuffer buf )
@@ -86,7 +90,7 @@ public class DBFileMetaData implements org.xtreemfs.babudb.interfaces.utils.Seri
 
     private String fileName;
     private long fileSize;
-    private int maxChunkSize;
+    private int maxChunkSize;    
 
 }
 

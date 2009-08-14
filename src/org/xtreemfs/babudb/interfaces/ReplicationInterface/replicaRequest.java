@@ -12,6 +12,9 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class replicaRequest implements org.xtreemfs.babudb.interfaces.utils.Request
 {
+    public static final int TAG = 1012;
+
+    
     public replicaRequest() { range = new LSNRange(); }
     public replicaRequest( LSNRange range ) { this.range = range; }
     public replicaRequest( Object from_hash_map ) { range = new LSNRange(); this.deserialize( from_hash_map ); }
@@ -20,14 +23,15 @@ public class replicaRequest implements org.xtreemfs.babudb.interfaces.utils.Requ
     public LSNRange getRange() { return range; }
     public void setRange( LSNRange range ) { this.range = range; }
 
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::replicaRequest"; }    
-    public long getTypeId() { return 2; }
-
+    // Object
     public String toString()
     {
         return "replicaRequest( " + range.toString() + " )";
     }
 
+    // Serializable
+    public int getTag() { return 1012; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::replicaRequest"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -69,11 +73,10 @@ public class replicaRequest implements org.xtreemfs.babudb.interfaces.utils.Requ
     }
 
     // Request
-    public int getOperationNumber() { return 2; }
     public Response createDefaultResponse() { return new replicaResponse(); }
 
 
-    private LSNRange range;
+    private LSNRange range;    
 
 }
 

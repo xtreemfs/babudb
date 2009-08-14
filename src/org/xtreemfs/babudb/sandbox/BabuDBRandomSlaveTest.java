@@ -8,6 +8,7 @@
 package org.xtreemfs.babudb.sandbox;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.LinkedList;
 import java.util.List;
@@ -16,6 +17,8 @@ import java.util.Random;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.BabuDB;
+import org.xtreemfs.babudb.interfaces.ReplicationInterface.ReplicationInterface;
+import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.sandbox.RandomGenerator.LookupGroup;
 import org.xtreemfs.include.common.config.SlaveConfig;
@@ -48,9 +51,13 @@ public class BabuDBRandomSlaveTest {
 	public final static String PATH = BabuDBLongrunTestConfig.PATH+"slave";
 	public final static int NUM_WKS = 1;
 	
+	public final static int MAX_REPLICATION_Q_LENGTH = 0;
+	public final static String BACKUP_DIR = BabuDBLongrunTestConfig.PATH+"backup";
+	
 	private final static RandomGenerator generator = new RandomGenerator();
 	private static BabuDB DBS;
-
+	private static SlaveConfig CONFIGURATION;
+	
 	private BabuDBRandomSlaveTest() {}
 	
 	public static void main(String[] args) throws Exception {
@@ -58,53 +65,56 @@ public class BabuDBRandomSlaveTest {
 		
 	    if (args.length!=3) usage();
 		
-            long seed = 0L;
-            try{
-            	seed = Long.valueOf(args[0]);
-            } catch (NumberFormatException e){
-            	error("Illegal seed: "+args[0]);
-            }
-            
-            InetSocketAddress master = parseAddress(args[1]);
-            
-            List<InetSocketAddress> slaves = new LinkedList<InetSocketAddress>();    
-            if (args[2].indexOf(",")==-1)
-                slaves.add(parseAddress(args[2]));
-            else
-                for (String adr : args[2].split(","))
-                    slaves.add(parseAddress(adr));
-    		
-            // delete existing files
-            Process p = Runtime.getRuntime().exec("rm -rf "+PATH);
-            p.waitFor();
-            
-            DBS = (BabuDB) BabuDBFactory.createSlaveBabuDB(new SlaveConfig());
-                                    //getSlaveBabuDB(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, master, slaves, Replication.SLAVE_PORT, null, Replication.DEFAULT_MAX_Q);
-            generator.initialize(seed);
-            Random random = new Random();
-            
-            System.out.println("BabuDBRandomSlave-Longruntest-----------------------");
-            
-            boolean ccheck = true;
-            boolean checkSuccessful = true;
-            while (true) {
-            	int sleepInterval = 0;
-            	if (ccheck)
-            		sleepInterval = CCHECK_SLEEP_INTERVAL;
-            	else
-            		sleepInterval = random.nextInt(MAX_SLEEP_INTERVAL-MIN_SLEEP_INTERVAL)+MIN_SLEEP_INTERVAL;
-            	
-            	System.out.println("Thread will be suspended for "+sleepInterval/60000+" minutes.");
-            	Thread.sleep(sleepInterval);
-            
-            	int event = random.nextInt(100);
-
-            	if (event<P_CCHECK || !checkSuccessful) {
-            	    System.out.print("CONISTENCY CHECK:");
-            	    checkSuccessful = performConsistencyCheck();        		
-            	    ccheck = true;
-            	}else{
-            	    try {
+        long seed = 0L;
+        try{
+        	seed = Long.valueOf(args[0]);
+        } catch (NumberFormatException e){
+        	error("Illegal seed: "+args[0]);
+        }
+        
+        InetSocketAddress master = parseAddress(args[1]);
+        
+        List<InetSocketAddress> slaves = new LinkedList<InetSocketAddress>();    
+        if (args[2].indexOf(",") == -1)
+            slaves.add(parseAddress(args[2]));
+        else
+            for (String adr : args[2].split(","))
+                slaves.add(parseAddress(adr));
+        
+        // delete existing files
+        Process p = Runtime.getRuntime().exec("rm -rf "+BabuDBLongrunTestConfig.PATH); // FIXME
+        p.waitFor();
+        
+        CONFIGURATION = new SlaveConfig(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, 
+                ReplicationInterface.DEFAULT_SLAVE_PORT, InetAddress.getLocalHost(), master, slaves, 50, null, 
+                MAX_REPLICATION_Q_LENGTH, BACKUP_DIR);
+        
+        DBS = (BabuDB) BabuDBFactory.createSlaveBabuDB(CONFIGURATION);
+        generator.initialize(seed);
+        Random random = new Random();
+        
+        System.out.println("BabuDBRandomSlave-Longruntest-----------------------");
+        
+        boolean ccheck = true;
+        boolean checkSuccessful = true;
+        while (true) {
+        	int sleepInterval = 0;
+        	if (ccheck)
+        		sleepInterval = CCHECK_SLEEP_INTERVAL;
+        	else
+        		sleepInterval = random.nextInt(MAX_SLEEP_INTERVAL-MIN_SLEEP_INTERVAL)+MIN_SLEEP_INTERVAL;
+        	
+        	System.out.println("Thread will be suspended for "+sleepInterval/60000+" minutes.");
+        	Thread.sleep(sleepInterval);
+        
+        	int event = random.nextInt(100);
+        /* TODO
+        	if (event<P_CCHECK || !checkSuccessful) {
+        	    System.out.print("CONISTENCY CHECK:");
+        	    checkSuccessful = performConsistencyCheck();        		
+        	    ccheck = true;
+        	}else{
+        	    try {
             		if (event<(P_CCHECK+P_CLEAN_RESTART)){
             		    System.out.print("CLEAN RESTART:");
             		    performCleanAndRestart(random, master, slaves);
@@ -114,18 +124,17 @@ public class BabuDBRandomSlaveTest {
             		    performRestart(random, master, slaves);
             		    ccheck = false;
             		}
-            	    }catch (RuntimeException re){
+        	    }catch (RuntimeException re){
             		System.out.println("The files on disk are inconsistent. They will be removed to perform a clean start.");
             	    
             		// delete existing files
             		p = Runtime.getRuntime().exec("rm -rf "+PATH);
             		p.waitFor();
                 
-            		DBS = (BabuDB) BabuDBFactory.createSlaveBabuDB(new SlaveConfig());
-            		                        //getSlaveBabuDB(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, master, slaves, Replication.SLAVE_PORT, null, Replication.DEFAULT_MAX_Q);
-            	    }
-            	}
-            }
+            		DBS = (BabuDB) BabuDBFactory.createSlaveBabuDB(CONFIGURATION);
+        	    }
+        	}*/
+        } 
 	}
 	
 	/**
@@ -144,8 +153,7 @@ public class BabuDBRandomSlaveTest {
 	    System.out.println("Slave is down for "+downTime/60000+" minutes.");
 	    Thread.sleep(downTime);
 		
-            DBS = (BabuDB) BabuDBFactory.createSlaveBabuDB(new SlaveConfig());
-                                    //getSlaveBabuDB(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, master, slaves, Replication.SLAVE_PORT, null, Replication.DEFAULT_MAX_Q);
+        DBS = (BabuDB) BabuDBFactory.createSlaveBabuDB(CONFIGURATION);
 	}
 	
 	/**
@@ -160,17 +168,16 @@ public class BabuDBRandomSlaveTest {
 	 */
 	private static void performCleanAndRestart(Random random, InetSocketAddress master, List<InetSocketAddress> slaves) throws IOException, InterruptedException, BabuDBException{
 	    DBS.shutdown();
-		
+	    
 	    int downTime = random.nextInt(MAX_DOWN_TIME-MIN_DOWN_TIME)+MIN_DOWN_TIME;
 	    System.out.println("Slave is down for "+downTime/60000+" minutes.");
 	    Thread.sleep(downTime);
 		
-            // delete existing files
-            Process p = Runtime.getRuntime().exec("rm -rf "+PATH);
-            p.waitFor();
-        
-            DBS = (BabuDB) BabuDBFactory.createSlaveBabuDB(new SlaveConfig());
-                                    //getSlaveBabuDB(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, master, slaves, Replication.SLAVE_PORT, null, Replication.DEFAULT_MAX_Q);
+        // delete existing files
+        Process p = Runtime.getRuntime().exec("rm -rf "+PATH);
+        p.waitFor();
+    
+        DBS = (BabuDB) BabuDBFactory.createSlaveBabuDB(CONFIGURATION);
 	}
 	
 	/**
@@ -180,8 +187,7 @@ public class BabuDBRandomSlaveTest {
 	 */
 	private static boolean performConsistencyCheck() throws Exception{
 	    boolean result = false;
-	    LSN last = null;
-	    // TODO  = DBS.replication_pause();
+	    LSN last = DBS.replication_stop().latest;
 	    
 	    if (last!=null){
 	        LookupGroup lookupGroup = generator.getLookupGroup(last);
@@ -198,10 +204,10 @@ public class BabuDBRandomSlaveTest {
 	    } else 
 		System.out.println("Check could not be performed, because of the slave is LOADING from the master.");
 	    
-	    // TODO : DBS.replication_resume();
+	    DBS.replication_changeConfiguration(CONFIGURATION);
 	    
 	    return result;
-	}
+	} 
     
 	/**
 	 * Can exit with an error, if the given string was illegal.

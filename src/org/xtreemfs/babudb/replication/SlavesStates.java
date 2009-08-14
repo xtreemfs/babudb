@@ -34,7 +34,7 @@ public class SlavesStates {
     // if a slave does not send a heartBeat in twice of the maximum delay between two heartBeats,
     // than it is definitively to slow and is dead, or will be dead soon.
     public final static long DELAY_TILL_DEAD = 2 * HeartbeatThread.MAX_DELAY_BETWEEN_HEARTBEATS;
-    public final static int MAX_OPEN_REQUESTS_PRO_SLAVE = 10;
+    public final static int MAX_OPEN_REQUESTS_PER_SLAVE = 10;
     
     private HashMap<InetAddress, State> stateTable = new HashMap<InetAddress, State>(); 
 
@@ -42,8 +42,13 @@ public class SlavesStates {
     
     private final int syncN;
     
+    private final int slavesCount;
+    
     private final PriorityBlockingQueue<LatestLSNUpdateListener> listeners = new PriorityBlockingQueue<LatestLSNUpdateListener>();
     
+    private int availableSlaves;
+    
+    private int deadSlaves;
     /**
      * Sets the stateTable up. 
      * 
@@ -53,8 +58,10 @@ public class SlavesStates {
     public SlavesStates(int syncN,List<InetSocketAddress> slaves, RPCNIOSocketClient client) {
         assert(slaves!=null);
         
-        latestCommon = new LSN(0,0L);
+        this.latestCommon = new LSN(0,0L);
         this.syncN = syncN;
+        this.slavesCount = this.availableSlaves = slaves.size();
+        this.deadSlaves = 0;
         
         for (InetSocketAddress slave : slaves) 
             stateTable.put(slave.getAddress(), 
@@ -73,12 +80,18 @@ public class SlavesStates {
         synchronized (stateTable) {
             // the latest common LSN is >= the acknowledged one, just update the slave
             State old;
-            if ((old = stateTable.get(slave))!=null) {            
+            if ((old = stateTable.get(slave))!=null) { 
+                // got a prove of life
+                old.lastUpdate = receiveTime;
+                if (old.dead) {
+                    deadSlaves--;
+                    availableSlaves++;
+                    old.dead = false;
+                }
+                
                 // count the number of LSN ge than the acknowledged to get the latest common
                 if (old.lastAcknowledged.compareTo(acknowledgedLSN)<0) {
                     old.lastAcknowledged = acknowledgedLSN;
-                    old.lastUpdate = receiveTime;
-                    old.dead = false;
                     
                     int count = 0;
                     for (State s : stateTable.values()){
@@ -109,29 +122,39 @@ public class SlavesStates {
     /**
      * <p>Use this if you want to send requests to the slaves.
      * The open-request-counter of the returned slaves will be incremented.</p>
+     * <p>Flow-control: If there are too many busy slaves, to get more or equal 
+     * syncN slaves, this operation blocks until enough slaves are available.</p>
      * 
      * @return a list of available slaves.
      * @throws NotEnoughAvailableSlavesException
+     * @throws InterruptedException 
      */
-    public List<SlaveClient> getAvailableSlaves() throws NotEnoughAvailableSlavesException {   
+    public List<SlaveClient> getAvailableSlaves() throws NotEnoughAvailableSlavesException, InterruptedException{   
         List<SlaveClient> result = new LinkedList<SlaveClient>();
         long time = TimeSync.getLocalSystemTime();
         
         synchronized (stateTable) {
-            for (InetAddress slave : stateTable.keySet()){
-                State slaveState = stateTable.get(slave);
-                if (!slaveState.dead){
-                    if (slaveState.lastUpdate!=0L && time>(slaveState.lastUpdate+DELAY_TILL_DEAD))
-                        slaveState.dead = true;
-                    else if (slaveState.openRequests<MAX_OPEN_REQUESTS_PRO_SLAVE) {
-                        slaveState.openRequests++;
-                        result.add(slaveState.client);
-                    }
-                }
-            }   
-        }
-        if (result.size()<syncN) throw new NotEnoughAvailableSlavesException("There were not enough slaves to perform the request.");
+            // wait until enough slaves are available, if they are ...
+            while (availableSlaves<syncN && !((slavesCount-deadSlaves)<syncN))
+                stateTable.wait();
             
+            // get all available slaves, if they are enough ...
+            if (!((slavesCount-deadSlaves)<syncN)) {
+                for (State slaveState : stateTable.values()){
+                    if (!slaveState.dead){
+                        if (slaveState.lastUpdate!=0L && time>(slaveState.lastUpdate+DELAY_TILL_DEAD)) {
+                            slaveState.dead = true;
+                            availableSlaves--;
+                        } else if (slaveState.openRequests<MAX_OPEN_REQUESTS_PER_SLAVE) {
+                            if (++slaveState.openRequests == MAX_OPEN_REQUESTS_PER_SLAVE) availableSlaves--;
+                            result.add(slaveState.client);
+                        } 
+                    }
+                }   
+            }
+        }
+        // throw an exception, if they are not.
+        if (result.size()<syncN) throw new NotEnoughAvailableSlavesException("There were not enough slaves to perform the request.");
         return result;
     }
 
@@ -143,9 +166,11 @@ public class SlavesStates {
      */
     public void subscribeListener(LatestLSNUpdateListener listener) {
         assert(listener.lsn!=null) : "LSN has not been set!";
+        // fully asynchronous mode
         if (syncN == 0){
             latestCommon = listener.lsn;
             listener.upToDate();
+        // N-sync-mode
         } else {
             listeners.add(listener);
         }
@@ -160,7 +185,10 @@ public class SlavesStates {
         synchronized (stateTable) {
             State s = stateTable.get(slave.getDefaultServerAddress().getAddress());
             s.dead = true;
+            deadSlaves++;
+            availableSlaves--;
             s.openRequests--;
+            stateTable.notify();
         }
     }
     
@@ -171,7 +199,10 @@ public class SlavesStates {
      */
     public void requestFinished(SlaveClient slave) {
         synchronized (stateTable) {
-            stateTable.get(slave.getDefaultServerAddress().getAddress()).openRequests--;
+            if (--stateTable.get(slave.getDefaultServerAddress().getAddress()).openRequests == (MAX_OPEN_REQUESTS_PER_SLAVE-1)) {
+                availableSlaves++;
+                stateTable.notify();
+            }
         }
     }
     

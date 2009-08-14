@@ -9,6 +9,7 @@ package org.xtreemfs.babudb.replication;
 
 import static org.junit.Assert.*;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -20,6 +21,12 @@ import org.junit.Test;
 import org.xtreemfs.include.common.config.SlaveConfig;
 
 import static org.xtreemfs.babudb.replication.DirectFileIO.*;
+
+/**
+ * 
+ * @author flangner
+ *
+ */
 
 public class DirectFileIOTest {
 
@@ -118,8 +125,48 @@ public class DirectFileIOTest {
     }
 
     @Test
-    public void testReplayBackupFiles() {
-        // TODO fail("Not yet implemented");
+    public void testReplayBackupFiles() throws IOException {
+        
+        // make a backup
+        setupTestdata();
+        backupFiles(conf);
+        
+        // replay it
+        replayBackupFiles(conf);
+        
+        // check, if everything went fine
+        File base = new File(conf.getBaseDir());
+        assertTrue(base.exists());
+        
+        File bf = new File(conf.getBaseDir() + baseFile);
+        assertTrue(bf.exists());
+        
+        File bd = new File(conf.getBaseDir() + baseDir);
+        assertTrue(bd.exists());
+        
+        File bdf = new File(conf.getBaseDir() + baseDir + File.separator + baseDirFile);
+        assertTrue(bdf.exists());
+        
+        BufferedReader r = new BufferedReader(new FileReader(bdf));
+        assertEquals(baseTestString,r.readLine());
+        r.close();
+        
+        // insert log test data
+        File log = new File(conf.getDbLogDir());
+        assertTrue(log.exists());
+        
+        File lf = new File(conf.getDbLogDir() + logFile);
+        assertTrue(lf.exists());
+        
+        File ld = new File(conf.getDbLogDir() + logDir);
+        assertTrue(ld.exists());
+        
+        File ldf = new File(conf.getDbLogDir() + logDir + File.separator + logDirFile);
+        assertTrue(ldf.exists());
+        
+        r = new BufferedReader(new FileReader(ldf));
+        assertEquals(logTestString,r.readLine());
+        r.close();
     }
     
     private void setupTestdata() throws IOException {

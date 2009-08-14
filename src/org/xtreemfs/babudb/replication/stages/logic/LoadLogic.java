@@ -10,25 +10,32 @@ package org.xtreemfs.babudb.replication.stages.logic;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.interfaces.Chunk;
 import org.xtreemfs.babudb.interfaces.DBFileMetaData;
 import org.xtreemfs.babudb.interfaces.DBFileMetaDataSet;
+import org.xtreemfs.babudb.interfaces.utils.ONCRPCException;
+import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.stages.ReplicationStage;
+import org.xtreemfs.babudb.replication.stages.ReplicationStage.ConnectionLostException;
+import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
 import org.xtreemfs.include.foundation.oncrpc.client.RPCResponseAvailableListener;
 
 import static org.xtreemfs.babudb.replication.DirectFileIO.*;
+import static org.xtreemfs.babudb.replication.stages.logic.LogicID.*;
 
 /**
- * <p>Perform a initial load request at the master.</p>
- * 
+ * <p>Performs an initial load request at the master.
+ * This is an all-or-nothing operation.</p>
  * @author flangner
  * @since 06/08/2009
  */
@@ -45,7 +52,7 @@ public class LoadLogic extends Logic {
      */
     @Override
     public LogicID getId() {
-        return LogicID.LOAD;
+        return LOAD;
     }
 
     /*
@@ -53,22 +60,53 @@ public class LoadLogic extends Logic {
      * @see java.lang.Runnable#run()
      */
     @Override
-    public void run() throws Exception{
-        // backup the old dbs and stop the heartBeat
-        stage.dispatcher.heartbeat.infarction();
-        backupFiles(stage.dispatcher.configuration);
-        
+    public void run() throws ConnectionLostException, InterruptedException{        
         final List<Chunk> chunks = new ArrayList<Chunk>();
+        
+        // make the request and get the result synchronously
+        Logging.logMessage(Logging.LEVEL_INFO, stage, "Loading from: %s", stage.loadUntil.toString());
         RPCResponse<DBFileMetaDataSet> rp = stage.dispatcher.master.load(stage.loadUntil);
-
-        LSN fromSnapshot = null;
-        // make chunks
-        DBFileMetaDataSet result = rp.get();  
+        DBFileMetaDataSet result = null;
+        try {
+            result = rp.get();  
+        } catch (ONCRPCException e) {
+            // connection is lost
+            throw new ConnectionLostException(e.getMessage());
+        } catch (IOException e) {
+            // system failure on transmission --> retry
+            Logging.logError(Logging.LEVEL_WARN, this, e);
+            return;
+        } finally {
+            if (rp!=null) rp.freeBuffers();
+        }
         
         // switch log file
-        if (result == null) {
-            stage.dispatcher.db.logger.switchLogFile(true);
-            stage.setCurrentLogic(LogicID.BASIC);
+        if (result.size() == 0) {
+            DiskLogger logger = stage.dispatcher.dbs.getLogger();
+            try {
+                logger.lockLogger();
+                logger.switchLogFile(true);
+            } catch (IOException e) {
+                // system failure on switching the lock file --> retry
+                Logging.logError(Logging.LEVEL_WARN, this, e);
+                return;
+            } finally {
+                logger.unlockLogger();
+            }
+            Logging.logMessage(Logging.LEVEL_INFO, this, "Logfile switched with at LSN: %s", stage.loadUntil.toString());
+            stage.loadUntil = new LSN(stage.loadUntil.getViewId()+1,0L);
+            stage.setLogic(BASIC);
+            return;
+        }
+        
+        // backup the old dbs and stop the heartBeat
+        stage.dispatcher.heartbeat.infarction();
+        
+        try {
+            backupFiles(stage.dispatcher.configuration);
+        } catch (IOException e) {
+            // file backup failed --> retry
+            Logging.logError(Logging.LEVEL_WARN, this, e);
             return;
         }
         
@@ -80,10 +118,6 @@ public class LoadLogic extends Logic {
             long maxChunkSize = fileData.getMaxChunkSize();
             assert (fileSize > 0L) : "Empty files are not allowed.";
             assert (maxChunkSize > 0L) : "Empty chunks are not allowed.";
-
-            // get the expected latest LSN for the end of the loading process
-            if (fromSnapshot == null && LSMDatabase.isSnapshotFilename(fileName))
-                fromSnapshot = LSMDatabase.getSnapshotLSNbyFilename(fileName);
             
             // calculate chunks, request them and add them to the list
             long begin = 0L;
@@ -93,7 +127,7 @@ public class LoadLogic extends Logic {
                 begin = end;
                 
                 // request the chunk
-                RPCResponse<ReusableBuffer> chunkRp = stage.dispatcher.master.chunk(chunk);           
+                final RPCResponse<ReusableBuffer> chunkRp = stage.dispatcher.master.chunk(chunk);           
                 chunkRp.registerListener(new RPCResponseAvailableListener<ReusableBuffer>() {
                 
                     @Override
@@ -102,17 +136,14 @@ public class LoadLogic extends Logic {
                             // insert the chunk
                             ReusableBuffer buffer = r.get();
                             
-                            int length = (int) (chunk.getEnd() - chunk.getBegin());
-                            FileOutputStream fO = null;
+                            FileChannel fChannel = null;
                             try {
                                 // insert the file input
-                                fO = new FileOutputStream(getFile(chunk));
-                                fO.write(buffer.array(), (int) chunk.getBegin(),length);
-                            } catch (Exception e) {
-                                // make a new initial load
-                                stage.interrupt();
+                                fChannel = new FileOutputStream(getFile(chunk)).getChannel();
+                                fChannel.write(buffer.getBuffer());
                             } finally {
-                                if (fO!=null) fO.close();
+                                if (fChannel!=null) fChannel.close();
+                                if (buffer!=null) BufferPool.free(buffer);
                             }
                             
                             // notify, if the last chunk was inserted
@@ -124,29 +155,38 @@ public class LoadLogic extends Logic {
                         } catch (Exception e) {
                             // make a new initial load
                             stage.interrupt();
+                        } finally {
+                            if (r!=null) r.freeBuffers();
                         }
+                        chunkRp.freeBuffers();
                     }
                 });
             }        
         }
-        
+    
+        // wait for the last response
         try {
-            // wait for the last response
             synchronized (chunks) {
                 if (!chunks.isEmpty())
                     chunks.wait();
             }
-
-            // reload the dbs
-            stage.dispatcher.db.reset(fromSnapshot);
-            stage.dispatcher.updateLatestLSN(fromSnapshot);
-            stage.setCurrentLogic(LogicID.BASIC);
-            removeBackupFiles(stage.dispatcher.configuration);
-            
         } catch (InterruptedException e) {
-            // retry the initial load
-            Logging.logMessage(Logging.LEVEL_ERROR, stage, "Initial load was interrupted!");
+            // if interrupted by a failed chunk-write --> retry
+            if (!stage.isTerminating()) return;
+            // else drop the exception to the stage
+            else throw e;
         }
+
+        // reload the DBS
+        try {
+            stage.dispatcher.updateLatestLSN(stage.dispatcher.dbs.reset());
+        } catch (BabuDBException e) {
+            // resetting the DBS failed --> retry
+            Logging.logError(Logging.LEVEL_WARN, this, e);
+            return;
+        }
+        removeBackupFiles(stage.dispatcher.configuration);
+        stage.setLogic(BASIC);
     }
     
     /**
@@ -160,25 +200,24 @@ public class LoadLogic extends Logic {
         File chnk = new File(chunk.getFileName());
         String fName = chnk.getName();
         File result;
-
+        String baseDir = stage.dispatcher.dbs.getConfig().getBaseDir();
+        
         if (LSMDatabase.isSnapshotFilename(fName)) {
             // create the db-name directory, if necessary
-            new File(stage.dispatcher.db.configuration.getBaseDir()
-                    + chnk.getParentFile().getName() + File.separatorChar)
+            new File(baseDir + chnk.getParentFile().getName() + File.separatorChar)
                     .mkdirs();
             // create the file if necessary
-            result = new File(stage.dispatcher.db.configuration.getBaseDir()
-                    + chnk.getParentFile().getName() + File.separatorChar
-                    + fName);
+            result = new File(baseDir + chnk.getParentFile().getName() 
+                    + File.separatorChar + fName);
             result.createNewFile();
         } else if (chnk.getParent() == null) {
             // create the file if necessary
-            result = new File(stage.dispatcher.db.configuration.getBaseDir()+
-                    stage.dispatcher.db.configuration.getDbCfgFile());
+            result = new File(baseDir +
+                    stage.dispatcher.dbs.getConfig().getDbCfgFile());
             result.createNewFile();
         } else {
             // create the file if necessary
-            result = new File(stage.dispatcher.db.configuration.getDbLogDir()
+            result = new File(stage.dispatcher.dbs.getConfig().getDbLogDir()
                     + fName);
             result.createNewFile();
         }

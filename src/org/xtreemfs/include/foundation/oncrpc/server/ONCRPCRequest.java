@@ -25,18 +25,17 @@ package org.xtreemfs.include.foundation.oncrpc.server;
 
 import java.net.SocketAddress;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.include.common.logging.Logging.Category;
 import org.xtreemfs.include.common.util.OutputUtils;
 import org.xtreemfs.include.foundation.ErrNo;
 import org.xtreemfs.include.foundation.oncrpc.utils.ONCRPCBufferWriter;
 import org.xtreemfs.include.foundation.pinky.channels.ChannelIO;
-import org.xtreemfs.babudb.interfaces.Exceptions.ProtocolException;
-import org.xtreemfs.babudb.interfaces.Exceptions.errnoException;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCException;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCRequestHeader;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCResponseHeader;
 import org.xtreemfs.babudb.interfaces.utils.Serializable;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCRecordFragmentHeader;
-import org.xtreemfs.babudb.interfaces.utils.XDRUtils;
 
 /**
  *
@@ -68,36 +67,44 @@ public class ONCRPCRequest {
         assert (responseHeader == null) : "response already sent";
         responseHeader = new ONCRPCResponseHeader(requestHeader.getXID(), ONCRPCResponseHeader.REPLY_STAT_MSG_ACCEPTED,
                 ONCRPCResponseHeader.ACCEPT_STAT_SUCCESS);
+        if (Logging.isDebug()) {
+            Logging.logMessage(Logging.LEVEL_DEBUG, Category.net, this, "response %s sent to client %s",
+                response.getTypeName(), this.record.getConnection().getClientAddress().toString());
+        }
         serializeAndSendRespondse(response);
     }
 
-    public void sendGarbageArgs(String message) {
-        assert (responseHeader == null) : "response already sent";
-        responseHeader = new ONCRPCResponseHeader(requestHeader.getXID(), ONCRPCResponseHeader.REPLY_STAT_MSG_ACCEPTED,
-                ONCRPCResponseHeader.ACCEPT_STAT_GARBAGE_ARGS);
-        sendException(new ProtocolException(ONCRPCResponseHeader.ACCEPT_STAT_GARBAGE_ARGS,ErrNo.EINVAL, message));
+    public void sendGarbageArgs(String message, org.xtreemfs.babudb.interfaces.ReplicationInterface.ProtocolException ex) {
+        if (Logging.isDebug()) {
+            Logging.logMessage(Logging.LEVEL_DEBUG, Category.net, this,
+                "ProtocolException: GARBAGE ARGS sent to client %s", this.record.getConnection()
+                        .getClientAddress().toString());
+        }
+        ex.setAccept_stat(ONCRPCResponseHeader.ACCEPT_STAT_GARBAGE_ARGS);
+        ex.setError_code(ErrNo.EINVAL);
+        ex.setStack_trace(message);
+        wrapAndSendException(ex);
     }
     
-    public void sendInternalServerError(Throwable rootCause) {
-        assert (responseHeader == null) : "response already sent";
-        responseHeader = new ONCRPCResponseHeader(requestHeader.getXID(), ONCRPCResponseHeader.REPLY_STAT_MSG_ACCEPTED,
-                ONCRPCResponseHeader.ACCEPT_STAT_SYSTEM_ERR);
+    public void sendInternalServerError(Throwable rootCause, org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException ex) {
         final String strace = OutputUtils.stackTraceToString(rootCause);
-        sendException(new errnoException(ErrNo.EIO, "internal server error caused by: "+rootCause, strace));
+        if (Logging.isDebug()) {
+            Logging.logMessage(Logging.LEVEL_DEBUG, Category.net, this,
+                "errnoException: SYSTEM ERR/Internal Server Error sent to client %s", this.record
+                        .getConnection().getClientAddress().toString());
+        }
+        ex.setError_code(ErrNo.EIO);
+        ex.setError_message("internal server error caused by: "+rootCause);
+        ex.setStack_trace(strace);
+        wrapAndSendException(ex);
     }
 
-    public void sendProtocolException(ProtocolException exception) {
-        assert (responseHeader == null) : "response already sent";
-        responseHeader = new ONCRPCResponseHeader(requestHeader.getXID(), ONCRPCResponseHeader.REPLY_STAT_MSG_ACCEPTED,
-                exception.getAccept_stat());
-        sendException(exception);
-    }
-
-    public void sendGenericException(ONCRPCException exception) {
-        assert (responseHeader == null) : "response already sent";
-        responseHeader = new ONCRPCResponseHeader(requestHeader.getXID(), ONCRPCResponseHeader.REPLY_STAT_MSG_ACCEPTED,
-                ONCRPCResponseHeader.ACCEPT_STAT_SYSTEM_ERR);
-        sendException(exception);
+    public void sendException(ONCRPCException exception) {
+        if (Logging.isDebug()) {
+            Logging.logMessage(Logging.LEVEL_DEBUG, Category.net, this, "%s sent to client %s", exception
+                    .toString(), this.record.getConnection().getClientAddress().toString());
+        }
+        wrapAndSendException(exception);
     }
 
     public void sendResponse(ReusableBuffer serializedResponse) {
@@ -117,30 +124,42 @@ public class ONCRPCRequest {
         record.setResponseBuffers(writer.getBuffers());
         record.sendResponse();
     }
+
+    public void sendErrorCode(int errorCode) {
+        ONCRPCBufferWriter writer = new ONCRPCBufferWriter(ONCRPCBufferWriter.BUFF_SIZE);
+
+        responseHeader = new ONCRPCResponseHeader(requestHeader.getXID(), ONCRPCResponseHeader.REPLY_STAT_MSG_ACCEPTED,
+            errorCode);
+
+        final int fragmentSize =  responseHeader.calculateSize();
+        assert (fragmentSize >= 0) : "fragment has invalid size: "+fragmentSize;
+        final boolean isLastFragment = true;
+        final int fragHdr = ONCRPCRecordFragmentHeader.getFragmentHeader(fragmentSize, isLastFragment);
+        writer.putInt(fragHdr);
+        responseHeader.serialize(writer);;
+        //make ready for sending
+        writer.flip();
+        record.setResponseBuffers(writer.getBuffers());
+
+        record.sendResponse();
+    }
     
 
-    void sendException(Serializable exception) {
+    void wrapAndSendException(Serializable exception) {
+        assert(exception != null);
+        assert (responseHeader == null) : "response already sent";
         ONCRPCBufferWriter writer = new ONCRPCBufferWriter(ONCRPCBufferWriter.BUFF_SIZE);
-        if (exception == null) {
-            final int fragmentSize = responseHeader.calculateSize();
-            final boolean isLastFragment = true;
-            assert (fragmentSize >= 0) : "fragment has invalid size: "+fragmentSize;
-            final int fragHdr = ONCRPCRecordFragmentHeader.getFragmentHeader(fragmentSize, isLastFragment);
-            writer.putInt(fragHdr);
-            responseHeader.serialize(writer);
-        } else {
+        
+        responseHeader = new ONCRPCResponseHeader(requestHeader.getXID(), ONCRPCResponseHeader.REPLY_STAT_MSG_ACCEPTED,
+            exception.getTag());
 
-            final byte[] exName = exception.getTypeName().getBytes();
-
-            final int fragmentSize =  exception.calculateSize() + XDRUtils.stringLengthPadded(exName) + responseHeader.calculateSize();
-            assert (fragmentSize >= 0) : "fragment has invalid size: "+fragmentSize;
-            final boolean isLastFragment = true;
-            final int fragHdr = ONCRPCRecordFragmentHeader.getFragmentHeader(fragmentSize, isLastFragment);          
-            writer.putInt(fragHdr);
-            responseHeader.serialize(writer);
-            XDRUtils.serializeString(exName, writer);
-            exception.serialize(writer);
-        }
+        final int fragmentSize =  responseHeader.calculateSize()+exception.calculateSize();
+        assert (fragmentSize >= 0) : "fragment has invalid size: "+fragmentSize;
+        final boolean isLastFragment = true;
+        final int fragHdr = ONCRPCRecordFragmentHeader.getFragmentHeader(fragmentSize, isLastFragment);
+        writer.putInt(fragHdr);
+        responseHeader.serialize(writer);
+        exception.serialize(writer);
         //make ready for sending
         writer.flip();
         record.setResponseBuffers(writer.getBuffers());

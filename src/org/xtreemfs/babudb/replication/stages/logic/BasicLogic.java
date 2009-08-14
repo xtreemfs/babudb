@@ -7,9 +7,7 @@
  */
 package org.xtreemfs.babudb.replication.stages.logic;
 
-import java.io.IOException;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.interfaces.LSNRange;
@@ -23,6 +21,7 @@ import org.xtreemfs.babudb.replication.stages.StageRequest;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
 
+import static org.xtreemfs.babudb.replication.stages.logic.LogicID.*;
 import static org.xtreemfs.babudb.replication.stages.ReplicationStage.*;
 
 /**
@@ -34,8 +33,7 @@ import static org.xtreemfs.babudb.replication.stages.ReplicationStage.*;
 
 public class BasicLogic extends Logic {
 
-    private final AtomicBoolean quit = new AtomicBoolean(false);
-    private final LogEntry noOp;    
+    private final LogEntry noOp; 
     
     /** queue containing all incoming requests */
     private final BlockingQueue<StageRequest>      queue;
@@ -57,7 +55,7 @@ public class BasicLogic extends Logic {
      */
     @Override
     public LogicID getId() {
-        return LogicID.BASIC;
+        return BASIC;
     }
 
     /*
@@ -65,97 +63,86 @@ public class BasicLogic extends Logic {
      * @see java.lang.Runnable#run()
      */
     @Override
-    public void run() {
-        quit.set(false);
+    public void run() throws InterruptedException {     
         
-        while (!quit.get()) {
-            try {
-                final StageRequest op = queue.take();
-                final LSN lsn = op.getLSN();
-                
-                // check the LSN of the logEntry to write
-                if (lsn.getViewId() == stage.loadUntil.getViewId()) {
-                    if (lsn.getSequenceNo() <= stage.loadUntil.getSequenceNo()) {
-                        stage.finalizeRequest(op);
-                        continue;
-                    } else if (lsn.getSequenceNo() > stage.loadUntil.getSequenceNo()+1) {
-                        queue.add(op);
-                        quit.set(true);
-                        request(new LSNRange(lsn.getViewId(),stage.loadUntil.getSequenceNo()+1,lsn.getSequenceNo()-1));
-                        break;
-                    }
-                } else if(lsn.getViewId() < stage.loadUntil.getViewId()){
-                    stage.finalizeRequest(op);
-                    continue;
-                } else throw new Exception("Slave is out of sync...");
-                
-                switch (op.getStageMethod()) {
-                
-                case REPLICATE :            
-                    LogEntry le = (LogEntry) op.getArgs()[1];
-                    // prepare the request
-                    try {
-                        LSMDBRequest rq = SharedLogic.retrieveRequest(le, new SimplifiedBabuDBRequestListener() {
-                        
-                            @Override
-                            void finished(Object context, BabuDBException error) {
-                                if (error == null) stage.dispatcher.updateLatestLSN(lsn); 
-                                stage.finalizeRequest(op);
-                            }
-                        }, this, stage.dispatcher.db.getDatabaseManager().getDatabaseMap());
-                        
-                        // start the request
-                        SharedLogic.writeLogEntry(rq, stage.dispatcher.db);
-                    } catch (IOException io) {
-                      throw io;  
-                    } 
-                    break;
-                    
-                case CREATE : 
-                    stage.dispatcher.db.logger.append(noOp);
-                    stage.dispatcher.db.getDatabaseManager().proceedCreate((String) op.getArgs()[1], (Integer) op.getArgs()[2], null);
-                    stage.dispatcher.updateLatestLSN(lsn);
-                    stage.finalizeRequest(op);
-                    break;
-                    
-                case COPY :
-                    stage.dispatcher.db.logger.append(noOp);
-                    stage.dispatcher.db.getDatabaseManager().proceedCopy((String) op.getArgs()[1], (String) op.getArgs()[2], null, null);
-                    stage.dispatcher.updateLatestLSN(lsn);
-                    stage.finalizeRequest(op);
-                    break;
-                    
-                case DELETE :
-                    stage.dispatcher.db.logger.append(noOp);
-                    stage.dispatcher.db.getDatabaseManager().proceedDelete((String) op.getArgs()[1], (Boolean) op.getArgs()[2]);
-                    stage.dispatcher.updateLatestLSN(lsn);
-                    stage.finalizeRequest(op);
-                    break;
-                    
-                default : assert(false);
-                    stage.finalizeRequest(op);
-                    break;
-                }
-                
-                stage.loadUntil = lsn;
-            } catch (InterruptedException i) {
-                Logging.logMessage(Logging.LEVEL_INFO, this, "Leaving basic-replication mode, because: %s", i.getMessage());
-                quit.set(true);
-            } catch (Exception e) {
-                Logging.logError(Logging.LEVEL_INFO, this, e);
-                stage.setCurrentLogic(LogicID.LOAD);
-                quit.set(true);
+        final StageRequest op = queue.take();
+        final LSN lsn = op.getLSN();
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "Replicate requested: %s", lsn.toString());
+        
+        // check the LSN of the logEntry to write
+        if (lsn.getViewId() > stage.loadUntil.getViewId()) {
+            queue.add(op);
+            stage.setLogic(LOAD);
+            return;
+        } else if(lsn.getViewId() < stage.loadUntil.getViewId()){
+            stage.finalizeRequest(op);
+            return;
+        } else {
+            if (lsn.getSequenceNo() <= stage.loadUntil.getSequenceNo()) {
+                stage.finalizeRequest(op);
+                return;
+            } else if (lsn.getSequenceNo() > stage.loadUntil.getSequenceNo()+1) {
+                queue.add(op);
+                stage.missing = new LSNRange(lsn.getViewId(),
+                        stage.loadUntil.getSequenceNo()+1,lsn.getSequenceNo()-1);
+                stage.setLogic(REQUEST);
+                return;
+            } else { 
+                /* continue execution */ 
             }
         }
-    }
-
-    /**
-     * Switches to request-mode registering range at the missingRange field.
-     * @param range
-     */
-    private synchronized void request(LSNRange range) {
-        if (stage.setMissing(range) && stage.setCurrentLogic(LogicID.REQUEST)) {
-            if (!quit.get()) stage.interrupt();
-        }
+        
+        // try to finish the request
+        try {       
+            switch (op.getStageMethod()) {
+            
+            case REPLICATE :            
+                LogEntry le = (LogEntry) op.getArgs()[1];
+                // prepare the request
+                LSMDBRequest rq = SharedLogic.retrieveRequest(le, new SimplifiedBabuDBRequestListener() {
+                
+                    @Override
+                    void finished(Object context, BabuDBException error) {
+                        if (error == null) stage.dispatcher.updateLatestLSN(lsn); 
+                        stage.finalizeRequest(op);
+                    }
+                }, this, stage.dispatcher.dbs.getDatabaseManager().getDatabaseMap());
+                
+                // start the request
+                SharedLogic.writeLogEntry(rq, stage.dispatcher.dbs);
+                break;
+                
+            case CREATE : 
+                stage.dispatcher.dbs.getLogger().append(noOp);
+                stage.dispatcher.dbs.getDatabaseManager().proceedCreate((String) op.getArgs()[1], (Integer) op.getArgs()[2], null);
+                stage.dispatcher.updateLatestLSN(lsn);
+                stage.finalizeRequest(op);
+                break;
+                
+            case COPY :
+                stage.dispatcher.dbs.getLogger().append(noOp);
+                stage.dispatcher.dbs.getDatabaseManager().proceedCopy((String) op.getArgs()[1], (String) op.getArgs()[2]);
+                stage.dispatcher.updateLatestLSN(lsn);
+                stage.finalizeRequest(op);
+                break;
+                
+            case DELETE :
+                stage.dispatcher.dbs.getLogger().append(noOp);
+                stage.dispatcher.dbs.getDatabaseManager().proceedDelete((String) op.getArgs()[1], (Boolean) op.getArgs()[2]);
+                stage.dispatcher.updateLatestLSN(lsn);
+                stage.finalizeRequest(op);
+                break;
+                
+            default : assert(false);
+                stage.finalizeRequest(op);
+                break;
+            }
+            
+            stage.loadUntil = lsn;
+        } catch (BabuDBException e) {
+            // the insert failed due an DB error
+            Logging.logMessage(Logging.LEVEL_WARN, this, "Leaving basic-replication mode, because: %s", e.getMessage());
+            stage.setLogic(LOAD);
+        } 
     }
 }

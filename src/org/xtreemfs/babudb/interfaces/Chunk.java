@@ -11,6 +11,9 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class Chunk implements org.xtreemfs.babudb.interfaces.utils.Serializable
 {
+    public static final int TAG = 1070;
+
+    
     public Chunk() { fileName = ""; begin = 0; end = 0; }
     public Chunk( String fileName, long begin, long end ) { this.fileName = fileName; this.begin = begin; this.end = end; }
     public Chunk( Object from_hash_map ) { fileName = ""; begin = 0; end = 0; this.deserialize( from_hash_map ); }
@@ -23,14 +26,15 @@ public class Chunk implements org.xtreemfs.babudb.interfaces.utils.Serializable
     public long getEnd() { return end; }
     public void setEnd( long end ) { this.end = end; }
 
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::Chunk"; }    
-    public long getTypeId() { return 0; }
-
+    // Object
     public String toString()
     {
         return "Chunk( " + "\"" + fileName + "\"" + ", " + Long.toString( begin ) + ", " + Long.toString( end ) + " )";
     }
 
+    // Serializable
+    public int getTag() { return 1070; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::Chunk"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -40,15 +44,15 @@ public class Chunk implements org.xtreemfs.babudb.interfaces.utils.Serializable
     public void deserialize( HashMap<String, Object> from_hash_map )
     {
         this.fileName = ( String )from_hash_map.get( "fileName" );
-        this.begin = ( ( Long )from_hash_map.get( "begin" ) ).longValue();
-        this.end = ( ( Long )from_hash_map.get( "end" ) ).longValue();
+        this.begin = ( from_hash_map.get( "begin" ) instanceof Integer ) ? ( ( Integer )from_hash_map.get( "begin" ) ).longValue() : ( ( Long )from_hash_map.get( "begin" ) ).longValue();
+        this.end = ( from_hash_map.get( "end" ) instanceof Integer ) ? ( ( Integer )from_hash_map.get( "end" ) ).longValue() : ( ( Long )from_hash_map.get( "end" ) ).longValue();
     }
     
     public void deserialize( Object[] from_array )
     {
         this.fileName = ( String )from_array[0];
-        this.begin = ( ( Long )from_array[1] ).longValue();
-        this.end = ( ( Long )from_array[2] ).longValue();        
+        this.begin = ( from_array[1] instanceof Integer ) ? ( ( Integer )from_array[1] ).longValue() : ( ( Long )from_array[1] ).longValue();
+        this.end = ( from_array[2] instanceof Integer ) ? ( ( Integer )from_array[2] ).longValue() : ( ( Long )from_array[2] ).longValue();        
     }
 
     public void deserialize( ReusableBuffer buf )
@@ -86,7 +90,7 @@ public class Chunk implements org.xtreemfs.babudb.interfaces.utils.Serializable
 
     private String fileName;
     private long begin;
-    private long end;
+    private long end;    
 
 }
 

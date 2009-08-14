@@ -109,7 +109,7 @@ public class HeartbeatThread extends LifeCycleThread {
         dispatcher.master.heartbeat(latestLSN).registerListener(new RPCResponseAvailableListener() {
         
             @Override
-            public void responseAvailable(RPCResponse r) { r.freeBuffers(); }
+            public void responseAvailable(RPCResponse r) { if (r!=null) r.freeBuffers(); }
         });
     }
 
@@ -127,7 +127,9 @@ public class HeartbeatThread extends LifeCycleThread {
      * shut the thread down
      */
     public void shutdown() {
-        this.quit = true;
-        this.interrupt();
+        if (quit != true) {
+            this.quit = true;
+            this.interrupt();
+        }
     }
 }

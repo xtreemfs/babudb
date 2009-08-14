@@ -50,7 +50,7 @@ public class DeleteEvent extends Event {
      */
     @SuppressWarnings("unchecked")
     @Override
-    public EventResponse startEvent(Trigger trigger) throws NotEnoughAvailableSlavesException {
+    public EventResponse startEvent(Trigger trigger) throws NotEnoughAvailableSlavesException, InterruptedException {
         assert(trigger!=null);
         assert(trigger instanceof DeleteTrigger);        
         DeleteTrigger t = (DeleteTrigger) trigger; 
@@ -78,9 +78,9 @@ public class DeleteEvent extends Event {
                     } catch (Exception e) {
                         result.decrementPermittedFailures();
                         dispatcher.markSlaveAsDead(slave);
+                    } finally {
+                        if (r!=null) r.freeBuffers();
                     }
-                    
-                    r.freeBuffers();
                 }
             });
         }

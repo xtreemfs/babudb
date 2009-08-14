@@ -16,34 +16,65 @@ import java.nio.channels.FileChannel;
 import org.xtreemfs.include.common.config.SlaveConfig;
 
 /**
- * Methods to perform direct file Operations.
+ * <p>Methods to perform direct file Operations.<br><br>
+ * Crash consistency is ensured by a <code>BACKUP_LOCK_FILE</code> file, that is written to the backup directory, 
+ * if a backup is written completely and removed, if the new state was loaded successfully.</p>
  * 
  * @author flangner
  * @since 06/11/2009
  */
 
 public class DirectFileIO {
+    private static final String BACKUP_LOCK_FILE = ".backupLock";
     
     /**
-     * Removes depreciated backupFiles. 
+     * <p>First it removes the BACKUP_LOCK_FILE, than the depreciated backupFiles.</p>
      * 
      * @param configuration
      */
     public static void removeBackupFiles(SlaveConfig configuration) {
         File backupDir = new File(configuration.getBackupDir());
-        assert(backupDir.exists());
-        
-        cleanUpFiles(backupDir);
-        backupDir.delete();
-    }
-    
-    public static void replayBackupFiles(SlaveConfig configuration) {
-        // TODO
+        if (backupDir.exists()) { 
+            File backupLock = new File (backupDir.getPath()+File.separator+BACKUP_LOCK_FILE);
+            if (backupLock.exists()) backupLock.delete();
+            cleanUpFiles(backupDir);
+            backupDir.delete();
+        }
     }
     
     /**
-     * Makes a backup of the current files and removes them from the working directory.
-     * For slaves only.
+     * <p>Replays the backup files, if necessary.</p>
+     * 
+     * @param configuration
+     * @throws IOException 
+     */
+    public static void replayBackupFiles(SlaveConfig configuration) throws IOException {
+        File backupDir = new File(configuration.getBackupDir());
+        if (backupDir.exists()) {
+            File backupLock = new File (backupDir.getPath()+File.separator+BACKUP_LOCK_FILE);
+            if (backupLock.exists()) {
+                File baseDir = new File(configuration.getBaseDir());
+                File logDir = new File(configuration.getDbLogDir());
+                
+                cleanUpFiles(logDir);
+                cleanUpFiles(baseDir);
+                
+                File backupBaseDir = new File(backupDir.getPath()+File.separator+baseDir.getName());
+                File backupLogDir = new File(backupDir.getPath()+File.separator+logDir.getName());
+                copyDir(backupBaseDir, baseDir);
+                copyDir(backupLogDir, logDir);
+            }
+            
+            cleanUpFiles(backupDir);
+            backupDir.delete();
+        }
+    }
+    
+    /**
+     * <p>Makes a backup of the current files and removes them from the working directory.
+     * Writes the BACKUP_LOCK_FILE, when finished.
+     * <br><br>
+     * For slaves only. </p>
      * 
      * @param configuration
      * @throws IOException
@@ -52,24 +83,40 @@ public class DirectFileIO {
         File backupDir = new File(configuration.getBackupDir());
         File baseDir = new File(configuration.getBaseDir());
         File logDir = new File(configuration.getDbLogDir());
-        if (!backupDir.exists()) {
+        
+        if (!backupDir.exists())
             backupDir.mkdirs();
-            
+        
+        File backupLock = new File (backupDir.getPath()+File.separator+BACKUP_LOCK_FILE);
+        if (!backupLock.exists()) {
+            cleanUpFiles(backupDir);
             File backupBaseDir = new File(backupDir.getPath()+File.separator+baseDir.getName());
             backupBaseDir.mkdir();
             
             File backupLogDir = new File(backupDir.getPath()+File.separator+logDir.getName());
-            if (!backupBaseDir.getPath().equals(backupLogDir.getPath())) backupLogDir.mkdir();
+            backupLogDir.mkdir();
             
-            moveDir(baseDir, backupBaseDir);
-            moveDir(logDir, backupLogDir);
-        } else {       
-            cleanUpFiles(baseDir);
-            cleanUpFiles(logDir);
-        }
+            copyDir(baseDir, backupBaseDir);
+            copyDir(logDir, backupLogDir);
+            
+            backupLock.createNewFile();
+        }      
+        cleanUpFiles(baseDir);
+        cleanUpFiles(logDir);
     }
     
-    private static void moveDir(File sourceDir, File destDir) throws IOException {
+/*
+ * private methods
+ */
+    
+    /**
+     * <p>Copies the directories including files recursively from sourceDir to destDir.</p>
+     * 
+     * @param sourceDir
+     * @param destDir
+     * @throws IOException
+     */
+    private static void copyDir(File sourceDir, File destDir) throws IOException {
         File[] files = sourceDir.listFiles();
         File newFile = null;
         
@@ -78,26 +125,25 @@ public class DirectFileIO {
                 newFile = new File(destDir.getPath()+File.separator+f.getName());
                 newFile.createNewFile();
                 
-                moveFile(f, newFile);
+                copyFile(f, newFile);
             } else if (f.isDirectory()) {
                 newFile = new File(destDir.getPath()+File.separator+f.getName());
                 newFile.mkdir();
                 
-                moveDir(f, newFile);
-                f.delete();
+                copyDir(f, newFile);
             } else 
                 assert(false);
         }
     }
     
     /**
-     * Moves a single file from source to destination.
+     * <p>Copies a single file from source to destination.</p>
      * 
      * @param sourceFile
      * @param destFile
      * @throws IOException
      */
-    private static void moveFile(File sourceFile, File destFile) throws IOException {
+    private static void copyFile(File sourceFile, File destFile) throws IOException {
         assert (sourceFile.isFile());
         assert (destFile.isFile());
         
@@ -107,7 +153,6 @@ public class DirectFileIO {
             source = new FileInputStream(sourceFile).getChannel();
             destination = new FileOutputStream(destFile).getChannel();
             destination.transferFrom(source, 0, source.size());
-            sourceFile.delete();
         } finally {
             if(source != null) source.close();
             if(destination != null) destination.close();
@@ -120,17 +165,19 @@ public class DirectFileIO {
      * @param parent - the path to cleanUp.
      */
     private static void cleanUpFiles(File parent) {
-        assert (parent.isDirectory());
-        
-        // delete existing files
-        for (File f : parent.listFiles()) {
-            if (f.isFile())
-                f.delete();
-            else if (f.isDirectory()) {
-                cleanUpFiles(f);
-                f.delete();
-            } else {
-                assert(false);
+        if (parent.exists()) {
+            assert (parent.isDirectory());
+            
+            // delete existing files
+            for (File f : parent.listFiles()) {
+                if (f.isFile())
+                    f.delete();
+                else if (f.isDirectory()) {
+                    cleanUpFiles(f);
+                    f.delete();
+                } else {
+                    assert(false);
+                }
             }
         }
     }

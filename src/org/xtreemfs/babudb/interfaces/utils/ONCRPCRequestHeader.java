@@ -52,7 +52,7 @@ public class ONCRPCRequestHeader implements Serializable {
         return vers;
     }
 
-    public int getOperationNumber() {
+    public int getProcedure() {
         return proc;
     }
 
@@ -69,6 +69,7 @@ public class ONCRPCRequestHeader implements Serializable {
     }
 
     // Serializable    
+    public int getTag() { return getProcedure(); }
     public String getTypeName() { return "xtreemfs::interfaces::ONCRPCRequestHeader"; }    
     
     public void serialize(ONCRPCBufferWriter writer) {

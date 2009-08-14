@@ -50,7 +50,7 @@ public class CreateEvent extends Event {
      */
     @SuppressWarnings("unchecked")
     @Override
-    public EventResponse startEvent(Trigger trigger) throws NotEnoughAvailableSlavesException {
+    public EventResponse startEvent(Trigger trigger) throws NotEnoughAvailableSlavesException, InterruptedException {
         assert(trigger!=null);
         assert(trigger instanceof CreateTrigger);      
         
@@ -79,9 +79,9 @@ public class CreateEvent extends Event {
                     } catch (Exception e) {
                         result.decrementPermittedFailures();
                         dispatcher.markSlaveAsDead(slave);
+                    } finally {
+                        if (r!=null) r.freeBuffers();
                     }
-                    
-                    r.freeBuffers();
                 }
             });
         }

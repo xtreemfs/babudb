@@ -12,6 +12,9 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class replicateRequest implements org.xtreemfs.babudb.interfaces.utils.Request
 {
+    public static final int TAG = 1016;
+
+    
     public replicateRequest() { lsn = new LSN(); logEntry = new LogEntry(); }
     public replicateRequest( LSN lsn, LogEntry logEntry ) { this.lsn = lsn; this.logEntry = logEntry; }
     public replicateRequest( Object from_hash_map ) { lsn = new LSN(); logEntry = new LogEntry(); this.deserialize( from_hash_map ); }
@@ -22,14 +25,15 @@ public class replicateRequest implements org.xtreemfs.babudb.interfaces.utils.Re
     public LogEntry getLogEntry() { return logEntry; }
     public void setLogEntry( LogEntry logEntry ) { this.logEntry = logEntry; }
 
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::replicateRequest"; }    
-    public long getTypeId() { return 6; }
-
+    // Object
     public String toString()
     {
         return "replicateRequest( " + lsn.toString() + ", " + logEntry.toString() + " )";
     }
 
+    // Serializable
+    public int getTag() { return 1016; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::replicateRequest"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -77,12 +81,11 @@ public class replicateRequest implements org.xtreemfs.babudb.interfaces.utils.Re
     }
 
     // Request
-    public int getOperationNumber() { return 6; }
     public Response createDefaultResponse() { return new replicateResponse(); }
 
 
     private LSN lsn;
-    private LogEntry logEntry;
+    private LogEntry logEntry;    
 
 }
 

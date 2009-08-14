@@ -11,6 +11,9 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class LSNRange implements org.xtreemfs.babudb.interfaces.utils.Serializable
 {
+    public static final int TAG = 1080;
+
+    
     public LSNRange() { viewId = 0; sequenceStart = 0; sequenceEnd = 0; }
     public LSNRange( int viewId, long sequenceStart, long sequenceEnd ) { this.viewId = viewId; this.sequenceStart = sequenceStart; this.sequenceEnd = sequenceEnd; }
     public LSNRange( Object from_hash_map ) { viewId = 0; sequenceStart = 0; sequenceEnd = 0; this.deserialize( from_hash_map ); }
@@ -23,14 +26,15 @@ public class LSNRange implements org.xtreemfs.babudb.interfaces.utils.Serializab
     public long getSequenceEnd() { return sequenceEnd; }
     public void setSequenceEnd( long sequenceEnd ) { this.sequenceEnd = sequenceEnd; }
 
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::LSNRange"; }    
-    public long getTypeId() { return 0; }
-
+    // Object
     public String toString()
     {
         return "LSNRange( " + Integer.toString( viewId ) + ", " + Long.toString( sequenceStart ) + ", " + Long.toString( sequenceEnd ) + " )";
     }
 
+    // Serializable
+    public int getTag() { return 1080; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::LSNRange"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -39,16 +43,16 @@ public class LSNRange implements org.xtreemfs.babudb.interfaces.utils.Serializab
         
     public void deserialize( HashMap<String, Object> from_hash_map )
     {
-        this.viewId = ( ( Integer )from_hash_map.get( "viewId" ) ).intValue();
-        this.sequenceStart = ( ( Long )from_hash_map.get( "sequenceStart" ) ).longValue();
-        this.sequenceEnd = ( ( Long )from_hash_map.get( "sequenceEnd" ) ).longValue();
+        this.viewId = ( from_hash_map.get( "viewId" ) instanceof Integer ) ? ( ( Integer )from_hash_map.get( "viewId" ) ).intValue() : ( ( Long )from_hash_map.get( "viewId" ) ).intValue();
+        this.sequenceStart = ( from_hash_map.get( "sequenceStart" ) instanceof Integer ) ? ( ( Integer )from_hash_map.get( "sequenceStart" ) ).longValue() : ( ( Long )from_hash_map.get( "sequenceStart" ) ).longValue();
+        this.sequenceEnd = ( from_hash_map.get( "sequenceEnd" ) instanceof Integer ) ? ( ( Integer )from_hash_map.get( "sequenceEnd" ) ).longValue() : ( ( Long )from_hash_map.get( "sequenceEnd" ) ).longValue();
     }
     
     public void deserialize( Object[] from_array )
     {
-        this.viewId = ( ( Integer )from_array[0] ).intValue();
-        this.sequenceStart = ( ( Long )from_array[1] ).longValue();
-        this.sequenceEnd = ( ( Long )from_array[2] ).longValue();        
+        this.viewId = ( from_array[0] instanceof Integer ) ? ( ( Integer )from_array[0] ).intValue() : ( ( Long )from_array[0] ).intValue();
+        this.sequenceStart = ( from_array[1] instanceof Integer ) ? ( ( Integer )from_array[1] ).longValue() : ( ( Long )from_array[1] ).longValue();
+        this.sequenceEnd = ( from_array[2] instanceof Integer ) ? ( ( Integer )from_array[2] ).longValue() : ( ( Long )from_array[2] ).longValue();        
     }
 
     public void deserialize( ReusableBuffer buf )
@@ -86,7 +90,7 @@ public class LSNRange implements org.xtreemfs.babudb.interfaces.utils.Serializab
 
     private int viewId;
     private long sequenceStart;
-    private long sequenceEnd;
+    private long sequenceEnd;    
 
 }
 

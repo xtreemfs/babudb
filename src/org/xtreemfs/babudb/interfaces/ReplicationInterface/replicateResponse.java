@@ -12,18 +12,22 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class replicateResponse implements org.xtreemfs.babudb.interfaces.utils.Response
 {
+    public static final int TAG = 1016;
+
+    
     public replicateResponse() {  }
     public replicateResponse( Object from_hash_map ) {  this.deserialize( from_hash_map ); }
     public replicateResponse( Object[] from_array ) { this.deserialize( from_array ); }
 
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::replicateResponse"; }    
-    public long getTypeId() { return 6; }
-
+    // Object
     public String toString()
     {
         return "replicateResponse()";
     }
 
+    // Serializable
+    public int getTag() { return 1016; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::replicateResponse"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -62,10 +66,7 @@ return to_hash_map;
 
         return my_size;
     }
-
-    // Response
-    public int getOperationNumber() { return 6; }
-
+    
 
 }
 

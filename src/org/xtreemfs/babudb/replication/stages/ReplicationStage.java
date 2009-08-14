@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.lsmdb.LSN;
@@ -48,34 +47,35 @@ public class ReplicationStage extends LifeCycleThread {
     
     public final SlaveRequestDispatcher     dispatcher;
     
-    /** queue containing all incoming requests */
-    private final BlockingQueue<StageRequest>      q;
-    
     /** missingRange shared between PLAIN and REQUEST {@link Logic} */
-    private final AtomicReference<LSNRange> missing = new AtomicReference<LSNRange>(null);
+    public LSNRange missing = null;
     
     /** {@link LogicID} of the {@link Logic} currently used. */
-    private final AtomicReference<LogicID> currentLogic = new AtomicReference<LogicID>(BASIC);
+    private LogicID                             logicID = BASIC;
     
+    /** queue containing all incoming requests */
+    private final BlockingQueue<StageRequest>   q;
+        
     /** set to true if stage should shut down */
-    private volatile boolean                quit;
+    private volatile boolean                    quit;
     
     /** used for load balancing */
-    private final int                       MAX_Q;
-    private final AtomicInteger             numRequests = new AtomicInteger(0);
+    private final int                           MAX_Q;
+    private final AtomicInteger                 numRequests = new AtomicInteger(0);
     
     /** Table of different replication-behavior objects. */
-    private final Map<LogicID, Logic>       logics;
+    private final Map<LogicID, Logic>           logics;
     
     /**
      * 
      * @param dispatcher
      * @param max_q - 0 means infinite.
+     * @param queue - the backup of an existing queue.
      */
-    public ReplicationStage(SlaveRequestDispatcher dispatcher, int max_q) {
+    public ReplicationStage(SlaveRequestDispatcher dispatcher, int max_q, BlockingQueue<StageRequest> queue) {
         super("ReplicationStage");
+        this.q = (queue!=null) ? queue : new PriorityBlockingQueue<StageRequest>();
         this.MAX_Q = max_q;
-        this.q = new PriorityBlockingQueue<StageRequest>();
         this.quit = false;
         this.dispatcher = dispatcher;
         setLifeCycleListener(dispatcher);
@@ -85,14 +85,14 @@ public class ReplicationStage extends LifeCycleThread {
         // ---------------------
         logics = new HashMap<LogicID, Logic>();
         
-        Logic lc = new BasicLogic(this,q);
-        logics.put(lc.getId(), lc);
+        Logic lg = new BasicLogic(this,q);
+        logics.put(lg.getId(), lg);
         
-        lc = new RequestLogic(this);
-        logics.put(lc.getId(), lc);
+        lg = new RequestLogic(this);
+        logics.put(lg.getId(), lg);
         
-        lc = new LoadLogic(this);
-        logics.put(lc.getId(), lc);
+        lg = new LoadLogic(this);
+        logics.put(lg.getId(), lg);
     }
 
     /**
@@ -108,7 +108,7 @@ public class ReplicationStage extends LifeCycleThread {
     public void enqueueOperation(int stageOp, Object[] args) throws TooBusyException {
         if (numRequests.incrementAndGet()>MAX_Q && MAX_Q != 0){
             numRequests.decrementAndGet();
-            throw new TooBusyException("Operation '"+stageOp+"' could not be performed at the "+getName()+", because it is too busy.");
+            throw new TooBusyException(getName()+": Operation '"+stageOp+"' could not be performed.");
         }      
         q.add(new StageRequest(stageOp, args));
     }
@@ -117,8 +117,10 @@ public class ReplicationStage extends LifeCycleThread {
      * shut the stage thread down
      */
     public void shutdown() {
-        this.quit = true;
-        this.interrupt();
+        if (quit!=true) {
+            this.quit = true;
+            this.interrupt();
+        }
     }
 
     /**
@@ -130,6 +132,15 @@ public class ReplicationStage extends LifeCycleThread {
         return q.size();
     }
 
+    /**
+     * Needed for resetting the dispatcher.
+     * 
+     * @return the queue of the replication stage.
+     */
+    public BlockingQueue<StageRequest> backupQueue() {
+        return q;
+    }
+    
     /*
      * (non-Javadoc)
      * @see java.lang.Thread#run()
@@ -139,57 +150,50 @@ public class ReplicationStage extends LifeCycleThread {
         notifyStarted();
         while (!quit) {
             try {
-                logics.get(currentLogic.get()).run();
-            } catch(Exception e) {
-                Logging.logError(Logging.LEVEL_ERROR, this, e);
-                notifyCrashed(e);
-                quit = true;
+                logics.get(logicID).run();
+            } catch(ConnectionLostException cle) {
+                Logging.logError(Logging.LEVEL_WARN, this, cle);
+                // TODO failover!
+            } catch(InterruptedException ie) {
+                if (!quit){
+                    quit = true;
+                    notifyCrashed(ie);
+                    return;
+                }
             }
         }
         notifyStopped();
     }
-
+    
     /**
-     * Sets the {@link Logic} to use.
-     * 
-     * @param logic
-     * @return true, if logic could be set - no incompatible logic was set before.
+     * <p>Changes the currently used logic to the given <code>lgc</code>.</p>
+     * <b>WARNING: This operation is not thread safe!</b>
+     * <br>
+     * @param lgc
      */
-    public boolean setCurrentLogic(LogicID logic) {
-        if (logic.equals(REQUEST))
-            return currentLogic.compareAndSet(BASIC, logic);
-        else {
-            missing.set(null);
-            currentLogic.set(logic);
-            return true;
-        }
+    public void setLogic(LogicID lgc) {
+        Logging.logMessage(Logging.LEVEL_INFO, this, "Replication logic changed: %s", lgc.toString());
+        this.logicID = lgc;
     }
     
     /**
-     * @param missing the missingRange to set
-     * @return true, if range could be set - no other range is requested.
-     */
-    public boolean setMissing(LSNRange missing) {
-        return this.missing.compareAndSet(null, missing);
-    }
-
-    /**
-     * @return the missing
-     */
-    public LSNRange getMissing() {
-        return this.missing.get();
-    }
-    
-    /**
-     * Frees the given operation and decrements the number of requests.
+     * <p>Frees the given operation and decrements the number of requests.</p>
      * 
      * @param op
      */
     public void finalizeRequest(StageRequest op) {
         op.free();
-        assert(numRequests.getAndDecrement()>0) : "The number of requests cannot be negative.";
+        int numRqs = numRequests.getAndDecrement();
+        assert(numRqs>0) : "The number of requests cannot be negative.";
     }
 
+    /**
+     * @return the volatile flag, if this stage shall be terminated.
+     */
+    public boolean isTerminating() {
+        return quit;
+    }
+    
     /**
      * <p>{@link Exception} to throw if there are 
      * to much requests proceeded at the moment.</p>
@@ -200,7 +204,22 @@ public class ReplicationStage extends LifeCycleThread {
     public static final class TooBusyException extends Exception {
         private static final long serialVersionUID = 2823332601654877350L; 
         public TooBusyException(String string) {
-            super(string);
+            super("Participant is too busy at the moment: "+string);
+        }
+    }
+    
+    /**
+     * <p>{@link Exception} to throw if the 
+     * connection to the master is lost.</p>
+     * 
+     * @author flangner
+     * @since 08/14/2009
+     */
+    public static final class ConnectionLostException extends Exception {
+        private static final long serialVersionUID = -167881170791343478L;
+
+        public ConnectionLostException(String string) {
+            super("Connection to the participant is lost: "+string);
         }
     }
 }

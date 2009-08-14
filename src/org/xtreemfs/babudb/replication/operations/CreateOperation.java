@@ -31,7 +31,7 @@ public class CreateOperation extends Operation {
     
     public CreateOperation(SlaveRequestDispatcher dispatcher) {
         this.dispatcher = dispatcher;
-        procId = new createRequest().getOperationNumber();
+        procId = new createRequest().getTag();
     }
 
     /*
@@ -76,7 +76,7 @@ public class CreateOperation extends Operation {
             dispatcher.replication.enqueueOperation(CREATE, new Object[]{ lsn, request.getDatabaseName(), request.getNumIndices() });
             rq.sendSuccess(new createResponse());
         } catch (TooBusyException e) {
-            rq.sendReplicationException(ErrNo.TOO_BUSY.ordinal(), e.getMessage());
+            rq.sendReplicationException(ErrNo.TOO_BUSY.ordinal());
         }
     }
 

@@ -8,6 +8,8 @@
 
 package org.xtreemfs.babudb.lsmdb;
 
+import static org.xtreemfs.include.common.config.SlaveConfig.slaveProtection;
+
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -66,13 +68,8 @@ public class Checkpointer extends Thread {
      */
     private final long                         maxLogLength;
     
-    private final BabuDB                       master;
-    
-    /**
-     * TODO From the replication designated checkpoint.
-     */
-    private volatile LSN                       recommended;
-    
+    private final BabuDB                       dbs;
+        
     /**
      * a queue containing all snapshot materialization requests that should be
      * exectued before the next checkpoint is made
@@ -102,6 +99,11 @@ public class Checkpointer extends Thread {
     private final Object                       checkpointCompletionLock;
     
     /**
+     * Flag to notify the disk-logger about a viewId incrementation.
+     */
+    private boolean                            incrementViewId;
+    
+    /**
      * Creates a new database checkpointer
      * 
      * @param master
@@ -119,7 +121,7 @@ public class Checkpointer extends Thread {
         this.logger = logger;
         this.checkInterval = 1000l * checkInterval;
         this.maxLogLength = maxLogLength;
-        this.master = master;
+        this.dbs = master;
         this.requests = new LinkedList<MaterializationRequest>();
         this.checkpointLock = new Object();
         this.checkpointCompletionLock = new Object();
@@ -134,9 +136,11 @@ public class Checkpointer extends Thread {
      * The method blocks until the checkpoints (and all outstanding snapshots)
      * have been persistently written to disk.
      * 
+     * @param incViewId - set true, if the viewId should be incremented (replication issue).
+     * 
      */
-    public void checkpoint() throws BabuDBException {
-        
+    public void checkpoint(boolean incViewId) throws BabuDBException {
+        incrementViewId = incViewId;
         checkpointComplete = false;
         
         // notify the checkpointing thread to immediately process all requests
@@ -166,13 +170,17 @@ public class Checkpointer extends Thread {
      *             if the checkpoint was not successful
      * @throws InterruptedException
      */
-    private void createCheckpoint() throws BabuDBException, InterruptedException {
-        createCheckpoint(false);
+    public void checkpoint() throws BabuDBException, InterruptedException {
+        if (dbs.replication_isSlave()) {
+            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
+        }
+        
+        checkpoint(false);
     }
     
-    private void createCheckpoint(boolean incrementViewId) throws BabuDBException, InterruptedException {
+    private void createCheckpoint() throws BabuDBException, InterruptedException {
         
-        Collection<Database> databases = master.getDatabaseManager().getDatabases();
+        Collection<Database> databases = dbs.getDatabaseManager().getDatabases();
         
         synchronized (checkpointLock) {
             try {
@@ -200,7 +208,7 @@ public class Checkpointer extends Thread {
                 }
                 
                 // delete all logfile with LSN <= lastWrittenLSN
-                File f = new File(master.getConfig().getDbLogDir());
+                File f = new File(dbs.getConfig().getDbLogDir());
                 String[] logs = f.list(new FilenameFilter() {
                     
                     public boolean accept(File dir, String name) {
@@ -219,7 +227,7 @@ public class Checkpointer extends Thread {
                         LSN logLSN = new LSN(viewId, seqNo);
                         if (logLSN.compareTo(lastWrittenLSN) <= 0) {
                             Logging.logMessage(Logging.LEVEL_DEBUG, this, "deleting old db log file: " + log);
-                            f = new File(master.getConfig().getDbLogDir() + log);
+                            f = new File(dbs.getConfig().getDbLogDir() + log);
                             f.delete();
                         }
                     }
@@ -298,8 +306,8 @@ public class Checkpointer extends Thread {
                                 + "', snapshot: '" + rq.snap.getName() + "'");
                         
                         // write the snapshot
-                        ((DatabaseImpl) master.getDatabaseManager().getDatabase(rq.dbName)).writeSnapshot(
-                            rq.snapIDs, master.getSnapshotManager().getSnapshotDir(rq.dbName,
+                        ((DatabaseImpl) dbs.getDatabaseManager().getDatabase(rq.dbName)).writeSnapshot(
+                            rq.snapIDs, dbs.getSnapshotManager().getSnapshotDir(rq.dbName,
                                 rq.snap.getName()), rq.snap);
                         
                         // notify the snapshot manager about the completion of
@@ -333,20 +341,5 @@ public class Checkpointer extends Thread {
             down.set(true);
             down.notifyAll();
         }
-    }
-    
-    /**
-     * <p>
-     * For replication purpose.
-     * </p>
-     * <p>
-     * A master can mark the LSN as recommended for the next checkpoint, if all
-     * slaves have acknowledged replicas until LSN.
-     * </p>
-     * 
-     * @param lsn
-     */
-    public void designateRecommendedCheckpoint(LSN lsn) {
-        this.recommended = lsn;
     }
 }

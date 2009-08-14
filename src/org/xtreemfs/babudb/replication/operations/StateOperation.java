@@ -29,7 +29,7 @@ public class StateOperation extends Operation {
     
     public StateOperation(RequestDispatcher dispatcher) {
         this.dispatcher = dispatcher;
-        procId = new stateRequest().getOperationNumber();
+        procId = new stateRequest().getTag();
     }
 
     /*

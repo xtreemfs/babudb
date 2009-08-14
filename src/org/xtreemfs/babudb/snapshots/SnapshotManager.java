@@ -25,13 +25,13 @@ public class SnapshotManager {
     
     public static final String                 SNAP_DIR = "snapshots";
     
-    private BabuDB                             master;
+    private BabuDB                             dbs;
     
     private Map<String, Map<String, Snapshot>> snapshotDBs;
     
     public SnapshotManager(BabuDB master) throws BabuDBException {
         
-        this.master = master;
+        this.dbs = master;
         this.snapshotDBs = Collections.synchronizedMap(new HashMap<String, Map<String, Snapshot>>());
         
         // load persisted snapshots from disk
@@ -108,19 +108,19 @@ public class SnapshotManager {
         snapMap.put(snap.getName(), new Snapshot(null));
         
         // first, create new in-memory snapshots of all indices
-        int[] snapIds = ((DatabaseImpl) master.getDatabaseManager().getDatabase(dbName)).createSnapshot(snap
+        int[] snapIds = ((DatabaseImpl) dbs.getDatabaseManager().getDatabase(dbName)).createSnapshot(snap
                 .getIndices());
         
         // then, enqueue a snapshot materialization request in the
         // checkpointer's queue
-        master.getCheckpointer().addSnapshotMaterializationRequest(dbName, snapIds, snap, this);
+        dbs.getCheckpointer().addSnapshotMaterializationRequest(dbName, snapIds, snap, this);
         
         // as long as the snapshot has not been persisted yet, add a view on the
         // current snapshot in the original database to the snapshot DB map
         synchronized (snapshotDBs) {
             Snapshot s = snapMap.get(snap.getName());
             if (s.getView() == null)
-                s.setView(new InMemoryView(master, dbName, snap.getIndices(), snapIds));
+                s.setView(new InMemoryView(dbs, dbName, snap.getIndices(), snapIds));
         }
         
     }
@@ -131,7 +131,7 @@ public class SnapshotManager {
         // snapshot DB map with a disk index-based BabuDB instance if necessary
         synchronized (snapshotDBs) {
             Snapshot s = snapshotDBs.get(dbName).get(snap.getName());
-            s.setView(new DiskIndexView(getSnapshotDir(dbName, snap.getName()), master.getDatabaseManager()
+            s.setView(new DiskIndexView(getSnapshotDir(dbName, snap.getName()), dbs.getDatabaseManager()
                     .getDatabase(dbName).getComparators()));
         }
     }
@@ -154,7 +154,7 @@ public class SnapshotManager {
     }
     
     public String getSnapshotDir(String dbName, String snapshotName) {
-        return master.getConfig().getBaseDir() + dbName + "/" + SnapshotManager.SNAP_DIR + "/" + snapshotName;
+        return dbs.getConfig().getBaseDir() + dbName + "/" + SnapshotManager.SNAP_DIR + "/" + snapshotName;
     }
     
 }

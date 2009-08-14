@@ -54,7 +54,7 @@ public class MasterClient extends ONCRPCClient {
     public RPCResponse<LogEntries> getReplica (LSNRange range) {
         replicaRequest rq = new replicaRequest(range);
         
-        RPCResponse<LogEntries> r = (RPCResponse<LogEntries>) sendRequest(null, rq.getOperationNumber(), rq, new RPCResponseDecoder<LogEntries>() {
+        RPCResponse<LogEntries> r = (RPCResponse<LogEntries>) sendRequest(null, rq.getTag(), rq, new RPCResponseDecoder<LogEntries>() {
         
             /*
              * (non-Javadoc)
@@ -82,7 +82,7 @@ public class MasterClient extends ONCRPCClient {
         loadRequest rq = new loadRequest(
                 new org.xtreemfs.babudb.interfaces.LSN(lsn.getViewId(),lsn.getSequenceNo()));
         
-        RPCResponse<DBFileMetaDataSet> r = (RPCResponse<DBFileMetaDataSet>) sendRequest(null, rq.getOperationNumber(), rq, new RPCResponseDecoder<DBFileMetaDataSet>() {
+        RPCResponse<DBFileMetaDataSet> r = (RPCResponse<DBFileMetaDataSet>) sendRequest(null, rq.getTag(), rq, new RPCResponseDecoder<DBFileMetaDataSet>() {
         
             /*
              * (non-Javadoc)
@@ -109,7 +109,7 @@ public class MasterClient extends ONCRPCClient {
     public RPCResponse<ReusableBuffer> chunk (Chunk chunk) {
         chunkRequest rq = new chunkRequest(chunk);
         
-        RPCResponse<ReusableBuffer> r = (RPCResponse<ReusableBuffer>) sendRequest(null, rq.getOperationNumber(), rq, new RPCResponseDecoder<ReusableBuffer>() {
+        RPCResponse<ReusableBuffer> r = (RPCResponse<ReusableBuffer>) sendRequest(null, rq.getTag(), rq, new RPCResponseDecoder<ReusableBuffer>() {
         
             /*
              * (non-Javadoc)
@@ -136,7 +136,7 @@ public class MasterClient extends ONCRPCClient {
         heartbeatRequest rq = new heartbeatRequest(
                 new org.xtreemfs.babudb.interfaces.LSN(lsn.getViewId(),lsn.getSequenceNo()));
 
-        RPCResponse<?> r = sendRequest(null, rq.getOperationNumber(), rq, new RPCResponseDecoder<Object>() {
+        RPCResponse<?> r = sendRequest(null, rq.getTag(), rq, new RPCResponseDecoder<Object>() {
         
             /*
              * (non-Javadoc)

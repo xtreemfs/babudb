@@ -32,11 +32,11 @@ public class ReplicateTrigger implements Trigger {
     private Object context;
     
     public ReplicateTrigger() {
-        this.eventNumber = new replicateRequest().getOperationNumber();
+        this.eventNumber = new replicateRequest().getTag();
     }
    
     public ReplicateTrigger(org.xtreemfs.babudb.log.LogEntry le, BabuDBRequestListener listener, Object context, Checksum checksum) throws IOException {
-        this.eventNumber = new replicateRequest().getOperationNumber();
+        this.eventNumber = new replicateRequest().getTag();
         this.context = context;
         this.listener = listener;
         this.lsn = le.getLSN();

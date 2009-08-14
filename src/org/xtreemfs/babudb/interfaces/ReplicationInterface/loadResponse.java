@@ -12,6 +12,9 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class loadResponse implements org.xtreemfs.babudb.interfaces.utils.Response
 {
+    public static final int TAG = 1013;
+
+    
     public loadResponse() { returnValue = new DBFileMetaDataSet(); }
     public loadResponse( DBFileMetaDataSet returnValue ) { this.returnValue = returnValue; }
     public loadResponse( Object from_hash_map ) { returnValue = new DBFileMetaDataSet(); this.deserialize( from_hash_map ); }
@@ -20,14 +23,15 @@ public class loadResponse implements org.xtreemfs.babudb.interfaces.utils.Respon
     public DBFileMetaDataSet getReturnValue() { return returnValue; }
     public void setReturnValue( DBFileMetaDataSet returnValue ) { this.returnValue = returnValue; }
 
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::loadResponse"; }    
-    public long getTypeId() { return 3; }
-
+    // Object
     public String toString()
     {
         return "loadResponse( " + returnValue.toString() + " )";
     }
 
+    // Serializable
+    public int getTag() { return 1013; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::loadResponse"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -68,11 +72,8 @@ public class loadResponse implements org.xtreemfs.babudb.interfaces.utils.Respon
         return my_size;
     }
 
-    // Response
-    public int getOperationNumber() { return 3; }
 
-
-    private DBFileMetaDataSet returnValue;
+    private DBFileMetaDataSet returnValue;    
 
 }
 

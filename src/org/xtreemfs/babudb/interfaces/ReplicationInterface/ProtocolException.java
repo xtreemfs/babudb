@@ -1,4 +1,4 @@
-package org.xtreemfs.babudb.interfaces.Exceptions;
+package org.xtreemfs.babudb.interfaces.ReplicationInterface;
 
 import org.xtreemfs.babudb.*;
 import org.xtreemfs.babudb.interfaces.*;
@@ -12,6 +12,9 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class ProtocolException extends org.xtreemfs.babudb.interfaces.utils.ONCRPCException
 {
+    public static final int TAG = 1100;
+
+    
     public ProtocolException() { accept_stat = 0; error_code = 0; stack_trace = ""; }
     public ProtocolException( int accept_stat, int error_code, String stack_trace ) { this.accept_stat = accept_stat; this.error_code = error_code; this.stack_trace = stack_trace; }
     public ProtocolException( Object from_hash_map ) { accept_stat = 0; error_code = 0; stack_trace = ""; this.deserialize( from_hash_map ); }
@@ -24,14 +27,15 @@ public class ProtocolException extends org.xtreemfs.babudb.interfaces.utils.ONCR
     public String getStack_trace() { return stack_trace; }
     public void setStack_trace( String stack_trace ) { this.stack_trace = stack_trace; }
 
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::Exceptions::ProtocolException"; }    
-    public long getTypeId() { return 0; }
-
+    // Object
     public String toString()
     {
         return "ProtocolException( " + Integer.toString( accept_stat ) + ", " + Integer.toString( error_code ) + ", " + "\"" + stack_trace + "\"" + " )";
     }
 
+    // Serializable
+    public int getTag() { return 1100; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::ProtocolException"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -40,15 +44,15 @@ public class ProtocolException extends org.xtreemfs.babudb.interfaces.utils.ONCR
         
     public void deserialize( HashMap<String, Object> from_hash_map )
     {
-        this.accept_stat = ( ( Integer )from_hash_map.get( "accept_stat" ) ).intValue();
-        this.error_code = ( ( Integer )from_hash_map.get( "error_code" ) ).intValue();
+        this.accept_stat = ( from_hash_map.get( "accept_stat" ) instanceof Integer ) ? ( ( Integer )from_hash_map.get( "accept_stat" ) ).intValue() : ( ( Long )from_hash_map.get( "accept_stat" ) ).intValue();
+        this.error_code = ( from_hash_map.get( "error_code" ) instanceof Integer ) ? ( ( Integer )from_hash_map.get( "error_code" ) ).intValue() : ( ( Long )from_hash_map.get( "error_code" ) ).intValue();
         this.stack_trace = ( String )from_hash_map.get( "stack_trace" );
     }
     
     public void deserialize( Object[] from_array )
     {
-        this.accept_stat = ( ( Integer )from_array[0] ).intValue();
-        this.error_code = ( ( Integer )from_array[1] ).intValue();
+        this.accept_stat = ( from_array[0] instanceof Integer ) ? ( ( Integer )from_array[0] ).intValue() : ( ( Long )from_array[0] ).intValue();
+        this.error_code = ( from_array[1] instanceof Integer ) ? ( ( Integer )from_array[1] ).intValue() : ( ( Long )from_array[1] ).intValue();
         this.stack_trace = ( String )from_array[2];        
     }
 
@@ -87,7 +91,7 @@ public class ProtocolException extends org.xtreemfs.babudb.interfaces.utils.ONCR
 
     private int accept_stat;
     private int error_code;
-    private String stack_trace;
+    private String stack_trace;    
 
 }
 

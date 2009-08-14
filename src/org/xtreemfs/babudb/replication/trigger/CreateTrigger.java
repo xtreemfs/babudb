@@ -26,11 +26,11 @@ public class CreateTrigger implements Trigger {
     private int indices;
     
     public CreateTrigger() {
-        this.eventNumber = new createRequest().getOperationNumber();
+        this.eventNumber = new createRequest().getTag();
     }
    
     public CreateTrigger(LSN lsn, String dbName, int numIndices) {
-        this.eventNumber = new createRequest().getOperationNumber();
+        this.eventNumber = new createRequest().getTag();
         this.lsn = lsn;
         this.db = dbName;
         this.indices = numIndices;

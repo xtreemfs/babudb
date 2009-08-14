@@ -11,6 +11,9 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class LSN implements org.xtreemfs.babudb.interfaces.utils.Serializable
 {
+    public static final int TAG = 1060;
+
+    
     public LSN() { viewId = 0; sequenceNo = 0; }
     public LSN( int viewId, long sequenceNo ) { this.viewId = viewId; this.sequenceNo = sequenceNo; }
     public LSN( Object from_hash_map ) { viewId = 0; sequenceNo = 0; this.deserialize( from_hash_map ); }
@@ -21,14 +24,15 @@ public class LSN implements org.xtreemfs.babudb.interfaces.utils.Serializable
     public long getSequenceNo() { return sequenceNo; }
     public void setSequenceNo( long sequenceNo ) { this.sequenceNo = sequenceNo; }
 
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::LSN"; }    
-    public long getTypeId() { return 0; }
-
+    // Object
     public String toString()
     {
         return "LSN( " + Integer.toString( viewId ) + ", " + Long.toString( sequenceNo ) + " )";
     }
 
+    // Serializable
+    public int getTag() { return 1060; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::LSN"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -37,14 +41,14 @@ public class LSN implements org.xtreemfs.babudb.interfaces.utils.Serializable
         
     public void deserialize( HashMap<String, Object> from_hash_map )
     {
-        this.viewId = ( ( Integer )from_hash_map.get( "viewId" ) ).intValue();
-        this.sequenceNo = ( ( Long )from_hash_map.get( "sequenceNo" ) ).longValue();
+        this.viewId = ( from_hash_map.get( "viewId" ) instanceof Integer ) ? ( ( Integer )from_hash_map.get( "viewId" ) ).intValue() : ( ( Long )from_hash_map.get( "viewId" ) ).intValue();
+        this.sequenceNo = ( from_hash_map.get( "sequenceNo" ) instanceof Integer ) ? ( ( Integer )from_hash_map.get( "sequenceNo" ) ).longValue() : ( ( Long )from_hash_map.get( "sequenceNo" ) ).longValue();
     }
     
     public void deserialize( Object[] from_array )
     {
-        this.viewId = ( ( Integer )from_array[0] ).intValue();
-        this.sequenceNo = ( ( Long )from_array[1] ).longValue();        
+        this.viewId = ( from_array[0] instanceof Integer ) ? ( ( Integer )from_array[0] ).intValue() : ( ( Long )from_array[0] ).intValue();
+        this.sequenceNo = ( from_array[1] instanceof Integer ) ? ( ( Integer )from_array[1] ).longValue() : ( ( Long )from_array[1] ).longValue();        
     }
 
     public void deserialize( ReusableBuffer buf )
@@ -77,7 +81,7 @@ public class LSN implements org.xtreemfs.babudb.interfaces.utils.Serializable
 
 
     private int viewId;
-    private long sequenceNo;
+    private long sequenceNo;    
 
 }
 

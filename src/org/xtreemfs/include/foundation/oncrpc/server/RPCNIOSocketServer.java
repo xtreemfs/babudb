@@ -43,12 +43,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.include.common.logging.Logging.Category;
 import org.xtreemfs.include.foundation.LifeCycleThread;
 import org.xtreemfs.include.foundation.pinky.SSLOptions;
 import org.xtreemfs.include.foundation.pinky.channels.ChannelIO;
 import org.xtreemfs.include.foundation.pinky.channels.SSLChannelIO;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCRecordFragmentHeader;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCRequestHeader;
+import org.xtreemfs.babudb.interfaces.utils.ONCRPCResponseHeader;
 
 /**
  *
@@ -166,7 +168,7 @@ public class RPCNIOSocketServer extends LifeCycleThread {
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "response sent");
         final ClientConnection connection = request.getConnection();
         if (!connection.isConnectionClosed()) {
-            synchronized (connection) {
+            synchronized (connection) { // XXX what happens if the connection is closed right now?! will the buffers be freed?
                 boolean isEmpty = connection.getPendingResponses().isEmpty();
                 connection.addPendingResponse(request);
                 if (isEmpty) {
@@ -340,7 +342,10 @@ public class RPCNIOSocketServer extends LifeCycleThread {
                                     con.getOpenRequests().incrementAndGet();
                                     Logging.logMessage(Logging.LEVEL_DEBUG, this, "request received");
                                     pendingRequests++;
-                                    receiveRequest(key, rq, con);
+                                    if (!receiveRequest(key, rq, con)) {
+                                        closeConnection(key);
+                                        return;
+                                    }
                                 }
                             }
                         }
@@ -586,28 +591,49 @@ public class RPCNIOSocketServer extends LifeCycleThread {
             }
         }
     }
-
-    private void receiveRequest(SelectionKey key, ONCRPCRecord record, ClientConnection con) {
+    
+    /**
+     *
+     * @param key
+     * @param record
+     * @param con
+     * @return true on success, false on error
+     */
+    private boolean receiveRequest(SelectionKey key, ONCRPCRecord record, ClientConnection con) {
         try {
             ONCRPCRequest rq = new ONCRPCRequest(record);
 
             final ONCRPCRequestHeader hdr = rq.getRequestHeader();
             if (hdr.getRpcVersion() != 2) {
-                rq.sendGarbageArgs("Invalid RPC version: "+hdr.getRpcVersion()+", expected 2");
-                return;
+                Logging.logMessage(Logging.LEVEL_INFO, Category.net, this,
+                    "Invalid RPC version: %d, expected 2", hdr.getRpcVersion());
+                rq.sendErrorCode(ONCRPCResponseHeader.ACCEPT_STAT_PROG_MISMATCH);
+                return true;
             }
             if (hdr.getMessageType() != 0) {
-                rq.sendGarbageArgs("Invalid message type: "+hdr.getMessageType()+", expected 0");
-                return;
+                Logging.logMessage(Logging.LEVEL_INFO, Category.net, this,
+                    "Invalid message type: %d, expected 0", hdr.getRpcVersion());
+                rq.sendErrorCode(ONCRPCResponseHeader.ACCEPT_STAT_GARBAGE_ARGS);
+                return true;
             }
 
             receiver.receiveRecord(rq);
+            return true;
         } catch (IllegalArgumentException ex) {
-            System.out.println("received invalid request header: "+ex);
-            closeConnection(key);
+            Logging.logMessage(Logging.LEVEL_ERROR, Category.net,this,"invalid ONCRPC header received: "+ex);
+            if (Logging.isDebug()) {
+                Logging.logError(Logging.LEVEL_DEBUG, this,ex);
+            }
+            return false;
+            //closeConnection(key);
         } catch (BufferUnderflowException ex) {
-            //close connection if the header cannot be parsed
-            closeConnection(key);
+            // close connection if the header cannot be parsed
+            Logging.logMessage(Logging.LEVEL_ERROR, Category.net,this,"invalid ONCRPC header received: "+ex);
+            if (Logging.isDebug()) {
+                Logging.logError(Logging.LEVEL_DEBUG, this,ex);
+            }
+            return false;
+            //closeConnection(key);
         }
     }
 

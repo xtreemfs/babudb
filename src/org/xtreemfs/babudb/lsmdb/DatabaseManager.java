@@ -36,7 +36,7 @@ import org.xtreemfs.include.common.util.FSUtils;
 
 public class DatabaseManager {
     
-    private BabuDB                                 master;
+    private BabuDB                                 dbs;
     
     /**
      * Mapping from database name to database id
@@ -65,7 +65,7 @@ public class DatabaseManager {
     
     public DatabaseManager(BabuDB master) throws BabuDBException {
         
-        this.master = master;
+        this.dbs = master;
         
         this.dbNames = new HashMap<String, Database>();
         this.databases = new HashMap<Integer, Database>();
@@ -161,7 +161,7 @@ public class DatabaseManager {
     public Database createDatabase(String databaseName, int numIndices, ByteRangeComparator[] comparators)
         throws BabuDBException {
         
-        if (master.replication_isSlave()) {
+        if (dbs.replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
         
@@ -199,7 +199,7 @@ public class DatabaseManager {
                     + "' already exists");
             }
             final int dbId = nextDbId++;
-            db = new DatabaseImpl(master, new LSMDatabase(databaseName, dbId, master.getConfig().getBaseDir()
+            db = new DatabaseImpl(dbs, new LSMDatabase(databaseName, dbId, dbs.getConfig().getBaseDir()
                 + databaseName + File.separatorChar, numIndices, false, comparators));
             databases.put(dbId, db);
             dbNames.put(databaseName, db);
@@ -208,8 +208,8 @@ public class DatabaseManager {
         
         // if this is a master it sends the create-details to all slaves.
         // otherwise nothing happens
-        if (master.getReplicationManager() != null && master.getReplicationManager().isMaster()) {
-            master.getReplicationManager().create(noOpInsert(), databaseName, numIndices);
+        if (dbs.getReplicationManager() != null && dbs.getReplicationManager().isMaster()) {
+            dbs.getReplicationManager().create(noOpInsert(), databaseName, numIndices);
         }
         
         return db;
@@ -225,7 +225,7 @@ public class DatabaseManager {
      * @throws BabuDBException
      */
     public void deleteDatabase(String databaseName, boolean deleteFiles) throws BabuDBException {
-        if (master.replication_isSlave()) {
+        if (dbs.replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
         
@@ -251,7 +251,7 @@ public class DatabaseManager {
             
             saveDBconfig();
             if (deleteFiles) {
-                File dbDir = new File(master.getConfig().getBaseDir(), databaseName);
+                File dbDir = new File(dbs.getConfig().getBaseDir(), databaseName);
                 if (dbDir.exists())
                     FSUtils.delTree(dbDir);
             }
@@ -259,8 +259,8 @@ public class DatabaseManager {
         
         // if this is a master it sends the delete-details to all slaves.
         // otherwise nothing happens
-        if (master.getReplicationManager() != null && master.getReplicationManager().isMaster()) {
-            master.getReplicationManager().delete(noOpInsert(), databaseName, deleteFiles);
+        if (dbs.getReplicationManager() != null && dbs.getReplicationManager().isMaster()) {
+            dbs.getReplicationManager().delete(noOpInsert(), databaseName, deleteFiles);
         }
     }
     
@@ -273,18 +273,16 @@ public class DatabaseManager {
      *            the database to copy
      * @param destDB
      *            the new database's name
-     * @param rangeStart
-     * @param rangeEnd
      * @throws BabuDBException
      * @throws IOException
      */
-    public void copyDatabase(String sourceDB, String destDB, byte[] rangeStart, byte[] rangeEnd)
+    public void copyDatabase(String sourceDB, String destDB)
         throws BabuDBException, IOException, InterruptedException {
-        if (master.replication_isSlave()) {
+        if (dbs.replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
         
-        proceedCopy(sourceDB, destDB, rangeStart, rangeEnd);
+        proceedCopy(sourceDB, destDB);
     }
     
     /**
@@ -292,13 +290,11 @@ public class DatabaseManager {
      * 
      * @param sourceDB
      * @param destDB
-     * @param rangeStart
-     * @param rangeEnd
      * @throws BabuDBException
      * @throws IOException
      */
-    public void proceedCopy(String sourceDB, String destDB, byte[] rangeStart, byte[] rangeEnd)
-        throws BabuDBException, IOException, InterruptedException {
+    public void proceedCopy(String sourceDB, String destDB)
+        throws BabuDBException, InterruptedException {
         
         final DatabaseImpl sDB = (DatabaseImpl) dbNames.get(sourceDB);
         if (sDB == null) {
@@ -318,17 +314,10 @@ public class DatabaseManager {
         }
         // materializing the snapshot takes some time, we should not hold the
         // lock meanwhile!
-        
-        int[] snaps = sDB.createSnapshot();
-        File dbDir = new File(master.getConfig().getBaseDir() + destDB);
-        if (!dbDir.exists()) {
-            dbDir.mkdirs();
-        }
-        
-        sDB.writeSnapshot(snaps, master.getConfig().getBaseDir() + destDB + File.separatorChar);
+        sDB.proceedSnapshot(destDB);
         
         // create new DB and load from snapshot
-        Database newDB = new DatabaseImpl(master, new LSMDatabase(destDB, dbId, master.getConfig()
+        Database newDB = new DatabaseImpl(dbs, new LSMDatabase(destDB, dbId, dbs.getConfig()
                 .getBaseDir()
             + destDB + File.separatorChar, sDB.getLSMDB().getIndexCount(), true, sDB.getComparators()));
         
@@ -341,8 +330,8 @@ public class DatabaseManager {
         
         // if this is a master it sends the copy-details to all slaves.
         // otherwise nothing happens
-        if (master.getReplicationManager() != null && master.getReplicationManager().isMaster()) {
-            master.getReplicationManager().copy(noOpInsert(), sourceDB, destDB);
+        if (dbs.getReplicationManager() != null && dbs.getReplicationManager().isMaster()) {
+            dbs.getReplicationManager().copy(noOpInsert(), sourceDB, destDB);
         }
     }
     
@@ -358,7 +347,7 @@ public class DatabaseManager {
      */
     private void loadDBs() throws BabuDBException {
         try {
-            File f = new File(master.getConfig().getBaseDir() + master.getConfig().getDbCfgFile());
+            File f = new File(dbs.getConfig().getBaseDir() + dbs.getConfig().getDbCfgFile());
             if (f.exists()) {
                 ObjectInputStream ois = new ObjectInputStream(new FileInputStream(f));
                 final int dbFormatVer = ois.readInt();
@@ -388,7 +377,7 @@ public class DatabaseManager {
                         comps[idx] = comp;
                     }
                     
-                    Database db = new DatabaseImpl(master, new LSMDatabase(dbName, dbId, master.getConfig()
+                    Database db = new DatabaseImpl(dbs, new LSMDatabase(dbName, dbId, dbs.getConfig()
                             .getBaseDir()
                         + dbName + File.separatorChar, numIndex, true, comps));
                     databases.put(dbId, db);
@@ -453,7 +442,7 @@ public class DatabaseManager {
         
         // append it to the DiskLogger
         try {
-            master.getLogger().append(dummy);
+            dbs.getLogger().append(dummy);
             
             synchronized (result) {
                 if (!result.done)
@@ -482,8 +471,8 @@ public class DatabaseManager {
          */
         synchronized (dbModificationLock) {
             try {
-                FileOutputStream fos = new FileOutputStream(master.getConfig().getBaseDir()
-                    + master.getConfig().getDbCfgFile() + ".in_progress");
+                FileOutputStream fos = new FileOutputStream(dbs.getConfig().getBaseDir()
+                    + dbs.getConfig().getDbCfgFile() + ".in_progress");
                 ObjectOutputStream oos = new ObjectOutputStream(fos);
                 oos.writeInt(BabuDB.BABUDB_DB_FORMAT_VERSION);
                 oos.writeInt(databases.size());
@@ -503,9 +492,9 @@ public class DatabaseManager {
                 fos.flush();
                 fos.getFD().sync();
                 oos.close();
-                File f = new File(master.getConfig().getBaseDir() + master.getConfig().getDbCfgFile()
+                File f = new File(dbs.getConfig().getBaseDir() + dbs.getConfig().getDbCfgFile()
                     + ".in_progress");
-                f.renameTo(new File(master.getConfig().getBaseDir() + master.getConfig().getDbCfgFile()));
+                f.renameTo(new File(dbs.getConfig().getBaseDir() + dbs.getConfig().getDbCfgFile()));
             } catch (IOException ex) {
                 throw new BabuDBException(ErrorCode.IO_ERROR, "unable to save database configuration", ex);
             }

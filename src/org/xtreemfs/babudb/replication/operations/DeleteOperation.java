@@ -31,7 +31,7 @@ public class DeleteOperation extends Operation {
     
     public DeleteOperation(SlaveRequestDispatcher dispatcher) {
         this.dispatcher = dispatcher;
-        procId = new deleteRequest().getOperationNumber();
+        procId = new deleteRequest().getTag();
     }
 
     /*
@@ -76,7 +76,7 @@ public class DeleteOperation extends Operation {
             dispatcher.replication.enqueueOperation(DELETE, new Object[]{ lsn, request.getDatabaseName(), request.getDeleteFiles() });
             rq.sendSuccess(new deleteResponse());
         } catch (TooBusyException e) {
-            rq.sendReplicationException(ErrNo.TOO_BUSY.ordinal(), e.getMessage());
+            rq.sendReplicationException(ErrNo.TOO_BUSY.ordinal());
         }
     }
 }

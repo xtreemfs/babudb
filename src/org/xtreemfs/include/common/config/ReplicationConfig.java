@@ -6,11 +6,15 @@
 
 package org.xtreemfs.include.common.config;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Properties;
+
+import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
+import org.xtreemfs.include.foundation.pinky.SSLOptions;
 
 /**
  * Reading configurations from the replication-config-file.
@@ -25,20 +29,8 @@ public abstract class ReplicationConfig extends BabuDBConfig {
     protected int         port;
     
     protected InetAddress address;
-    
-    protected boolean     useSSL;
-    
-    protected String      serviceCredsFile;
-    
-    protected String      serviceCredsPassphrase;
-    
-    protected String      serviceCredsContainer;
-    
-    protected String      trustedCertsFile;
-    
-    protected String      trustedCertsPassphrase;
-    
-    protected String      trustedCertsContainer;
+        
+    protected SSLOptions  sslOptions;
     
     protected List<InetSocketAddress>   slaves;
     
@@ -60,6 +52,21 @@ public abstract class ReplicationConfig extends BabuDBConfig {
         super(filename);
     }
     
+    public ReplicationConfig(String baseDir, String logDir, int numThreads, long maxLogFileSize, 
+            int checkInterval, SyncMode mode, int pseudoSyncWait, int maxQ,
+            int port, InetAddress address, InetSocketAddress master, List<InetSocketAddress> slaves, 
+            int localTimeRenew, SSLOptions sslOptions, int repMaxQ) {
+        
+        super(baseDir, logDir, numThreads, maxLogFileSize, checkInterval, mode, pseudoSyncWait, maxQ);
+        this.master = master;
+        this.slaves = slaves;
+        this.maxQ = repMaxQ;
+        this.localTimeRenew = localTimeRenew;
+        this.address = address;
+        this.port = port;
+        this.sslOptions = sslOptions;
+    }
+    
     public void read() throws IOException {
         super.read();
         
@@ -71,18 +78,16 @@ public abstract class ReplicationConfig extends BabuDBConfig {
         
         this.localTimeRenew = this.readOptionalInt("localTimeRenew", 3000);
         
-        if (this.useSSL = this.readRequiredBoolean("ssl.enabled")) {
-            this.serviceCredsFile = this.readRequiredString("ssl.service_creds");
-            
-            this.serviceCredsPassphrase = this.readRequiredString("ssl.service_creds.pw");
-            
-            this.serviceCredsContainer = this.readRequiredString("ssl.service_creds.container");
-            
-            this.trustedCertsFile = this.readRequiredString("ssl.trusted_certs");
-            
-            this.trustedCertsPassphrase = this.readRequiredString("ssl.trusted_certs.pw");
-            
-            this.trustedCertsContainer = this.readRequiredString("ssl.trusted_certs.container");
+        if (this.readRequiredBoolean("ssl.enabled")) {
+            this.sslOptions = new SSLOptions(
+                    new FileInputStream(this.readRequiredString("ssl.service_creds")),
+                    this.readRequiredString("ssl.service_creds.pw"), 
+                    this.readRequiredString("ssl.service_creds.container"),
+                    new FileInputStream(this.readRequiredString("ssl.trusted_certs")),
+                    this.readRequiredString("ssl.trusted_certs.pw"),
+                    this.readRequiredString("ssl.trusted_certs.container"),
+                    this.readRequiredBoolean("ssl.authenticationWithoutEncryption")
+                    );
         }
     }
     
@@ -94,33 +99,9 @@ public abstract class ReplicationConfig extends BabuDBConfig {
         return this.address;
     }
     
-    public boolean isUsingSSL() {
-        return this.useSSL;
+    public SSLOptions getSSLOptions() {
+        return this.sslOptions;
     }
-    
-    public String getServiceCredsContainer() {
-        return this.serviceCredsContainer;
-    }
-    
-    public String getServiceCredsFile() {
-        return this.serviceCredsFile;
-    }
-    
-    public String getServiceCredsPassphrase() {
-        return this.serviceCredsPassphrase;
-    }
-    
-    public String getTrustedCertsContainer() {
-        return this.trustedCertsContainer;
-    }
-    
-    public String getTrustedCertsFile() {
-        return this.trustedCertsFile;
-    }
-    
-    public String getTrustedCertsPassphrase() {
-        return this.trustedCertsPassphrase;
-    }   
     
     public InetSocketAddress getMaster(){
         return this.master;

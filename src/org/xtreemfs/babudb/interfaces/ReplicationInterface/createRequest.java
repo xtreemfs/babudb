@@ -12,6 +12,9 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class createRequest implements org.xtreemfs.babudb.interfaces.utils.Request
 {
+    public static final int TAG = 1017;
+
+    
     public createRequest() { lsn = new LSN(); databaseName = ""; numIndices = 0; }
     public createRequest( LSN lsn, String databaseName, int numIndices ) { this.lsn = lsn; this.databaseName = databaseName; this.numIndices = numIndices; }
     public createRequest( Object from_hash_map ) { lsn = new LSN(); databaseName = ""; numIndices = 0; this.deserialize( from_hash_map ); }
@@ -24,14 +27,15 @@ public class createRequest implements org.xtreemfs.babudb.interfaces.utils.Reque
     public int getNumIndices() { return numIndices; }
     public void setNumIndices( int numIndices ) { this.numIndices = numIndices; }
 
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::createRequest"; }    
-    public long getTypeId() { return 7; }
-
+    // Object
     public String toString()
     {
         return "createRequest( " + lsn.toString() + ", " + "\"" + databaseName + "\"" + ", " + Integer.toString( numIndices ) + " )";
     }
 
+    // Serializable
+    public int getTag() { return 1017; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::createRequest"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -42,14 +46,14 @@ public class createRequest implements org.xtreemfs.babudb.interfaces.utils.Reque
     {
         this.lsn.deserialize( from_hash_map.get( "lsn" ) );
         this.databaseName = ( String )from_hash_map.get( "databaseName" );
-        this.numIndices = ( ( Integer )from_hash_map.get( "numIndices" ) ).intValue();
+        this.numIndices = ( from_hash_map.get( "numIndices" ) instanceof Integer ) ? ( ( Integer )from_hash_map.get( "numIndices" ) ).intValue() : ( ( Long )from_hash_map.get( "numIndices" ) ).intValue();
     }
     
     public void deserialize( Object[] from_array )
     {
         this.lsn.deserialize( from_array[0] );
         this.databaseName = ( String )from_array[1];
-        this.numIndices = ( ( Integer )from_array[2] ).intValue();        
+        this.numIndices = ( from_array[2] instanceof Integer ) ? ( ( Integer )from_array[2] ).intValue() : ( ( Long )from_array[2] ).intValue();        
     }
 
     public void deserialize( ReusableBuffer buf )
@@ -85,13 +89,12 @@ public class createRequest implements org.xtreemfs.babudb.interfaces.utils.Reque
     }
 
     // Request
-    public int getOperationNumber() { return 7; }
     public Response createDefaultResponse() { return new createResponse(); }
 
 
     private LSN lsn;
     private String databaseName;
-    private int numIndices;
+    private int numIndices;    
 
 }
 

@@ -1,4 +1,4 @@
-package org.xtreemfs.babudb.interfaces.Exceptions;
+package org.xtreemfs.babudb.interfaces.ReplicationInterface;
 
 import org.xtreemfs.babudb.*;
 import org.xtreemfs.babudb.interfaces.*;
@@ -12,6 +12,9 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class errnoException extends org.xtreemfs.babudb.interfaces.utils.ONCRPCException
 {
+    public static final int TAG = 1101;
+
+    
     public errnoException() { error_code = 0; error_message = ""; stack_trace = ""; }
     public errnoException( int error_code, String error_message, String stack_trace ) { this.error_code = error_code; this.error_message = error_message; this.stack_trace = stack_trace; }
     public errnoException( Object from_hash_map ) { error_code = 0; error_message = ""; stack_trace = ""; this.deserialize( from_hash_map ); }
@@ -24,14 +27,15 @@ public class errnoException extends org.xtreemfs.babudb.interfaces.utils.ONCRPCE
     public String getStack_trace() { return stack_trace; }
     public void setStack_trace( String stack_trace ) { this.stack_trace = stack_trace; }
 
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::Exceptions::errnoException"; }    
-    public long getTypeId() { return 0; }
-
+    // Object
     public String toString()
     {
         return "errnoException( " + Integer.toString( error_code ) + ", " + "\"" + error_message + "\"" + ", " + "\"" + stack_trace + "\"" + " )";
     }
 
+    // Serializable
+    public int getTag() { return 1101; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::errnoException"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -40,14 +44,14 @@ public class errnoException extends org.xtreemfs.babudb.interfaces.utils.ONCRPCE
         
     public void deserialize( HashMap<String, Object> from_hash_map )
     {
-        this.error_code = ( ( Integer )from_hash_map.get( "error_code" ) ).intValue();
+        this.error_code = ( from_hash_map.get( "error_code" ) instanceof Integer ) ? ( ( Integer )from_hash_map.get( "error_code" ) ).intValue() : ( ( Long )from_hash_map.get( "error_code" ) ).intValue();
         this.error_message = ( String )from_hash_map.get( "error_message" );
         this.stack_trace = ( String )from_hash_map.get( "stack_trace" );
     }
     
     public void deserialize( Object[] from_array )
     {
-        this.error_code = ( ( Integer )from_array[0] ).intValue();
+        this.error_code = ( from_array[0] instanceof Integer ) ? ( ( Integer )from_array[0] ).intValue() : ( ( Long )from_array[0] ).intValue();
         this.error_message = ( String )from_array[1];
         this.stack_trace = ( String )from_array[2];        
     }
@@ -87,7 +91,7 @@ public class errnoException extends org.xtreemfs.babudb.interfaces.utils.ONCRPCE
 
     private int error_code;
     private String error_message;
-    private String stack_trace;
+    private String stack_trace;    
 
 }
 

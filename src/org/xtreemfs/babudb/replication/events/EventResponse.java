@@ -7,8 +7,6 @@
  */
 package org.xtreemfs.babudb.replication.events;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.LatestLSNUpdateListener;
 
@@ -21,10 +19,9 @@ import org.xtreemfs.babudb.replication.LatestLSNUpdateListener;
 
 public class EventResponse extends LatestLSNUpdateListener {  
 
-    private final AtomicInteger permittedFailures;
-    
     private boolean failed = false;
     private boolean finished = false;
+    private int     permittedFailures;
     
     /**
      * Initializes the response object waiting for the given {@link LSN} to become
@@ -35,20 +32,17 @@ public class EventResponse extends LatestLSNUpdateListener {
      */
     public EventResponse(LSN lsn, int slavesThatCanFail) {
         super(lsn);
-        this.permittedFailures = new AtomicInteger(slavesThatCanFail);
+        permittedFailures = slavesThatCanFail;
     }
     
     /**
      * Use this function to update the permitted failures on this response.
      */
-    public void decrementPermittedFailures(){
-        if (permittedFailures.getAndDecrement() == 0) {
-            synchronized (this) {
-                assert(!finished);
-                failed = true;
-                finished = true;
-                this.notify();
-            }
+    public synchronized void decrementPermittedFailures(){
+        if (--permittedFailures == 0 && !finished) {
+            failed = true;
+            finished = true;
+            notify();
         }
     }
     
@@ -57,11 +51,9 @@ public class EventResponse extends LatestLSNUpdateListener {
      * @see org.xtreemfs.babudb.replication.LatestLSNUpdateListener#upToDate()
      */
     @Override
-    public void upToDate() {
-        synchronized (this) {
-            finished = true;
-            this.notify();
-        }
+    public synchronized void upToDate() {
+        finished = true;
+        notify();
     }
     
     /**
@@ -70,10 +62,8 @@ public class EventResponse extends LatestLSNUpdateListener {
      * @return true if the broadcast succeeded, false otherwise.
      * @throws InterruptedException 
      */
-    public boolean succeeded() throws InterruptedException {
-        synchronized (this) {
-            if (!finished) this.wait();
-        }
+    public synchronized boolean succeeded() throws InterruptedException {
+        if (!finished) wait();
         return !failed;
     }
 }

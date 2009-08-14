@@ -85,8 +85,10 @@ public class LogEntry {
             
             csumAlgo.update(buf.array(),0,buf.limit());
             int cPos = buf.position();
+            
+            // write the checksum to the buffer
             buf.position(Integer.SIZE/8);
-            buf.putInt((int)csumAlgo.getValue());
+            buf.putInt((int) csumAlgo.getValue());
             buf.position(cPos);
         }
         
@@ -155,15 +157,16 @@ public class LogEntry {
         e.payload = payload;
         
         if (USE_CHECKSUMS) {
+            // reset the old checksum to 0, before calculating a new one
             data.position(Integer.SIZE/8);
             data.putInt(0);
             data.position(0);
+            
             csumAlgo.update(data.array(),0,data.limit());
-
-            int csum = (int)csumAlgo.getValue();        
-
-            //Logging.logMessage(Logging.LEVEL_DEBUG, null,"checksum is: "+csum+" expected: "+e.checksum);
+            int csum = (int) csumAlgo.getValue(); 
+            
             if (csum != e.checksum) {
+                //Logging.logMessage(Logging.LEVEL_ERROR, null,"checksum is: "+csum+" expected: "+e.checksum);
                 throw new LogEntryException("Invalid Checksum. Checksum in log entry and calculated checksum do not match.");
             }
         }
@@ -182,14 +185,5 @@ public class LogEntry {
 
     public void setAttachment(LSMDBRequest attachment) {
         this.attachment = attachment;
-    }
-    
-    /**
-     * <p>Just for slaves with replication issues.</p>
-     * 
-     * @param listener
-     */
-    public void setListener(SyncListener listener){
-        this.listener = listener;
     }
 }

@@ -12,6 +12,9 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class deleteRequest implements org.xtreemfs.babudb.interfaces.utils.Request
 {
+    public static final int TAG = 1019;
+
+    
     public deleteRequest() { lsn = new LSN(); databaseName = ""; deleteFiles = false; }
     public deleteRequest( LSN lsn, String databaseName, boolean deleteFiles ) { this.lsn = lsn; this.databaseName = databaseName; this.deleteFiles = deleteFiles; }
     public deleteRequest( Object from_hash_map ) { lsn = new LSN(); databaseName = ""; deleteFiles = false; this.deserialize( from_hash_map ); }
@@ -24,14 +27,15 @@ public class deleteRequest implements org.xtreemfs.babudb.interfaces.utils.Reque
     public boolean getDeleteFiles() { return deleteFiles; }
     public void setDeleteFiles( boolean deleteFiles ) { this.deleteFiles = deleteFiles; }
 
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::deleteRequest"; }    
-    public long getTypeId() { return 9; }
-
+    // Object
     public String toString()
     {
         return "deleteRequest( " + lsn.toString() + ", " + "\"" + databaseName + "\"" + ", " + Boolean.toString( deleteFiles ) + " )";
     }
 
+    // Serializable
+    public int getTag() { return 1019; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::deleteRequest"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -85,13 +89,12 @@ public class deleteRequest implements org.xtreemfs.babudb.interfaces.utils.Reque
     }
 
     // Request
-    public int getOperationNumber() { return 9; }
     public Response createDefaultResponse() { return new deleteResponse(); }
 
 
     private LSN lsn;
     private String databaseName;
-    private boolean deleteFiles;
+    private boolean deleteFiles;    
 
 }
 

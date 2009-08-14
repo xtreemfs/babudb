@@ -12,7 +12,6 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 
 import java.util.List;
-import java.util.concurrent.locks.Lock;
 
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.clients.SlaveClient;
@@ -31,6 +30,7 @@ import org.xtreemfs.babudb.replication.operations.Operation;
 import org.xtreemfs.babudb.replication.operations.ReplicaOperation;
 import org.xtreemfs.babudb.replication.operations.StateOperation;
 import org.xtreemfs.include.common.config.MasterConfig;
+import org.xtreemfs.include.common.logging.Logging;
 
 /**
  * Dispatches incoming master-requests.
@@ -47,28 +47,40 @@ public class MasterRequestDispatcher extends RequestDispatcher {
     
     public final int chunkSize;
     
-    /** Lock for babuDB operations */
-    public final Lock contextSwitchLock;
-    
     /** The last acknowledged LSN of the last view. */
-    public volatile LSN lastOnView  = null;
+    public final LSN lastOnView;
     
     /**
-     * public static final String DEFAULT_CFG_FILE = "config/master.properties";
-     * (cfgFile != null) ? new ReplicationConfig(cfgFile) : new ReplicationConfig(DEFAULT_CFG_FILE))
+     * Initial setup.
      * 
      * @param config
-     * @param db
+     * @param dbs
      * @param initial
      * @throws IOException
      */
-    public MasterRequestDispatcher(MasterConfig config, BabuDB db, LSN initial) throws IOException {
-        super("Master", config, db);
+    public MasterRequestDispatcher(MasterConfig config, BabuDB dbs, LSN initial) throws IOException {
+        super("Master", config, dbs);
         this.syncN = config.getSyncN();
         this.chunkSize = config.getChunkSize();
-        this.contextSwitchLock = db.overlaySwitchLock.readLock();
         this.states = new SlavesStates(config.getSyncN(),config.getSlaves(),rpcClient);
         this.lastOnView = initial;
+    }
+    
+    /**
+     * Reset configuration.
+     * 
+     * @param config
+     * @param dbs
+     * @param initial
+     * @param backupState - needed if the dispatcher shall be reset. Includes the initial LSN.
+     * @throws IOException
+     */
+    public MasterRequestDispatcher(MasterConfig config, BabuDB dbs, DispatcherBackupState backupState) throws IOException {
+        super("Master", config, dbs);
+        this.syncN = config.getSyncN();
+        this.chunkSize = config.getChunkSize();
+        this.states = new SlavesStates(config.getSyncN(),config.getSlaves(),rpcClient);
+        this.lastOnView = backupState.latest;
     }
 
     /*
@@ -125,8 +137,9 @@ public class MasterRequestDispatcher extends RequestDispatcher {
     /**
      * @return a list of available {@link SlaveClient}s.
      * @throws NotEnoughAvailableSlavesException
+     * @throws InterruptedException 
      */
-    public List<SlaveClient> getSlavesForBroadCast() throws NotEnoughAvailableSlavesException {
+    public List<SlaveClient> getSlavesForBroadCast() throws NotEnoughAvailableSlavesException, InterruptedException {
         return states.getAvailableSlaves();
     }
     
@@ -137,6 +150,7 @@ public class MasterRequestDispatcher extends RequestDispatcher {
      * @param slave
      */
     public void markSlaveAsDead(SlaveClient slave) {
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "Slave was marked as dead: ", slave.getDefaultServerAddress().toString());
         states.markAsDead(slave);
     }
     
@@ -167,5 +181,23 @@ public class MasterRequestDispatcher extends RequestDispatcher {
     public void heartbeat(SocketAddress slave, LSN lsn, long receiveTime) throws UnknownParticipantException {
         assert (slave instanceof InetSocketAddress);
         states.update(((InetSocketAddress) slave).getAddress(), lsn, receiveTime);
+    }
+
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#getLatestLSN()
+     */
+    @Override
+    public LSN getLatestLSN() {
+        return states.getLatestCommon();
+    }
+
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#getBackupState()
+     */
+    @Override
+    public DispatcherBackupState getBackupState() {
+        return new DispatcherBackupState(states.getLatestCommon());
     }
 }
