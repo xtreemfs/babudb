@@ -54,7 +54,7 @@ public class ReplicateEvent extends Event {
      */
     @SuppressWarnings("unchecked")
     @Override
-    public EventResponse startEvent(Trigger trigger) throws NotEnoughAvailableSlavesException{
+    public EventResponse startEvent(Trigger trigger) throws NotEnoughAvailableSlavesException, InterruptedException{
         assert(trigger!=null);
         assert(trigger instanceof ReplicateTrigger);
         
@@ -76,8 +76,8 @@ public class ReplicateEvent extends Event {
         
         // make the replicate call at the clients
         if (slaves.size() == 0) { 
-            Logging.logMessage(Logging.LEVEL_ERROR, dispatcher, "There are no slaves available anymore! BabuDB runs if it would be in non-replicated mode.");
-            if (buffer!=null) BufferPool.free(buffer); // FIXME : just for testing: replication with no slave is no replication...
+            Logging.logMessage(Logging.LEVEL_DEBUG, dispatcher, "There are no slaves available anymore! BabuDB runs if it would be in non-replicated mode.");
+            if (buffer!=null) BufferPool.free(buffer); // FIXME : just for testing: replication with no slave is no replication... --> failover!
         } else {
             for (final SlaveClient slave : slaves) {
                 ((RPCResponse<Object>) slave.replicate(lsn, buffer))
@@ -92,8 +92,9 @@ public class ReplicateEvent extends Event {
                         } catch (Exception e) {
                             result.decrementPermittedFailures();
                             dispatcher.markSlaveAsDead(slave);
+                        } finally {
+                            if (r!=null) r.freeBuffers();
                         }
-                        r.freeBuffers();
                     }
                 });
             }

@@ -8,12 +8,9 @@
 
 package org.xtreemfs.babudb.lsmdb;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.ReadWriteLock;
 
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
@@ -41,8 +38,6 @@ public class LSMDBWorker extends Thread implements SyncListener {
         USER_DEFINED_LOOKUP
     };
     
-    private final Map<LSMDatabase,LSMLookupInterface> lookupIfs;
-    
     private final BlockingQueue<LSMDBRequest> requests;
     
     private transient boolean quit;
@@ -50,15 +45,13 @@ public class LSMDBWorker extends Thread implements SyncListener {
     private final AtomicBoolean down;
     
     private final DiskLogger    logger;
-    
-    private final ReadWriteLock insertLock;
 
     private final boolean       pseudoSync;
     
     private final BabuDBReplication   replication;
     
-    public LSMDBWorker(DiskLogger logger, int id, ReadWriteLock insertLock,
-            boolean pseudoSync, int maxQ,BabuDBReplication replication) {
+    public LSMDBWorker(DiskLogger logger, int id, boolean pseudoSync, 
+            int maxQ,BabuDBReplication replication) {
         super("LSMDBWrkr#"+id);  
         this.down = new AtomicBoolean(false);
         this.replication = replication;        
@@ -66,9 +59,7 @@ public class LSMDBWorker extends Thread implements SyncListener {
             requests = new LinkedBlockingQueue<LSMDBRequest>(maxQ);
         else
             requests = new LinkedBlockingQueue<LSMDBRequest>();       
-        this.lookupIfs = new HashMap<LSMDatabase, LSMLookupInterface>();
         this.logger = logger;
-        this.insertLock = insertLock;
         this.pseudoSync = pseudoSync;
     }
     
@@ -231,7 +222,6 @@ public class LSMDBWorker extends Thread implements SyncListener {
                 replication.replicate(le);
             } catch (BabuDBException e) {
                 r.getListener().requestFailed(r.getContext(), e);
-                assert(false);
             }
         }else{
             r.getListener().insertFinished(r.getContext());

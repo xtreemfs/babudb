@@ -26,11 +26,11 @@ public class DeleteTrigger implements Trigger {
     private boolean delete;
     
     public DeleteTrigger() {
-        this.eventNumber = new deleteRequest().getOperationNumber();
+        this.eventNumber = new deleteRequest().getTag();
     }
    
     public DeleteTrigger(LSN lsn, String dbName, boolean toDelete) {
-        this.eventNumber = new deleteRequest().getOperationNumber();
+        this.eventNumber = new deleteRequest().getTag();
         this.lsn = lsn;
         this.db = dbName;
         this.delete = toDelete;

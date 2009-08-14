@@ -8,21 +8,24 @@
 package org.xtreemfs.babudb.sandbox;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
-import org.xtreemfs.babudb.BabuDB;
+import org.xtreemfs.babudb.interfaces.ReplicationInterface.ReplicationInterface;
+import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
 import org.xtreemfs.babudb.lsmdb.Database;
 import org.xtreemfs.babudb.lsmdb.DatabaseManager;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.sandbox.ContinuesRandomGenerator.Operation;
 import org.xtreemfs.babudb.sandbox.RandomGenerator.InsertGroup;
-import org.xtreemfs.babudb.sandbox.RandomGenerator.Operation;
 import org.xtreemfs.include.common.config.MasterConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
@@ -36,7 +39,9 @@ import org.xtreemfs.include.common.logging.Logging;
 public class BabuDBRandomMasterTest {
     public final static String PATH = BabuDBLongrunTestConfig.PATH+"master";
     public final static int NUM_WKS = 1;
-	
+
+    public final static int MAX_REPLICATION_Q_LENGTH = 0;
+    
     private final static RandomGenerator generator = new RandomGenerator();
     private static BabuDB DBS;
 
@@ -64,10 +69,14 @@ public class BabuDBRandomMasterTest {
         else
             for (String adr : args[1].split(","))
                 slaves.add(parseAddress(adr));
-		
         
-        DBS = (BabuDB) BabuDBFactory.createMasterBabuDB(new MasterConfig());
-                                //getMasterBabuDB(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, slaves, Replication.MASTER_PORT, null, 0, Replication.DEFAULT_MAX_Q);
+		MasterConfig config = new MasterConfig(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, 
+                ReplicationInterface.DEFAULT_MASTER_PORT, InetAddress.getLocalHost(), 
+                new InetSocketAddress(InetAddress.getLocalHost(), ReplicationInterface.DEFAULT_MASTER_PORT), slaves, 
+                50, null, MAX_REPLICATION_Q_LENGTH, 0);
+        
+        DBS = (BabuDB) BabuDBFactory.createMasterBabuDB(config);
+        
         Map<Integer, List<List<Object>>> scenario = generator.initialize(seed);
         Random random = new Random();
         assert (RandomGenerator.MAX_SEQUENCENO<((long) Integer.MAX_VALUE)) : "This test cannot handle such a big MAX_SEQUENCENO.";
@@ -83,9 +92,11 @@ public class BabuDBRandomMasterTest {
         for (int viewID=1;viewID<=RandomGenerator.MAX_VIEWID;viewID++){
             System.out.print("Performing meta-operations for viewID '"+viewID+"' ...");
             time = System.currentTimeMillis();
+            int metaSeq = 0;
             for (List<Object> operation : scenario.get(viewID)){
                 performOperation(operation);
                 nOmetaOp++;
+                metaSeq++;
             }
             metaOpTime += System.currentTimeMillis() - time;
 			
@@ -95,7 +106,7 @@ public class BabuDBRandomMasterTest {
             System.out.print("Performing "+nOsequenceNO+" insert/delete operations ...");
             LSN lsn = new LSN(0,0L);
             time = System.currentTimeMillis();
-            for (int seqNo=1;seqNo<=nOsequenceNO;seqNo++){
+            for (int seqNo=(metaSeq+1);seqNo<=nOsequenceNO;seqNo++){
                 lsn = new LSN(viewID,(long) seqNo);
                 performInsert(lsn);
                 nOinsertOp++;
@@ -103,9 +114,10 @@ public class BabuDBRandomMasterTest {
             insertOpTime += System.currentTimeMillis() - time;
             System.out.println("done. Last insert was LSN ("+lsn.toString()+").");
 			
-            // TODO : DBS.replication_toMaster();
-	}
-	double metaTroughput = ((double)nOmetaOp)/(((double) metaOpTime)/1000.0);
+            DBS.replication_stop();
+            DBS.replication_changeConfiguration(config);
+        }
+        double metaTroughput = ((double)nOmetaOp)/(((double) metaOpTime)/1000.0);
         double insertThroughput = ((double)nOinsertOp)/(((double) insertOpTime)/1000.0);
         
 		System.out.println("\nRESULTS --------------------------------------------");
@@ -132,7 +144,7 @@ public class BabuDBRandomMasterTest {
 			dbm.createDatabase((String) op.get(1), (Integer) op.get(2));
 			break;
 		case copy:
-		        dbm.copyDatabase((String) op.get(1), (String) op.get(2), null, null);
+		        dbm.copyDatabase((String) op.get(1), (String) op.get(2));
 			break;
 		case delete:
 		        dbm.deleteDatabase((String) op.get(1), true);

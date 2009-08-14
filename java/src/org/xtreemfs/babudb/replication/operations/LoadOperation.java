@@ -16,6 +16,7 @@ import org.xtreemfs.babudb.interfaces.ReplicationInterface.loadResponse;
 import org.xtreemfs.babudb.interfaces.utils.Serializable;
 import org.xtreemfs.babudb.lsmdb.Database;
 import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
+import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.MasterRequestDispatcher;
 import org.xtreemfs.babudb.replication.Request;
 
@@ -32,7 +33,7 @@ public class LoadOperation extends Operation {
     private final MasterRequestDispatcher dispatcher;
     
     public LoadOperation(MasterRequestDispatcher dispatcher) {
-        this.procId = new loadRequest().getOperationNumber();
+        this.procId = new loadRequest().getTag();
         this.dispatcher = dispatcher;
     }
 
@@ -74,19 +75,21 @@ public class LoadOperation extends Operation {
     public void startRequest(Request rq) {
         DBFileMetaDataSet result = new DBFileMetaDataSet();
         loadRequest request = (loadRequest) rq.getRequestMessage();
-        
-        if (dispatcher.lastOnView != null && request.getLsn().equals(dispatcher.lastOnView))
-            rq.sendSuccess((Serializable) new DBFileMetaDataSet());
-        else {    
+
+        if (dispatcher.lastOnView != null && 
+                new LSN(request.getLsn().getViewId(),request.getLsn().getSequenceNo())
+                .equals(dispatcher.lastOnView))
+            rq.sendSuccess(new loadResponse());
+        else {
             // add the DB-structure-file metadata
             int chunkSize = dispatcher.chunkSize;
-            String path = dispatcher.db.getDBConfigPath();
+            String path = dispatcher.dbs.getDBConfigPath();
             long length = new File(path).length();
             result.add(new DBFileMetaData(path,length,chunkSize));
 
             // add the latest snapshot files for every DB,
             // if available
-            for (Database db : dispatcher.db.getDatabaseManager().getDatabases())
+            for (Database db : dispatcher.dbs.getDatabaseManager().getDatabases())
                 result.addAll(((DatabaseImpl) db).getLSMDB().getLastestSnapshotFiles(chunkSize));
             
             rq.sendSuccess(new loadResponse(result));

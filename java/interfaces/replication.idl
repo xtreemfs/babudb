@@ -1,15 +1,15 @@
 #include "types.idl"
 
 
-module org
+module org # 1000
 {
-  module xtreemfs
+  module xtreemfs # 0
   {
-    module babudb
+    module babudb # 0
     {
-      module interfaces
+      module interfaces # 0
       {
-	interface ReplicationInterface #1
+	interface ReplicationInterface # 10
 	{
 	  // Constants
 	  const uint32_t DEFAULT_MASTER_PORT = 35666;
@@ -32,9 +32,11 @@ module org
 	  void create (LSN lsn, string databaseName, uint32_t numIndices) # 7;	// create request from the master
 	  void copy (LSN lsn, string sourceDB, string destDB) # 8;		// copy request from the master
 	  void delete (LSN lsn, string databaseName, boolean deleteFiles) # 9;	// delete request from the master
+
+	  exception ProtocolException # 90 { uint32_t accept_stat; uint32_t error_code; string stack_trace; };
+	  exception errnoException # 91 { uint32_t error_code; string error_message; string stack_trace; };
 	};
       };
     };
   };
 };
-	  

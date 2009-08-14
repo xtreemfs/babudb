@@ -27,6 +27,5 @@ package org.xtreemfs.babudb.interfaces.utils;
 
 public interface Request extends Serializable
 {
-    int getOperationNumber();
     Response createDefaultResponse();
 };   

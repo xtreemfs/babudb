@@ -12,6 +12,9 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class chunkRequest implements org.xtreemfs.babudb.interfaces.utils.Request
 {
+    public static final int TAG = 1014;
+
+    
     public chunkRequest() { chunk = new Chunk(); }
     public chunkRequest( Chunk chunk ) { this.chunk = chunk; }
     public chunkRequest( Object from_hash_map ) { chunk = new Chunk(); this.deserialize( from_hash_map ); }
@@ -20,14 +23,15 @@ public class chunkRequest implements org.xtreemfs.babudb.interfaces.utils.Reques
     public Chunk getChunk() { return chunk; }
     public void setChunk( Chunk chunk ) { this.chunk = chunk; }
 
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::chunkRequest"; }    
-    public long getTypeId() { return 4; }
-
+    // Object
     public String toString()
     {
         return "chunkRequest( " + chunk.toString() + " )";
     }
 
+    // Serializable
+    public int getTag() { return 1014; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::chunkRequest"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -69,11 +73,10 @@ public class chunkRequest implements org.xtreemfs.babudb.interfaces.utils.Reques
     }
 
     // Request
-    public int getOperationNumber() { return 4; }
     public Response createDefaultResponse() { return new chunkResponse(); }
 
 
-    private Chunk chunk;
+    private Chunk chunk;    
 
 }
 

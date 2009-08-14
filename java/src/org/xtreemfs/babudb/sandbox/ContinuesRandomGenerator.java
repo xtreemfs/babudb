@@ -7,15 +7,14 @@
  */
 
 package org.xtreemfs.babudb.sandbox;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.include.common.logging.Logging;
-import org.xtreemfs.babudb.sandbox.ContinuesRandomGenerator.Operation;
 
 import static org.xtreemfs.babudb.sandbox.ContinuesRandomGenerator.Operation.*;
 
@@ -31,14 +30,18 @@ import static org.xtreemfs.babudb.sandbox.ContinuesRandomGenerator.Operation.*;
  * @author flangner
  *
  */
-@Deprecated
-public class RandomGenerator {
+
+public class ContinuesRandomGenerator {
+    /** Meta-operations supported by the BabuDB-replication */
+    public static enum Operation { copy, delete, create };
+    
     public final static int MAX_INSERTS_PER_GROUP = 10;
     public final static int MIN_INSERTS_PER_GROUP = 5;
+    // MAX deletes has to be <= MIN inserts per group...
     public final static int MAX_DELETES_PER_GROUP = 5;
     public final static int MIN_DELETES_PER_GROUP = 3;
-    public final static int MAX_META_OPERATIONS_PER_VIEWID = 3;
-    public final static int MIN_META_OPERATIONS_PER_VIEWID = 1;
+    public final static int MAX_META_OPERATIONS_AT_ONCE = 3;
+    public final static int MIN_META_OPERATIONS_AT_ONCE = 1;
     public final static int MAX_INDICES = 10;
     public final static int MIN_INDICES = 2;
     public final static int MAX_KEY_LENGTH = 10;
@@ -46,20 +49,24 @@ public class RandomGenerator {
     public final static int MAX_VALUE_LENGTH = 30;
     public final static int MIN_VALUE_LENGTH = 10;
     
-    public final static int MAX_VIEWID = 29;
-    public final static long MAX_SEQUENCENO;
+    public final static long MAX_SEQUENCENO = Long.MAX_VALUE;
     public final static long MIN_SEQUENCENO = BabuDBLongrunTestConfig.MIN_SEQUENCENO;
-	
-    // table of tables of meta operations ordered by their viewId
-    public final Map<Integer,List<List<Object>>> operationsScenario = new HashMap<Integer,List<List<Object>>>();
-	
+		
     private final static byte[] CHARS;
-    private final static long[] prims = new long[MAX_VIEWID];
     private final static String[] dbPrefixes;
     
-    // map that shows at which viewIds a DB given by its name and number of indices exists.
-    private final Map<Integer, List<Object[]>> dbExist = new HashMap<Integer, List<Object[]>>();
-    private InsertGroup lastISG = null;
+    // list of DBs available on that scenario
+    private final List<Object[]> availableDBs = new LinkedList<Object[]>();
+    
+    // number of sequences between 2 meta-operations
+    private static final int MAX_DELAY = 3000;
+    private static final int MIN_DELAY = 1000;
+    
+    private final List<Long> sequences;
+    private final List<List<Object[]>> DBsnapshots;
+    private final Map<Integer,List<Object>> operationsScenario;
+    
+    private final long id;
     
     static {
         int charptr = 0;
@@ -70,40 +77,6 @@ public class RandomGenerator {
             CHARS[charptr++] = (byte)i;
         for (int i = 97; i < 122; i++)
             CHARS[charptr++] = (byte)i;
-    
-        // have to be big (>10000) and ascending ordered
-        prims[0] = 3001L;
-        prims[1] = 3011L;
-        prims[2] = 3019L;
-        prims[3] = 3023L;
-        prims[4] = 3037L;
-        prims[5] = 3041L;
-        prims[6] = 3049L;
-        prims[7] = 3061L;
-        prims[8] = 3079L;
-        prims[9] = 3083L;
-        prims[10] = 3089L;
-        prims[11] = 3109L;
-        prims[12] = 3119L;  
-        prims[13] = 3121L;
-        prims[14] = 3137L;
-        prims[15] = 3163L;
-        prims[16] = 3167L;
-        prims[17] = 3169L;
-        prims[18] = 3181L;
-        prims[19] = 3187L;
-        prims[20] = 3191L;
-        prims[21] = 3203L; 
-        prims[20] = 3209L;
-        prims[21] = 3217L;
-        prims[22] = 3221L;
-        prims[23] = 3229L;
-        prims[24] = 3251L;
-        prims[25] = 3253L;
-        prims[26] = 3257L;
-        prims[27] = 3259L;
-        prims[28] = 3271L;
-        MAX_SEQUENCENO = prims[0];
         
         dbPrefixes = new String[5];
         dbPrefixes[0] = "db";
@@ -112,94 +85,85 @@ public class RandomGenerator {
         dbPrefixes[3] = "longNameDataBase";
         dbPrefixes[4] = "spC\"!$%&*";
     }
-        
+    
     /**
      * Generates the static meta-operations scenario.
      * 
      * @param seed - has to be the same at every BabuDB.
+     * @param duration - the number of sequences to proceed.
      * @return the operations scenario.
      */
-    public Map<Integer,List<List<Object>>> initialize(Long seed) {
-    	int dbNo = 0;
-    	
-    	Random random = new Random(seed);
-    	
-    	for (int i=1;i<=prims.length;i++){
-    		List<Object[]> availableDBs = dbExist.get(i-1);
-			if (availableDBs!=null)
-    			dbExist.put(i, new LinkedList<Object[]>(availableDBs));
-    		else availableDBs = new LinkedList<Object[]>();
-    		
-    		int metaOperations = random.nextInt(MAX_META_OPERATIONS_PER_VIEWID-MIN_META_OPERATIONS_PER_VIEWID)+MIN_META_OPERATIONS_PER_VIEWID;
-    		List<List<Object>> opsAtView = new LinkedList<List<Object>>();
-    		
-    		for (int y=0;y<metaOperations;y++){
-        		availableDBs = dbExist.get(i);
-    			if (availableDBs==null) availableDBs = new LinkedList<Object[]>();
-    			List<Object> operation;
-    			
-    			// no DBs available jet --> make a create operation
-    			if (availableDBs.size()<=1) {
-    				operation = createOperation(random, dbNo, i);
-    				dbNo++;
-    			} else {
-    				Operation op = Operation.values()[random.nextInt(Operation.values().length)];
-    				
-    				switch (op) {
-    				case create:
-    					operation = createOperation(random, dbNo, i);
-        				dbNo++;
-        				break;
-    				case copy:
-    					operation = copyOperation(random, dbNo, i);
-    					dbNo++;
-    					break;
-    				case delete:
-    					operation = deleteOperation(random, i);
-    					break;
-    				default:
-    					throw new UnsupportedOperationException ("for "+op.toString());
-    				}
-    			}
-    			opsAtView.add(operation);
-    		}
-    		operationsScenario.put(i, opsAtView);
-    	}
-    	
-    	Logging.logMessage(Logging.LEVEL_DEBUG, this, this.toString());
-    	
-    	return operationsScenario;
+    public ContinuesRandomGenerator(long seed, long duration) {
+        this.id = seed;
+        this.DBsnapshots = new LinkedList<List<Object[]>>();
+        this.sequences = new LinkedList<Long>();
+        this.operationsScenario = new HashMap<Integer, List<Object>>();
+        
+        int dbNo = 0;
+        Random random = new Random(seed);
+        
+        for (int i=1;i<=duration;i+=random.nextInt(MAX_DELAY-MIN_DELAY)+MIN_DELAY) {            
+            int metaOperations = random.nextInt(MAX_META_OPERATIONS_AT_ONCE-MIN_META_OPERATIONS_AT_ONCE)+MIN_META_OPERATIONS_AT_ONCE;
+
+            for (int y=0;y<metaOperations;y++){
+                List<Object> operation;
+                
+                // no DBs available jet --> make a create operation
+                if (availableDBs.size()<=1) {
+                    operation = createOperation(random, dbNo);
+                    dbNo++;
+                } else {
+                    Operation op = Operation.values()[random.nextInt(Operation.values().length)];
+                    
+                    switch (op) {
+                    case create:
+                        operation = createOperation(random, dbNo);
+                        dbNo++;
+                        break;
+                    case copy:
+                        operation = copyOperation(random, dbNo);
+                        dbNo++;
+                        break;
+                    case delete:
+                        operation = deleteOperation(random);
+                        break;
+                    default:
+                        throw new UnsupportedOperationException ("for "+op.toString());
+                    }
+                }
+                operationsScenario.put(i, operation);
+                i++;
+            }
+            sequences.add((long) i);
+            
+            List<Object[]> snapshot = new LinkedList<Object[]>();
+            for (Object[] db : availableDBs) 
+                snapshot.add(db.clone());
+            
+            DBsnapshots.add(snapshot);
+        }
+    }
+    
+    public Map<Integer,List<Object>> getOperationsScenario(){
+        return operationsScenario;
     }
 
     /**
      * <p>Keep an eye on the side-effects.</p>
      * 
      * @param random
-     * @param viewId
      * @return a generated delete-meta-operation.
      */
-    private List<Object> deleteOperation(Random random, int viewId) {   	
+    private List<Object> deleteOperation(Random random) {   	
     	List<Object> operation = new LinkedList<Object>();
     	
     	operation.add(delete);
-    	// get a random db
-    	List<Object[]> dbs = dbExist.get(viewId);
-    	Object[] dbData = dbs.get(random.nextInt(dbs.size()));
+    	// get a random DB
+    	Object[] dbData = availableDBs.get(random.nextInt(availableDBs.size()));
     	String dbName = (String) dbData[0];
-    	int indices = (Integer) dbData[1];
     	operation.add(dbName);
-    	
-		// update dbExists-map
-    	Object[] toDelete = null;
-    	for (Object[] db : dbs){
-    		if ((String) db[0] == dbName && (Integer) db[1] == indices) {
-    			toDelete = db;
-    			break;
-    		}
-    	}
-    	assert (toDelete!=null) : dbName+" was not available for deletion.";
-    	dbs.remove(toDelete);
-		dbExist.put(viewId, dbs);
+    	// update availableDBs
+    	availableDBs.remove(dbData);
     	
     	return operation;
     }
@@ -209,26 +173,22 @@ public class RandomGenerator {
      * 
      * @param random
      * @param dbNo
-     * @param viewId
      * @return a generated copy-meta-operation.
      */
-    private List<Object> copyOperation(Random random, int dbNo, int viewId) {
+    private List<Object> copyOperation(Random random, int dbNo) {
     	List<Object> operation = new LinkedList<Object>();
     	
     	operation.add(copy);
-    	// get source db
-    	List<Object[]> dbs = dbExist.get(viewId);
-    	Object[] dbData = dbs.get(random.nextInt(dbs.size()));
+    	// get source DB
+    	Object[] dbData = availableDBs.get(random.nextInt(availableDBs.size()));
     	String sourceDB = (String) dbData[0];
     	int indices = (Integer) dbData[1];
     	operation.add(sourceDB); 	
     	// generate dbName
     	String dbName = dbPrefixes[random.nextInt(dbPrefixes.length)] + dbNo;
 		operation.add(dbName);
-		
-		// update dbExists-map
-		dbs.add(new Object[]{dbName,indices});
-		dbExist.put(viewId, dbs);
+		// update availableDBs
+		availableDBs.add(new Object[]{dbName,indices});
 		
 		return operation;
     }
@@ -238,10 +198,9 @@ public class RandomGenerator {
      * 
      * @param random
      * @param dbNo
-     * @param viewId
      * @return a generated create-meta-operation.
      */
-    private List<Object> createOperation(Random random, int dbNo, int viewId) {
+    private List<Object> createOperation(Random random, int dbNo) {
     	List<Object> operation = new LinkedList<Object>();
     	
     	operation.add(create);
@@ -251,16 +210,8 @@ public class RandomGenerator {
 		// generate indices
 		int indices = random.nextInt(MAX_INDICES-MIN_INDICES)+MIN_INDICES;
 		operation.add(indices);
-		
-		// update dbExists-map
-		List<Object[]> viewDBs;
-		viewDBs = dbExist.get(viewId);
-		if (viewDBs==null) viewDBs = new LinkedList<Object[]>();
-		
-		viewDBs.add(new Object[]{dbName,indices});
-		dbExist.put(viewId, viewDBs);
-		
-		
+		// update availableDBs
+		availableDBs.add(new Object[]{dbName,indices});
 		
 		return operation;
     }
@@ -286,28 +237,36 @@ public class RandomGenerator {
      * 
      * Precondition: RandomGenerator has to be initialized!
      * 
-     * @param lsn
-     * @return a random-generated {@link InsertGroup} for directInsert into the BabuDB.
+     * @param sequenceNo
+     * @return a random-generated {@link InsertGroup} for directInsert into the BabuDB, or null, if the requested call was a meta-operation.
      * @throws Exception
      */
-    public InsertGroup getInsertGroup(LSN lsn) throws Exception{
+    public InsertGroup getInsertGroup(long sequenceNo) throws Exception{
 		InsertGroup result;
     	
-    	if (lsn.getViewId()>MAX_VIEWID) throw new Exception(lsn.getViewId()+" is a too big viewId, randomGenerator has to be extended.");
-		if (lsn.getSequenceNo()>MAX_SEQUENCENO) throw new Exception(lsn.getSequenceNo()+" is a too big sequence number, randomGenerator has to be extended.");
+		if (sequenceNo>MAX_SEQUENCENO) throw new Exception(sequenceNo+" is a too big sequence number, randomGenerator has to be extended.");
+		if (operationsScenario.get(sequenceNo)!=null) return null;
 		// setup random with seed from LSN
-		Random random = new Random(prims[lsn.getViewId()-1]*lsn.getSequenceNo());
+		Random random = new Random(sequenceNo);
 		
-		// get the db affected by the insert
-		List<Object[]> dbs = dbExist.get(lsn.getViewId());
-		assert (dbs!=null) : "Something went wrong. With LSN: "+lsn.toString();
+		// get the DB affected by the insert
+		int seqIndex = sequences.size()-1;
+		for (int i=0;i<seqIndex;i++) {
+		    if (sequences.get(i)>sequenceNo){
+		        if (i>0) seqIndex = i-1;
+		        else assert(false);
+		        break;
+		    }
+		}
+		
+		List<Object[]> dbs = DBsnapshots.get(seqIndex);
 		Object[] db = dbs.get(random.nextInt(dbs.size()));
 		String dbName = (String) db[0];
 		int dbIndices = (Integer) db[1];
 		
 		result = this.new InsertGroup(dbName);
 		
-		// generate some reconstructable key-value-pairs for insert
+		// generate some reconstructible key-value-pairs for insert
 		int insertsPerGroup = random.nextInt(MAX_INSERTS_PER_GROUP-MIN_INSERTS_PER_GROUP)+MIN_INSERTS_PER_GROUP;
 		
 		for (int i=0;i<insertsPerGroup;i++){
@@ -318,29 +277,28 @@ public class RandomGenerator {
 			result.addInsert(index, createRandomBytes(random, keyLength), createRandomBytes(random, valueLength));
 		}
 		
-		// generates some deletes from the previous insertGroup, if the same db was chosen
-		if (lastISG!=null && lastISG.dbName.equals(dbName)){
+		// generates some deletes from the previous insertGroup, if it uses the same DB
+		if ((sequenceNo-1L>0) && operationsScenario.get(sequenceNo-1L)==null) {
+    		LookupGroup lg = getLookupGroup(sequenceNo-1L);
+    		
+    		if (lg.dbName!=dbName) return result;
+    		
+    		// generates some deletes 
 			int deletesPerGroup = random.nextInt(MAX_DELETES_PER_GROUP-MIN_DELETES_PER_GROUP)+MIN_DELETES_PER_GROUP;
-			int noInserts = lastISG.getNoInserts();
-			assert (noInserts>=deletesPerGroup) : "Too many deletes for not enough inserts.";
+			int nOInserts = lg.values.size();
+			assert (nOInserts>=deletesPerGroup) : "Too many deletes for not enough inserts.";
 			
-			List<Integer> indices = new LinkedList<Integer>();
-			for (int i=0;i<noInserts;i++)
-				indices.add(i);
+			List<Integer> insertIndices = new LinkedList<Integer>();
+			for (int i=0;i<nOInserts;i++)
+			    insertIndices.add(i);
 			
 			for (int i=0;i<deletesPerGroup;i++){
-				int index = indices.remove(random.nextInt(indices.size()));
+				int index = insertIndices.remove(random.nextInt(insertIndices.size()));
 				
-				result.addDelete(lastISG.getIndex(index), lastISG.getKey(index));				
+				result.addDelete(lg.getIndex(index), lg.getKey(index));				
 			}
-		}
-		
-		lastISG = result;		
+		}	
 		return result;
-    }
-    
-    public void reset(){
-    	lastISG = null;
     }
     
     /**
@@ -348,21 +306,29 @@ public class RandomGenerator {
      * 
      * Precondition: RandomGenerator has to be initialized! 
      * 
-     * @param lsn
-     * @return restores a random GroupInsert for looking it up as a {@link LookupGroup} with directLookup at the BabuDB.
+     * @param seqNo
+     * @return restores a random GroupInsert for looking it up as a {@link LookupGroup} with directLookup at the BabuDB, or null if the requested call was a meta-operation.
      * @throws Exception
      */
-    public LookupGroup getLookupGroup(LSN lsn) throws Exception {
+    public LookupGroup getLookupGroup(long seqNo) throws Exception {
     	LookupGroup result;
     	
-    	if (lsn.getViewId()>MAX_VIEWID) throw new Exception(lsn.getViewId()+" is a too big viewId, randomGenerator has to be extended.");
-		if (lsn.getSequenceNo()>MAX_SEQUENCENO) throw new Exception(lsn.getSequenceNo()+" is a too big sequence number, randomGenerator has to be extended.");
+		if (seqNo>MAX_SEQUENCENO) throw new Exception(seqNo+" is a too big sequence number, randomGenerator has to be extended.");
+		if (operationsScenario.get(seqNo)!=null) return null;
 		// setup random with seed from LSN
-		Random random = new Random(prims[lsn.getViewId()-1]*lsn.getSequenceNo());
+		Random random = new Random(seqNo);
 		
-		// get the db affected by the insert
-		List<Object[]> dbs = dbExist.get(lsn.getViewId());
-		assert (dbs!=null) : "Something went wrong. With LSN: "+lsn.toString();
+        // get the DB affected by the insert
+        int seqIndex = sequences.size()-1;
+        for (int i=0;i<seqIndex;i++) {
+            if (sequences.get(i)>seqNo){
+                if (i>0) seqIndex = i-1;
+                else assert(false);
+                break;
+            }
+        }
+        
+        List<Object[]> dbs = DBsnapshots.get(seqIndex);
 		Object[] db = dbs.get(random.nextInt(dbs.size()));
 		String dbName = (String) db[0];
 		int dbIndices = (Integer) db[1];
@@ -525,55 +491,49 @@ public class RandomGenerator {
     	}
     }
     
+    public String operationToString(long seqNo, List<Object> op) {
+        String result = seqNo+" | "+((Operation) op.get(0)).toString();
+        for (int i = 1;i<op.size();i++) 
+            result += " | "+op.get(i);
+        
+        return result += "\n";
+    }
+    
     /*
      * (non-Javadoc)
      * @see java.lang.Object#toString()
      */
     @Override
     public String toString() {
-    	String string = "RandomGenerator------------------------\n";
-    	
-    	if (Logging.isDebug()) { 	
-	    	string += "The operations scenario:\n";
-	    	string += "ViewID | Operation | Parameters\n";
-	    	string += "-----------------------------------\n";
-	    	for (int i=1;i<=prims.length;i++){
-	    		List<List<Object>> ops = operationsScenario.get(i);
-	    		for (List<Object> op : ops){
-	    			string += i+((i<10) ? "      | " : "     | ");
-	    			String opName = ((Operation) op.get(0)).toString();
-	    			string += opName+((opName.length()<6) ? "      " : "    ");
-	    			for (int y = 1;y<op.size();y++) {
-	    				string += " | "+op.get(y);
-	    			}
-	    			string += "\n";
-	    		}
-	    		string += "-----------------------------------\n";
-	    	}
-	    	string += "\n\r";
-	    	
-	    	if (Logging.isNotice()){
-	    		string += "DB history:\n";
-	    		string += "ViewID | #Indices | DB Name\n";
-	    		for (int i=1;i<=prims.length;i++){
-	    			List<Object[]> dbs = dbExist.get(i);
-	    			if (dbs!=null) {
-		    			for (Object[] db : dbs) {
-		    				string += i+((i<10) ? "      | " : "     | ");
-		    				int indices = (Integer) db[1];
-		    				string += indices+((indices<10) ? "        | " : "       | ");
-		    				string += (String) db[0]+"\n";
-		    			}
-	    			}
-	    		}
-	    	}
-    	}
-    	
-    	if (lastISG!=null){
-    		string += "Last InsertGroup:\n";
-    		string += lastISG.toString();
-    	}
-    	
-    	return string;
+        String string = "ContinuesRandomGenerator-"+this.id+"\n";
+        
+        if (Logging.isDebug()) {    
+            string += "The operations scenario:\n";
+            string += "SequenceNo | Operation | Parameters\n";
+            string += "-----------------------------------\n";
+            List<Integer> seqs = new LinkedList<Integer>(operationsScenario.keySet());
+            Collections.sort(seqs);
+            for (Integer seq : seqs){
+                string += operationToString(seq, operationsScenario.get(seq));
+            }
+            string += "\n\r";
+            
+            if (Logging.isNotice()){
+                string += "DB history:\n";
+                string += "Sequence# | #Indices | DB Name\n";
+                int size = DBsnapshots.size();
+                for (int i=0;i<size;i++){
+                    string += sequences.get(i) + " | ";
+                    List<Object[]> dbs = DBsnapshots.get(i);
+                    for (Object[] db : dbs) {
+                        string += i+((i<10) ? "      | " : "     | ");
+                        int indices = (Integer) db[1];
+                        string += indices+((indices<10) ? "        | " : "       | ");
+                        string += (String) db[0]+"\n";
+                    }
+                }
+            }
+        }
+        return string;
     }
 }

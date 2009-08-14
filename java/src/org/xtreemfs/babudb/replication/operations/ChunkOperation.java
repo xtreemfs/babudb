@@ -17,6 +17,7 @@ import org.xtreemfs.babudb.interfaces.ReplicationInterface.chunkRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.chunkResponse;
 import org.xtreemfs.babudb.interfaces.utils.Serializable;
 import org.xtreemfs.babudb.replication.Request;
+import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 /**
@@ -31,7 +32,7 @@ public class ChunkOperation extends Operation {
     private final int procId;
     
     public ChunkOperation() {
-        this.procId = new chunkRequest().getOperationNumber();
+        this.procId = new chunkRequest().getTag();
     }
 
     /*
@@ -75,20 +76,24 @@ public class ChunkOperation extends Operation {
         int length = (int) (chunk.getEnd() - chunk.getBegin());
       
         FileChannel channel = null;
+        ReusableBuffer payload = null;
         try {
             // get the requested chunk
             channel = new FileInputStream(chunk.getFileName()).getChannel();
             ByteBuffer buffer = ByteBuffer.allocate(length);
             if (channel.read(buffer, chunk.getBegin()) != length) throw new Exception();          
             buffer.flip();
-            rq.sendSuccess(new chunkResponse(new ReusableBuffer(buffer)));
+            payload = new ReusableBuffer(buffer);
+            rq.sendSuccess(new chunkResponse(payload));
             
         } catch (Exception e) {
-            rq.sendReplicationException(ErrNo.FILE_UNAVAILABLE.ordinal(), "Requested file is not available anymore.");
+            rq.sendReplicationException(ErrNo.FILE_UNAVAILABLE.ordinal());
         } finally {
             try {
                 if (channel != null) channel.close();
             } catch (IOException e) { /* ignored */ }
+            
+            if (payload!=null) BufferPool.free(payload);
         }
     }
 }

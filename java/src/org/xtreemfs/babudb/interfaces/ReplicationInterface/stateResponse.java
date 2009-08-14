@@ -12,6 +12,9 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class stateResponse implements org.xtreemfs.babudb.interfaces.utils.Response
 {
+    public static final int TAG = 1011;
+
+    
     public stateResponse() { returnValue = new LSN(); }
     public stateResponse( LSN returnValue ) { this.returnValue = returnValue; }
     public stateResponse( Object from_hash_map ) { returnValue = new LSN(); this.deserialize( from_hash_map ); }
@@ -20,14 +23,15 @@ public class stateResponse implements org.xtreemfs.babudb.interfaces.utils.Respo
     public LSN getReturnValue() { return returnValue; }
     public void setReturnValue( LSN returnValue ) { this.returnValue = returnValue; }
 
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::stateResponse"; }    
-    public long getTypeId() { return 1; }
-
+    // Object
     public String toString()
     {
         return "stateResponse( " + returnValue.toString() + " )";
     }
 
+    // Serializable
+    public int getTag() { return 1011; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::stateResponse"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -68,11 +72,8 @@ public class stateResponse implements org.xtreemfs.babudb.interfaces.utils.Respo
         return my_size;
     }
 
-    // Response
-    public int getOperationNumber() { return 1; }
 
-
-    private LSN returnValue;
+    private LSN returnValue;    
 
 }
 

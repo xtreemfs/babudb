@@ -92,9 +92,11 @@ public class ONCRPCResponseHeader implements Serializable {
     public void deserialize(ReusableBuffer buf) {
         xid = buf.getInt();
         int msgType = buf.getInt();
-        assert msgType == 1;
+        if (msgType != 1)
+            throw new IllegalArgumentException("message type must be ANSWER, but is "+msgType);
         reply_stat = buf.getInt();
-        assert reply_stat == REPLY_STAT_MSG_ACCEPTED;
+        if (reply_stat != REPLY_STAT_MSG_ACCEPTED)
+            throw new IllegalArgumentException("message type must be ANSWER, but is "+msgType);
 
         final int authType = buf.getInt();
         assert authType == 0;
@@ -113,5 +115,10 @@ public class ONCRPCResponseHeader implements Serializable {
     private int reply_stat;
 
     private int accept_stat;
+
+    @Override
+    public int getTag() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
 
 }

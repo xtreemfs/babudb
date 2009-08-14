@@ -12,6 +12,9 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class copyRequest implements org.xtreemfs.babudb.interfaces.utils.Request
 {
+    public static final int TAG = 1018;
+
+    
     public copyRequest() { lsn = new LSN(); sourceDB = ""; destDB = ""; }
     public copyRequest( LSN lsn, String sourceDB, String destDB ) { this.lsn = lsn; this.sourceDB = sourceDB; this.destDB = destDB; }
     public copyRequest( Object from_hash_map ) { lsn = new LSN(); sourceDB = ""; destDB = ""; this.deserialize( from_hash_map ); }
@@ -24,14 +27,15 @@ public class copyRequest implements org.xtreemfs.babudb.interfaces.utils.Request
     public String getDestDB() { return destDB; }
     public void setDestDB( String destDB ) { this.destDB = destDB; }
 
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::copyRequest"; }    
-    public long getTypeId() { return 8; }
-
+    // Object
     public String toString()
     {
         return "copyRequest( " + lsn.toString() + ", " + "\"" + sourceDB + "\"" + ", " + "\"" + destDB + "\"" + " )";
     }
 
+    // Serializable
+    public int getTag() { return 1018; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::copyRequest"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -85,13 +89,12 @@ public class copyRequest implements org.xtreemfs.babudb.interfaces.utils.Request
     }
 
     // Request
-    public int getOperationNumber() { return 8; }
     public Response createDefaultResponse() { return new copyResponse(); }
 
 
     private LSN lsn;
     private String sourceDB;
-    private String destDB;
+    private String destDB;    
 
 }
 

@@ -21,6 +21,7 @@ import org.xtreemfs.babudb.replication.SlaveRequestDispatcher;
 import org.xtreemfs.babudb.replication.stages.ReplicationStage.TooBusyException;
 import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import org.xtreemfs.include.common.logging.Logging;
 
 import static org.xtreemfs.babudb.replication.stages.ReplicationStage.REPLICATE;
 
@@ -42,7 +43,7 @@ public class ReplicateOperation extends Operation {
     
     public ReplicateOperation(SlaveRequestDispatcher dispatcher) {
         this.dispatcher = dispatcher;
-        procId = new replicateRequest().getOperationNumber();
+        procId = new replicateRequest().getTag();
     }
 
     /*
@@ -67,7 +68,8 @@ public class ReplicateOperation extends Operation {
         try {
             rq.setAttachment(LogEntry.deserialize(data, checksum));
         } catch (LogEntryException e){
-            rq.sendReplicationException(ErrNo.INTERNAL_ERROR.ordinal(), "LogEntry could not be deserialized: "+e.getMessage());
+            Logging.logError(Logging.LEVEL_ERROR, this, e);
+            rq.sendReplicationException(ErrNo.INTERNAL_ERROR.ordinal());
             return rpcrq;
         } finally {
             checksum.reset();
@@ -100,7 +102,7 @@ public class ReplicateOperation extends Operation {
             rq.sendSuccess(new replicateResponse());
         } catch (TooBusyException e) {
             if (le!=null) le.free();
-            rq.sendReplicationException(ErrNo.TOO_BUSY.ordinal(), e.getMessage());
+            rq.sendReplicationException(ErrNo.TOO_BUSY.ordinal());
         }
     }
 }

@@ -66,7 +66,7 @@ public class CopyDatabaseTest extends TestCase {
         
         System.out.println("starting copy");
         // copy database
-        database.getDatabaseManager().copyDatabase("testDB", "copyDB", null, null);
+        database.getDatabaseManager().copyDatabase("testDB", "copyDB");
         
         System.out.println("copy complete");
         // check entries

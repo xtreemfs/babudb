@@ -43,7 +43,7 @@ public class BabuDBLongrunTestConfig {
     	    MAX_SLEEP_INTERVAL = 5*60*1000;
     	    MAX_DOWN_TIME = 2*60*1000;
     	    PATH = "/tmp/babuDB/";
-    	    MIN_SEQUENCENO = 100L;
+    	    MIN_SEQUENCENO = 1000L;
     	}
     }
 }

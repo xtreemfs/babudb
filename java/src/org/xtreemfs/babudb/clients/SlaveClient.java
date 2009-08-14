@@ -51,7 +51,7 @@ public class SlaveClient extends ONCRPCClient {
         replicateRequest rq = new replicateRequest(
                 new LSN(lsn.getViewId(),lsn.getSequenceNo()),new LogEntry(data));
         
-        RPCResponse<?> r = sendRequest(null, rq.getOperationNumber(), rq, new RPCResponseDecoder<Object>() {
+        RPCResponse<?> r = sendRequest(null, rq.getTag(), rq, new RPCResponseDecoder<Object>() {
         
             /*
              * (non-Javadoc)
@@ -79,7 +79,7 @@ public class SlaveClient extends ONCRPCClient {
     public RPCResponse<?> create (org.xtreemfs.babudb.lsmdb.LSN lsn, String databaseName, int numIndices) {
         createRequest rq = new createRequest(new LSN(lsn.getViewId(),lsn.getSequenceNo()), databaseName, numIndices);
         
-        RPCResponse<?> r = sendRequest(null, rq.getOperationNumber(), rq, new RPCResponseDecoder<Object>() {
+        RPCResponse<?> r = sendRequest(null, rq.getTag(), rq, new RPCResponseDecoder<Object>() {
 
             /*
              * (non-Javadoc)
@@ -107,7 +107,7 @@ public class SlaveClient extends ONCRPCClient {
     public RPCResponse<?> copy (org.xtreemfs.babudb.lsmdb.LSN lsn, String sourceDB, String destDB) {
         copyRequest rq = new copyRequest(new LSN(lsn.getViewId(),lsn.getSequenceNo()), sourceDB, destDB);
         
-        RPCResponse<?> r = sendRequest(null, rq.getOperationNumber(), rq, new RPCResponseDecoder<Object>() {
+        RPCResponse<?> r = sendRequest(null, rq.getTag(), rq, new RPCResponseDecoder<Object>() {
 
             /*
              * (non-Javadoc)
@@ -135,7 +135,7 @@ public class SlaveClient extends ONCRPCClient {
     public RPCResponse<?> delete (org.xtreemfs.babudb.lsmdb.LSN lsn, String databaseName, boolean deleteFiles) {
         deleteRequest rq = new deleteRequest(new LSN(lsn.getViewId(),lsn.getSequenceNo()), databaseName, deleteFiles);
         
-        RPCResponse<?> r = sendRequest(null, rq.getOperationNumber(), rq, new RPCResponseDecoder<Object>() {
+        RPCResponse<?> r = sendRequest(null, rq.getTag(), rq, new RPCResponseDecoder<Object>() {
 
             /*
              * (non-Javadoc)

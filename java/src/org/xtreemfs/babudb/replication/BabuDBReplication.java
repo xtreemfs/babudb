@@ -21,6 +21,7 @@ import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.clients.StateClient;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherBackupState;
 import org.xtreemfs.babudb.replication.trigger.CopyTrigger;
 import org.xtreemfs.babudb.replication.trigger.CreateTrigger;
 import org.xtreemfs.babudb.replication.trigger.DeleteTrigger;
@@ -45,6 +46,8 @@ public class BabuDBReplication {
     private boolean isMaster;
     private RequestDispatcher dispatcher;
     private final Checksum checksum = new CRC32();
+    private final BabuDB db;
+    private volatile boolean stopped = true;
     
     /**
      * For setting up the {@link BabuDB} with master-replication. 
@@ -55,9 +58,10 @@ public class BabuDBReplication {
      * @throws IOException
      */
     public BabuDBReplication(MasterConfig config, BabuDB db, LSN initial) throws IOException {
-        isMaster = true;
+        this.db = db;
+        this.isMaster = true;
         TimeSync.initialize(config.getLocalTimeRenew());
-        this.dispatcher = new MasterRequestDispatcher(config,db,initial);
+        this.dispatcher = new MasterRequestDispatcher(config, db, initial);
     }
     
     /**
@@ -69,9 +73,10 @@ public class BabuDBReplication {
      * @throws IOException
      */
     public BabuDBReplication(SlaveConfig config, BabuDB db, LSN initial) throws IOException {
-        isMaster = false;
+        this.db = db;
+        this.isMaster = false;
         TimeSync.initialize(config.getLocalTimeRenew());
-        this.dispatcher = new SlaveRequestDispatcher(config,db,initial);
+        this.dispatcher = new SlaveRequestDispatcher(config, db, initial);
     }
        
 /*
@@ -87,7 +92,8 @@ public class BabuDBReplication {
     public void replicate(LogEntry le) throws BabuDBException {
         Logging.logMessage(Logging.LEVEL_NOTICE, this, "Performing requests: replicate...");
         
-        if (!isMaster) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,"This BabuDB is not running in master-mode! The operation is not available.");
+        if (!isMaster) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "This BabuDB is not running in master-mode! The operation is not available.");
+        else if (stopped) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "Replication is disabled at the moment!");
         else {
             try {
                 dispatcher.receiveEvent(new ReplicateTrigger(
@@ -115,6 +121,7 @@ public class BabuDBReplication {
     public void create(LSN lsn, String databaseName, int numIndices) throws BabuDBException {
         Logging.logMessage(Logging.LEVEL_NOTICE, this, "Performing requests: create...");
         if (!isMaster) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,"This BabuDB is not running in master-mode! The operation is not available.");
+        else if (stopped) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "Replication is disabled at the moment!");
         else {
             try {
                 dispatcher.receiveEvent(new CreateTrigger(lsn,databaseName,numIndices));
@@ -137,6 +144,7 @@ public class BabuDBReplication {
     public void copy(LSN lsn, String sourceDB, String destDB) throws BabuDBException {
         Logging.logMessage(Logging.LEVEL_NOTICE, this, "Performing requests: copy...");
         if (!isMaster) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,"This BabuDB is not running in master-mode! The operation is not available.");
+        else if (stopped) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "Replication is disabled at the moment!");
         else {
             try {
                 dispatcher.receiveEvent(new CopyTrigger(lsn,sourceDB,destDB));
@@ -159,6 +167,7 @@ public class BabuDBReplication {
     public void delete(LSN lsn, String databaseName, boolean deleteFiles) throws BabuDBException {
         Logging.logMessage(Logging.LEVEL_NOTICE, this, "Performing requests: delete...");
         if (!isMaster) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,"This BabuDB is not running in master-mode! The operation is not available.");
+        else if (stopped) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "Replication is disabled at the moment!");
         else {
             try {
                 dispatcher.receiveEvent(new DeleteTrigger(lsn,databaseName,deleteFiles));
@@ -197,17 +206,12 @@ public class BabuDBReplication {
                 result.put(babuDBs.get(i), val);
             } catch (Exception e) {
                 result.put(babuDBs.get(i), null);
+            } finally {
+                if (rps[i]!=null) rps[i].freeBuffers();
             }
         }
         
         return result;
-    }
-    
-    /**
-     * @return the own latest {@link LSN}.
-     */
-    public LSN getOwnState() {
-        return dispatcher.getLatestLSN();
     }
 
     /**
@@ -222,12 +226,45 @@ public class BabuDBReplication {
      */
     public void initialize() {
         dispatcher.start();
+        stopped = false;
     }
     
     /**
      * Stops the replication process by shutting down the dispatcher.
+     * 
+     * @return dispatcher backup state.
      */
-    public void shutdown() {
+    public DispatcherBackupState shutdown() {
+        stopped = true;
         dispatcher.shutdown();
+        return dispatcher.getBackupState();
+    }
+
+    /**
+     * <p>Sets the replication service in addition to change the configuration.
+     * Replication must not be running!</p>
+     * 
+     * @param config
+     * @throws IOException 
+     * @throws InterruptedException 
+     */
+    public void set(MasterConfig config) throws IOException, InterruptedException {
+        isMaster = true;
+        dispatcher = new MasterRequestDispatcher(config, db, dispatcher.getBackupState());
+        initialize();
+    }
+    
+    /**
+     * <p>Sets the replication service in addition to change the configuration.
+     * Replication must not be running!</p>
+     * 
+     * @param config
+     * @throws IOException 
+     */
+    public void set(SlaveConfig config) throws IOException {
+        isMaster = false;
+        DirectFileIO.replayBackupFiles(config);
+        dispatcher = new SlaveRequestDispatcher(config, db, dispatcher.getBackupState());
+        initialize();
     }
 }

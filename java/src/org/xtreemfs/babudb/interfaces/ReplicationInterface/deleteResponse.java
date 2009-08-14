@@ -12,18 +12,22 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class deleteResponse implements org.xtreemfs.babudb.interfaces.utils.Response
 {
+    public static final int TAG = 1019;
+
+    
     public deleteResponse() {  }
     public deleteResponse( Object from_hash_map ) {  this.deserialize( from_hash_map ); }
     public deleteResponse( Object[] from_array ) { this.deserialize( from_array ); }
 
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::deleteResponse"; }    
-    public long getTypeId() { return 9; }
-
+    // Object
     public String toString()
     {
         return "deleteResponse()";
     }
 
+    // Serializable
+    public int getTag() { return 1019; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::deleteResponse"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -62,10 +66,7 @@ return to_hash_map;
 
         return my_size;
     }
-
-    // Response
-    public int getOperationNumber() { return 9; }
-
+    
 
 }
 

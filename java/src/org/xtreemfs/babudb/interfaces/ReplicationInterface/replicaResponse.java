@@ -12,6 +12,9 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class replicaResponse implements org.xtreemfs.babudb.interfaces.utils.Response
 {
+    public static final int TAG = 1012;
+
+    
     public replicaResponse() { returnValue = new LogEntries(); }
     public replicaResponse( LogEntries returnValue ) { this.returnValue = returnValue; }
     public replicaResponse( Object from_hash_map ) { returnValue = new LogEntries(); this.deserialize( from_hash_map ); }
@@ -20,14 +23,15 @@ public class replicaResponse implements org.xtreemfs.babudb.interfaces.utils.Res
     public LogEntries getReturnValue() { return returnValue; }
     public void setReturnValue( LogEntries returnValue ) { this.returnValue = returnValue; }
 
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::replicaResponse"; }    
-    public long getTypeId() { return 2; }
-
+    // Object
     public String toString()
     {
         return "replicaResponse( " + returnValue.toString() + " )";
     }
 
+    // Serializable
+    public int getTag() { return 1012; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::replicaResponse"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -68,11 +72,8 @@ public class replicaResponse implements org.xtreemfs.babudb.interfaces.utils.Res
         return my_size;
     }
 
-    // Response
-    public int getOperationNumber() { return 2; }
 
-
-    private LogEntries returnValue;
+    private LogEntries returnValue;    
 
 }
 

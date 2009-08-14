@@ -39,7 +39,7 @@ public class ReplicaOperation extends Operation {
     
     public ReplicaOperation(MasterRequestDispatcher dispatcher) {
         this.dispatcher = dispatcher;
-        procId = new replicaRequest().getOperationNumber();
+        procId = new replicaRequest().getTag();
     }
 
     /*
@@ -58,8 +58,7 @@ public class ReplicaOperation extends Operation {
     @Override
     public Serializable parseRPCMessage(Request rq) {
         replicaRequest rpcrq = new replicaRequest();
-        rq.deserializeMessage(rpcrq);
-        
+        rq.deserializeMessage(rpcrq);  
         return null;
     }
 
@@ -88,8 +87,7 @@ public class ReplicaOperation extends Operation {
         // get the latest logFile
         DiskLogFile dlf = null;
         try {
-            dispatcher.contextSwitchLock.lock();
-            dlf = new DiskLogFile(dispatcher.db.logger.getLatestLogFileName());
+            dlf = new DiskLogFile(dispatcher.dbs.getLogger().getLatestLogFileName());
             
             // get the first logEntry
             while (dlf.hasNext() && i == 0) {
@@ -97,17 +95,18 @@ public class ReplicaOperation extends Operation {
                     le = dlf.next();
                     if (le.getLSN().equals(start)) {
                         result.add(new org.xtreemfs.babudb.interfaces.LogEntry(le.serialize(checksum)));
-                        if (le.getPayload().array().length == 0)
-                            rq.sendReplicationException(ErrNo.SERVICE_CALL_MISSED.ordinal(), 
-                                    "Requested logEntries included a serviceCall. Load DB!");
-                        else i++;
-                        break;
+                        if (le.getPayload().array().length == 0) {
+                            rq.sendReplicationException(ErrNo.SERVICE_CALL_MISSED.ordinal());
+                            i = -1;
+                        } else i++;
                     }
                 } catch (LogEntryException e) {
+                    rq.sendReplicationException(ErrNo.LOG_CUT.ordinal());
                     i = -1;
-                    rq.sendReplicationException(ErrNo.LOG_CUT.ordinal(), "Requested logEntries are not available anymore.");
                 } finally {
                     checksum.reset();
+                  // clears the buffer, before it gets the next entry
+                    if (le!=null) le.free();
                 }
             }
                 
@@ -118,31 +117,36 @@ public class ReplicaOperation extends Operation {
                     for (int j=i;j<numOfLEs;j++) {
                         le = dlf.next();
                         result.add(new org.xtreemfs.babudb.interfaces.LogEntry(le.serialize(checksum)));
+                        checksum.reset();
                         if (le.getPayload().array().length == 0) {
-                            rq.sendReplicationException(ErrNo.SERVICE_CALL_MISSED.ordinal(), 
-                                    "Requested logEntries included a serviceCall. Load DB!");
+                            rq.sendReplicationException(ErrNo.SERVICE_CALL_MISSED.ordinal());
                             i = -1;
                             break;
-                        }
+                        } else
+                            le.free();
                     }
                 } catch (LogEntryException e) {
+                    rq.sendReplicationException(ErrNo.LOG_CUT.ordinal());
                     i = -1;
-                    rq.sendReplicationException(ErrNo.LOG_CUT.ordinal(), "Requested logEntries are not available anymore.");
                 } finally {
                     checksum.reset();
+                  // clears the buffer, before it gets the next entry
+                    if (le!=null) le.free();
                 }
             }
             
+            // send the response, if the requested log entries are found
             if (i > 0) rq.sendSuccess(new replicaResponse(result));
+            // send a replication exception if not done so far
+            else if (i==0) rq.sendReplicationException(ErrNo.LOG_CUT.ordinal());
         } catch (IOException e) {
-            rq.sendReplicationException(ErrNo.INTERNAL_ERROR.ordinal(), "DiskLogFile on master is damaged.");
+            rq.sendReplicationException(ErrNo.INTERNAL_ERROR.ordinal());
         } finally {
             if (dlf!=null) {
                 try {
                     dlf.close();
                 } catch (IOException e) { /* ignored */ }
             }
-            dispatcher.contextSwitchLock.unlock();
         }
     }
 }

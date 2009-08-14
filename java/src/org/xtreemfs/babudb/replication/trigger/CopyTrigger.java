@@ -26,11 +26,11 @@ public class CopyTrigger implements Trigger {
     private String dest;
     
     public CopyTrigger() {
-        this.eventNumber = new copyRequest().getOperationNumber();
+        this.eventNumber = new copyRequest().getTag();
     }
    
     public CopyTrigger(LSN lsn, String sourceDB, String destDB) {
-        this.eventNumber = new copyRequest().getOperationNumber();
+        this.eventNumber = new copyRequest().getTag();
         this.lsn = lsn;
         this.source = sourceDB;
         this.dest = destDB;

@@ -10,9 +10,9 @@ except ImportError:
     yidl_dir_path = os.path.join( my_dir_path, "..", "share", "yidl", "src" )
     if not yidl_dir_path in sys.path: sys.path.append( yidl_dir_path )
     import yidl
-    
-from yidl.java_target import *
+
 from yidl.generator import *
+from yidl.java_target import *
 from yidl.string_utils import *
 
 
@@ -24,35 +24,43 @@ BABUDB_COMMON_IMPORTS = [
                             "import org.xtreemfs.babudb.interfaces.utils.*;",
                             "import org.xtreemfs.include.foundation.oncrpc.utils.ONCRPCBufferWriter;",
                             "import org.xtreemfs.include.common.buffer.ReusableBuffer;",
-#                            "import org.xtreemfs.include.common.buffer.BufferPool;"
                           ]
 
 
 class BabuDBJavaInterface(JavaInterface, JavaClass):
-    def __init__( self, *args, **kwds ):
-        JavaInterface.__init__( self, *args, **kwds )
-        assert self.getUID() > 0, "interface "  + self.getQualifiedName() + " requires a positive UID for the BabuDB Java generator (current uid = %i)" % self.getUID()
-    
     def generate( self ):                            
         JavaInterface.generate( self ) 
            
         class_header = self.getClassHeader()        
         constants = pad( "\n" + INDENT_SPACES, ( "\n" + INDENT_SPACES ).join( [repr( constant ) for constant in self.getConstants()] ), "\n\n" )        
-        uid = self.getUID()            
+        tag = self.getTag()            
         out = """\
 %(class_header)s%(constants)s
-    public static int getVersion() { return %(uid)s; }
+    public static int getVersion() { return %(tag)s; }
 """ % locals()
-                            
+
+        exception_factories = "".join( [exception_type.getExceptionFactory() for exception_type in self.getExceptionTypes()] )
+        if len( exception_factories ) > 0:                
+            out += """
+    public static ONCRPCException createException( int accept_stat ) throws Exception
+    {
+        switch( accept_stat )
+        {
+%(exception_factories)s
+            default: throw new Exception( "unknown accept_stat " + Integer.toString( accept_stat ) );
+        }
+    }
+""" % locals()
+        
         request_factories = "".join( [operation.getRequestFactory() for operation in self.getOperations()] )
         if len( request_factories ) > 0:                
             out += """
     public static Request createRequest( ONCRPCRequestHeader header ) throws Exception
     {
-        switch( header.getOperationNumber() )
+        switch( header.getProcedure() )
         {
 %(request_factories)s
-            default: throw new Exception( "unknown request number " + Integer.toString( header.getOperationNumber() ) );
+            default: throw new Exception( "unknown request tag " + Integer.toString( header.getProcedure() ) );
         }
     }
 """ % locals()
@@ -65,20 +73,9 @@ class BabuDBJavaInterface(JavaInterface, JavaClass):
         switch( header.getXID() )
         {
 %(response_factories)s
-            default: throw new Exception( "unknown response number " + Integer.toString( header.getXID() ) );
+            default: throw new Exception( "unknown response XID " + Integer.toString( header.getXID() ) );
         }
     }    
-""" % locals()
-
-        exception_factories = [exception_type.getExceptionFactory() for exception_type in self.getExceptionTypes()]
-        if len( exception_factories ) > 0:
-            exception_factories = ( "\n" + INDENT_SPACES * 2 + "else " ).join( exception_factories  )
-            out += """
-    public static ONCRPCException createException( String exception_type_name ) throws java.io.IOException
-    {
-        %(exception_factories)s
-        else throw new java.io.IOException( "unknown exception type " + exception_type_name );
-    }
 """ % locals()
 
         out += self.getClassFooter()
@@ -86,7 +83,7 @@ class BabuDBJavaInterface(JavaInterface, JavaClass):
         writeGeneratedFile( self.getFilePath(), out )            
 
     def getImports( self ): 
-        return JavaClass.getImports( self ) + BABUDB_COMMON_IMPORTS + ["import org.xtreemfs.babudb.interfaces.Exceptions.*;"]
+        return JavaClass.getImports( self ) + BABUDB_COMMON_IMPORTS
 
 
 class BabuDBJavaType: pass
@@ -115,7 +112,11 @@ class BabuDBJavaEnumeratedType(JavaEnumeratedType, BabuDBJavaType):
     def getBufferDeserializeCall( self, identifier ): name = self.getName(); return "%(identifier)s = %(name)s.parseInt( buf.getInt() );" % locals()
     def getBufferSerializeCall( self, identifier ): return "writer.putInt( %(identifier)s.intValue() );" % locals()
     def getSize( self, identifier ): return "4"
-    
+
+
+class BabuDBJavaExceptionType(JavaExceptionType, BabuDBJavaCompoundType):
+    def generate( self ): BabuDBJavaStructType( self.getScope(), self.getQualifiedName(), self.getTag(), ( "org.xtreemfs.babudb.interfaces.utils.ONCRPCException", ), self.getMembers() ).generate()
+    def getExceptionFactory( self ): return ( INDENT_SPACES * 3 ) + "case %i: return new %s();\n" % ( self.getTag(), self.getName() )
 
 class BabuDBJavaMapType(JavaMapType, BabuDBJavaCompoundType):
     def getDeserializeMethods( self ):
@@ -291,42 +292,28 @@ class BabuDBJavaStructType(JavaStructType, BabuDBJavaCompoundType):
 %(buffer_serialize_calls)s
     }
     """ % locals() 
-                     
-
-class BabuDBJavaExceptionType(JavaExceptionType, BabuDBJavaCompoundType):
-    def generate( self ): BabuDBJavaStructType( self.getScope(), self.getQualifiedName(), self.getUID(), ( "org.xtreemfs.babudb.interfaces.utils.ONCRPCException", ), self.getMembers() ).generate()
-    def getExceptionFactory( self ): return "if ( exception_type_name.equals(\"%s\") ) return new %s();" % ( self.getQualifiedName( "::" ), self.getName() )
-    
+                        
     
 class BabuDBJavaOperation(JavaOperation):        
     def generate( self ):
         self._getRequestType().generate()
         self._getResponseType( "returnValue" ).generate()
                 
-    def getRequestFactory( self ): return ( INDENT_SPACES * 3 ) + "case %i: return new %sRequest();\n" % ( self.getUID(), self.getName() )                    
-    def getResponseFactory( self ): return not self.isOneway() and ( ( INDENT_SPACES * 3 ) + "case %i: return new %sResponse();" % ( self.getUID(), self.getName() ) ) or ""                
+    def getRequestFactory( self ): return ( INDENT_SPACES * 3 ) + "case %i: return new %sRequest();\n" % ( self.getTag(), self.getName() )                    
+    def getResponseFactory( self ): return not self.isOneway() and ( ( INDENT_SPACES * 3 ) + "case %i: return new %sResponse();" % ( self.getTag(), self.getName() ) ) or ""                
 
 class BabuDBJavaRequestType(BabuDBJavaStructType):
     def getOtherMethods( self ):        
-        uid = self.getUID()     
         response_type_name = self.getName()[:self.getName().index( "Request" )] + "Response"   
         return BabuDBJavaStructType.getOtherMethods( self ) + """
     // Request
-    public int getOperationNumber() { return %(uid)s; }
     public Response createDefaultResponse() { return new %(response_type_name)s(); }
 """ % locals()
 
     def getParentTypeNames( self ):
         return ( None, "org.xtreemfs.babudb.interfaces.utils.Request" )            
 
-class BabuDBJavaResponseType(BabuDBJavaStructType):    
-    def getOtherMethods( self ):
-        uid = self.getUID()
-        return BabuDBJavaStructType.getOtherMethods( self ) + """
-    // Response
-    public int getOperationNumber() { return %(uid)s; }
-""" % locals()
-
+class BabuDBJavaResponseType(BabuDBJavaStructType):   
     def getParentTypeNames( self ):
         return ( None, "org.xtreemfs.babudb.interfaces.utils.Response" )
 
@@ -334,7 +321,7 @@ class BabuDBJavaResponseType(BabuDBJavaStructType):
 class BabuDBJavaTarget(JavaTarget): pass
                                 
            
-if __name__ == "__main__":     
+if __name__ == "__main__":
     if len( sys.argv ) == 1:
         sys.argv.extend( ( "-i", os.path.abspath( os.path.join( my_dir_path, "..", "..", "interfaces" ) ), 
                            "-o", os.path.abspath( os.path.join( my_dir_path, "..", "src" ) ) ) )

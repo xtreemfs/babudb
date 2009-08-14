@@ -12,18 +12,22 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class stateRequest implements org.xtreemfs.babudb.interfaces.utils.Request
 {
+    public static final int TAG = 1011;
+
+    
     public stateRequest() {  }
     public stateRequest( Object from_hash_map ) {  this.deserialize( from_hash_map ); }
     public stateRequest( Object[] from_array ) { this.deserialize( from_array ); }
 
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::stateRequest"; }    
-    public long getTypeId() { return 1; }
-
+    // Object
     public String toString()
     {
         return "stateRequest()";
     }
 
+    // Serializable
+    public int getTag() { return 1011; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::stateRequest"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -64,9 +68,8 @@ return to_hash_map;
     }
 
     // Request
-    public int getOperationNumber() { return 1; }
     public Response createDefaultResponse() { return new stateResponse(); }
-
+    
 
 }
 

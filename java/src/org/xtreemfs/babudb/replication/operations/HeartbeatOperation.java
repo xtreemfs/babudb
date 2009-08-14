@@ -32,7 +32,7 @@ public class HeartbeatOperation extends Operation {
     
     public HeartbeatOperation(MasterRequestDispatcher dispatcher) {
         this.dispatcher = dispatcher;
-        procId = new heartbeatRequest().getOperationNumber();
+        procId = new heartbeatRequest().getTag();
     }
 
     /*
@@ -77,7 +77,7 @@ public class HeartbeatOperation extends Operation {
             dispatcher.heartbeat(rq.getRPCRequest().getClientIdentity(), lsn, TimeSync.getLocalSystemTime());
             rq.sendSuccess(new heartbeatResponse());
         } catch (UnknownParticipantException e) {
-            rq.sendReplicationException(ErrNo.SECURITY.ordinal(), e.getMessage());
+            rq.sendReplicationException(ErrNo.SECURITY.ordinal());
         }
     }
 }

@@ -12,6 +12,9 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class loadRequest implements org.xtreemfs.babudb.interfaces.utils.Request
 {
+    public static final int TAG = 1013;
+
+    
     public loadRequest() { lsn = new LSN(); }
     public loadRequest( LSN lsn ) { this.lsn = lsn; }
     public loadRequest( Object from_hash_map ) { lsn = new LSN(); this.deserialize( from_hash_map ); }
@@ -20,14 +23,15 @@ public class loadRequest implements org.xtreemfs.babudb.interfaces.utils.Request
     public LSN getLsn() { return lsn; }
     public void setLsn( LSN lsn ) { this.lsn = lsn; }
 
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::loadRequest"; }    
-    public long getTypeId() { return 3; }
-
+    // Object
     public String toString()
     {
         return "loadRequest( " + lsn.toString() + " )";
     }
 
+    // Serializable
+    public int getTag() { return 1013; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::loadRequest"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -69,11 +73,10 @@ public class loadRequest implements org.xtreemfs.babudb.interfaces.utils.Request
     }
 
     // Request
-    public int getOperationNumber() { return 3; }
     public Response createDefaultResponse() { return new loadResponse(); }
 
 
-    private LSN lsn;
+    private LSN lsn;    
 
 }
 

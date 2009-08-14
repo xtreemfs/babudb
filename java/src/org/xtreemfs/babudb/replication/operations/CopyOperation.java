@@ -30,7 +30,7 @@ public class CopyOperation extends Operation {
     private final SlaveRequestDispatcher dispatcher;
     
     public CopyOperation(SlaveRequestDispatcher dispatcher) {
-        procId = new copyRequest().getOperationNumber();
+        procId = new copyRequest().getTag();
         this.dispatcher = dispatcher;
     }
 
@@ -76,7 +76,7 @@ public class CopyOperation extends Operation {
             dispatcher.replication.enqueueOperation(COPY, new Object[]{ lsn, request.getSourceDB(), request.getDestDB() });
             rq.sendSuccess(new copyResponse());
         } catch (TooBusyException e) {
-            rq.sendReplicationException(ErrNo.TOO_BUSY.ordinal(), e.getMessage());
+            rq.sendReplicationException(ErrNo.TOO_BUSY.ordinal());
         }
     }
 }

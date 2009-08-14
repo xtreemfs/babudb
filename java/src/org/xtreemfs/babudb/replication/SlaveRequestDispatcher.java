@@ -47,20 +47,46 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
      * Initial setup.
      * 
      * @param config
+     * @param dbs
      * @param initial
-     * @param db
      * @throws IOException
      */
-    public SlaveRequestDispatcher(SlaveConfig config, BabuDB db, LSN initial) throws IOException {
-        super("Slave", config, db);
+    public SlaveRequestDispatcher(SlaveConfig config, BabuDB dbs, LSN initial) throws IOException {
+        super("Slave", config, dbs);
+        this.configuration = config;
+                
+        // --------------------------
+        // initialize internal stages
+        // --------------------------
+        
+        this.replication = new ReplicationStage(this, config.getMaxQ(), null);   
+        this.heartbeat = new HeartbeatThread(this, initial);
+        
+        // --------------------------
+        // register the master client
+        // --------------------------
+        
+        this.master = new MasterClient(rpcClient,config.getMaster());
+    }
+    
+    /**
+     * Reset configuration.
+     * 
+     * @param config
+     * @param dbs
+     * @param backupState - needed if the dispatcher shall be reset. Includes the initial LSN.
+     * @throws IOException
+     */
+    public SlaveRequestDispatcher(SlaveConfig config, BabuDB dbs, DispatcherBackupState backupState) throws IOException {
+        super("Slave", config, dbs);
         this.configuration = config;
         
         // --------------------------
         // initialize internal stages
         // --------------------------
         
-        this.replication = new ReplicationStage(this, config.getMaxQ());   
-        this.heartbeat = new HeartbeatThread(this, initial);
+        this.replication = new ReplicationStage(this, config.getMaxQ(), backupState.requestQueue);   
+        this.heartbeat = new HeartbeatThread(this, backupState.latest);
         
         // --------------------------
         // register the master client
@@ -95,27 +121,27 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
      */
     @Override
     public void shutdown() {
-        super.shutdown();
         try {
             replication.shutdown();
             heartbeat.shutdown();          
             
             replication.waitForShutdown();
-            heartbeat.waitForShutdown();
+            heartbeat.waitForShutdown();  
         } catch (Exception e) {
             Logging.logMessage(Logging.LEVEL_ERROR, this, "shutdown failed");
         }
+        super.shutdown();
     }
-
+    
     /*
      * (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.RequestDispatcher#asyncShutdown()
      */
     @Override
     public void asyncShutdown() {
-        super.asyncShutdown();
         replication.shutdown();
         heartbeat.shutdown();
+        super.asyncShutdown();
     }
     
     /*
@@ -157,4 +183,22 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
     public synchronized void updateLatestLSN(LSN lsn) {
         heartbeat.updateLSN(lsn);
     }
+
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#getLatestLSN()
+     */
+    @Override
+    public LSN getLatestLSN() {
+        return dbs.getLogger().getLatestLSN();
+    }
+
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#getBackupState()
+     */
+    @Override
+    public DispatcherBackupState getBackupState() {
+        return new DispatcherBackupState(dbs.getLogger().getLatestLSN(),replication.backupQueue());
+    } 
 }

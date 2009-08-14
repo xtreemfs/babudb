@@ -79,6 +79,7 @@ public class BabuDBConfig extends Config {
     public BabuDBConfig(String baseDir, String dbLogDir, int numThreads, 
             long maxLogFileSize, int checkInterval,SyncMode syncMode,  
             int pseudoSyncWait, int maxQ) {
+        
         super();
         this.baseDir = (baseDir.endsWith(File.separator)) ? baseDir : baseDir+File.separator;
         this.dbCfgFile = "config.db";

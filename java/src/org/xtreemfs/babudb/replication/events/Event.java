@@ -30,6 +30,7 @@ public abstract class Event {
      * @param trigger
      * @throws NotEnoughAvailableSlavesException
      * @return a proxy for the broadcast response.
+     * @throws InterruptedException 
      */
-    public abstract EventResponse startEvent(Trigger trigger) throws NotEnoughAvailableSlavesException;
+    public abstract EventResponse startEvent(Trigger trigger) throws NotEnoughAvailableSlavesException, InterruptedException;
 }

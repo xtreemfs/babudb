@@ -41,7 +41,7 @@ public class StateClient extends ONCRPCClient {
     public RPCResponse<LSN> getState () {
         stateRequest rq = new stateRequest();
         
-        RPCResponse<LSN> r = (RPCResponse<LSN>) sendRequest(null, rq.getOperationNumber(), rq, new RPCResponseDecoder<org.xtreemfs.babudb.lsmdb.LSN>() {
+        RPCResponse<LSN> r = (RPCResponse<LSN>) sendRequest(null, rq.getTag(), rq, new RPCResponseDecoder<org.xtreemfs.babudb.lsmdb.LSN>() {
         
             /*
              * (non-Javadoc)

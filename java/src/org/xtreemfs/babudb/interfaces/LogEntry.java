@@ -11,6 +11,9 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class LogEntry implements org.xtreemfs.babudb.interfaces.utils.Serializable
 {
+    public static final int TAG = 1040;
+
+    
     public LogEntry() { payload = null; }
     public LogEntry( ReusableBuffer payload ) { this.payload = payload; }
     public LogEntry( Object from_hash_map ) { payload = null; this.deserialize( from_hash_map ); }
@@ -19,14 +22,15 @@ public class LogEntry implements org.xtreemfs.babudb.interfaces.utils.Serializab
     public ReusableBuffer getPayload() { return payload; }
     public void setPayload( ReusableBuffer payload ) { this.payload = payload; }
 
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::LogEntry"; }    
-    public long getTypeId() { return 0; }
-
+    // Object
     public String toString()
     {
         return "LogEntry( " + "\"" + payload + "\"" + " )";
     }
 
+    // Serializable
+    public int getTag() { return 1040; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::LogEntry"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -68,7 +72,7 @@ public class LogEntry implements org.xtreemfs.babudb.interfaces.utils.Serializab
     }
 
 
-    private ReusableBuffer payload;
+    private ReusableBuffer payload;    
 
 }
 

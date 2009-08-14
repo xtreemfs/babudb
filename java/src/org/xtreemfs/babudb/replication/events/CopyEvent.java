@@ -50,7 +50,7 @@ public class CopyEvent extends Event {
      */
     @SuppressWarnings("unchecked")
     @Override
-    public EventResponse startEvent(Trigger trigger) throws NotEnoughAvailableSlavesException {
+    public EventResponse startEvent(Trigger trigger) throws NotEnoughAvailableSlavesException, InterruptedException {
         assert(trigger!=null);
         assert(trigger instanceof CopyTrigger);      
         
@@ -79,9 +79,9 @@ public class CopyEvent extends Event {
                     } catch (Exception e) {
                         result.decrementPermittedFailures();
                         dispatcher.markSlaveAsDead(slave);
+                    } finally {
+                        if (r!=null) r.freeBuffers();
                     }
-                    
-                    r.freeBuffers();
                 }
             });
         }

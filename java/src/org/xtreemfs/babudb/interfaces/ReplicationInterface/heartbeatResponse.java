@@ -12,18 +12,22 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class heartbeatResponse implements org.xtreemfs.babudb.interfaces.utils.Response
 {
+    public static final int TAG = 1015;
+
+    
     public heartbeatResponse() {  }
     public heartbeatResponse( Object from_hash_map ) {  this.deserialize( from_hash_map ); }
     public heartbeatResponse( Object[] from_array ) { this.deserialize( from_array ); }
 
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::heartbeatResponse"; }    
-    public long getTypeId() { return 5; }
-
+    // Object
     public String toString()
     {
         return "heartbeatResponse()";
     }
 
+    // Serializable
+    public int getTag() { return 1015; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::heartbeatResponse"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -62,10 +66,7 @@ return to_hash_map;
 
         return my_size;
     }
-
-    // Response
-    public int getOperationNumber() { return 5; }
-
+    
 
 }
 

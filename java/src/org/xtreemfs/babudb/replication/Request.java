@@ -9,7 +9,7 @@ package org.xtreemfs.babudb.replication;
 
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.foundation.oncrpc.server.ONCRPCRequest;
-import org.xtreemfs.babudb.interfaces.Exceptions.errnoException;
+import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCException;
 import org.xtreemfs.babudb.interfaces.utils.Serializable;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
@@ -47,23 +47,22 @@ public class Request {
         rpcRequest.sendResponse(response);
     }
 
-    public void sendInternalServerError(Throwable rootCause) {
-        rpcRequest.sendInternalServerError(rootCause);
+    public void sendInternalServerError(Throwable rootCause, errnoException ex) {
+        rpcRequest.sendInternalServerError(rootCause, ex);
     }
 
     public void sendException(ONCRPCException exception) {
         if (Logging.isDebug()) {
             Logging.logMessage(Logging.LEVEL_DEBUG, this,"sending exception return value: "+exception);
         }
-        rpcRequest.sendGenericException(exception);
+        rpcRequest.sendException(exception);
     }
     
-    public void sendReplicationException(int errno, String message) {
-        errnoException ex = new errnoException(errno, message, "");
+    public void sendReplicationException(int errno) {
         if (Logging.isDebug()) {
-            Logging.logMessage(Logging.LEVEL_DEBUG, this,"sending errno exception "+ex);
+            Logging.logMessage(Logging.LEVEL_DEBUG, this,"sending errno exception #"+errno);
         }
-        getRPCRequest().sendGenericException(ex);
+        getRPCRequest().sendErrorCode(errno);
     }
     
     /**
