@@ -3,43 +3,10 @@ import os
 from executils import exec_ranges
 from datafile import DataFile
 
-if __name__ == '__main__':
-    base_path = './experiments/diskindex/'
-
-    if not os.path.exists(base_path):
-        os.mkdir(base_path)
-
-    config = {
-        'blocksize': 16,
-        'hitrate': 10,
-        'keylength': 8,
-        'path': '/tmp/babudb_diskindex_benchmark',
-        'num_entries': 100000,
-        'num_lookups': 0,
-        'base_dir': base_path,
-        'seed': 0
-        }
-
-    cmd = """java -Xms512M -Xmx1024M -jar babudb.jar -blocksize {blocksize} -hitrate {hitrate} -keylength {keylength} {path} {num_entries} {num_lookups}"""
-
-#    exec_single(cmd, config)
-#    exec_repetitions(cmd, config, num_reps=3)
-
-    # centralized
-#    centralized_path = os.path.join(base_path, 'centralized')
-#    if not os.path.exists(centralized_path):
-#        os.mkdir(centralized_path)
-#    config['base_dir'] = centralized_path
-
-#    ranges = {'num_entries': [1000,10000,100000, 1000000], 'blocksize': [32,64], 'keylength': [8, 12]}
-    ranges = {'num_entries': [1000,10000,100000]} # ,1000000
-
-#    ranges = {'blocksize': [16]} # ,512,1024,2048,4096
+def write_stats(ranges, results, prefix="stats"):
     attrs = list(ranges.keys())
 
-    df = DataFile(os.path.join(base_path, 'stats_%s.dat' % '_'.join(attrs)), ['entries', 'lookups', 'hits', 'total time', 'lookup time', 'iter time', 'iter throughput'] + attrs, overwrite=True)
-
-    results = exec_ranges(cmd, config, ranges, num_reps=10, config=base_path)
+    df = DataFile(os.path.join(base_path, '%s_%s.dat' % (prefix, '_'.join(attrs))), ['entries', 'lookups', 'hits', 'total time', 'lookup time', 'iter time', 'iter throughput'] + attrs, overwrite=True)
 
     for config, reps in results:
         cfg = dict(config)
@@ -64,9 +31,47 @@ if __name__ == '__main__':
         df['iter throughput'] = float(sum(avg_iter_tp))/len(avg_iter_tp)
         df.save()
 
-        print(avg_iter_time)
-        
     df.close()
+
+if __name__ == '__main__':
+    base_path = './experiments/diskindex/'
+
+    if not os.path.exists(base_path):
+        os.mkdir(base_path)
+
+    config = {
+        'blocksize': 64,
+        'hitrate': 10,
+        'keylength': 16,
+        'path': '/tmp/babudb_diskindex_benchmark',
+        'num_entries': 100000,
+        'num_lookups': 100000,
+        'base_dir': base_path,
+        'compression': '',
+        'seed': 0
+        }
+
+    cmd = """java -Xms512M -Xmx1024M -jar babudb.jar -blocksize {blocksize} -hitrate {hitrate} -keylength {keylength} {compression} {path} {num_entries} {num_lookups}"""
+
+#    exec_single(cmd, config)
+#    exec_repetitions(cmd, config, num_reps=3)
+
+    # centralized
+#    centralized_path = os.path.join(base_path, 'centralized')
+#    if not os.path.exists(centralized_path):
+#        os.mkdir(centralized_path)
+#    config['base_dir'] = centralized_path
+
+#    ranges = {'num_entries': [1000,10000,100000, 1000000], 'blocksize': [32,64], 'keylength': [8, 12]}
+    ranges = {'num_entries': [1000,10000,100000,1000000,10000000]} # ,1000000
+
+#    ranges = {'blocksize': [16]} # ,512,1024,2048,4096
+    results = exec_ranges(cmd, config, ranges, num_reps=10, config=base_path)
+    write_stats(ranges, results)
+
+    config['compression'] = '-compression'
+    results = exec_ranges(cmd, config, ranges, num_reps=10, config=base_path)
+    write_stats(ranges, results, prefix="stats_compression")
         
 
 
