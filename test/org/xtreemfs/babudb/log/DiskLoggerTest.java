@@ -85,7 +85,7 @@ public class DiskLoggerTest extends TestCase {
         for (int i = 0; i < 100; i++) {
             String pl = "Entry "+(i+1);
             ReusableBuffer plb = ReusableBuffer.wrap(pl.getBytes());
-            e = new LogEntry(plb,sl);
+            e = new LogEntry(plb,sl,LogEntry.PAYLOAD_TYPE_INSERT);
             l.append(e);
         }
         synchronized (e) {
@@ -103,7 +103,7 @@ public class DiskLoggerTest extends TestCase {
         for (int i = 0; i < 100; i++) {
             String pl = "Entry "+(i+100+1);
             ReusableBuffer plb = ReusableBuffer.wrap(pl.getBytes());
-            e = new LogEntry(plb,sl);
+            e = new LogEntry(plb,sl,LogEntry.PAYLOAD_TYPE_INSERT);
             l.append(e);
         }
         
@@ -140,7 +140,7 @@ public class DiskLoggerTest extends TestCase {
         for (int i = 0; i < 100; i++) {
             String pl = "Entry "+(i+1);
             ReusableBuffer plb = ReusableBuffer.wrap(pl.getBytes());
-            e = new LogEntry(plb,sl);
+            e = new LogEntry(plb,sl,LogEntry.PAYLOAD_TYPE_INSERT);
             l.append(e);
         }
         synchronized (e) {
@@ -193,7 +193,7 @@ public class DiskLoggerTest extends TestCase {
         for (int i = 0; i < 100; i++) {
             String pl = "Entry "+(i+1);
             ReusableBuffer plb = ReusableBuffer.wrap(pl.getBytes());
-            e = new LogEntry(plb,sl);
+            e = new LogEntry(plb,sl,LogEntry.PAYLOAD_TYPE_INSERT);
             l.append(e);
         }
         synchronized (e) {

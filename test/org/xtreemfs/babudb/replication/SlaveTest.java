@@ -187,7 +187,7 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
     }
     
     private void awaitHeartbeat() throws Exception {
-        assertEquals(heartbeatOperation, mailbox.take());
+        assertEquals(heartbeatOperation, (int) mailbox.take());
     }
     
     private void makeDB() throws Exception {
@@ -236,7 +236,7 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
         ReusableBuffer payload = new ReusableBuffer(ByteBuffer.allocate(ig.getSize()));
         ig.serialize(payload);
         payload.flip();
-        LogEntry data = new LogEntry(payload , null);
+        LogEntry data = new LogEntry(payload , null, LogEntry.PAYLOAD_TYPE_INSERT);
         data.assignId(testLSN.getViewId(), testLSN.getSequenceNo());
         
         RPCResponse<?> rp = client.replicate(testLSN, data.serialize(new CRC32()));
@@ -260,7 +260,7 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
         ReusableBuffer payload = new ReusableBuffer(ByteBuffer.allocate(ig.getSize()));
         ig.serialize(payload);
         payload.flip();
-        LogEntry data = new LogEntry(payload , null);
+        LogEntry data = new LogEntry(payload , null, LogEntry.PAYLOAD_TYPE_INSERT);
         data.assignId(testLSN.getViewId(), testLSN.getSequenceNo());
         
         RPCResponse<?> rp = client.replicate(testLSN, data.serialize(new CRC32()));
@@ -271,7 +271,7 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
         } finally {
             rp.freeBuffers();
         }
-        assertEquals(replicaOperation, mailbox.take());
+        assertEquals(replicaOperation, (int) mailbox.take());
     }
     
     private void provokeLoad1() throws Exception {
@@ -284,7 +284,7 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
         ReusableBuffer payload = new ReusableBuffer(ByteBuffer.allocate(ig.getSize()));
         ig.serialize(payload);
         payload.flip();
-        LogEntry data = new LogEntry(payload , null);
+        LogEntry data = new LogEntry(payload , null, LogEntry.PAYLOAD_TYPE_INSERT);
         data.assignId(testLSN.getViewId(), testLSN.getSequenceNo());
         
         RPCResponse<?> rp = client.replicate(testLSN, data.serialize(new CRC32()));
@@ -295,7 +295,7 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
         } finally {
             rp.freeBuffers();
         }
-        assertEquals(loadOperation, mailbox.take());
+        assertEquals(loadOperation, (int) mailbox.take());
     }
     
     private void provokeLoad2() throws Exception {
@@ -307,7 +307,7 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
         } finally {
             rp.freeBuffers();
         }
-        assertEquals(loadOperation, mailbox.take());
+        assertEquals(loadOperation, (int) mailbox.take());
     }
     
     @Override

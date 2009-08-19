@@ -8,6 +8,7 @@
 
 package org.xtreemfs.babudb.snapshots;
 
+import java.io.File;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
@@ -67,7 +68,7 @@ public class SnapshotTest extends TestCase {
         
         // create a snapshot (in memory)
         database.getSnapshotManager().createPersistentSnapshot("test",
-            new DefaultSnapshotConfig("snap1", new int[] { 0, 1 }, null));
+            new SnapshotConfig("snap1", new int[] { 0, 1 }, null));
         DatabaseRO snap1 = database.getSnapshotManager().getSnapshotDB("test", "snap1");
         
         // overwrite original values
@@ -96,7 +97,7 @@ public class SnapshotTest extends TestCase {
         
         // create a second snapshot
         database.getSnapshotManager().createPersistentSnapshot("test",
-            new DefaultSnapshotConfig("snap2", new int[] { 0, 1 }, null));
+            new SnapshotConfig("snap2", new int[] { 0, 1 }, null));
         DatabaseRO snap2 = database.getSnapshotManager().getSnapshotDB("test", "snap2");
         
         // check whether both the first snapshot and the second snapshot contain
@@ -145,7 +146,7 @@ public class SnapshotTest extends TestCase {
         // create a snapshot (in memory)
         database.getSnapshotManager().createPersistentSnapshot(
             "test",
-            new DefaultSnapshotConfig("snap1", new int[] { 0, 3 }, new byte[][][] { { "test".getBytes() },
+            new SnapshotConfig("snap1", new int[] { 0, 3 }, new byte[][][] { { "test".getBytes() },
                 { "f".getBytes(), "ba".getBytes(), "blub".getBytes() } }));
         DatabaseRO snap1 = database.getSnapshotManager().getSnapshotDB("test", "snap1");
         
@@ -188,7 +189,7 @@ public class SnapshotTest extends TestCase {
         
         // create a snapshot (in memory)
         database.getSnapshotManager().createPersistentSnapshot("test",
-            new DefaultSnapshotConfig("snap1", new int[] { 0, 3 }, null));
+            new SnapshotConfig("snap1", new int[] { 0, 3 }, null));
         DatabaseRO snap1 = database.getSnapshotManager().getSnapshotDB("test", "snap1");
         
         // overwrite original values
@@ -225,6 +226,106 @@ public class SnapshotTest extends TestCase {
         assertEquals("v2", new String(snap1.directLookup(0, "test".getBytes())));
         assertEquals("v1", new String(snap1.directLookup(3, "foo".getBytes())));
         assertEquals("v2", new String(snap1.directLookup(3, "bar".getBytes())));
+        
+        ir = db.createInsertGroup();
+        ir.addInsert(0, "te".getBytes(), "x".getBytes());
+        ir.addInsert(0, "key".getBytes(), "x".getBytes());
+        db.directInsert(ir);
+        
+        // create a partial snapshot
+        database.getSnapshotManager().createPersistentSnapshot("test",
+            new SnapshotConfig("snap2", new int[] { 0 }, new byte[][][] { { "test".getBytes() } }));
+        
+        // checkpoint and restart the database
+        database.getCheckpointer().checkpoint();
+        database.shutdown();
+        database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
+            SyncMode.SYNC_WRITE, 0, 0));
+        
+        DatabaseRO snap2 = database.getSnapshotManager().getSnapshotDB("test", "snap2");
+        
+        // check whether only the records covered by the prefixes are contained
+        assertEquals("x", new String(snap2.directLookup(0, "testxyz".getBytes())));
+        assertEquals("x", new String(snap2.directLookup(0, "test".getBytes())));
+        assertNull(snap2.directLookup(0, "te".getBytes()));
+        assertNull(snap2.directLookup(0, "key".getBytes()));
+        
+    }
+    
+    public void testDelete() throws Exception {
+        
+        database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
+            SyncMode.SYNC_WRITE, 0, 0));
+        Database db = database.getDatabaseManager().createDatabase("test", 4);
+        
+        // add some key-value pairs
+        BabuDBInsertGroup ir = db.createInsertGroup();
+        ir.addInsert(0, "testxyz".getBytes(), "v1".getBytes());
+        ir.addInsert(0, "test".getBytes(), "v2".getBytes());
+        ir.addInsert(0, "yagga".getBytes(), "bla".getBytes());
+        ir.addInsert(1, "foo".getBytes(), "v1".getBytes());
+        ir.addInsert(1, "bar".getBytes(), "v2".getBytes());
+        db.directInsert(ir);
+        
+        // create a snapshot
+        database.getSnapshotManager().createPersistentSnapshot("test",
+            new SnapshotConfig("snap1", new int[] { 0, 3 }, null));
+        
+        // delete the snapshot
+        database.getSnapshotManager().deletePersistentSnapshot("test", "snap1");
+        try {
+            database.getSnapshotManager().getSnapshotDB("test", "snap1");
+            fail();
+        } catch (Exception exc) {
+            // ok
+        }
+        
+        ir = db.createInsertGroup();
+        ir.addInsert(0, "testxyz".getBytes(), "ggg".getBytes());
+        ir.addInsert(0, "test".getBytes(), "ggg".getBytes());
+        db.directInsert(ir);
+        
+        // checkpoint and restart the database
+        database.getCheckpointer().checkpoint();
+        database.shutdown();
+        database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
+            SyncMode.SYNC_WRITE, 0, 0));
+        
+        // check if the formerly deleted snapshot does not exist anymore
+        try {
+            database.getSnapshotManager().getSnapshotDB("test", "snap1");
+            fail();
+        } catch (Exception exc) {
+            // ok
+        }
+        
+        // create a new snapshot
+        database.getSnapshotManager().createPersistentSnapshot("test",
+            new SnapshotConfig("snap1", new int[] { 0, 1 }, null));
+        
+        // checkpoint the database
+        database.getCheckpointer().checkpoint();
+        
+        // delete the snapshot
+        database.getSnapshotManager().deletePersistentSnapshot("test", "snap1");
+        
+        // check if the formerly deleted snapshot does not exist anymore
+        try {
+            database.getSnapshotManager().getSnapshotDB("test", "snap1");
+            fail();
+        } catch (Exception exc) {
+            // ok
+        }
+        
+        // create a new snapshot
+        database.getSnapshotManager().createPersistentSnapshot("test",
+            new SnapshotConfig("snap1", new int[] { 0, 1 }, null));
+        
+        // checkpoint the database
+        database.getCheckpointer().checkpoint();
+        
+        // delete the database
+        database.getDatabaseManager().deleteDatabase("test");
         
     }
     

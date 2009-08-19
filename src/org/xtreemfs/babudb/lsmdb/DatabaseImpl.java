@@ -237,7 +237,7 @@ public class DatabaseImpl implements Database {
                     result.notifyAll();
                 }
             }
-        });
+        }, LogEntry.PAYLOAD_TYPE_INSERT);
         
         try {
             dbs.getLogger().append(e);
@@ -563,14 +563,19 @@ public class DatabaseImpl implements Database {
         return lsmDB.getComparators();
     }
     
+    @Override
+    public String getName() {
+        return lsmDB.getDatabaseName();
+    }
+    
     /**
-     * Creates an in-memory snapshot of all indices in a single database
-     * and writes the snapshot to disk.
-     * Eludes the slave-check.
+     * Creates an in-memory snapshot of all indices in a single database and
+     * writes the snapshot to disk. Eludes the slave-check.
      * 
      * NOTE: this method should only be invoked by the replication
      * 
-     * @param destDB - the name of the destination DB name.
+     * @param destDB
+     *            - the name of the destination DB name.
      * 
      * @throws BabuDBException
      *             if the checkpoint was not successful
@@ -614,7 +619,7 @@ public class DatabaseImpl implements Database {
         if (dbs.replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
-       
+        
         try {
             // critical block...
             dbs.getLogger().lockLogger();
@@ -635,7 +640,8 @@ public class DatabaseImpl implements Database {
      * @throws InterruptedException
      * @return an array with the snapshot ID for each index in the database
      */
-    public int[] createSnapshot(int[] indices) throws BabuDBException, InterruptedException {
+    public int[] createSnapshot(SnapshotConfig snap, boolean appendLogEntry) throws BabuDBException,
+        InterruptedException {
         
         if (dbs.replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
@@ -643,15 +649,62 @@ public class DatabaseImpl implements Database {
         
         try {
             
-            // TODO: append a log entry for the new snapshot
-            // master.getLogger().append(entry);
+            if (appendLogEntry) {
+                // create a log entry
+                ReusableBuffer buf = snap.serialize(lsmDB.getDatabaseId());
+                
+                final AsyncResult result = new AsyncResult();
+                LogEntry snapshotEntry = new LogEntry(buf, new SyncListener() {
+                    
+                    @Override
+                    public void synced(LogEntry entry) {
+                        synchronized (result) {
+                            result.done = true;
+                            result.notify();
+                        }
+                    }
+                    
+                    @Override
+                    public void failed(LogEntry entry, Exception ex) {
+                        synchronized (result) {
+                            result.done = true;
+                            result.error = new BabuDBException(ErrorCode.INTERNAL_ERROR, ex.getMessage());
+                            result.notify();
+                        }
+                    }
+                    
+                }, LogEntry.PAYLOAD_TYPE_SNAP);
+                
+                dbs.getLogger().append(snapshotEntry);
+                
+                synchronized (result) {
+                    if (!result.done) {
+                        try {
+                            result.wait();
+                        } catch (InterruptedException ex) {
+                            throw new BabuDBException(ErrorCode.INTERNAL_ERROR,
+                                "cannt write update to disk log", ex);
+                        }
+                    }
+                }
+                
+                if (result.error != null) {
+                    throw result.error;
+                }
+                
+                snapshotEntry.free();
+            }
             
             // critical block...
-            dbs.getLogger().lockLogger();
-                        
-            return lsmDB.createSnapshot(indices);
+            if (dbs.getLogger() != null)
+                dbs.getLogger().lockLogger();
+            
+            // create the snapshot
+            return lsmDB.createSnapshot(snap.getIndices());
+            
         } finally {
-            dbs.getLogger().unlockLogger();
+            if (dbs.getLogger() != null)
+                dbs.getLogger().unlockLogger();
         }
         
     }
