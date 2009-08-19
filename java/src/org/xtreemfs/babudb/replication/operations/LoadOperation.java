@@ -16,6 +16,7 @@ import org.xtreemfs.babudb.interfaces.ReplicationInterface.loadResponse;
 import org.xtreemfs.babudb.interfaces.utils.Serializable;
 import org.xtreemfs.babudb.lsmdb.Database;
 import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
+import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.MasterRequestDispatcher;
 import org.xtreemfs.babudb.replication.Request;
@@ -89,7 +90,7 @@ public class LoadOperation extends Operation {
 
             // add the latest snapshot files for every DB,
             // if available
-            for (Database db : dispatcher.dbs.getDatabaseManager().getDatabases())
+            for (Database db : ((DatabaseManagerImpl) dispatcher.dbs.getDatabaseManager()).getDatabases())
                 result.addAll(((DatabaseImpl) db).getLSMDB().getLastestSnapshotFiles(chunkSize));
             
             rq.sendSuccess(new loadResponse(result));

@@ -18,6 +18,7 @@ import org.xtreemfs.babudb.interfaces.LogEntries;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCException;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
+import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
 import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.stages.ReplicationStage;
@@ -95,7 +96,7 @@ public class RequestLogic extends Logic {
                                 }
                             }
                         }
-                    }, logentry.getLSN(), stage.dispatcher.dbs.getDatabaseManager().getDatabaseMap());
+                    }, logentry.getLSN(), ((DatabaseManagerImpl) stage.dispatcher.dbs.getDatabaseManager()).getDatabaseMap());
                     SharedLogic.writeLogEntry(dbRq, stage.dispatcher.dbs);
                 } finally {
                     checksum.reset();

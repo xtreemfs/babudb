@@ -366,7 +366,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
     
     private void deleteDB() throws Exception {
         synchronized (response) {
-            db.getDatabaseManager().deleteDatabase(copyTestDB, true);
+            db.getDatabaseManager().deleteDatabase(copyTestDB);
             
             while (response.get()!=deleteOperation)
                 response.wait();

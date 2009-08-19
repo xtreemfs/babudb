@@ -13,6 +13,7 @@ import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
+import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
 import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.operations.Operation;
@@ -46,7 +47,7 @@ public class BasicLogic extends Logic {
             public void synced(LogEntry entry) { /* ignored */ }       
             @Override
             public void failed(LogEntry entry, Exception ex) { /* ignored */ }
-        });
+        },LogEntry.PAYLOAD_TYPE_INSERT);
     }
 
     /*
@@ -106,7 +107,7 @@ public class BasicLogic extends Logic {
                         if (error == null) stage.dispatcher.updateLatestLSN(lsn); 
                         stage.finalizeRequest(op);
                     }
-                }, this, stage.dispatcher.dbs.getDatabaseManager().getDatabaseMap());
+                }, this, ((DatabaseManagerImpl) stage.dispatcher.dbs.getDatabaseManager()).getDatabaseMap());
                 
                 // start the request
                 SharedLogic.writeLogEntry(rq, stage.dispatcher.dbs);
@@ -114,21 +115,21 @@ public class BasicLogic extends Logic {
                 
             case CREATE : 
                 stage.dispatcher.dbs.getLogger().append(noOp);
-                stage.dispatcher.dbs.getDatabaseManager().proceedCreate((String) op.getArgs()[1], (Integer) op.getArgs()[2], null);
+                ((DatabaseManagerImpl) stage.dispatcher.dbs.getDatabaseManager()).proceedCreate((String) op.getArgs()[1], (Integer) op.getArgs()[2], null);
                 stage.dispatcher.updateLatestLSN(lsn);
                 stage.finalizeRequest(op);
                 break;
                 
             case COPY :
                 stage.dispatcher.dbs.getLogger().append(noOp);
-                stage.dispatcher.dbs.getDatabaseManager().proceedCopy((String) op.getArgs()[1], (String) op.getArgs()[2]);
+                ((DatabaseManagerImpl) stage.dispatcher.dbs.getDatabaseManager()).proceedCopy((String) op.getArgs()[1], (String) op.getArgs()[2]);
                 stage.dispatcher.updateLatestLSN(lsn);
                 stage.finalizeRequest(op);
                 break;
                 
             case DELETE :
                 stage.dispatcher.dbs.getLogger().append(noOp);
-                stage.dispatcher.dbs.getDatabaseManager().proceedDelete((String) op.getArgs()[1], (Boolean) op.getArgs()[2]);
+                ((DatabaseManagerImpl) stage.dispatcher.dbs.getDatabaseManager()).proceedDelete((String) op.getArgs()[1], (Boolean) op.getArgs()[2]);
                 stage.dispatcher.updateLatestLSN(lsn);
                 stage.finalizeRequest(op);
                 break;

@@ -4,7 +4,7 @@
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
-*/
+ */
 
 package org.xtreemfs.babudb.log;
 
@@ -18,60 +18,65 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
- *
+ * 
  * @author bjko
  */
 public class LogEntry {
-
+    
     /**
      * length of the entry's header (excluding the length field itself)
      */
-    protected static final int headerLength = Integer.SIZE/8*4+Long.SIZE/8;
+    protected static final int  headerLength        = Integer.SIZE / 8 * 4 + Long.SIZE / 8 + Byte.SIZE / 8;
     
-    public static final boolean USE_CHECKSUMS = true;
+    public static final boolean USE_CHECKSUMS       = true;
+    
+    public static final byte    PAYLOAD_TYPE_INSERT = 0;
+    
+    public static final byte    PAYLOAD_TYPE_SNAP   = 1;
     
     /**
-     * view ID of the log entry. The view ID is an epoch number which
-     * creates a total order on the log entries (viewId.logSequenceNo).
+     * view ID of the log entry. The view ID is an epoch number which creates a
+     * total order on the log entries (viewId.logSequenceNo).
      */
-    protected int             viewId = -1;
+    protected int               viewId              = -1;
     
-    protected long            logSequenceNo = -1L;
+    protected long              logSequenceNo       = -1L;
     
-    protected int             checksum;
+    protected int               checksum;
     
-    protected ReusableBuffer  payload;
+    protected ReusableBuffer    payload;
     
-    protected SyncListener    listener;
+    protected SyncListener      listener;
     
-    private   LSMDBRequest    attachment;
+    private LSMDBRequest        attachment;
     
+    protected byte              payloadType;
     
     private LogEntry() {
     }
     
-    public LogEntry(ReusableBuffer payload, SyncListener l) {
+    public LogEntry(ReusableBuffer payload, SyncListener l, byte payloadType) {
         this.payload = payload;
         this.listener = l;
+        this.payloadType = payloadType;
     }
-    
     
     public void assignId(int viewId, long logSequenceNo) {
         this.viewId = viewId;
         this.logSequenceNo = logSequenceNo;
     }
     
-    
     public ReusableBuffer serialize(Checksum csumAlgo) throws IOException {
-        assert(viewId > 0);
-        assert(logSequenceNo > 0);
+        assert (viewId > 0);
+        assert (logSequenceNo > 0);
         
-        final int bufSize = headerLength+payload.remaining();
+        final int bufSize = headerLength + payload.remaining();
         ReusableBuffer buf = BufferPool.allocate(bufSize);
         buf.putInt(bufSize);
         buf.putInt(checksum);
         buf.putInt(viewId);
         buf.putLong(logSequenceNo);
+        buf.put(payloadType);
         buf.put(payload);
         payload.flip(); // otherwise payload is not reusable
         buf.putInt(bufSize);
@@ -79,15 +84,15 @@ public class LogEntry {
         
         if (USE_CHECKSUMS) {
             // reset the old checksum to 0, before calculating a new one
-            buf.position(Integer.SIZE/8);
+            buf.position(Integer.SIZE / 8);
             buf.putInt(0);
             buf.position(0);
             
-            csumAlgo.update(buf.array(),0,buf.limit());
+            csumAlgo.update(buf.array(), 0, buf.limit());
             int cPos = buf.position();
             
             // write the checksum to the buffer
-            buf.position(Integer.SIZE/8);
+            buf.position(Integer.SIZE / 8);
             buf.putInt((int) csumAlgo.getValue());
             buf.position(cPos);
         }
@@ -112,25 +117,25 @@ public class LogEntry {
     }
     
     public LSN getLSN() {
-        return new LSN(this.viewId,this.logSequenceNo);
+        return new LSN(this.viewId, this.logSequenceNo);
     }
-   
+    
     public static void checkIntegrity(ReusableBuffer data) throws LogEntryException {
         int cPos = data.position();
         
-        if (data.remaining() < Integer.SIZE/8)
+        if (data.remaining() < Integer.SIZE / 8)
             throw new LogEntryException("Empty data. Cannot read log entry.");
         
         int length1 = data.getInt();
         
-        if ((length1-Integer.SIZE/8) > data.remaining()) {
+        if ((length1 - Integer.SIZE / 8) > data.remaining()) {
             data.position(cPos);
-            Logging.logMessage(Logging.LEVEL_DEBUG, null,"not long enough");
-            throw new LogEntryException("The log entry is incomplete. The length indicated in the header "+
-                    "exceeds the available data.");
+            Logging.logMessage(Logging.LEVEL_DEBUG, null, "not long enough");
+            throw new LogEntryException("The log entry is incomplete. The length indicated in the header "
+                + "exceeds the available data.");
         }
         
-        data.position(cPos+length1-Integer.SIZE/8);
+        data.position(cPos + length1 - Integer.SIZE / 8);
         
         int length2 = data.getInt();
         
@@ -146,10 +151,11 @@ public class LogEntry {
         checkIntegrity(data);
         
         final int bufSize = data.getInt();
-        LogEntry e = new LogEntry(); 
+        LogEntry e = new LogEntry();
         e.checksum = data.getInt();
         e.viewId = data.getInt();
         e.logSequenceNo = data.getLong();
+        e.payloadType = data.get();
         final int payloadSize = bufSize - headerLength;
         int payloadPosition = data.position();
         ReusableBuffer payload = data.createViewBuffer();
@@ -158,16 +164,18 @@ public class LogEntry {
         
         if (USE_CHECKSUMS) {
             // reset the old checksum to 0, before calculating a new one
-            data.position(Integer.SIZE/8);
+            data.position(Integer.SIZE / 8);
             data.putInt(0);
             data.position(0);
             
-            csumAlgo.update(data.array(),0,data.limit());
-            int csum = (int) csumAlgo.getValue(); 
+            csumAlgo.update(data.array(), 0, data.limit());
+            int csum = (int) csumAlgo.getValue();
             
             if (csum != e.checksum) {
-                //Logging.logMessage(Logging.LEVEL_ERROR, null,"checksum is: "+csum+" expected: "+e.checksum);
-                throw new LogEntryException("Invalid Checksum. Checksum in log entry and calculated checksum do not match.");
+                // Logging.logMessage(Logging.LEVEL_ERROR,
+                // null,"checksum is: "+csum+" expected: "+e.checksum);
+                throw new LogEntryException(
+                    "Invalid Checksum. Checksum in log entry and calculated checksum do not match.");
             }
         }
         
@@ -178,12 +186,16 @@ public class LogEntry {
         BufferPool.free(payload);
         payload = null;
     }
-
+    
     public LSMDBRequest getAttachment() {
         return attachment;
     }
-
+    
     public void setAttachment(LSMDBRequest attachment) {
         this.attachment = attachment;
+    }
+    
+    public byte getPayloadType() {
+        return payloadType;
     }
 }

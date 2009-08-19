@@ -19,6 +19,7 @@ import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
 import org.xtreemfs.include.common.config.SlaveConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
@@ -51,7 +52,7 @@ public class SecurityTest {
         // start the slave
         try {
             slave = BabuDBFactory.createSlaveBabuDB(conf);
-            slave.getDatabaseManager().proceedCreate(DB_NAME, 2, null);
+            ((DatabaseManagerImpl) slave.getDatabaseManager()).proceedCreate(DB_NAME, 2, null);
         } catch (Exception e){
         	System.out.println("ERROR: "+e.getMessage());
         }
@@ -132,7 +133,7 @@ public class SecurityTest {
         }
         
         try{
-            slave.getDatabaseManager().deleteDatabase(null, true);
+            slave.getDatabaseManager().deleteDatabase(null);
         }catch (BabuDBException be){
             Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
             assertEquals(ErrorCode.REPLICATION_FAILURE,be.getErrorCode());

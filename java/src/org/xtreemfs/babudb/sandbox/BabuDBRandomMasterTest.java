@@ -147,7 +147,7 @@ public class BabuDBRandomMasterTest {
 		        dbm.copyDatabase((String) op.get(1), (String) op.get(2));
 			break;
 		case delete:
-		        dbm.deleteDatabase((String) op.get(1), true);
+		        dbm.deleteDatabase((String) op.get(1));
 			break;
 		default : throw new UnsupportedOperationException(opName.toString());
 		}

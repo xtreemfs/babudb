@@ -148,7 +148,7 @@ public class LSMDBWorker extends Thread implements SyncListener {
         ReusableBuffer buf = BufferPool.allocate(size);
         irec.serialize(buf);
         buf.flip();
-        LogEntry e = new LogEntry(buf,this);
+        LogEntry e = new LogEntry(buf,this,LogEntry.PAYLOAD_TYPE_INSERT);
         e.setAttachment(r);
         logger.append(e);
 

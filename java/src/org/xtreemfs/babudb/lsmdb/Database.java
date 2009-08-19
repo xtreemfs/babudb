@@ -15,6 +15,13 @@ import org.xtreemfs.babudb.index.ByteRangeComparator;
 public interface Database extends DatabaseRO {
     
     /**
+     * Returns the name associated with the database.
+     * 
+     * @return the database name
+     */
+    public String getName();
+    
+    /**
      * Creates a new group of inserts.
      * 
      * @return an insert record group
@@ -77,5 +84,5 @@ public interface Database extends DatabaseRO {
      * @throws BabuDBException
      */
     public void directInsert(BabuDBInsertGroup ig) throws BabuDBException;
-       
+    
 }
