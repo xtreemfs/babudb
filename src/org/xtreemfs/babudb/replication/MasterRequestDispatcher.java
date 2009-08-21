@@ -194,10 +194,11 @@ public class MasterRequestDispatcher extends RequestDispatcher {
 
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.RequestDispatcher#getBackupState()
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#stop()
      */
     @Override
-    public DispatcherBackupState getBackupState() {
+    public DispatcherBackupState stop() {
+        this.shutdown();
         return new DispatcherBackupState(states.getLatestCommon());
     }
 }

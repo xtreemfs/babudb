@@ -32,7 +32,7 @@ import org.xtreemfs.babudb.lsmdb.LSMDBWorker;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
-import org.xtreemfs.babudb.replication.BabuDBReplication;
+import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherBackupState;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManager;
@@ -75,7 +75,7 @@ public class BabuDB {
     
     private LSMDBWorker[]             worker;
     
-    private final BabuDBReplication   replication;
+    private final ReplicationManager replicationManager;
     
     /**
      * Checkpointer thread for automatic checkpointing -has to be public for
@@ -145,18 +145,18 @@ public class BabuDB {
         // set up the replication service
         try {
             if (conf instanceof MasterConfig)
-                this.replication = new BabuDBReplication((MasterConfig) conf, this, nextLSN);
+                this.replicationManager = new ReplicationManager((MasterConfig) conf, this, nextLSN);
             else if (conf instanceof SlaveConfig)
-                this.replication = new BabuDBReplication((SlaveConfig) conf, this, nextLSN);
+                this.replicationManager = new ReplicationManager((SlaveConfig) conf, this, nextLSN);
             else
-                this.replication = null;
+                this.replicationManager = null;
         } catch (IOException e) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
         }
         
         // start the replication service
-        if (this.replication != null)
-            this.replication.initialize();
+        if (this.replicationManager != null)
+            this.replicationManager.initialize();
         
         // set up and start the disk logger
         try {
@@ -169,8 +169,7 @@ public class BabuDB {
         
         worker = new LSMDBWorker[conf.getNumThreads()];
         for (int i = 0; i < conf.getNumThreads(); i++) {
-            worker[i] = new LSMDBWorker(logger, i, (conf.getPseudoSyncWait() > 0), conf.getMaxQueueLength(),
-                replication);
+            worker[i] = new LSMDBWorker(logger, i, (conf.getPseudoSyncWait() > 0), conf.getMaxQueueLength(), replicationManager);
             worker[i].start();
         }
         
@@ -188,7 +187,7 @@ public class BabuDB {
      * DUMMY - constructor for testing only!
      */
     public BabuDB() {
-        replication = null;
+        replicationManager = null;
         configuration = null;
         snapshotManager = null;
         databaseManager = null;
@@ -261,8 +260,8 @@ public class BabuDB {
         
         worker = new LSMDBWorker[configuration.getNumThreads()];
         for (int i = 0; i < configuration.getNumThreads(); i++) {
-            worker[i] = new LSMDBWorker(logger, i, (configuration.getPseudoSyncWait() > 0), configuration
-                    .getMaxQueueLength(), replication);
+            worker[i] = new LSMDBWorker(logger, i, (configuration.getPseudoSyncWait() > 0), 
+                    configuration.getMaxQueueLength(), replicationManager);
             worker[i].start();
         }
         
@@ -291,8 +290,8 @@ public class BabuDB {
         }
         
         // stop the replication
-        if (replication != null) {
-            replication.shutdown();
+        if (replicationManager != null) {
+            replicationManager.shutdown();
         }
         
         logger.shutdown();
@@ -335,8 +334,8 @@ public class BabuDB {
         return logger;
     }
     
-    public BabuDBReplication getReplicationManager() {
-        return replication;
+    public ReplicationManager getReplicationManager() {
+        return replicationManager;
     }
     
     public DatabaseManager getDatabaseManager() {
@@ -524,57 +523,9 @@ public class BabuDB {
      * @return true, if replication runs in slave-mode, false otherwise.
      */
     public boolean replication_isSlave() {
-        if (replication == null) {
+        if (replicationManager == null) {
             return false;
         }
-        return !replication.isMaster();
-    }
-    
-    /**
-     * <p>
-     * Stops all currently running replication operations. Incoming requests
-     * will be rejected, even if the replication was running in master-mode and
-     * the request was a user operation, like inserts or create, copy, delete
-     * operation.
-     * </p>
-     * 
-     * @return dispatcher backup state.
-     */
-    public DispatcherBackupState replication_stop() {
-        return replication.shutdown();
-    }
-    
-    /**
-     * <p>
-     * Changes the replication configuration.
-     * </p>
-     * <p>
-     * Makes a new checkPoint and increments the viewID, if a
-     * <code>config</code> is a {@link MasterConfig}, or {@link SlaveConfig}.
-     * </p>
-     * 
-     * <p>
-     * <b>The replication has to be stopped before!</b>
-     * </p>
-     * 
-     * @param config
-     * 
-     * @throws IOException
-     * @throws BabuDBException
-     * @throws InterruptedException
-     * @see replication_stop()
-     */
-    public void replication_changeConfiguration(ReplicationConfig config) throws IOException,
-        BabuDBException, InterruptedException {
-        assert (replication != null);
-        
-        if (config instanceof MasterConfig) {
-            dbCheckptr.checkpoint(true);
-            replication.set((MasterConfig) config);
-        } else if (config instanceof SlaveConfig) {
-            dbCheckptr.checkpoint(false);
-            replication.set((SlaveConfig) config);
-        } else
-            assert (false);
+        return !replicationManager.isMaster();
     }
 }

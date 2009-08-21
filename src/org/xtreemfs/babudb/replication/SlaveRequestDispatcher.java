@@ -127,6 +127,8 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
             
             replication.waitForShutdown();
             heartbeat.waitForShutdown();  
+            
+            replication.clearQueue();
         } catch (Exception e) {
             Logging.logMessage(Logging.LEVEL_ERROR, this, "shutdown failed");
         }
@@ -195,10 +197,20 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
 
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.RequestDispatcher#getBackupState()
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#stop()
      */
     @Override
-    public DispatcherBackupState getBackupState() {
+    public DispatcherBackupState stop() {
+        try {
+            replication.shutdown();
+            heartbeat.shutdown();          
+            
+            replication.waitForShutdown();
+            heartbeat.waitForShutdown();  
+        } catch (Exception e) {
+            Logging.logMessage(Logging.LEVEL_ERROR, this, "could not stop the dispatcher");
+        }
+        super.shutdown();
         return new DispatcherBackupState(dbs.getLogger().getLatestLSN(),replication.backupQueue());
     } 
 }

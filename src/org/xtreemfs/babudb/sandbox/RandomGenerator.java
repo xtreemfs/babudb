@@ -166,7 +166,7 @@ public class RandomGenerator {
     		operationsScenario.put(i, opsAtView);
     	}
     	
-    	Logging.logMessage(Logging.LEVEL_DEBUG, this, this.toString());
+    	Logging.logMessage(Logging.LEVEL_DEBUG, this, "%s", this.toString());
     	
     	return operationsScenario;
     }

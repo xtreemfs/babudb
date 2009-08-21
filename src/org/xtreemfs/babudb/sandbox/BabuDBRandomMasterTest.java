@@ -48,7 +48,7 @@ public class BabuDBRandomMasterTest {
     private BabuDBRandomMasterTest() {}
 	
     public static void main(String[] args) throws Exception {
-        Logging.start(Logging.LEVEL_ERROR);
+        Logging.start(Logging.LEVEL_WARN);
 		
         if (args.length!=2) usage();
 		
@@ -114,8 +114,7 @@ public class BabuDBRandomMasterTest {
             insertOpTime += System.currentTimeMillis() - time;
             System.out.println("done. Last insert was LSN ("+lsn.toString()+").");
 			
-            DBS.replication_stop();
-            DBS.replication_changeConfiguration(config);
+            DBS.getReplicationManager().changeConfiguration(config,DBS.getReplicationManager().stop());
         }
         double metaTroughput = ((double)nOmetaOp)/(((double) metaOpTime)/1000.0);
         double insertThroughput = ((double)nOinsertOp)/(((double) insertOpTime)/1000.0);

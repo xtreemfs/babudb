@@ -18,7 +18,7 @@ import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
-import org.xtreemfs.babudb.replication.BabuDBReplication;
+import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.UserDefinedLookup;
 import org.xtreemfs.include.common.buffer.BufferPool;
@@ -48,13 +48,13 @@ public class LSMDBWorker extends Thread implements SyncListener {
 
     private final boolean       pseudoSync;
     
-    private final BabuDBReplication   replication;
+    private final ReplicationManager   replicationManager;
     
     public LSMDBWorker(DiskLogger logger, int id, boolean pseudoSync, 
-            int maxQ,BabuDBReplication replication) {
+            int maxQ,ReplicationManager replication) {
         super("LSMDBWrkr#"+id);  
         this.down = new AtomicBoolean(false);
-        this.replication = replication;        
+        this.replicationManager = replication;        
         if (maxQ > 0)
             requests = new LinkedBlockingQueue<LSMDBRequest>(maxQ);
         else
@@ -217,9 +217,9 @@ public class LSMDBWorker extends Thread implements SyncListener {
     private void finish(LogEntry le){
         final LSMDBRequest r = le.getAttachment();
         
-        if (replication!=null && replication.isMaster()){
+        if (replicationManager!=null && replicationManager.isMaster()){
             try {
-                replication.replicate(le);
+                replicationManager.replicate(le);
             } catch (BabuDBException e) {
                 r.getListener().requestFailed(r.getContext(), e);
             }

@@ -73,9 +73,8 @@ public class LoadLogic extends Logic {
             // connection is lost
             throw new ConnectionLostException(e.getMessage());
         } catch (IOException e) {
-            // system failure on transmission --> retry
-            Logging.logError(Logging.LEVEL_WARN, this, e);
-            return;
+            // failure on transmission --> retry
+            throw new ConnectionLostException(e.getMessage());
         } finally {
             if (rp!=null) rp.freeBuffers();
         }

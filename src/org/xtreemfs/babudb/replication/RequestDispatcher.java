@@ -300,11 +300,11 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
     public abstract LSN getLatestLSN();
     
     /**
-     * Needed for resetting a dispatcher.
+     * Stops the dispatcher, by saving its last state.
      * 
      * @return the latest state of this dispatcher and its components.
      */
-    public abstract DispatcherBackupState getBackupState();
+    public abstract DispatcherBackupState stop();
     
     /**
      * State of the dispatcher after shutting it down.

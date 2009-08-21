@@ -63,6 +63,7 @@ public class RequestLogic extends Logic {
     public void run() throws InterruptedException, ConnectionLostException{
         // get and reset the missing range
         LSNRange missing = stage.missing;
+        assert(missing!=null);
         stage.missing = null;
         Logging.logMessage(Logging.LEVEL_INFO, this, "Replica-range is missing: %s", missing.toString());
         
@@ -121,9 +122,8 @@ public class RequestLogic extends Logic {
             // remote failure (connection lost)
             throw new ConnectionLostException(once.getMessage());
         } catch (IOException ioe) {
-            // system failure on receiving the transmission
-            Logging.logError(Logging.LEVEL_WARN, this, ioe);
-            stage.setLogic(LOAD);
+            // failure on transmission
+            throw new ConnectionLostException(ioe.getMessage());
         } catch (LogEntryException lee) {
             // decoding failed --> retry with new range
             Logging.logError(Logging.LEVEL_WARN, this, lee);
