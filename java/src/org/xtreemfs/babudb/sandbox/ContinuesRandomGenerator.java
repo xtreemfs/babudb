@@ -49,7 +49,7 @@ public class ContinuesRandomGenerator {
     public final static int MAX_VALUE_LENGTH = 30;
     public final static int MIN_VALUE_LENGTH = 10;
     
-    public final static long MAX_SEQUENCENO = Long.MAX_VALUE;
+    public final static long MAX_SEQUENCENO = Integer.MAX_VALUE;
     public final static long MIN_SEQUENCENO = BabuDBLongrunTestConfig.MIN_SEQUENCENO;
 		
     private final static byte[] CHARS;

@@ -20,9 +20,12 @@ import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.ReplicationInterface;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherBackupState;
 import org.xtreemfs.babudb.sandbox.RandomGenerator.LookupGroup;
 import org.xtreemfs.include.common.config.SlaveConfig;
 import org.xtreemfs.include.common.logging.Logging;
+
+import sun.reflect.ReflectionFactory.GetReflectionFactoryAction;
 
 /**
  * Random longrun-test for the Slave-BabuDB.
@@ -61,7 +64,7 @@ public class BabuDBRandomSlaveTest {
 	private BabuDBRandomSlaveTest() {}
 	
 	public static void main(String[] args) throws Exception {
-	    Logging.start(Logging.LEVEL_ERROR);
+	    Logging.start(Logging.LEVEL_WARN);
 		
 	    if (args.length!=3) usage();
 		
@@ -187,24 +190,24 @@ public class BabuDBRandomSlaveTest {
 	 */
 	private static boolean performConsistencyCheck() throws Exception{
 	    boolean result = false;
-	    LSN last = DBS.replication_stop().latest;
+	    DispatcherBackupState lastState = DBS.getReplicationManager().stop();
 	    
-	    if (last!=null){
-	        LookupGroup lookupGroup = generator.getLookupGroup(last);
+	    if (lastState.latest!=null){
+	        LookupGroup lookupGroup = generator.getLookupGroup(lastState.latest);
 		for (int i=0;i<lookupGroup.size();i++){
 		    byte[] value = DBS.hiddenLookup(lookupGroup.dbName, lookupGroup.getIndex(i), lookupGroup.getKey(i));
 		    if (!new String(value).equals(new String(lookupGroup.getValue(i)))) {
-			System.err.println("FAILED for LSN ("+last.toString()+")!" +
+			System.err.println("FAILED for LSN ("+lastState.latest.toString()+")!" +
 					"\n"+new String(value)+" != "+new String(lookupGroup.getValue(i)));
 			System.exit(1);
 		    }
 		}
-		System.out.println("SUCCESSFUL for LSN ("+last.toString()+").");
+		System.out.println("SUCCESSFUL for LSN ("+lastState.latest.toString()+").");
 		result = true;
 	    } else 
 		System.out.println("Check could not be performed, because of the slave is LOADING from the master.");
 	    
-	    DBS.replication_changeConfiguration(CONFIGURATION);
+	    DBS.getReplicationManager().changeConfiguration(CONFIGURATION, lastState);
 	    
 	    return result;
 	} 

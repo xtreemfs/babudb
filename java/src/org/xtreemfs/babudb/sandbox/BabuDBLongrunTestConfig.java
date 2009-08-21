@@ -29,6 +29,8 @@ public class BabuDBLongrunTestConfig {
 	
     public final static long MIN_SEQUENCENO;
     
+    public final static long MAX_SEQUENCENO;
+    
     static {
     	if (CLUSTER){
     	    CCHECK_SLEEP_INTERVAL = 3*60*1000;
@@ -37,13 +39,15 @@ public class BabuDBLongrunTestConfig {
     	    MAX_DOWN_TIME = 10*60*1000;
     	    PATH = "/scratch/babuDB/data/";
     	    MIN_SEQUENCENO = 1000L;
+    	    MAX_SEQUENCENO = Integer.MAX_VALUE;
     	}else{
     	    CCHECK_SLEEP_INTERVAL = 30*1000;
     	    MIN_SLEEP_INTERVAL = 3*60*1000;
     	    MAX_SLEEP_INTERVAL = 5*60*1000;
     	    MAX_DOWN_TIME = 2*60*1000;
     	    PATH = "/tmp/babuDB/";
-    	    MIN_SEQUENCENO = 1000L;
+    	    MIN_SEQUENCENO = 100L;
+    	    MAX_SEQUENCENO = 10000L;
     	}
     }
 }

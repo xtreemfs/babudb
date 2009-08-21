@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.BabuDBReplication;
+import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.replication.SlaveRequestDispatcher;
 import org.xtreemfs.babudb.replication.operations.Operation;
 import org.xtreemfs.babudb.replication.stages.logic.LoadLogic;
@@ -29,7 +29,7 @@ import org.xtreemfs.include.foundation.LifeCycleThread;
 import static org.xtreemfs.babudb.replication.stages.logic.LogicID.*;
 
 /**
- * Stage to perform {@link BabuDBReplication}-{@link Operation}s on the slave.
+ * Stage to perform {@link ReplicationManager}-{@link Operation}s on the slave.
  * 
  * @since 06/08/2009
  * @author flangner
@@ -96,24 +96,6 @@ public class ReplicationStage extends LifeCycleThread {
     }
 
     /**
-     * send an request for a stage operation
-     *
-     * @param rq
-     *            the request
-     * @param the
-     *            method in the stage to execute
-     *            
-     * @throws TooBusyException
-     */
-    public void enqueueOperation(int stageOp, Object[] args) throws TooBusyException {
-        if (numRequests.incrementAndGet()>MAX_Q && MAX_Q != 0){
-            numRequests.decrementAndGet();
-            throw new TooBusyException(getName()+": Operation '"+stageOp+"' could not be performed.");
-        }      
-        q.add(new StageRequest(stageOp, args));
-    }
-
-    /**
      * shut the stage thread down
      */
     public void shutdown() {
@@ -123,24 +105,6 @@ public class ReplicationStage extends LifeCycleThread {
         }
     }
 
-    /**
-     * Get current number of requests in the queue.
-     *
-     * @return queue length
-     */
-    public int getQueueLength() {
-        return q.size();
-    }
-
-    /**
-     * Needed for resetting the dispatcher.
-     * 
-     * @return the queue of the replication stage.
-     */
-    public BlockingQueue<StageRequest> backupQueue() {
-        return q;
-    }
-    
     /*
      * (non-Javadoc)
      * @see java.lang.Thread#run()
@@ -153,6 +117,7 @@ public class ReplicationStage extends LifeCycleThread {
                 logics.get(logicID).run();
             } catch(ConnectionLostException cle) {
                 Logging.logError(Logging.LEVEL_WARN, this, cle);
+                quit = true;
                 // TODO failover!
             } catch(InterruptedException ie) {
                 if (!quit){
@@ -162,6 +127,7 @@ public class ReplicationStage extends LifeCycleThread {
                 }
             }
         }
+        
         notifyStopped();
     }
     
@@ -192,6 +158,41 @@ public class ReplicationStage extends LifeCycleThread {
      */
     public boolean isTerminating() {
         return quit;
+    }
+    /**
+     * Needed for resetting the dispatcher.
+     * 
+     * @return the queue of the replication stage.
+     */
+    public BlockingQueue<StageRequest> backupQueue() {
+        return q;
+    }
+    
+    /**
+     * Takes the requests from the queue and frees there buffers.
+     */
+    public void clearQueue() {
+        for (StageRequest rq : q)
+            finalizeRequest(rq);
+    }
+
+    /**
+     * send an request for a stage operation
+     *
+     * @param rq
+     *            the request
+     * @param the
+     *            method in the stage to execute
+     *            
+     * @throws TooBusyException
+     */
+    public void enqueueOperation(int stageOp, Object[] args) throws TooBusyException {
+        if (numRequests.incrementAndGet()>MAX_Q && MAX_Q != 0){
+            numRequests.decrementAndGet();
+            throw new TooBusyException(getName()+": Operation '"+stageOp+"' could not be performed.");
+        } else if (quit) 
+            throw new TooBusyException(getName()+": Shutting down.");
+        q.add(new StageRequest(stageOp, args));
     }
     
     /**

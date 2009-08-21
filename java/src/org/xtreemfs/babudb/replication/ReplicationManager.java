@@ -20,6 +20,7 @@ import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.clients.StateClient;
 import org.xtreemfs.babudb.log.LogEntry;
+import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherBackupState;
 import org.xtreemfs.babudb.replication.trigger.CopyTrigger;
@@ -28,6 +29,7 @@ import org.xtreemfs.babudb.replication.trigger.DeleteTrigger;
 import org.xtreemfs.babudb.replication.trigger.ReplicateTrigger;
 import org.xtreemfs.include.common.TimeSync;
 import org.xtreemfs.include.common.config.MasterConfig;
+import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.config.SlaveConfig;
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
@@ -41,12 +43,12 @@ import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
  * @author flangner
  */
 
-public class BabuDBReplication {
+public class ReplicationManager {
     
     private boolean isMaster;
     private RequestDispatcher dispatcher;
     private final Checksum checksum = new CRC32();
-    private final BabuDB db;
+    private final BabuDB dbs;
     private volatile boolean stopped = true;
     
     /**
@@ -57,8 +59,8 @@ public class BabuDBReplication {
      * @param initial
      * @throws IOException
      */
-    public BabuDBReplication(MasterConfig config, BabuDB db, LSN initial) throws IOException {
-        this.db = db;
+    public ReplicationManager(MasterConfig config, BabuDB db, LSN initial) throws IOException {
+        this.dbs = db;
         this.isMaster = true;
         TimeSync.initialize(config.getLocalTimeRenew());
         this.dispatcher = new MasterRequestDispatcher(config, db, initial);
@@ -72,8 +74,8 @@ public class BabuDBReplication {
      * @param initial
      * @throws IOException
      */
-    public BabuDBReplication(SlaveConfig config, BabuDB db, LSN initial) throws IOException {
-        this.db = db;
+    public ReplicationManager(SlaveConfig config, BabuDB db, LSN initial) throws IOException {
+        this.dbs = db;
         this.isMaster = false;
         TimeSync.initialize(config.getLocalTimeRenew());
         this.dispatcher = new SlaveRequestDispatcher(config, db, initial);
@@ -228,29 +230,73 @@ public class BabuDBReplication {
         dispatcher.start();
         stopped = false;
     }
-    
+       
     /**
-     * Stops the replication process by shutting down the dispatcher.
+     * <p>Stops all currently running replication operations.
+     * Incoming requests will be rejected, even if the replication
+     * was running in master-mode and the request was a user operation,
+     * like inserts or create, copy, delete operation.</p>
      * 
      * @return dispatcher backup state.
      */
-    public DispatcherBackupState shutdown() {
+    public DispatcherBackupState stop() {
+        stopped = true;
+        return dispatcher.stop();
+    }
+    
+    /**
+     * <p>Changes the replication configuration.</p>
+     * <p>Makes a new checkPoint and increments the viewID, 
+     * if a <code>config</code> is a {@link MasterConfig}, 
+     * or {@link SlaveConfig}.</p>
+     * 
+     * <p><b>The replication has to be stopped before!</b></p>
+     * 
+     * @param config
+     * @param lastState
+     * 
+     * @throws IOException
+     * @throws BabuDBException 
+     * @see ReplcationManager.stop()
+     */
+    public void changeConfiguration(ReplicationConfig config, DispatcherBackupState lastState) throws IOException, BabuDBException {
+        if (!stopped) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "The replication has to be stopped, before the configuration can be changed!");
+        
+        if (config instanceof MasterConfig) {
+            ((CheckpointerImpl) dbs.getCheckpointer()).checkpoint(true);
+            set((MasterConfig) config, lastState);
+        } else if (config instanceof SlaveConfig) {
+            ((CheckpointerImpl) dbs.getCheckpointer()).checkpoint(false);
+            set((SlaveConfig) config, lastState);
+        } else assert(false);
+    } 
+    
+    /**
+     * <p>Stops the replication process by shutting down the dispatcher.
+     * And resetting the its state.</p>
+     * 
+     */
+    public void shutdown() {
         stopped = true;
         dispatcher.shutdown();
-        return dispatcher.getBackupState();
     }
+    
+/*
+ * private methods
+ */
 
     /**
      * <p>Sets the replication service in addition to change the configuration.
      * Replication must not be running!</p>
      * 
      * @param config
+     * @param lastState
      * @throws IOException 
-     * @throws InterruptedException 
      */
-    public void set(MasterConfig config) throws IOException, InterruptedException {
+    private void set(MasterConfig config, DispatcherBackupState lastState) throws IOException {
+        assert(lastState!=null) : "Use the constructor instead";
         isMaster = true;
-        dispatcher = new MasterRequestDispatcher(config, db, dispatcher.getBackupState());
+        dispatcher = new MasterRequestDispatcher(config, dbs, lastState);
         initialize();
     }
     
@@ -259,12 +305,13 @@ public class BabuDBReplication {
      * Replication must not be running!</p>
      * 
      * @param config
+     * @param lastState
      * @throws IOException 
      */
-    public void set(SlaveConfig config) throws IOException {
+    private void set(SlaveConfig config, DispatcherBackupState lastState) throws IOException {
         isMaster = false;
         DirectFileIO.replayBackupFiles(config);
-        dispatcher = new SlaveRequestDispatcher(config, db, dispatcher.getBackupState());
+        dispatcher = new SlaveRequestDispatcher(config, dbs, lastState);
         initialize();
     }
 }
