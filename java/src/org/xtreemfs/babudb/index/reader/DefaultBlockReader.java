@@ -58,9 +58,11 @@ public class DefaultBlockReader implements BlockReader {
         return new DefaultBlockReader(buffer.slice(), position, limit, comp);
     }
     
-    /* (non-Javadoc)
-	 * @see org.xtreemfs.babudb.index.reader.BlockReader#lookup(byte[])
-	 */
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.xtreemfs.babudb.index.reader.BlockReader#lookup(byte[])
+     */
     public ByteRange lookup(byte[] key) {
         
         int index = keys.getPosition(key);
@@ -70,9 +72,12 @@ public class DefaultBlockReader implements BlockReader {
         return values.getEntry(index);
     }
     
-    /* (non-Javadoc)
-	 * @see org.xtreemfs.babudb.index.reader.BlockReader#rangeLookup(byte[], byte[], boolean)
-	 */
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.xtreemfs.babudb.index.reader.BlockReader#rangeLookup(byte[],
+     * byte[], boolean)
+     */
     public Iterator<Entry<ByteRange, ByteRange>> rangeLookup(byte[] from, byte[] to, final boolean ascending) {
         
         final int startIndex;
@@ -82,7 +87,7 @@ public class DefaultBlockReader implements BlockReader {
             startIndex = keys.getTopPosition(from);
             assert (startIndex >= -1) : "invalid block start offset: " + startIndex;
             
-            endIndex = keys.getBottomPosition(to);
+            endIndex = ascending ? keys.getExclBottomPosition(to) : keys.getInclBottomPosition(to);
             assert (endIndex >= -1) : "invalid block end offset: " + endIndex;
         }
         
@@ -139,23 +144,29 @@ public class DefaultBlockReader implements BlockReader {
         };
     }
     
-    /* (non-Javadoc)
-	 * @see org.xtreemfs.babudb.index.reader.BlockReader#getKeys()
-	 */
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.xtreemfs.babudb.index.reader.BlockReader#getKeys()
+     */
     public MiniPage getKeys() {
         return keys;
     }
     
-    /* (non-Javadoc)
-	 * @see org.xtreemfs.babudb.index.reader.BlockReader#getValues()
-	 */
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.xtreemfs.babudb.index.reader.BlockReader#getValues()
+     */
     public MiniPage getValues() {
         return values;
     }
     
-    /* (non-Javadoc)
-	 * @see org.xtreemfs.babudb.index.reader.BlockReader#getNumEntries()
-	 */
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.xtreemfs.babudb.index.reader.BlockReader#getNumEntries()
+     */
     public int getNumEntries() {
         return numEntries;
     }

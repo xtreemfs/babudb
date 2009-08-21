@@ -127,7 +127,7 @@ public class CompressedBlockReader implements BlockReader {
             assert (startIndex >= -1) : "invalid block start offset: " + startIndex;
             
         	byte[] suffixTo = usableSuffix(to);
-            endIndex = keys.getBottomPosition(suffixTo);
+            endIndex = ascending ? keys.getExclBottomPosition(suffixTo) : keys.getInclBottomPosition(suffixTo);
             assert (endIndex >= -1) : "invalid block end offset: " + endIndex;
         }
         
