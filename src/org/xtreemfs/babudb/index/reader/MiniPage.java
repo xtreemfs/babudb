@@ -30,8 +30,8 @@ public abstract class MiniPage {
             + ", buf.limit() == " + buf.limit();
         
         // if offs == limit, numEntries must be 0 (empty page)
-        assert (offset != buf.limit() || numEntries == 0) : "invalid mini page offset: offset == "
-            + offset + ", buf.limit() == " + buf.limit();
+        assert (offset != buf.limit() || numEntries == 0) : "invalid mini page offset: offset == " + offset
+            + ", buf.limit() == " + buf.limit();
         
         this.numEntries = numEntries;
         this.buf = buf;
@@ -100,12 +100,31 @@ public abstract class MiniPage {
      * @return the position of the next smaller entry, or -1, if the next
      *         smaller entry is smaller than the first entry
      */
-    public int getBottomPosition(byte[] entry) {
+    public int getExclBottomPosition(byte[] entry) {
         
         if (entry == null)
             return numEntries - 1;
         
         return SearchUtil.getExclBottomOffset(this, entry, comp);
+    }
+    
+    /**
+     * Returns the position of the entry that is next smaller or equal entry
+     * compared to the given entry. If the next smaller entry is smaller than
+     * the first entry in the page, -1 is returned. If the given entry is null,
+     * the last index position is returned.
+     * 
+     * @param entry
+     *            the entry for which to find the next smaller entry
+     * @return the position of the next smaller entry, or -1, if the next
+     *         smaller entry is smaller than the first entry
+     */
+    public int getInclBottomPosition(byte[] entry) {
+        
+        if (entry == null)
+            return numEntries - 1;
+        
+        return SearchUtil.getInclBottomOffset(this, entry, comp);
     }
     
 }

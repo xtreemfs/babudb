@@ -10,22 +10,21 @@ package org.xtreemfs.babudb;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Random;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.Map.Entry;
+
+import junit.framework.TestCase;
+import junit.textui.TestRunner;
 
 import org.xtreemfs.babudb.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.index.reader.DiskIndex;
 import org.xtreemfs.babudb.index.writer.DiskIndexWriter;
 import org.xtreemfs.include.common.logging.Logging;
-
-import junit.framework.TestCase;
-import junit.textui.TestRunner;
 
 public class DiskIndexTest extends TestCase {
     
@@ -39,7 +38,14 @@ public class DiskIndexTest extends TestCase {
     
     private static final ByteRangeComparator COMP              = new DefaultByteRangeComparator();
     
-    private static final boolean             COMPRESSED        = true;
+    private static final boolean             COMPRESSED        = false;
+    
+    private static Random                    rnd;
+    
+    static {
+        // rnd = new Random(1250861954367L);
+        rnd = new Random();
+    }
     
     public void setUp() throws Exception {
         Logging.start(Logging.LEVEL_ERROR);
@@ -53,7 +59,7 @@ public class DiskIndexTest extends TestCase {
     public void testLookup() throws Exception {
         // create a new disk index and look up each key
         byte[][] entries = { new byte[] { '\0' }, "word".getBytes(), new byte[] { '#' } };
-
+        
         populateDiskIndex(entries);
         DiskIndex diskIndex = new DiskIndex(PATH2, new DefaultByteRangeComparator(), COMPRESSED);
         
@@ -146,7 +152,7 @@ public class DiskIndexTest extends TestCase {
         DiskIndex diskIndex = new DiskIndex(PATH2, new DefaultByteRangeComparator(), COMPRESSED);
         
         // create an iterator w/ matching start and end buffers
-        Iterator<Entry<byte[], byte[]>> it = diskIndex.rangeLookup(keys[1].getBytes(), keys[5].getBytes(),
+        Iterator<Entry<byte[], byte[]>> it = diskIndex.rangeLookup("brabbel".getBytes(), "yagga".getBytes(),
             true);
         for (int i = 1; i < 5; i++) {
             Entry<byte[], byte[]> entry = it.next();
@@ -214,9 +220,9 @@ public class DiskIndexTest extends TestCase {
         DiskIndex diskIndex = new DiskIndex(PATH2, new DefaultByteRangeComparator(), COMPRESSED);
         
         // create an iterator w/ matching start and end buffers
-        Iterator<Entry<byte[], byte[]>> it = diskIndex.rangeLookup(keys[1].getBytes(), keys[5].getBytes(),
+        Iterator<Entry<byte[], byte[]>> it = diskIndex.rangeLookup("brabbel".getBytes(), "yagga".getBytes(),
             false);
-        for (int i = 4; i > 0; i--) {
+        for (int i = 5; i >= 1; i--) {
             Entry<byte[], byte[]> entry = it.next();
             assertEquals(keys[i], new String(entry.getKey()));
             assertEquals(vals[i], new String(entry.getValue()));
@@ -391,7 +397,8 @@ public class DiskIndexTest extends TestCase {
             byte[] from = "e".getBytes();
             byte[] to = "f".getBytes();
             
-            Iterator<Entry<byte[], byte[]>> mapIt = map.descendingMap().subMap(to, from).entrySet().iterator();
+            Iterator<Entry<byte[], byte[]>> mapIt = map.descendingMap().subMap(to, from).entrySet()
+                    .iterator();
             Iterator<Entry<byte[], byte[]>> indexIt = diskIndex.rangeLookup(from, to, false);
             
             while (indexIt.hasNext() || mapIt.hasNext()) {
@@ -414,7 +421,8 @@ public class DiskIndexTest extends TestCase {
             byte[] from = "fd".getBytes();
             byte[] to = "sa".getBytes();
             
-            Iterator<Entry<byte[], byte[]>> mapIt = map.descendingMap().subMap(to, from).entrySet().iterator();
+            Iterator<Entry<byte[], byte[]>> mapIt = map.descendingMap().subMap(to, from).entrySet()
+                    .iterator();
             Iterator<Entry<byte[], byte[]>> indexIt = diskIndex.rangeLookup(from, to, false);
             
             while (indexIt.hasNext() || mapIt.hasNext()) {
@@ -436,9 +444,9 @@ public class DiskIndexTest extends TestCase {
     
     private static String createRandomString(int minLength, int maxLength) {
         
-        char[] chars = new char[(int) (Math.random() * (maxLength + 1)) + minLength];
+        char[] chars = new char[(int) (rnd.nextDouble() * (maxLength + 1)) + minLength];
         for (int i = 0; i < chars.length; i++)
-            chars[i] = (char) (Math.random() * 0xFFFF);
+            chars[i] = (char) (rnd.nextDouble() * 0xFFFF);
         
         return new String(chars);
     }
