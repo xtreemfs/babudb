@@ -49,8 +49,8 @@ public class ContinuesRandomGenerator {
     public final static int MAX_VALUE_LENGTH = 30;
     public final static int MIN_VALUE_LENGTH = 10;
     
-    public final static long MAX_SEQUENCENO = Integer.MAX_VALUE;
-    public final static long MIN_SEQUENCENO = BabuDBLongrunTestConfig.MIN_SEQUENCENO;
+    public final static long MAX_SEQUENCENO = (Integer.MAX_VALUE-1);
+    public final static long MIN_SEQUENCENO = ReplicationLongrunTestConfig.MIN_SEQUENCENO;
 		
     private final static byte[] CHARS;
     private final static String[] dbPrefixes;
@@ -245,16 +245,16 @@ public class ContinuesRandomGenerator {
 		InsertGroup result;
     	
 		if (sequenceNo>MAX_SEQUENCENO) throw new Exception(sequenceNo+" is a too big sequence number, randomGenerator has to be extended.");
-		if (operationsScenario.get(sequenceNo)!=null) return null;
+		if (operationsScenario.get((int) sequenceNo)!=null) return null;
 		// setup random with seed from LSN
 		Random random = new Random(sequenceNo);
 		
 		// get the DB affected by the insert
 		int seqIndex = sequences.size()-1;
-		for (int i=0;i<seqIndex;i++) {
+		for (int i=0;i<=seqIndex;i++) {
 		    if (sequences.get(i)>sequenceNo){
 		        if (i>0) seqIndex = i-1;
-		        else assert(false);
+		        else assert(false) : "There is no insert available for the given seqenceID: "+sequenceNo;
 		        break;
 		    }
 		}
@@ -281,7 +281,8 @@ public class ContinuesRandomGenerator {
 		if ((sequenceNo-1L>0) && operationsScenario.get(sequenceNo-1L)==null) {
     		LookupGroup lg = getLookupGroup(sequenceNo-1L);
     		
-    		if (lg.dbName!=dbName) return result;
+    		// unable to remove previous inserts
+    		if (lg == null || lg.dbName!=dbName) return result;
     		
     		// generates some deletes 
 			int deletesPerGroup = random.nextInt(MAX_DELETES_PER_GROUP-MIN_DELETES_PER_GROUP)+MIN_DELETES_PER_GROUP;
@@ -314,16 +315,16 @@ public class ContinuesRandomGenerator {
     	LookupGroup result;
     	
 		if (seqNo>MAX_SEQUENCENO) throw new Exception(seqNo+" is a too big sequence number, randomGenerator has to be extended.");
-		if (operationsScenario.get(seqNo)!=null) return null;
+		if (operationsScenario.get((int) seqNo)!=null) return null;
 		// setup random with seed from LSN
 		Random random = new Random(seqNo);
 		
         // get the DB affected by the insert
         int seqIndex = sequences.size()-1;
-        for (int i=0;i<seqIndex;i++) {
+        for (int i=0;i<=seqIndex;i++) {
             if (sequences.get(i)>seqNo){
                 if (i>0) seqIndex = i-1;
-                else assert(false);
+                else assert(false) : "There is no insert available for the given seqenceID: "+seqNo+"\n"+toString();
                 break;
             }
         }
@@ -517,22 +518,6 @@ public class ContinuesRandomGenerator {
                 string += operationToString(seq, operationsScenario.get(seq));
             }
             string += "\n\r";
-            
-            if (Logging.isNotice()){
-                string += "DB history:\n";
-                string += "Sequence# | #Indices | DB Name\n";
-                int size = DBsnapshots.size();
-                for (int i=0;i<size;i++){
-                    string += sequences.get(i) + " | ";
-                    List<Object[]> dbs = DBsnapshots.get(i);
-                    for (Object[] db : dbs) {
-                        string += i+((i<10) ? "      | " : "     | ");
-                        int indices = (Integer) db[1];
-                        string += indices+((indices<10) ? "        | " : "       | ");
-                        string += (String) db[0]+"\n";
-                    }
-                }
-            }
         }
         return string;
     }

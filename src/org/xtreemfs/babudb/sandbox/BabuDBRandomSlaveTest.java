@@ -33,7 +33,7 @@ import sun.reflect.ReflectionFactory.GetReflectionFactoryAction;
  * @author flangner
  *
  */
-
+@Deprecated
 public class BabuDBRandomSlaveTest {
 	
 	// sum of P_* has to be 100, these values are probabilities for the events '*' stands for
@@ -42,20 +42,20 @@ public class BabuDBRandomSlaveTest {
 	public final static int P_CCHECK = 100-(P_RESTART+P_CLEAN_RESTART);
 	
 	// the interval to sleep, if consistency-check has occurred before
-	public final static int CCHECK_SLEEP_INTERVAL = BabuDBLongrunTestConfig.CCHECK_SLEEP_INTERVAL;
+	public final static int CCHECK_SLEEP_INTERVAL = 10*1000;
 	
 	// the interval to sleep, if any other event occurred before
-	public final static int MIN_SLEEP_INTERVAL = BabuDBLongrunTestConfig.MIN_SLEEP_INTERVAL; 
-	public final static int MAX_SLEEP_INTERVAL = BabuDBLongrunTestConfig.MAX_SLEEP_INTERVAL;
+	public final static int MIN_SLEEP_INTERVAL = ReplicationLongrunTestConfig.MIN_SLEEP_INTERVAL; 
+	public final static int MAX_SLEEP_INTERVAL = ReplicationLongrunTestConfig.MAX_SLEEP_INTERVAL;
 	
 	public final static int MIN_DOWN_TIME = 60*1000;	
-	public final static int MAX_DOWN_TIME = BabuDBLongrunTestConfig.MAX_DOWN_TIME;
+	public final static int MAX_DOWN_TIME = ReplicationLongrunTestConfig.MAX_DOWN_TIME;
 	
-	public final static String PATH = BabuDBLongrunTestConfig.PATH+"slave";
+	public final static String PATH = ReplicationLongrunTestConfig.PATH+"slave";
 	public final static int NUM_WKS = 1;
 	
 	public final static int MAX_REPLICATION_Q_LENGTH = 0;
-	public final static String BACKUP_DIR = BabuDBLongrunTestConfig.PATH+"backup";
+	public final static String BACKUP_DIR = ReplicationLongrunTestConfig.PATH+"backup";
 	
 	private final static RandomGenerator generator = new RandomGenerator();
 	private static BabuDB DBS;
@@ -85,7 +85,7 @@ public class BabuDBRandomSlaveTest {
                 slaves.add(parseAddress(adr));
         
         // delete existing files
-        Process p = Runtime.getRuntime().exec("rm -rf "+BabuDBLongrunTestConfig.PATH); // FIXME
+        Process p = Runtime.getRuntime().exec("rm -rf "+ReplicationLongrunTestConfig.PATH); // FIXME
         p.waitFor();
         
         CONFIGURATION = new SlaveConfig(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, 

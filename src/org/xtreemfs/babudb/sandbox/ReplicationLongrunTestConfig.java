@@ -13,12 +13,9 @@ package org.xtreemfs.babudb.sandbox;
  *
  */
 
-public class BabuDBLongrunTestConfig {
+public class ReplicationLongrunTestConfig {
     public static final boolean CLUSTER = false;
-	
-    // the interval to sleep, if consistency-check has occurred before
-    public final static int CCHECK_SLEEP_INTERVAL;
-	
+		
     // the interval to sleep, if any other event occurred before
     public final static int MIN_SLEEP_INTERVAL;
     public final static int MAX_SLEEP_INTERVAL;
@@ -33,21 +30,19 @@ public class BabuDBLongrunTestConfig {
     
     static {
     	if (CLUSTER){
-    	    CCHECK_SLEEP_INTERVAL = 3*60*1000;
     	    MIN_SLEEP_INTERVAL = 20*60*1000;
     	    MAX_SLEEP_INTERVAL = 30*60*1000;
-    	    MAX_DOWN_TIME = 10*60*1000;
+    	    MAX_DOWN_TIME = 5*60*1000;
     	    PATH = "/scratch/babuDB/data/";
     	    MIN_SEQUENCENO = 1000L;
     	    MAX_SEQUENCENO = Integer.MAX_VALUE;
     	}else{
-    	    CCHECK_SLEEP_INTERVAL = 30*1000;
-    	    MIN_SLEEP_INTERVAL = 3*60*1000;
-    	    MAX_SLEEP_INTERVAL = 5*60*1000;
-    	    MAX_DOWN_TIME = 2*60*1000;
+    	    MIN_SLEEP_INTERVAL = 30*1000;
+    	    MAX_SLEEP_INTERVAL = 2*60*1000;
+    	    MAX_DOWN_TIME = 30*1000;
     	    PATH = "/tmp/babuDB/";
     	    MIN_SEQUENCENO = 100L;
-    	    MAX_SEQUENCENO = 10000L;
+    	    MAX_SEQUENCENO = 100000L;
     	}
     }
 }
