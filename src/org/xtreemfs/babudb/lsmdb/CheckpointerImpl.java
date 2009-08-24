@@ -97,12 +97,6 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
     private final Object                       checkpointCompletionLock;
     
     /**
-     * object used to synchronize snapshot/checkpoint creation with database
-     * deletions
-     */
-    private final Object                       deleteLock;
-    
-    /**
      * Flag to notify the disk-logger about a viewId incrementation.
      */
     private boolean                            incrementViewId;
@@ -120,7 +114,6 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
         this.requests = new LinkedList<MaterializationRequest>();
         this.checkpointLock = new Object();
         this.checkpointCompletionLock = new Object();
-        this.deleteLock = new Object();
     }
     
     /**
@@ -280,10 +273,6 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
         }
     }
     
-    public Object getDeleteLock() {
-        return deleteLock;
-    }
-    
     public void run() {
         
         quit = false;
@@ -310,7 +299,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
                         "database operation log has exceeded threshold size of " + maxLogLength + " ("
                             + lfsize + ")");
                     
-                    synchronized (deleteLock) {
+                    synchronized (dbs.getBabuDBModificationLock()) {
                         
                         // materialize all snapshots in the queue before
                         // creating
