@@ -194,7 +194,9 @@ public class DatabaseManagerImpl implements DatabaseManager {
     
     @Override
     public void deleteDatabase(String databaseName) throws BabuDBException {
-        deleteDatabase(databaseName, true);
+        synchronized (((CheckpointerImpl) dbs.getCheckpointer()).getDeleteLock()) {
+            deleteDatabase(databaseName, true);
+        }
     }
     
     /**
