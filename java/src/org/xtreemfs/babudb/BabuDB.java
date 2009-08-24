@@ -7,9 +7,11 @@
  */
 package org.xtreemfs.babudb;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
@@ -33,14 +35,12 @@ import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
 import org.xtreemfs.babudb.replication.ReplicationManager;
-import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherBackupState;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManager;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.config.BabuDBConfig;
 import org.xtreemfs.include.common.config.MasterConfig;
-import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.config.SlaveConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
@@ -75,7 +75,7 @@ public class BabuDB {
     
     private LSMDBWorker[]             worker;
     
-    private final ReplicationManager replicationManager;
+    private final ReplicationManager  replicationManager;
     
     /**
      * Checkpointer thread for automatic checkpointing -has to be public for
@@ -99,6 +99,12 @@ public class BabuDB {
     private final BabuDBConfig        configuration;
     
     /**
+     * object used to synchronize snapshot/checkpoint creation with database
+     * deletions
+     */
+    private final Object                       babuDBModificationLock;
+    
+    /**
      * Starts the BabuDB database. If conf is instance of MasterConfig it comes
      * with replication in master-mode. If conf is instance of SlaveConfig it
      * comes with replication in slave-mode.
@@ -116,6 +122,7 @@ public class BabuDB {
         this.databaseManager = new DatabaseManagerImpl(this);
         this.snapshotManager = new SnapshotManagerImpl(this);
         this.dbCheckptr = new CheckpointerImpl(this);
+        this.babuDBModificationLock = new Object();
         
         // determine the last LSN and replay the log
         LSN dbLsn = null;
@@ -169,7 +176,8 @@ public class BabuDB {
         
         worker = new LSMDBWorker[conf.getNumThreads()];
         for (int i = 0; i < conf.getNumThreads(); i++) {
-            worker[i] = new LSMDBWorker(logger, i, (conf.getPseudoSyncWait() > 0), conf.getMaxQueueLength(), replicationManager);
+            worker[i] = new LSMDBWorker(logger, i, (conf.getPseudoSyncWait() > 0), conf.getMaxQueueLength(),
+                replicationManager);
             worker[i].start();
         }
         
@@ -191,6 +199,7 @@ public class BabuDB {
         configuration = null;
         snapshotManager = null;
         databaseManager = null;
+        babuDBModificationLock = new Object();
     }
     
     /**
@@ -260,8 +269,8 @@ public class BabuDB {
         
         worker = new LSMDBWorker[configuration.getNumThreads()];
         for (int i = 0; i < configuration.getNumThreads(); i++) {
-            worker[i] = new LSMDBWorker(logger, i, (configuration.getPseudoSyncWait() > 0), 
-                    configuration.getMaxQueueLength(), replicationManager);
+            worker[i] = new LSMDBWorker(logger, i, (configuration.getPseudoSyncWait() > 0), configuration
+                    .getMaxQueueLength(), replicationManager);
             worker[i].start();
         }
         
@@ -412,10 +421,18 @@ public class BabuDB {
                             
                             case 1:
 
-                                int dbId = payload.getInt();
-                                payload.position(0);
-                                
-                                SnapshotConfig snap = SnapshotConfig.deserialize(payload);
+                                // deserialize the snapshot configuration
+                                int dbId = -1;
+                                SnapshotConfig snap = null;
+                                try {
+                                    ObjectInputStream oin = new ObjectInputStream(new ByteArrayInputStream(payload.array()));
+                                    dbId = oin.readInt();
+                                    snap = (SnapshotConfig) oin.readObject();
+                                    oin.close();
+                                } catch (IOException exc) {
+                                    throw new BabuDBException(ErrorCode.IO_ERROR,
+                                        "could not serialize snapshot configuration: " + snap.getClass(), exc);
+                                }
                                 
                                 snapshotManager.createPersistentSnapshot(databaseManager.getDatabase(dbId)
                                         .getName(), snap, false);
@@ -527,5 +544,9 @@ public class BabuDB {
             return false;
         }
         return !replicationManager.isMaster();
+    }
+    
+    public Object getBabuDBModificationLock() {
+        return babuDBModificationLock;
     }
 }

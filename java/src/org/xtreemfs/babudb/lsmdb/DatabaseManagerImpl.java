@@ -91,10 +91,6 @@ public class DatabaseManagerImpl implements DatabaseManager {
         compInstances.put(DefaultByteRangeComparator.class.getName(), new DefaultByteRangeComparator());
         
         loadDBs();
-        
-        synchronized (dbModificationLock) {
-            dbModificationLock.notifyAll();
-        }
     }
     
     public Collection<Database> getDatabases() {
@@ -194,7 +190,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
     
     @Override
     public void deleteDatabase(String databaseName) throws BabuDBException {
-        synchronized (((CheckpointerImpl) dbs.getCheckpointer()).getDeleteLock()) {
+        synchronized (dbs.getBabuDBModificationLock()) {
             deleteDatabase(databaseName, true);
         }
     }
@@ -224,6 +220,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
      * @throws BabuDBException
      */
     public void proceedDelete(String databaseName, boolean deleteFiles) throws BabuDBException {
+        
         synchronized (dbModificationLock) {
             if (!dbNames.containsKey(databaseName)) {
                 throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '" + databaseName
