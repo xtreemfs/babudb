@@ -97,6 +97,12 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
     private final Object                       checkpointCompletionLock;
     
     /**
+     * object used to synchronize snapshot/checkpoint creation with database
+     * deletions
+     */
+    private final Object                       deleteLock;
+    
+    /**
      * Flag to notify the disk-logger about a viewId incrementation.
      */
     private boolean                            incrementViewId;
@@ -114,6 +120,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
         this.requests = new LinkedList<MaterializationRequest>();
         this.checkpointLock = new Object();
         this.checkpointCompletionLock = new Object();
+        this.deleteLock = new Object();
     }
     
     /**
@@ -273,7 +280,12 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
         }
     }
     
+    public Object getDeleteLock() {
+        return deleteLock;
+    }
+    
     public void run() {
+        
         quit = false;
         down.set(false);
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "operational");
@@ -298,40 +310,48 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
                         "database operation log has exceeded threshold size of " + maxLogLength + " ("
                             + lfsize + ")");
                     
-                    // materialize all snapshots in the queue before creating
-                    // the checkpoint
-                    for (;;) {
-                        MaterializationRequest rq = null;
+                    synchronized (deleteLock) {
                         
-                        synchronized (requests) {
-                            if (requests.size() > 0)
-                                rq = requests.remove(0);
+                        // materialize all snapshots in the queue before
+                        // creating
+                        // the checkpoint
+                        for (;;) {
+                            MaterializationRequest rq = null;
+                            
+                            synchronized (requests) {
+                                if (requests.size() > 0)
+                                    rq = requests.remove(0);
+                            }
+                            
+                            if (rq == null)
+                                break;
+                            
+                            Logging.logMessage(Logging.LEVEL_DEBUG, this,
+                                "snapshot materialization request found for database '" + rq.dbName
+                                    + "', snapshot: '" + rq.snap.getName() + "'");
+                            
+                            SnapshotManagerImpl snapMan = (SnapshotManagerImpl) dbs.getSnapshotManager();
+                            
+                            // write the snapshot
+                            ((DatabaseImpl) dbs.getDatabaseManager().getDatabase(rq.dbName)).writeSnapshot(
+                                rq.snapIDs, snapMan.getSnapshotDir(rq.dbName, rq.snap.getName()), rq.snap);
+                            
+                            // notify the snapshot manager about the completion
+                            // of
+                            // the snapshot
+                            snapMan.snapshotComplete(rq.dbName, rq.snap);
+                            
+                            Logging
+                                    .logMessage(Logging.LEVEL_DEBUG, this,
+                                        "snapshot materialization complete");
                         }
                         
-                        if (rq == null)
-                            break;
+                        // create the checkpoint
+                        Logging.logMessage(Logging.LEVEL_INFO, this, "initiating database checkpoint...");
+                        createCheckpoint();
+                        Logging.logMessage(Logging.LEVEL_INFO, this, "checkpoint complete");
                         
-                        Logging.logMessage(Logging.LEVEL_DEBUG, this,
-                            "snapshot materialization request found for database '" + rq.dbName
-                                + "', snapshot: '" + rq.snap.getName() + "'");
-                        
-                        SnapshotManagerImpl snapMan = (SnapshotManagerImpl) dbs.getSnapshotManager();
-                        
-                        // write the snapshot
-                        ((DatabaseImpl) dbs.getDatabaseManager().getDatabase(rq.dbName)).writeSnapshot(
-                            rq.snapIDs, snapMan.getSnapshotDir(rq.dbName, rq.snap.getName()), rq.snap);
-                        
-                        // notify the snapshot manager about the completion of
-                        // the snapshot
-                        snapMan.snapshotComplete(rq.dbName, rq.snap);
-                        
-                        Logging.logMessage(Logging.LEVEL_DEBUG, this, "snapshot materialization complete");
                     }
-                    
-                    // create the checkpoint
-                    Logging.logMessage(Logging.LEVEL_INFO, this, "initiating database checkpoint...");
-                    createCheckpoint();
-                    Logging.logMessage(Logging.LEVEL_INFO, this, "checkpoint complete");
                     
                 }
                 
@@ -339,7 +359,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
                 Logging.logMessage(Logging.LEVEL_DEBUG, this, "CHECKPOINT WAS ABORTED!");
             } catch (Throwable ex) {
                 Logging.logMessage(Logging.LEVEL_ERROR, this, "DATABASE CHECKPOINT CREATION FAILURE!");
-                Logging.logMessage(Logging.LEVEL_ERROR, this, ex.getMessage());
+                Logging.logMessage(Logging.LEVEL_ERROR, this, ex.toString());
             } finally {
                 synchronized (checkpointCompletionLock) {
                     checkpointComplete = true;
