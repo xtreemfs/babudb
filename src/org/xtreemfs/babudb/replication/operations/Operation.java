@@ -50,15 +50,15 @@ public abstract class Operation {
      * @param listener
      */
     @SuppressWarnings("unchecked")
-    public void waitForResponses(final RPCResponse<?>[] responses, final ResponsesListener listener) {
+    public void waitForResponses(final RPCResponse[] responses, final ResponsesListener listener) {
 
         assert(responses.length > 0);
 
         final AtomicInteger count = new AtomicInteger(0);
-        final RPCResponseAvailableListener<?> l = new RPCResponseAvailableListener<?>() {
+        final RPCResponseAvailableListener l = new RPCResponseAvailableListener() {
 
             @Override
-            public void responseAvailable(RPCResponse<?> r) {
+            public void responseAvailable(RPCResponse r) {
                 if (count.incrementAndGet() == responses.length) {
                     listener.responsesAvailable();
                 }
