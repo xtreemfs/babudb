@@ -10,8 +10,10 @@ package org.xtreemfs.babudb.lsmdb;
 
 import static org.xtreemfs.include.common.config.SlaveConfig.slaveProtection;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
@@ -525,7 +527,8 @@ public class DatabaseImpl implements Database {
         return lsmDB.getIndex(indexId).prefixLookup(key);
     }
     
-    public Iterator<Entry<byte[], byte[]>> directPrefixLookup(int indexId, int snapId, byte[] key)
+    @Override
+    public Iterator<Entry<byte[], byte[]>> directReversePrefixLookup(int indexId, byte[] key)
         throws BabuDBException {
         
         if (dbs.replication_isSlave()) {
@@ -535,7 +538,20 @@ public class DatabaseImpl implements Database {
         if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
             throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
         }
-        return lsmDB.getIndex(indexId).prefixLookup(key, snapId);
+        return lsmDB.getIndex(indexId).prefixLookup(key, false);
+    }
+    
+    public Iterator<Entry<byte[], byte[]>> directPrefixLookup(int indexId, int snapId, byte[] key,
+        boolean ascending) throws BabuDBException {
+        
+        if (dbs.replication_isSlave()) {
+            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
+        }
+        
+        if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
+            throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
+        }
+        return lsmDB.getIndex(indexId).prefixLookup(key, snapId, ascending);
     }
     
     /**
@@ -647,91 +663,78 @@ public class DatabaseImpl implements Database {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
         
-        try {
+        if (appendLogEntry) {
             
-            if (appendLogEntry) {
-                // create a log entry
-                ReusableBuffer buf = snap.serialize(lsmDB.getDatabaseId());
-                
-                final AsyncResult result = new AsyncResult();
-                LogEntry snapshotEntry = new LogEntry(buf, new SyncListener() {
-                    
-                    @Override
-                    public void synced(LogEntry entry) {
-                        synchronized (result) {
-                            result.done = true;
-                            result.notify();
-                        }
-                    }
-                    
-                    @Override
-                    public void failed(LogEntry entry, Exception ex) {
-                        synchronized (result) {
-                            result.done = true;
-                            result.error = new BabuDBException(ErrorCode.INTERNAL_ERROR, ex.getMessage());
-                            result.notify();
-                        }
-                    }
-                    
-                }, LogEntry.PAYLOAD_TYPE_SNAP);
-                
-                dbs.getLogger().append(snapshotEntry);
-                
-                synchronized (result) {
-                    if (!result.done) {
-                        try {
-                            result.wait();
-                        } catch (InterruptedException ex) {
-                            throw new BabuDBException(ErrorCode.INTERNAL_ERROR,
-                                "cannt write update to disk log", ex);
-                        }
-                    }
-                }
-                
-                if (result.error != null) {
-                    throw result.error;
-                }
-                
-                snapshotEntry.free();
+            // create a log entry
+            
+            // serialize the snapshot configuration
+            ReusableBuffer buf = null;
+            try {
+                ByteArrayOutputStream bout = new ByteArrayOutputStream();
+                ObjectOutputStream oout = new ObjectOutputStream(bout);
+                oout.writeInt(lsmDB.getDatabaseId());
+                oout.writeObject(snap);
+                buf = ReusableBuffer.wrap(bout.toByteArray());
+                oout.close();
+            } catch (IOException exc) {
+                throw new BabuDBException(ErrorCode.IO_ERROR, "could not serialize snapshot configuration: "
+                    + snap.getClass(), exc);
             }
             
-            // critical block...
-            if (dbs.getLogger() != null)
-                dbs.getLogger().lockLogger();
+            final AsyncResult result = new AsyncResult();
+            LogEntry snapshotEntry = new LogEntry(buf, new SyncListener() {
+                
+                @Override
+                public void synced(LogEntry entry) {
+                    synchronized (result) {
+                        result.done = true;
+                        result.notify();
+                    }
+                }
+                
+                @Override
+                public void failed(LogEntry entry, Exception ex) {
+                    synchronized (result) {
+                        result.done = true;
+                        result.error = new BabuDBException(ErrorCode.INTERNAL_ERROR, ex.getMessage());
+                        result.notify();
+                    }
+                }
+                
+            }, LogEntry.PAYLOAD_TYPE_SNAP);
             
-            // create the snapshot
-            return lsmDB.createSnapshot(snap.getIndices());
+            dbs.getLogger().append(snapshotEntry);
             
-        } finally {
-            if (dbs.getLogger() != null)
-                dbs.getLogger().unlockLogger();
+            synchronized (result) {
+                if (!result.done) {
+                    try {
+                        result.wait();
+                    } catch (InterruptedException ex) {
+                        throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "cannt write update to disk log",
+                            ex);
+                    }
+                }
+            }
+            
+            if (result.error != null) {
+                throw result.error;
+            }
+            
+            snapshotEntry.free();
         }
         
-    }
-    
-    /**
-     * Writes a snapshots of a given set of indices to disk.
-     * 
-     * NOTE: this method should only be invoked by the framework
-     * 
-     * @param snapIds
-     *            the snapshot IDs obtained from createSnapshot
-     * @param directory
-     *            the directory in which the snapshots are written
-     * @throws org.xtreemfs.babudb.BabuDBException
-     *             if the snapshot cannot be written
-     */
-    public void writeSnapshot(int[] snapIds, String directory) throws BabuDBException {
+        // critical block...
+        if (dbs.getLogger() != null)
+            dbs.getLogger().lockLogger();
         
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
+        // create the snapshot
+        int[] result = lsmDB.createSnapshot(snap.getIndices());
         
-        try {
-            lsmDB.writeSnapshot(directory, snapIds);
-        } catch (IOException ex) {
-            throw new BabuDBException(ErrorCode.IO_ERROR, "cannot write snapshot: " + ex, ex);
-        }
+        if (dbs.getLogger() != null)
+            dbs.getLogger().unlockLogger();
+        
+        return result;
+        
     }
     
     /**

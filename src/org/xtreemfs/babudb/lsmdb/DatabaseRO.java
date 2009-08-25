@@ -16,7 +16,7 @@ import org.xtreemfs.babudb.BabuDBRequestListener;
 import org.xtreemfs.babudb.UserDefinedLookup;
 
 public interface DatabaseRO {
-            
+    
     /**
      * lookup a single key (synchronously)
      * 
@@ -71,7 +71,7 @@ public interface DatabaseRO {
         throws BabuDBException;
     
     /**
-     * Asynchronously prefix lookup for a key.
+     * asynchronous prefix lookup for a key.
      * 
      * @param indexId
      *            the lookup index
@@ -115,7 +115,7 @@ public interface DatabaseRO {
      * @throws org.xtreemfs.babudb.BabuDBException
      */
     public byte[] directLookup(int indexId, byte[] key) throws BabuDBException;
-        
+    
     /**
      * Executes a prefix lookup. Similar to syncPrefixLookup but executes in the
      * context of the calling thread.
@@ -130,12 +130,28 @@ public interface DatabaseRO {
      *             if the operation failed
      */
     public Iterator<Entry<byte[], byte[]>> directPrefixLookup(int indexId, byte[] key) throws BabuDBException;
-        
+    
+    /**
+     * Executes a reverse prefix lookup. Similar to syncPrefixLookup but
+     * executes in the context of the calling thread.
+     * 
+     * @param indexId
+     *            index id (0..NumIndices-1)
+     * @param key
+     *            the key to start the iterator at
+     * @return an iterator to the database starting at the first matching key.
+     *         Returns key/value pairs in ascending order.
+     * @throws BabuDBException
+     *             if the operation failed
+     */
+    public Iterator<Entry<byte[], byte[]>> directReversePrefixLookup(int indexId, byte[] key)
+        throws BabuDBException;
+    
     /**
      * Shuts down the database.
      * 
      * @attention: does not create a final checkpoint!
      */
     public void shutdown() throws BabuDBException;
-        
+    
 }

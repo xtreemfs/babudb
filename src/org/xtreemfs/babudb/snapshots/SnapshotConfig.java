@@ -7,11 +7,7 @@
  */
 package org.xtreemfs.babudb.snapshots;
 
-import java.util.HashSet;
-import java.util.Set;
-
-import org.xtreemfs.include.common.buffer.BufferPool;
-import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import java.io.Serializable;
 
 /**
  * A set of configuration parameters for a new snapshot.
@@ -19,191 +15,52 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
  * @author stender
  * 
  */
-public class SnapshotConfig {
-    
-    private int[]      indices;
-    
-    private String     name;
-    
-    private byte[][][] prefixes;
-    
-    public SnapshotConfig(String snapName, int[] indices, byte[][][] prefixes) {
-        this.indices = indices;
-        this.name = snapName;
-        this.prefixes = removeCoveringPrefixes(prefixes);
-    }
+public interface SnapshotConfig extends Serializable {
     
     /**
      * Returns the name for the new snapshot.
      * 
      * @return the name
      */
-    public String getName() {
-        return name;
-    }
+    public String getName();
     
     /**
      * Returns an array of indices to be included in the new snapshot.
      * 
      * @return a set of indices
      */
-    public int[] getIndices() {
-        return indices;
-    }
+    public int[] getIndices();
     
     /**
-     * Returns an array of key prefixes for a given index. All records to be
-     * included in the snapshot of this index have to match (exactly) one of the
-     * prefixes.
+     * Returns an array of prefix keys that are supposed to be written to the
+     * snapshot of the given index. This method is used to pre-select certain
+     * key ranges, so that only parts of each index may have to be traversed
+     * when writing the snapshot to disk.
+     * 
+     * Implementations have to make sure that the array of prefix keys returned
+     * for a given index map is sorted in ascending order, and that prefixes
+     * from the array do not cover one another.
      * 
      * @param index
      *            the index
-     * @return the array of key prefixes
+     * @return An array of byte arrays, where each byte array represents a key
+     *         prefix for the given index. If the prefix key is
+     *         <code>null</code>, the whole index will be traversed.
      */
-    public byte[][] getPrefixes(int index) {
-        return prefixes == null ? null : prefixes[index];
-    }
+    public byte[][] getPrefixes(int index);
     
     /**
-     * Serializes the snapshot configuration to a buffer.
+     * Checks if the given key in the given index is contained in the snapshot.
+     * Note that this check will only be performed for keys that are covered by
+     * (one of) the prefix keys returned by <code>getPrefix(index)</code>.
      * 
-     * @return a buffer containing a binary representation of the snapshot
-     *         configuration
+     * @param index
+     *            the index
+     * @param key
+     *            the key
+     * @return <code>true</code>, if the key is part of the snapshot,
+     *         <code>false</code>, otherwise
      */
-    public ReusableBuffer serialize(int dbId) {
-        
-        byte[] nameBytes = name.getBytes();
-        int bufSize = Integer.SIZE / 8 + // dbId
-            Integer.SIZE / 8 + // snapshot name length
-            nameBytes.length + // snapshot name
-            (indices.length + 1) * Integer.SIZE / 8 + // index list including
-            // length
-            Integer.SIZE / 8; // prefixes length
-        
-        if (prefixes != null)
-            for (byte[][] prefixList : prefixes) {
-                bufSize += Integer.SIZE / 8; // prefix count
-                if (prefixList != null) {
-                    for (byte[] bytes : prefixList)
-                        bufSize += bytes.length + // prefix
-                            Integer.SIZE / 8; // prefix length
-                }
-            }
-        
-        ReusableBuffer buf = BufferPool.allocate(bufSize);
-        buf.putInt(dbId);
-        buf.putInt(nameBytes.length);
-        buf.put(nameBytes);
-        
-        // store the index list
-        buf.putInt(indices.length);
-        for (int i : indices)
-            buf.putInt(i);
-        
-        // store the prefix matrix
-        buf.putInt(prefixes == null ? 0 : prefixes.length);
-        if (prefixes != null)
-            for (byte[][] prefixList : prefixes) {
-                buf.putInt(prefixList == null ? 0 : prefixList.length);
-                if (prefixList != null)
-                    for (byte[] bytes : prefixList) {
-                        buf.putInt(bytes.length);
-                        buf.put(bytes);
-                    }
-            }
-        
-        buf.flip();
-        
-        return buf;
-    }
-    
-    /**
-     * Deserializes a snapshot configuration from a buffer.
-     * 
-     * @param buf
-     *            the buffer
-     * @return the snapshot configuration
-     */
-    public static SnapshotConfig deserialize(ReusableBuffer buf) {
-        
-        buf.getInt(); // skip the dbId
-        byte[] nameBytes = new byte[buf.getInt()];
-        buf.get(nameBytes);
-        
-        // store the index list
-        int[] indices = new int[buf.getInt()];
-        for (int i = 0; i < indices.length; i++)
-            indices[i] = buf.getInt();
-        
-        // store the prefix matrix
-        int prefLength = buf.getInt();
-        byte[][][] prefixes = prefLength == 0 ? null : new byte[prefLength][][];
-        if (prefixes != null)
-            for (int i = 0; i < prefixes.length; i++) {
-                int len = buf.getInt();
-                prefixes[i] = len == 0 ? null : new byte[len][];
-                if (prefixes[i] != null)
-                    for (int j = 0; j < prefixes[i].length; j++) {
-                        prefixes[i][j] = new byte[buf.getInt()];
-                        buf.get(prefixes[i][j]);
-                    }
-            }
-        
-        return new SnapshotConfig(new String(nameBytes), indices, prefixes);
-    }
-    
-    /**
-     * Removes all prefixes that are covered by other prefixes.
-     * 
-     * @param prefixes
-     *            the list of input prefixes
-     * @return the list of output prefixes
-     */
-    private byte[][][] removeCoveringPrefixes(byte[][][] prefixes) {
-        
-        if (prefixes == null)
-            return null;
-        
-        byte[][][] newPrefixes = new byte[prefixes.length][][];
-        for (int i = 0; i < prefixes.length; i++)
-            newPrefixes[i] = removeCoveringPrefixes(prefixes[i]);
-        
-        return newPrefixes;
-    }
-    
-    private byte[][] removeCoveringPrefixes(byte[][] prefixes) {
-        
-        if (prefixes == null)
-            return null;
-        
-        Set<Integer> covered = new HashSet<Integer>();
-        
-        for (int i = 0; i < prefixes.length; i++)
-            for (int j = i + 1; j < prefixes.length; j++)
-                if (covers(prefixes[j], prefixes[i]))
-                    covered.add(i);
-                else if (covers(prefixes[i], prefixes[j]))
-                    covered.add(j);
-        
-        int count = 0;
-        byte[][] newPrefixes = new byte[prefixes.length - covered.size()][];
-        for (int i = 0; i < prefixes.length; i++)
-            if (!covered.contains(i))
-                newPrefixes[count++] = prefixes[i];
-        
-        return newPrefixes;
-    }
-    
-    private boolean covers(byte[] prefix1, byte[] prefix2) {
-        
-        if (prefix1.length > prefix2.length)
-            return false;
-        
-        for (int i = 0; i < prefix1.length; i++)
-            if (prefix1[i] != prefix2[i])
-                return false;
-        
-        return true;
-    }
+    public boolean containsKey(int index, byte[] key);
     
 }

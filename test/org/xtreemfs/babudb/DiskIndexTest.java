@@ -36,7 +36,7 @@ public class DiskIndexTest extends TestCase {
     
     private static final int                 NUM_ENTRIES       = 50000;
     
-    private static final ByteRangeComparator COMP              = new DefaultByteRangeComparator();
+    private static final ByteRangeComparator COMP              = DefaultByteRangeComparator.getInstance();
     
     private static final boolean             COMPRESSED        = false;
     
@@ -61,7 +61,7 @@ public class DiskIndexTest extends TestCase {
         byte[][] entries = { new byte[] { '\0' }, "word".getBytes(), new byte[] { '#' } };
         
         populateDiskIndex(entries);
-        DiskIndex diskIndex = new DiskIndex(PATH2, new DefaultByteRangeComparator(), COMPRESSED);
+        DiskIndex diskIndex = new DiskIndex(PATH2, DefaultByteRangeComparator.getInstance(), COMPRESSED);
         
         for (byte[] entry : entries)
             assertEquals(0, COMP.compare(entry, diskIndex.lookup(entry)));
@@ -113,7 +113,7 @@ public class DiskIndexTest extends TestCase {
         index.writeIndex(map.entrySet().iterator());
         
         // read the disk index
-        DiskIndex diskIndex = new DiskIndex(PATH1, new DefaultByteRangeComparator(), COMPRESSED);
+        DiskIndex diskIndex = new DiskIndex(PATH1, DefaultByteRangeComparator.getInstance(), COMPRESSED);
         
         // look up each element
         Iterator<Entry<byte[], byte[]>> it = map.entrySet().iterator();
@@ -149,7 +149,7 @@ public class DiskIndexTest extends TestCase {
         index.writeIndex(testMap.entrySet().iterator());
         
         // read the disk index
-        DiskIndex diskIndex = new DiskIndex(PATH2, new DefaultByteRangeComparator(), COMPRESSED);
+        DiskIndex diskIndex = new DiskIndex(PATH2, DefaultByteRangeComparator.getInstance(), COMPRESSED);
         
         // create an iterator w/ matching start and end buffers
         Iterator<Entry<byte[], byte[]>> it = diskIndex.rangeLookup("brabbel".getBytes(), "yagga".getBytes(),
@@ -217,7 +217,7 @@ public class DiskIndexTest extends TestCase {
         index.writeIndex(testMap.entrySet().iterator());
         
         // read the disk index
-        DiskIndex diskIndex = new DiskIndex(PATH2, new DefaultByteRangeComparator(), COMPRESSED);
+        DiskIndex diskIndex = new DiskIndex(PATH2, DefaultByteRangeComparator.getInstance(), COMPRESSED);
         
         // create an iterator w/ matching start and end buffers
         Iterator<Entry<byte[], byte[]>> it = diskIndex.rangeLookup("brabbel".getBytes(), "yagga".getBytes(),
@@ -285,7 +285,7 @@ public class DiskIndexTest extends TestCase {
         index.writeIndex(map.entrySet().iterator());
         
         // read the disk index
-        DiskIndex diskIndex = new DiskIndex(PATH1, new DefaultByteRangeComparator(), COMPRESSED);
+        DiskIndex diskIndex = new DiskIndex(PATH1, DefaultByteRangeComparator.getInstance(), COMPRESSED);
         
         {
             // look up the complete list of elements
@@ -370,7 +370,7 @@ public class DiskIndexTest extends TestCase {
         index.writeIndex(map.entrySet().iterator());
         
         // read the disk index
-        DiskIndex diskIndex = new DiskIndex(PATH1, new DefaultByteRangeComparator(), COMPRESSED);
+        DiskIndex diskIndex = new DiskIndex(PATH1, DefaultByteRangeComparator.getInstance(), COMPRESSED);
         
         {
             // look up the complete list of elements

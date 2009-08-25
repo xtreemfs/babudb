@@ -122,7 +122,7 @@ public class SnapshotManagerImpl implements SnapshotManager {
             synchronized (snapshotDBs) {
                 Snapshot s = snapMap.get(snap.getName());
                 if (s.getView() == null)
-                    s.setView(new InMemoryView(dbs, dbName, snap.getIndices(), snapIds));
+                    s.setView(new InMemoryView(dbs, dbName, snap, snapIds));
             }
             
         } catch (InterruptedException exc) {

@@ -64,7 +64,7 @@ public class BabuDB {
     /**
      * Version of the DB on-disk format (to detect incompatibilities).
      */
-    public static final int           BABUDB_DB_FORMAT_VERSION = 2;
+    public static final int           BABUDB_DB_FORMAT_VERSION = 3;
     
     /**
      * the disk logger is used to write InsertRecordGroups persistently to disk

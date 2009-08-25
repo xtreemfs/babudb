@@ -268,8 +268,8 @@ public class MultiOverlayTreeTest extends TestCase {
     
     public void testOverlayBufferTree() {
         
-        MultiOverlayBufferTree tree = new MultiOverlayBufferTree(new byte[0],
-            new DefaultByteRangeComparator());
+        MultiOverlayBufferTree tree = new MultiOverlayBufferTree(new byte[0], DefaultByteRangeComparator
+                .getInstance());
         
         // randomly insert 200 elements in a map
         final int numElements = 200;
