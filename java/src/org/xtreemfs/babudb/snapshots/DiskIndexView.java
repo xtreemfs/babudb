@@ -77,14 +77,14 @@ public class DiskIndexView implements BabuDBView {
     }
     
     @Override
-    public Iterator<Entry<byte[], byte[]>> directPrefixLookup(int indexId, byte[] key) throws BabuDBException {
+    public Iterator<Entry<byte[], byte[]>> directPrefixLookup(int indexId, byte[] key, boolean ascending) throws BabuDBException {
         
         DiskIndex index = indexMap.get(indexId);
         if (index == null)
             throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + indexId + " does not exist");
         
         byte[][] range = index.getComparator().prefixToRange(key, true);
-        return index.rangeLookup(range[0], range[1], true);
+        return index.rangeLookup(range[0], range[1], ascending);
     }
     
     @Override

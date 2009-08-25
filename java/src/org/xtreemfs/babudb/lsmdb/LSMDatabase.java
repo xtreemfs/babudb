@@ -294,7 +294,7 @@ public class LSMDatabase {
             if(!dir.exists() && !dir.mkdirs())
                 throw new IOException("could not create directory '" + directory + "'");
             
-            tree.materializeSnapshot(newFileName, snapIds[i], cfg.getPrefixes(i));
+            tree.materializeSnapshot(newFileName, snapIds[i], index, cfg);
         }
     }
     

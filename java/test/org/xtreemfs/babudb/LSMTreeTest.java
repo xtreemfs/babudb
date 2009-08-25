@@ -18,6 +18,7 @@ import junit.textui.TestRunner;
 
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
+import org.xtreemfs.babudb.snapshots.DefaultSnapshotConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
 public class LSMTreeTest extends TestCase {
@@ -55,7 +56,7 @@ public class LSMTreeTest extends TestCase {
         byte[][] vals = new byte[][] { "1".getBytes(), "2".getBytes(), "3".getBytes(), "4".getBytes(),
             "5".getBytes() };
         
-        LSMTree tree = new LSMTree(null, new DefaultByteRangeComparator(), false);
+        LSMTree tree = new LSMTree(null, DefaultByteRangeComparator.getInstance(), false);
         TreeMap<byte[], byte[]> map = new TreeMap<byte[], byte[]>(new DefaultByteRangeComparator());
         
         // insert some key-value pairs
@@ -171,7 +172,7 @@ public class LSMTreeTest extends TestCase {
         // randomly insert 200 elements in a map
         
         final int numElements = 200;
-        final DefaultByteRangeComparator comp = new DefaultByteRangeComparator();
+        final DefaultByteRangeComparator comp = DefaultByteRangeComparator.getInstance();
         
         LSMTree tree = new LSMTree(null, comp, false);
         
@@ -307,7 +308,7 @@ public class LSMTreeTest extends TestCase {
         
         // randomly insert 200 elements in a map
         
-        final DefaultByteRangeComparator comp = new DefaultByteRangeComparator();
+        final DefaultByteRangeComparator comp = DefaultByteRangeComparator.getInstance();
         final byte[] value = "value".getBytes();
         final String[] keys = { "a", "v", "blub", "blubber", "ertz", "yagga", "zwum", "x" };
         
@@ -316,8 +317,8 @@ public class LSMTreeTest extends TestCase {
             tree.insert(k.getBytes(), value);
         
         int snapId = tree.createSnapshot();
-        tree.materializeSnapshot(SNAP_FILE, snapId, new byte[][] { "a".getBytes(), "bl".getBytes(),
-            "zwum".getBytes() });
+        tree.materializeSnapshot(SNAP_FILE, snapId, 0, new DefaultSnapshotConfig("blub", new int[]{0}, new byte[][][] {{ "a".getBytes(), "bl".getBytes(),
+            "zwum".getBytes() }}, null));
         tree.linkToSnapshot(SNAP_FILE);
         
         assertEquals(value, tree.lookup("a".getBytes()));

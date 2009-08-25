@@ -56,7 +56,13 @@ public class Snapshot implements DatabaseRO {
     
     @Override
     public Iterator<Entry<byte[], byte[]>> directPrefixLookup(int indexId, byte[] key) throws BabuDBException {
-        return view.directPrefixLookup(indexId, key);
+        return view.directPrefixLookup(indexId, key, true);
+    }
+    
+    @Override
+    public Iterator<Entry<byte[], byte[]>> directReversePrefixLookup(int indexId, byte[] key)
+        throws BabuDBException {
+        return view.directPrefixLookup(indexId, key, false);
     }
     
     @Override

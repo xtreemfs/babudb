@@ -8,7 +8,6 @@
 
 package org.xtreemfs.babudb.snapshots;
 
-import java.io.File;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
@@ -19,6 +18,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBFactory;
+import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
 import org.xtreemfs.babudb.lsmdb.Database;
@@ -68,7 +68,7 @@ public class SnapshotTest extends TestCase {
         
         // create a snapshot (in memory)
         database.getSnapshotManager().createPersistentSnapshot("test",
-            new SnapshotConfig("snap1", new int[] { 0, 1 }, null));
+            new DefaultSnapshotConfig("snap1", new int[] { 0, 1 }, null, null));
         DatabaseRO snap1 = database.getSnapshotManager().getSnapshotDB("test", "snap1");
         
         // overwrite original values
@@ -97,7 +97,7 @@ public class SnapshotTest extends TestCase {
         
         // create a second snapshot
         database.getSnapshotManager().createPersistentSnapshot("test",
-            new SnapshotConfig("snap2", new int[] { 0, 1 }, null));
+            new DefaultSnapshotConfig("snap2", new int[] { 0, 1 }, null, null));
         DatabaseRO snap2 = database.getSnapshotManager().getSnapshotDB("test", "snap2");
         
         // check whether both the first snapshot and the second snapshot contain
@@ -138,6 +138,7 @@ public class SnapshotTest extends TestCase {
         BabuDBInsertGroup ir = db.createInsertGroup();
         ir.addInsert(0, "testxyz".getBytes(), "v1".getBytes());
         ir.addInsert(0, "test".getBytes(), "v2".getBytes());
+        ir.addInsert(0, "testabc".getBytes(), "v3".getBytes());
         ir.addInsert(0, "yagga".getBytes(), "bla".getBytes());
         ir.addInsert(3, "foo".getBytes(), "v1".getBytes());
         ir.addInsert(3, "bar".getBytes(), "v2".getBytes());
@@ -146,8 +147,9 @@ public class SnapshotTest extends TestCase {
         // create a snapshot (in memory)
         database.getSnapshotManager().createPersistentSnapshot(
             "test",
-            new SnapshotConfig("snap1", new int[] { 0, 3 }, new byte[][][] { { "test".getBytes() },
-                { "f".getBytes(), "ba".getBytes(), "blub".getBytes() } }));
+            new DefaultSnapshotConfig("snap1", new int[] { 0, 3 }, new byte[][][] { { "test".getBytes() },
+                { "ba".getBytes(), "blub".getBytes(), "f".getBytes() } }, new byte[][][] {
+                { "testabc".getBytes() }, null }));
         DatabaseRO snap1 = database.getSnapshotManager().getSnapshotDB("test", "snap1");
         
         // overwrite original values
@@ -166,6 +168,7 @@ public class SnapshotTest extends TestCase {
         // pairs
         assertEquals("v1", new String(snap1.directLookup(0, "testxyz".getBytes())));
         assertEquals("v2", new String(snap1.directLookup(0, "test".getBytes())));
+        assertNull(snap1.directLookup(0, "testabc".getBytes()));
         assertNull(snap1.directLookup(0, "yagga".getBytes()));
         assertEquals("v1", new String(snap1.directLookup(3, "foo".getBytes())));
         assertEquals("v2", new String(snap1.directLookup(3, "bar".getBytes())));
@@ -189,7 +192,7 @@ public class SnapshotTest extends TestCase {
         
         // create a snapshot (in memory)
         database.getSnapshotManager().createPersistentSnapshot("test",
-            new SnapshotConfig("snap1", new int[] { 0, 3 }, null));
+            new DefaultSnapshotConfig("snap1", new int[] { 0, 3 }, null, null));
         DatabaseRO snap1 = database.getSnapshotManager().getSnapshotDB("test", "snap1");
         
         // overwrite original values
@@ -232,9 +235,8 @@ public class SnapshotTest extends TestCase {
         ir.addInsert(0, "key".getBytes(), "x".getBytes());
         db.directInsert(ir);
         
-        // create a partial snapshot
-        database.getSnapshotManager().createPersistentSnapshot("test",
-            new SnapshotConfig("snap2", new int[] { 0 }, new byte[][][] { { "test".getBytes() } }));
+        // create a partial user-defined snapshot
+        database.getSnapshotManager().createPersistentSnapshot("test", new TestSnapshotConfig());
         
         // checkpoint and restart the database
         database.getCheckpointer().checkpoint();
@@ -245,8 +247,8 @@ public class SnapshotTest extends TestCase {
         DatabaseRO snap2 = database.getSnapshotManager().getSnapshotDB("test", "snap2");
         
         // check whether only the records covered by the prefixes are contained
-        assertEquals("x", new String(snap2.directLookup(0, "testxyz".getBytes())));
         assertEquals("x", new String(snap2.directLookup(0, "test".getBytes())));
+        assertNull(snap2.directLookup(0, "testxyz".getBytes()));
         assertNull(snap2.directLookup(0, "te".getBytes()));
         assertNull(snap2.directLookup(0, "key".getBytes()));
         
@@ -269,7 +271,7 @@ public class SnapshotTest extends TestCase {
         
         // create a snapshot
         database.getSnapshotManager().createPersistentSnapshot("test",
-            new SnapshotConfig("snap1", new int[] { 0, 3 }, null));
+            new DefaultSnapshotConfig("snap1", new int[] { 0, 3 }, null, null));
         
         // delete the snapshot
         database.getSnapshotManager().deletePersistentSnapshot("test", "snap1");
@@ -301,7 +303,7 @@ public class SnapshotTest extends TestCase {
         
         // create a new snapshot
         database.getSnapshotManager().createPersistentSnapshot("test",
-            new SnapshotConfig("snap1", new int[] { 0, 1 }, null));
+            new DefaultSnapshotConfig("snap1", new int[] { 0, 1 }, null, null));
         
         // checkpoint the database
         database.getCheckpointer().checkpoint();
@@ -319,7 +321,7 @@ public class SnapshotTest extends TestCase {
         
         // create a new snapshot
         database.getSnapshotManager().createPersistentSnapshot("test",
-            new SnapshotConfig("snap1", new int[] { 0, 1 }, null));
+            new DefaultSnapshotConfig("snap1", new int[] { 0, 1 }, null, null));
         
         // checkpoint the database
         database.getCheckpointer().checkpoint();
@@ -331,6 +333,36 @@ public class SnapshotTest extends TestCase {
     
     public static void main(String[] args) {
         TestRunner.run(SnapshotTest.class);
+    }
+    
+    static class TestSnapshotConfig implements SnapshotConfig {
+        
+        @Override
+        public boolean containsKey(int index, byte[] key) {
+            if (index == 0
+                && DefaultByteRangeComparator.getInstance().compare("testxyz".getBytes(), key) == 0)
+                return false;
+            return true;
+        }
+        
+        @Override
+        public int[] getIndices() {
+            return new int[] { 0 };
+        }
+        
+        @Override
+        public String getName() {
+            return "snap2";
+        }
+        
+        @Override
+        public byte[][] getPrefixes(int index) {
+            if (index == 0)
+                return new byte[][] { "test".getBytes() };
+            else
+                return null;
+        }
+        
     }
     
 }

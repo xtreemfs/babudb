@@ -19,6 +19,7 @@ import java.util.Map.Entry;
 import org.xtreemfs.babudb.index.overlay.MultiOverlayBufferTree;
 import org.xtreemfs.babudb.index.reader.DiskIndex;
 import org.xtreemfs.babudb.index.writer.DiskIndexWriter;
+import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 
 public class LSMTree {
     
@@ -43,7 +44,8 @@ public class LSMTree {
      *            the on-disk index file - may be <code>null</code>
      * @param comp
      *            a comparator for byte ranges
-     * @param compressed Compression of disk-index
+     * @param compressed
+     *            Compression of disk-index
      * @throws IOException
      *             if an I/O error occurs when accessing the on-disk index file
      */
@@ -285,61 +287,86 @@ public class LSMTree {
      *            the file to which to write the snapshot
      * @param snapId
      *            the snapshot ID
-     * @param keyPrefixes
-     *            A list of non-overlapping prefixes that restricts the set of
-     *            key-value pairs. Only those key-value pairs having a key that
-     *            starts with any of the given prefixes will be written to the
-     *            snapshot file.
+     * @param indexId
+     *            the id used by the database to identify this index
+     * @param snap
+     *            the snapshot configuration
      * @throws IOException
      *             if an I/O error occurs while writing the snapshot
      */
-    public void materializeSnapshot(String targetFile, final int snapId, final byte[][] keyPrefixes)
-        throws IOException {
+    public void materializeSnapshot(String targetFile, final int snapId, final int indexId,
+        final SnapshotConfig snap) throws IOException {
         DiskIndexWriter writer = new DiskIndexWriter(targetFile, MAX_ENTRIES_PER_BLOCK, false);
         writer.writeIndex(new Iterator<Entry<byte[], byte[]>>() {
             
             private Iterator<Entry<byte[], byte[]>>[] iterators;
             
+            private Entry<byte[], byte[]>             next;
+            
             private int                               currentIt;
             
             {
-                // sort the prefixs, such that they are in ascending order
-                if (keyPrefixes != null)
-                    Arrays.sort(keyPrefixes, comp);
+                byte[][] prefixes = snap.getPrefixes(indexId);
                 
                 currentIt = 0;
                 
-                if (keyPrefixes != null) {
-                    iterators = new Iterator[keyPrefixes.length];
-                    for (int i = 0; i < keyPrefixes.length; i++)
-                        iterators[i] = prefixLookup(keyPrefixes[i], snapId, true);
+                if (prefixes != null) {
+                    iterators = new Iterator[prefixes.length];
+                    for (int i = 0; i < prefixes.length; i++)
+                        iterators[i] = prefixLookup(prefixes[i], snapId, true);
                 } else {
                     iterators = new Iterator[] { prefixLookup(null, snapId, true) };
                 }
+                
+                getNextElement();
+                
             }
             
             @Override
             public boolean hasNext() {
-                
-                while (currentIt < iterators.length && !iterators[currentIt].hasNext())
-                    currentIt++;
-                
-                return currentIt < iterators.length;
+                return (next != null);
             }
             
             @Override
             public Entry<byte[], byte[]> next() {
                 
-                if (!hasNext())
+                if (next == null)
                     throw new NoSuchElementException();
                 
-                return iterators[currentIt].next();
+                Entry<byte[], byte[]> tmp = next;
+                getNextElement();
+                
+                return tmp;
             }
             
             @Override
             public void remove() {
                 throw new UnsupportedOperationException();
             }
+            
+            private void getNextElement() {
+                
+                for (;;) {
+                    
+                    // get the next iterator w/ elements
+                    while (currentIt < iterators.length && !iterators[currentIt].hasNext())
+                        currentIt++;
+                    
+                    // if there is no such iterator, set next to null and return
+                    if (currentIt >= iterators.length) {
+                        next = null;
+                        return;
+                    }
+                    
+                    // otherwise, next is the next element from the current iterator
+                    next = iterators[currentIt].next();
+                    
+                    // if this element is explicitly excluded, skip it
+                    if (snap.containsKey(indexId, next.getKey()))
+                        break;
+                }
+            }
+            
         });
     }
     

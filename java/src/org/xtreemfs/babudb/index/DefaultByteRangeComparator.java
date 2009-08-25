@@ -10,6 +10,8 @@ package org.xtreemfs.babudb.index;
 
 public class DefaultByteRangeComparator implements ByteRangeComparator {
     
+    private static DefaultByteRangeComparator instance;
+    
     @Override
     public byte[][] prefixToRange(byte[] prefix, boolean ascending) {
         
@@ -64,5 +66,13 @@ public class DefaultByteRangeComparator implements ByteRangeComparator {
         }
         
         return buf1.length - buf2.length;
+    }
+    
+    public static DefaultByteRangeComparator getInstance() {
+        
+        if (instance == null)
+            instance = new DefaultByteRangeComparator();
+        
+        return instance;
     }
 }
