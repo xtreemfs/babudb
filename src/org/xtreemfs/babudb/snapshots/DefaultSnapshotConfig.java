@@ -29,19 +29,20 @@ public class DefaultSnapshotConfig implements SnapshotConfig {
     
     private byte[][][]                      prefixes;
     
-    private byte[][][]                      excludedKeys;
+    private byte[][][]                      excludedPrefixes;
     
     private transient Map<Integer, Integer> indexMap;
     
-    public DefaultSnapshotConfig(String snapName, int[] indices, byte[][][] prefixes, byte[][][] excludedKeys) {
+    public DefaultSnapshotConfig(String snapName, int[] indices, byte[][][] prefixes,
+        byte[][][] excludedPrefixes) {
         
         this.indices = indices;
         this.name = snapName;
         this.prefixes = removeCoveringPrefixes(prefixes);
-        this.excludedKeys = excludedKeys;
+        this.excludedPrefixes = excludedPrefixes;
         
-        if (excludedKeys != null)
-            for (byte[][] keys : excludedKeys) {
+        if (excludedPrefixes != null)
+            for (byte[][] keys : excludedPrefixes) {
                 if (keys != null)
                     Arrays.sort(keys, DefaultByteRangeComparator.getInstance());
             }
@@ -71,13 +72,63 @@ public class DefaultSnapshotConfig implements SnapshotConfig {
     @Override
     public boolean containsKey(int index, byte[] key) {
         
+        if (excludedPrefixes == null)
+            return true;
+        
         if (indexMap == null)
             initIndexMap();
         
-        return excludedKeys == null
-            || excludedKeys[indexMap.get(index)] == null
-            || Arrays.binarySearch(excludedKeys[indexMap.get(index)], key, DefaultByteRangeComparator
-                    .getInstance()) < 0;
+        if (excludedPrefixes[indexMap.get(index)] == null)
+            return true;
+        
+        // search for a matching prefix
+        byte[][] excl = excludedPrefixes[indexMap.get(index)];
+        
+        int i = binarySearch(key, excl);
+        
+        return i >= 0;
+    }
+    
+    private static int binarySearch(byte[] key, byte[][] prefixes) {
+        int low = 0;
+        int high = prefixes.length;
+        
+        int mid = high;
+        int cmp = 0;
+        
+        // binary search
+        while (low <= high) {
+            
+            mid = (low + high) >>> 1;
+            byte[] currKey = prefixes[mid];
+            
+            cmp = startsWith(key, currKey);
+            if (cmp < 0)
+                low = mid + 1;
+            else if (cmp > 0)
+                high = mid - 1;
+            else
+                return mid;
+        }
+        
+        return -1;
+    }
+    
+    private static int startsWith(byte[] key, byte[] prefix) {
+        
+        for (int i = 0; i < prefix.length; i++) {
+            
+            if (i >= key.length)
+                return -1;
+            
+            if (key[i] < prefix[i])
+                return 1;
+            
+            if (key[i] > prefix[i])
+                return -1;
+        }
+        
+        return 0;
     }
     
     /**
@@ -141,18 +192,10 @@ public class DefaultSnapshotConfig implements SnapshotConfig {
     }
     
     // public static void main(String[] args) throws Exception {
-    // DefaultSnapshotConfig snap = new DefaultSnapshotConfig("snap1", new int[]
-    // { 4, 6, 7 },
-    // new byte[][][] { { "faafdsadfs".getBytes(), "yagg".getBytes() }, {
-    // "fad".getBytes() }, null },
-    // null);
-    //        
-    // ByteArrayOutputStream bout = new ByteArrayOutputStream();
-    // ObjectOutputStream oout = new ObjectOutputStream(bout);
-    // oout.writeObject(snap);
-    //        
-    // System.out.println(bout.toByteArray().length);
-    //        
+    // System.out.println(DefaultSnapshotConfig.binarySearch("mo".getBytes(),
+    // new byte[][] {
+    // "algo".getBytes(), "blarg".getBytes(), "mo".getBytes(), "o".getBytes(),
+    // "xzu".getBytes() }));
     // }
     //    
     // /**
