@@ -28,6 +28,7 @@ import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
 import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.include.common.util.OutputUtils;
 
 /**
  * This thread regularly checks the size of the database operations log and
@@ -295,9 +296,13 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
                 
                 final long lfsize = logger.getLogFileSize();
                 if (manualCheckpoint || lfsize > maxLogLength) {
-                    Logging.logMessage(Logging.LEVEL_INFO, this,
-                        "database operation log has exceeded threshold size of " + maxLogLength + " ("
-                            + lfsize + ")");
+                    
+                    if (!manualCheckpoint)
+                        Logging.logMessage(Logging.LEVEL_INFO, this,
+                            "database operation log has exceeded threshold size of " + maxLogLength + " ("
+                                + lfsize + ")");
+                    else
+                        Logging.logMessage(Logging.LEVEL_INFO, this, "triggered manual checkpoint");
                     
                     synchronized (dbs.getBabuDBModificationLock()) {
                         
@@ -348,7 +353,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
                 Logging.logMessage(Logging.LEVEL_DEBUG, this, "CHECKPOINT WAS ABORTED!");
             } catch (Throwable ex) {
                 Logging.logMessage(Logging.LEVEL_ERROR, this, "DATABASE CHECKPOINT CREATION FAILURE!");
-                Logging.logMessage(Logging.LEVEL_ERROR, this, ex.toString());
+                Logging.logMessage(Logging.LEVEL_ERROR, this, OutputUtils.stackTraceToString(ex));
             } finally {
                 synchronized (checkpointCompletionLock) {
                     checkpointComplete = true;

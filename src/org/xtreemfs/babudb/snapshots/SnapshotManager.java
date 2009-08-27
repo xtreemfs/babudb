@@ -52,4 +52,13 @@ public interface SnapshotManager {
      */
     public void deletePersistentSnapshot(String dbName, String snapshotName) throws BabuDBException;
     
+    /**
+     * Returns a list of all snapshots of a given database.
+     * 
+     * @param dbName
+     *            the database name
+     * @return an array of snapshot names (may be empty if no snapshots are available)
+     */
+    public String[] getAllSnapshots(String dbName);
+    
 }

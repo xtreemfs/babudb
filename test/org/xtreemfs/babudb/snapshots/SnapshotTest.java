@@ -161,6 +161,15 @@ public class SnapshotTest extends TestCase {
         ir.addInsert(3, "bar".getBytes(), "x".getBytes());
         db.directInsert(ir);
         
+        // check whether the snapshot contains exactly the specified key-value
+        // pairs
+        assertEquals("v1", new String(snap1.directLookup(0, "testxyz".getBytes())));
+        assertEquals("v2", new String(snap1.directLookup(0, "test".getBytes())));
+        assertNull(snap1.directLookup(0, "testabc".getBytes()));
+        assertNull(snap1.directLookup(0, "yagga".getBytes()));
+        assertEquals("v1", new String(snap1.directLookup(3, "foo".getBytes())));
+        assertEquals("v2", new String(snap1.directLookup(3, "bar".getBytes())));
+        
         // create a checkpoint
         database.getCheckpointer().checkpoint();
         
