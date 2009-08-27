@@ -11,6 +11,7 @@ import java.io.File;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.BabuDB;
@@ -165,6 +166,19 @@ public class SnapshotManagerImpl implements SnapshotManager {
         
         // delete the snapshot subdirectory on disk if available
         FSUtils.delTree(new File(getSnapshotDir(dbName, snapshotName)));
+    }
+    
+    @Override
+    public String[] getAllSnapshots(String dbName) {
+        
+        final Map<String, Snapshot> snapMap = snapshotDBs.get(dbName);
+        if (snapMap != null) {
+            Set<String> names = snapMap.keySet();
+            return names.toArray(new String[names.size()]);
+        }
+
+        else
+            return new String[0];
     }
     
     public void deleteAllSnapshots(String dbName, boolean deleteFiles) throws BabuDBException {

@@ -260,13 +260,22 @@ public class LSMDatabase {
      *             if a snapshot cannot be written to disk
      */
     public void writeSnapshot(int viewId, long sequenceNo, int[] snapIds) throws IOException {
+        
         Logging.logMessage(Logging.LEVEL_INFO, this, "writing snapshot, database = " + databaseName + "...");
         for (int index = 0; index < trees.size(); index++) {
+            
             final LSMTree tree = trees.get(index);
-            final String newFileName = databaseDir + getSnapshotFilename(index, viewId, sequenceNo);
+            
             Logging.logMessage(Logging.LEVEL_INFO, this, "snapshotting index " + index + "(dbName = "
                 + databaseName + ")...");
-            tree.materializeSnapshot(newFileName, snapIds[index]);
+            
+            String tmpFileName = databaseDir + "/.currentSnapshot";
+            
+            tree.materializeSnapshot(tmpFileName, snapIds[index]);
+            
+            final String newFileName = databaseDir + getSnapshotFilename(index, viewId, sequenceNo);
+            new File(tmpFileName).renameTo(new File(newFileName));
+            
             Logging.logMessage(Logging.LEVEL_INFO, this, "... done (index = " + index + ", dbName = "
                 + databaseName + ")");
         }
@@ -274,6 +283,7 @@ public class LSMDatabase {
     }
     
     public void writeSnapshot(String directory, int[] snapIds) throws IOException {
+        
         for (int index = 0; index < trees.size(); index++) {
             final LSMTree tree = trees.get(index);
             final String newFileName = directory + "/" + getSnapshotFilename(index, 0, 0);

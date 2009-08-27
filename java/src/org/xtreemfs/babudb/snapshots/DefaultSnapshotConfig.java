@@ -86,12 +86,13 @@ public class DefaultSnapshotConfig implements SnapshotConfig {
         
         int i = binarySearch(key, excl);
         
-        return i >= 0;
+        return i == -1;
     }
     
     private static int binarySearch(byte[] key, byte[][] prefixes) {
+        
         int low = 0;
-        int high = prefixes.length;
+        int high = prefixes.length - 1;
         
         int mid = high;
         int cmp = 0;
@@ -100,12 +101,12 @@ public class DefaultSnapshotConfig implements SnapshotConfig {
         while (low <= high) {
             
             mid = (low + high) >>> 1;
-            byte[] currKey = prefixes[mid];
+            byte[] currPrefix = prefixes[mid];
             
-            cmp = startsWith(key, currKey);
-            if (cmp < 0)
+            cmp = startsWith(key, currPrefix);
+            if (cmp > 0)
                 low = mid + 1;
-            else if (cmp > 0)
+            else if (cmp < 0)
                 high = mid - 1;
             else
                 return mid;
@@ -116,19 +117,19 @@ public class DefaultSnapshotConfig implements SnapshotConfig {
     
     private static int startsWith(byte[] key, byte[] prefix) {
         
-        for (int i = 0; i < prefix.length; i++) {
+        for (int i = 0; i < key.length; i++) {
             
-            if (i >= key.length)
-                return -1;
+            if (i >= prefix.length)
+                return 0;
             
             if (key[i] < prefix[i])
-                return 1;
+                return -1;
             
             if (key[i] > prefix[i])
-                return -1;
+                return 1;
         }
         
-        return 0;
+        return key.length == prefix.length? 0: -1;
     }
     
     /**
