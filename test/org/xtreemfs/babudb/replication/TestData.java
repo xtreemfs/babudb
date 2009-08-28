@@ -7,9 +7,6 @@
  */
 package org.xtreemfs.babudb.replication;
 
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.copyRequest;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.createRequest;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.deleteRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.heartbeatRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.loadRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicaRequest;
@@ -27,9 +24,6 @@ public final class TestData {
     public final static String testKey3 = "key3";
     
     public static final int replicateOperation = new replicateRequest().getTag();
-    public static final int createOperation = new createRequest().getTag();
-    public static final int copyOperation = new copyRequest().getTag();
-    public static final int deleteOperation = new deleteRequest().getTag();
     public static final int heartbeatOperation = new heartbeatRequest().getTag();
     public static final int replicaOperation = new replicaRequest().getTag();
     public static final int loadOperation = new loadRequest().getTag();

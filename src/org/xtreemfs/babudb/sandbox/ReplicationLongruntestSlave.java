@@ -34,7 +34,7 @@ import org.xtreemfs.include.common.logging.Logging;
 public class ReplicationLongruntestSlave {
 
     // sum of P_* has to be 100, these values are probabilities for the events '*' stands for
-    public final static int P_CLEAN_RESTART = 5;
+    public final static int P_CLEAN_RESTART = 0;
     public final static int P_CONSISTENCY_CHECK = 100-(P_CLEAN_RESTART);
     
     // the interval to sleep, if any other event occurred before
@@ -64,6 +64,13 @@ public class ReplicationLongruntestSlave {
         Logging.start(Logging.LEVEL_WARN);
         
         if (args.length!=3) usage();
+        
+        // delete existing files
+        Process p = Runtime.getRuntime().exec("rm -rf "+PATH);
+        p.waitFor(); 
+        
+        p = Runtime.getRuntime().exec("rm -rf "+BACKUP_DIR);
+        p.waitFor(); 
         
         long seed = 0L;
         try{
@@ -102,7 +109,7 @@ public class ReplicationLongruntestSlave {
             }else{
                 System.out.print("CLEAN RESTART:");
                 performCleanAndRestart(random, master, slaves);
-            }
+            } 
         } 
     }
     
@@ -120,7 +127,7 @@ public class ReplicationLongruntestSlave {
         DispatcherBackupState state = DBS.getReplicationManager().stop();
         
         int downTime = random.nextInt(MAX_DOWN_TIME-MIN_DOWN_TIME)+MIN_DOWN_TIME;
-        System.out.println("Slave is down for "+downTime/60000+" minutes.");
+        System.out.println("Slave is down for "+downTime/60000.0+" minutes.");
         Thread.sleep(downTime);
         
         // delete existing files
@@ -136,22 +143,37 @@ public class ReplicationLongruntestSlave {
      */
     private static void performConsistencyCheck() throws Exception{
         DispatcherBackupState state = DBS.getReplicationManager().stop();
+        System.out.println("Checking entry with LSN: "+state.latest);
         
-        if (state.latest!=null){
+        if (state.latest!=null && state.latest.getSequenceNo() > 0L){
             LookupGroup lookupGroup = generator.getLookupGroup(state.latest.getSequenceNo());
-        for (int i=0;i<lookupGroup.size();i++){
-            byte[] value = DBS.hiddenLookup(lookupGroup.dbName, lookupGroup.getIndex(i), lookupGroup.getKey(i));
-            if (!new String(value).equals(new String(lookupGroup.getValue(i)))) {
-            System.err.println("FAILED for LSN ("+state.latest.toString()+")!" +
-                    "\n"+new String(value)+" != "+new String(lookupGroup.getValue(i)));
-            System.exit(1);
+            if (lookupGroup != null) {
+                for (int i=0;i<lookupGroup.size();i++){
+                    byte[] value = DBS.hiddenLookup(lookupGroup.dbName, lookupGroup.getIndex(i), lookupGroup.getKey(i));
+                    // if the looked up entry is no delete ...
+                    if (lookupGroup.getValue(i) != null) {
+                        if (value==null) {
+                            System.err.println("Could not check position: "+i);
+                            System.err.println(lookupGroup.toString());
+                            System.err.println((value == null) ? "The looked up value was null" : "The Random-Generator-value was null");
+                        } else {                       
+                            if (!new String(value).equals(new String(lookupGroup.getValue(i)))) {
+                                System.err.println("FAILED for LSN ("+state.latest.toString()+")!" +
+                                        "\n"+new String(value)+" != "+new String(lookupGroup.getValue(i)));
+                                System.exit(1);
+                            } 
+                        }
+                    }
+                }
+                System.out.println("SUCCESSFUL for LSN ("+state.latest.toString()+").");
+            } else {
+                System.out.println("Unable to perform lookup.LSN "+state.latest.toString()+" describes a meta-operation.");
             }
+        } else {
+            System.out.println("Unable to perform lookup.LSN "+state.latest.toString()+" describes a meta-operation.");
         }
-        System.out.println("SUCCESSFUL for LSN ("+state.latest.toString()+").");
-        } 
         
         DBS.getReplicationManager().changeConfiguration(CONFIGURATION, state);
-        
     } 
     
     /**

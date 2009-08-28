@@ -236,6 +236,10 @@ public class RPCNIOSocketServer extends LifeCycleThread {
             for (ClientConnection con : connections) {
                 try {
                     con.getChannel().close();
+                    // free all remaining request and response buffers on shutdown
+                    for (ONCRPCRecord resp : con.getPendingResponses()){
+                        resp.freeBuffers();
+                    }
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }

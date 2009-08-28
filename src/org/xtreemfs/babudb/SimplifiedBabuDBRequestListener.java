@@ -5,13 +5,11 @@
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-package org.xtreemfs.babudb.replication.stages.logic;
+package org.xtreemfs.babudb;
 
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBRequestListener;
 
 /**
  * <p>Simplifies the {@link BabuDBRequestListener} interface, to it's
@@ -21,7 +19,7 @@ import org.xtreemfs.babudb.BabuDBRequestListener;
  * @since 06/08/2009
  */
 
-abstract class SimplifiedBabuDBRequestListener implements
+public abstract class SimplifiedBabuDBRequestListener implements
         BabuDBRequestListener {
 
     /**
@@ -30,7 +28,7 @@ abstract class SimplifiedBabuDBRequestListener implements
      * @param context
      * @param error
      */
-    abstract void finished(Object context, BabuDBException error);
+    public abstract void finished(Object context, BabuDBException error);
     
     /*
      * (non-Javadoc)

@@ -27,6 +27,17 @@ public class LSMDBRequest {
     private final Object            context;
     private final UserDefinedLookup udLookup;
 
+    public LSMDBRequest(BabuDBRequestListener listener, Object context) {
+        this.operation = RequestOperation.INSERT;
+        this.listener = listener;
+        this.context = context;
+        this.udLookup = null;
+        this.lookupKey = null;
+        this.insertData = null;
+        this.indexId = -1;
+        this.database = null;
+    }
+    
     public LSMDBRequest(LSMDatabase database, BabuDBRequestListener listener,
             InsertRecordGroup insert, Object context) {
         this.operation = RequestOperation.INSERT;

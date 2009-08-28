@@ -29,9 +29,6 @@ module org # 1000
 
 	  // slave
 	  void replicate (LSN lsn, LogEntry logEntry) # 6;			// replicate request from the master
-	  void create (LSN lsn, string databaseName, uint32_t numIndices) # 7;	// create request from the master
-	  void copy (LSN lsn, string sourceDB, string destDB) # 8;		// copy request from the master
-	  void delete (LSN lsn, string databaseName, boolean deleteFiles) # 9;	// delete request from the master
 
 	  exception ProtocolException # 90 { uint32_t accept_stat; uint32_t error_code; string stack_trace; };
 	  exception errnoException # 91 { uint32_t error_code; string error_message; string stack_trace; };

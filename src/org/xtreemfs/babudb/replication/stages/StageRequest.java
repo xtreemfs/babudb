@@ -7,7 +7,6 @@
  */
 package org.xtreemfs.babudb.replication.stages;
 
-import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
@@ -21,27 +20,19 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class StageRequest implements Comparable<StageRequest>{
 
-    private int                 stageMethod;
-
     private Object[]            args;
     
     private final LSN           lsn;
 
     /**
-     * @param stageMethod
      * @param args - first argument has to be the {@link LSN} for ordering the requests.
      */
-    public StageRequest(int stageMethod, Object[] args) {
+    public StageRequest(Object[] args) {
         this.args = args;
-        this.stageMethod = stageMethod;
         if (args[0] instanceof LSN)
             this.lsn = (LSN) args[0];
         else 
             this.lsn = null;
-    }
-
-    public int getStageMethod() {
-        return stageMethod;
     }
 
     public Object[] getArgs() {
@@ -69,18 +60,7 @@ public class StageRequest implements Comparable<StageRequest>{
         for (Object arg : args) {
             if (arg instanceof ReusableBuffer) {
                 BufferPool.free((ReusableBuffer) arg);
-            } else if (arg instanceof LogEntry) {
-                ((LogEntry) arg).free();
-            }
+            } 
         }
-    }
-    
-    /*
-     * (non-Javadoc)
-     * @see java.lang.Object#toString()
-     */
-    @Override
-    public String toString() {
-        return ((stageMethod == 4) ? "LE ":"Meta ")+lsn.toString();
     }
 }

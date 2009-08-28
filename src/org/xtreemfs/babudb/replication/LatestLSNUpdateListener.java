@@ -16,10 +16,10 @@ import org.xtreemfs.babudb.lsmdb.LSN;
  * @since 06/05/2009
  */
 
-public abstract class LatestLSNUpdateListener implements Comparable<LatestLSNUpdateListener> {
-    public final LSN lsn;
+abstract class LatestLSNUpdateListener implements Comparable<LatestLSNUpdateListener> {
+    final LSN lsn;
     
-    public LatestLSNUpdateListener(LSN lsn) {
+    LatestLSNUpdateListener(LSN lsn) {
         this.lsn = lsn;
     }
     
@@ -27,7 +27,7 @@ public abstract class LatestLSNUpdateListener implements Comparable<LatestLSNUpd
      * Function to call, if the latest LSN has been changed.
      * 
      */
-    public abstract void upToDate();
+    abstract void upToDate();
     
     /*
      * (non-Javadoc)

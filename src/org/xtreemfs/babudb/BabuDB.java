@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.util.Iterator;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
@@ -38,11 +39,12 @@ import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManager;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
-import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.config.BabuDBConfig;
 import org.xtreemfs.include.common.config.MasterConfig;
 import org.xtreemfs.include.common.config.SlaveConfig;
 import org.xtreemfs.include.common.logging.Logging;
+
+import static org.xtreemfs.babudb.log.LogEntry.*;
 
 /**
  * <p>
@@ -143,27 +145,24 @@ public class BabuDB {
         }
         
         Logging.logMessage(Logging.LEVEL_INFO, this, "starting log replay");
-        LSN nextLSN = replayLogs();
+        LSN nextLSN = replayLogs(dbLsn);
         if (dbLsn.compareTo(nextLSN) > 0) {
             nextLSN = dbLsn;
         }
         Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done, using LSN: " + nextLSN);
         
         // set up the replication service
+        LSN lastLSN = new LSN(nextLSN.getViewId(),nextLSN.getSequenceNo()-1);
         try {
             if (conf instanceof MasterConfig)
-                this.replicationManager = new ReplicationManager((MasterConfig) conf, this, nextLSN);
+                this.replicationManager = new ReplicationManager((MasterConfig) conf, this, lastLSN);
             else if (conf instanceof SlaveConfig)
-                this.replicationManager = new ReplicationManager((SlaveConfig) conf, this, nextLSN);
+                this.replicationManager = new ReplicationManager((SlaveConfig) conf, this, lastLSN);
             else
                 this.replicationManager = null;
         } catch (IOException e) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
         }
-        
-        // start the replication service
-        if (this.replicationManager != null)
-            this.replicationManager.initialize();
         
         // set up and start the disk logger
         try {
@@ -187,8 +186,13 @@ public class BabuDB {
         dbCheckptr.init(logger, conf.getCheckInterval(), conf.getMaxLogfileSize());
         dbCheckptr.start();
         
-        Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running (version " + BABUDB_VERSION
-            + ")");
+        // start the replication service after all other components of babuDB have
+        // been started successfully
+        if (this.replicationManager != null)
+            this.replicationManager.initialize();
+        
+        Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running (version " + 
+                BABUDB_VERSION + ")");
     }
     
     /**
@@ -233,6 +237,8 @@ public class BabuDB {
         
         databaseManager.reset();
         
+        dbCheckptr = new CheckpointerImpl(this);
+        
         LSN dbLsn = null;
         for (Database dbRaw : databaseManager.getDatabases()) {
             DatabaseImpl db = (DatabaseImpl) dbRaw;
@@ -252,7 +258,7 @@ public class BabuDB {
         }
         
         Logging.logMessage(Logging.LEVEL_INFO, this, "starting log replay");
-        LSN nextLSN = replayLogs();
+        LSN nextLSN = replayLogs(dbLsn);
         if (dbLsn.compareTo(nextLSN) > 0) {
             nextLSN = dbLsn;
         }
@@ -274,18 +280,13 @@ public class BabuDB {
             worker[i].start();
         }
         
-        if (configuration.getCheckInterval() > 0) {
-            dbCheckptr = new CheckpointerImpl(this);
-            dbCheckptr.init(logger, configuration.getCheckInterval(), configuration.getMaxLogfileSize());
-            dbCheckptr.start();
-        } else {
-            dbCheckptr = null;
-        }
-        
+        dbCheckptr.init(logger, configuration.getCheckInterval(), configuration.getMaxLogfileSize());
+        dbCheckptr.start();
+                
         Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running (version " + BABUDB_VERSION
             + ")");
         
-        return nextLSN;
+        return new LSN(nextLSN.getViewId(),nextLSN.getSequenceNo()-1L);
     }
     
     /*
@@ -370,14 +371,11 @@ public class BabuDB {
     /**
      * Replay the database operations log.
      * 
+     * @param from - LSN to replay the logs from.
      * @return the LSN to assign to the next operation
      * @throws BabuDBException
      */
-    private LSN replayLogs() throws BabuDBException {
-        if (databaseManager.getDatabases().size() == 0) {
-            return new LSN(1, 1);
-        }
-        
+    private LSN replayLogs(LSN from) throws BabuDBException {  
         try {
             File f = new File(configuration.getDbLogDir());
             String[] logs = f.list(new FilenameFilter() {
@@ -390,6 +388,7 @@ public class BabuDB {
             if (logs != null) {
                 // read list of logs and create a list ordered from min LSN to
                 // max LSN
+                int count = -1;
                 SortedSet<LSN> orderedLogList = new TreeSet<LSN>();
                 Pattern p = Pattern.compile("(\\d+)\\.(\\d+)\\.dbl");
                 for (String log : logs) {
@@ -400,6 +399,20 @@ public class BabuDB {
                     tmp = m.group(2);
                     int seqNo = Integer.valueOf(tmp);
                     orderedLogList.add(new LSN(viewId, seqNo));
+                    count++;
+                }
+                Iterator<LSN> iter = orderedLogList.iterator();
+                LSN last = null;
+                while (iter.hasNext()) {
+                    if (last == null) last = iter.next();
+                    else {
+                        LSN that = iter.next();
+                        if (that.compareTo(from) <= 0) {
+                            orderedLogList.remove(last);
+                            last = that;
+                        } else 
+                            break;
+                    }
                 }
                 // apply log entries to databases...
                 for (LSN logLSN : orderedLogList) {
@@ -408,38 +421,29 @@ public class BabuDB {
                     while (dlf.hasNext()) {
                         le = dlf.next();
                         // do something
-                        ReusableBuffer payload = le.getPayload();
-                        if (payload.array().length != 0) {
-                            
-                            // check the payload type
-                            switch (le.getPayloadType()) {
-                            case 0:
-
-                                InsertRecordGroup ai = InsertRecordGroup.deserialize(payload);
-                                insert(ai);
-                                break;
-                            
-                            case 1:
-
+                        if (le.getLSN().compareTo(from)<0) {
+                            le.free();
+                            le = null;
+                        } else if (le.getPayloadType() == PAYLOAD_TYPE_INSERT) {
+                            InsertRecordGroup ai = InsertRecordGroup.deserialize(le.getPayload());
+                            insert(ai);
+                        } else if (le.getPayloadType() == PAYLOAD_TYPE_SNAP) {
+                            ObjectInputStream oin = null;
+                            try {
+                                oin = new ObjectInputStream(new ByteArrayInputStream(le.getPayload().array()));
                                 // deserialize the snapshot configuration
-                                int dbId = -1;
-                                SnapshotConfig snap = null;
-                                try {
-                                    ObjectInputStream oin = new ObjectInputStream(new ByteArrayInputStream(payload.array()));
-                                    dbId = oin.readInt();
-                                    snap = (SnapshotConfig) oin.readObject();
-                                    oin.close();
-                                } catch (IOException exc) {
-                                    throw new BabuDBException(ErrorCode.IO_ERROR,
-                                        "could not serialize snapshot configuration: " + snap.getClass(), exc);
-                                }
-                                
+                                int dbId = oin.readInt();
+                                SnapshotConfig snap = (SnapshotConfig) oin.readObject();
                                 snapshotManager.createPersistentSnapshot(databaseManager.getDatabase(dbId)
                                         .getName(), snap, false);
-                                break;
+                            } catch (Exception e) {
+                                if (le != null) le.free();
+                                throw new BabuDBException(ErrorCode.IO_ERROR,
+                                        "Snapshot could not be recouvered because: "+e.getMessage(), e);
+                            } finally {
+                                if (oin != null) oin.close();
                             }
-                            
-                        }
+                        } // else ignored
                         le.free();
                     }
                     // set lsn'
@@ -460,11 +464,7 @@ public class BabuDB {
         } catch (LogEntryException ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR,
                 "corrupted/incomplete log entry in database operations log", ex);
-        } catch (Exception ex) {
-            throw new BabuDBException(ErrorCode.INTERNAL_ERROR,
-                "cannot load database operations log, unexpected error", ex);
         }
-        
     }
     
     /**

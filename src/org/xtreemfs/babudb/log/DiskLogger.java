@@ -202,7 +202,7 @@ public class DiskLogger extends Thread {
 
     /**
      * Appends an entry to the write queue.
-     * @param entry entry to write
+     * @param entry to write
      */
     public void append(LogEntry entry) throws InterruptedException {
         assert (entry != null);
@@ -214,12 +214,16 @@ public class DiskLogger extends Thread {
         sync.lockInterruptibly();
     }
     
+    public boolean hasLock() {
+        return sync.isHeldByCurrentThread();
+    }
+    
     public void unlockLogger() {
         sync.unlock();
     }
 
     public LSN switchLogFile(boolean incrementViewId) throws IOException {
-        if (!sync.isHeldByCurrentThread()) {
+        if (!hasLock()) {
             throw new IllegalStateException("the lock is held by another thread or the logger is not locked.");
         }
         LSN lastSyncedLSN = new LSN(this.currentViewId.get(), this.nextLogSequenceNo.get() - 1);
@@ -279,7 +283,14 @@ public class DiskLogger extends Thread {
                     }
                     for (LogEntry le : tmpE) {
                         assert (le != null) : "Entry must not be null";
-                        le.assignId(this.currentViewId.get(), this.nextLogSequenceNo.getAndIncrement());
+                        int viewID = this.currentViewId.get();
+                        long seqNo = this.nextLogSequenceNo.getAndIncrement();
+                        LSN lsn = new LSN(viewID,seqNo);
+                        if (le.getLSN() != null && !le.getLSN().equals(lsn)) {
+                            throw new IOException("The logentry "+le.getLSN().
+                                    toString()+" does not match: "+lsn.toString());
+                        }
+                        le.assignId(viewID, seqNo);
                         ReusableBuffer buf = le.serialize(csumAlgo);
                         csumAlgo.reset();
                         channel.write(buf.getBuffer());

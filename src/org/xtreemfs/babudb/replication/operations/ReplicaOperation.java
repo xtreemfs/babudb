@@ -94,14 +94,16 @@ public class ReplicaOperation extends Operation {
                 try {
                     le = dlf.next();
                     if (le.getLSN().equals(start)) {
-                        result.add(new org.xtreemfs.babudb.interfaces.LogEntry(le.serialize(checksum)));
                         if (le.getPayload().array().length == 0) {
-                            rq.sendReplicationException(ErrNo.SERVICE_CALL_MISSED.ordinal());
+                            rq.sendReplicationException(ErrNo.SERVICE_CALL_MISSED);
                             i = -1;
-                        } else i++;
+                        } else {
+                            result.add(new org.xtreemfs.babudb.interfaces.LogEntry(le.serialize(checksum)));
+                            i++;
+                        }
                     }
                 } catch (LogEntryException e) {
-                    rq.sendReplicationException(ErrNo.LOG_CUT.ordinal());
+                    rq.sendReplicationException(ErrNo.LOG_CUT);
                     i = -1;
                 } finally {
                     checksum.reset();
@@ -115,18 +117,19 @@ public class ReplicaOperation extends Operation {
             if (i > 0) {
                 try {
                     for (int j=i;j<numOfLEs;j++) {
-                        le = dlf.next();
-                        result.add(new org.xtreemfs.babudb.interfaces.LogEntry(le.serialize(checksum)));
-                        checksum.reset();
+                        le = dlf.next();               
                         if (le.getPayload().array().length == 0) {
-                            rq.sendReplicationException(ErrNo.SERVICE_CALL_MISSED.ordinal());
+                            rq.sendReplicationException(ErrNo.SERVICE_CALL_MISSED);
                             i = -1;
                             break;
-                        } else
+                        } else {
+                            result.add(new org.xtreemfs.babudb.interfaces.LogEntry(le.serialize(checksum)));
+                            checksum.reset();
                             le.free();
+                        }
                     }
                 } catch (LogEntryException e) {
-                    rq.sendReplicationException(ErrNo.LOG_CUT.ordinal());
+                    rq.sendReplicationException(ErrNo.LOG_CUT);
                     i = -1;
                 } finally {
                     checksum.reset();
@@ -138,9 +141,9 @@ public class ReplicaOperation extends Operation {
             // send the response, if the requested log entries are found
             if (i > 0) rq.sendSuccess(new replicaResponse(result));
             // send a replication exception if not done so far
-            else if (i==0) rq.sendReplicationException(ErrNo.LOG_CUT.ordinal());
+            else if (i==0) rq.sendReplicationException(ErrNo.LOG_CUT);
         } catch (IOException e) {
-            rq.sendReplicationException(ErrNo.INTERNAL_ERROR.ordinal());
+            rq.sendReplicationException(ErrNo.INTERNAL_ERROR);
         } finally {
             if (dlf!=null) {
                 try {

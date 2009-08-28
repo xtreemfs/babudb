@@ -8,8 +8,6 @@
 
 package org.xtreemfs.babudb.lsmdb;
 
-import static org.xtreemfs.include.common.config.SlaveConfig.slaveProtection;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -23,6 +21,7 @@ import java.util.Map;
 
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.SimplifiedBabuDBRequestListener;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
@@ -34,6 +33,9 @@ import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.common.util.FSUtils;
+
+import static org.xtreemfs.babudb.log.LogEntry.*;
+import static org.xtreemfs.include.common.config.SlaveConfig.slaveProtection;
 
 public class DatabaseManagerImpl implements DatabaseManager {
     
@@ -178,11 +180,47 @@ public class DatabaseManagerImpl implements DatabaseManager {
             dbNames.put(databaseName, db);
             saveDBconfig();
         }
-        
+                
         // if this is a master it sends the create-details to all slaves.
-        // otherwise nothing happens
-        if (dbs.getReplicationManager() != null && dbs.getReplicationManager().isMaster()) {
-            dbs.getReplicationManager().create(noOpInsert(), databaseName, numIndices);
+        if (dbs.getReplicationManager() == null || dbs.getReplicationManager().isMaster()) {
+            ReusableBuffer buf = ReusableBuffer.wrap(
+                    new byte[databaseName.getBytes().length+(Integer.SIZE/4)]);
+            buf.putInt(numIndices);
+            buf.putString(databaseName);
+            buf.flip();
+            
+            LogEntry le = metaInsert(PAYLOAD_TYPE_CREATE, buf);
+            if (dbs.getReplicationManager() != null) {
+                final AsyncResult result = new AsyncResult();
+                
+                le.setAttachment(new LSMDBRequest(new SimplifiedBabuDBRequestListener() {
+                
+                    @Override
+                    public void finished(Object context, BabuDBException error) {
+                        synchronized (result) {
+                            result.done = true;
+                            result.error = error;
+                            result.notify();
+                        }
+                    }
+                },null));
+                
+                // replicate the entry
+                dbs.getReplicationManager().replicate(le);
+                
+                synchronized (result) {
+                    try {
+                        if (!result.done)
+                            result.wait();
+                    } catch (InterruptedException i) {
+                        throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "Replication was interrupted.");
+                    }
+                    
+                    if (result.error != null) throw result.error;
+                }
+            } else {
+                if (le!=null) le.free();
+            }
         }
         
         return db;
@@ -241,9 +279,44 @@ public class DatabaseManagerImpl implements DatabaseManager {
         }
         
         // if this is a master it sends the delete-details to all slaves.
-        // otherwise nothing happens
-        if (dbs.getReplicationManager() != null && dbs.getReplicationManager().isMaster()) {
-            dbs.getReplicationManager().delete(noOpInsert(), databaseName, deleteFiles);
+        if (dbs.getReplicationManager() == null || dbs.getReplicationManager().isMaster()) {
+            ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE/8)+databaseName.getBytes().length+1]);
+            buf.putString(databaseName);
+            buf.putBoolean(deleteFiles);
+            buf.flip();
+            
+            LogEntry le = metaInsert(PAYLOAD_TYPE_DELETE, buf);
+            if (dbs.getReplicationManager() != null) {
+                final AsyncResult result = new AsyncResult();
+                
+                le.setAttachment(new LSMDBRequest(new SimplifiedBabuDBRequestListener() {
+                
+                    @Override
+                    public void finished(Object context, BabuDBException error) {
+                        synchronized (result) {
+                            result.done = true;
+                            result.error = error;
+                            result.notify();
+                        }
+                    }
+                },null));
+                
+                // replicate the entry
+                dbs.getReplicationManager().replicate(le);
+                
+                synchronized (result) {
+                    try {
+                        if (!result.done)
+                            result.wait();
+                    } catch (InterruptedException i) {
+                        throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "Replication was interrupted.");
+                    }
+                    
+                    if (result.error != null) throw result.error;
+                }
+            } else {
+                if (le!=null) le.free();
+            }
         }
     }
     
@@ -265,7 +338,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
      * @throws BabuDBException
      * @throws IOException
      */
-    public void proceedCopy(String sourceDB, String destDB) throws BabuDBException, InterruptedException {
+    public void proceedCopy(String sourceDB, String destDB) throws BabuDBException {
         
         final DatabaseImpl sDB = (DatabaseImpl) dbNames.get(sourceDB);
         if (sDB == null) {
@@ -285,7 +358,11 @@ public class DatabaseManagerImpl implements DatabaseManager {
         }
         // materializing the snapshot takes some time, we should not hold the
         // lock meanwhile!
-        sDB.proceedSnapshot(destDB);
+        try {
+            sDB.proceedSnapshot(destDB);
+        } catch (InterruptedException i) {
+            throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "Snapshot creation was interrupted.", i);
+        }
         
         // create new DB and load from snapshot
         Database newDB = new DatabaseImpl(dbs, new LSMDatabase(destDB, dbId, dbs.getConfig().getBaseDir()
@@ -299,9 +376,45 @@ public class DatabaseManagerImpl implements DatabaseManager {
         }
         
         // if this is a master it sends the copy-details to all slaves.
-        // otherwise nothing happens
-        if (dbs.getReplicationManager() != null && dbs.getReplicationManager().isMaster()) {
-            dbs.getReplicationManager().copy(noOpInsert(), sourceDB, destDB);
+        if (dbs.getReplicationManager() == null || dbs.getReplicationManager().isMaster()) {
+            ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE/4)+
+                         sourceDB.getBytes().length+destDB.getBytes().length]);
+            buf.putString(sourceDB);
+            buf.putString(destDB);
+            buf.flip();
+
+            LogEntry le = metaInsert(PAYLOAD_TYPE_COPY, buf);
+            if (dbs.getReplicationManager() != null) {
+                final AsyncResult result = new AsyncResult();
+                
+                le.setAttachment(new LSMDBRequest(new SimplifiedBabuDBRequestListener() {
+                
+                    @Override
+                    public void finished(Object context, BabuDBException error) {
+                        synchronized (result) {
+                            result.done = true;
+                            result.error = error;
+                            result.notify();
+                        }
+                    }
+                },null));
+                
+                // replicate the entry
+                dbs.getReplicationManager().replicate(le);
+                
+                synchronized (result) {
+                    try {
+                        if (!result.done)
+                            result.wait();
+                    } catch (InterruptedException i) {
+                        throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "Replication was interrupted.");
+                    }
+                    
+                    if (result.error != null) throw result.error;
+                }
+            } else {
+                if (le!=null) le.free();
+            }
         }
     }
     
@@ -377,20 +490,20 @@ public class DatabaseManagerImpl implements DatabaseManager {
     
     /**
      * <p>
-     * Makes an empty logEntry-insert at the {@link DiskLogger} that will not be
-     * replayed, to get an unique {@link LSN} for a serviceCall.
+     * Performs a logEntry-insert at the {@link DiskLogger} that 
+     * will make metaCall replay-able.
      * </p>
      * 
-     * @return the unique {@link LSN}.
+     * @return the logEntry after insertion.
      * @throws BabuDBException
-     *             if dummy {@link LogEntry} could not be appended to the
+     *             if {@link LogEntry} could not be appended to the
      *             DiskLogger.
      */
-    private LSN noOpInsert() throws BabuDBException {
+    private LogEntry metaInsert(byte type, ReusableBuffer parameters) throws BabuDBException {
         final AsyncResult result = new AsyncResult();
         
-        // make the dummy entry
-        LogEntry dummy = new LogEntry(ReusableBuffer.wrap(new byte[0]), new SyncListener() {
+        // make the entry
+        LogEntry entry = new LogEntry(parameters, new SyncListener() {
             
             @Override
             public void synced(LogEntry entry) {
@@ -408,11 +521,11 @@ public class DatabaseManagerImpl implements DatabaseManager {
                     result.notify();
                 }
             }
-        }, LogEntry.PAYLOAD_TYPE_INSERT);
+        }, type);
         
         // append it to the DiskLogger
         try {
-            dbs.getLogger().append(dummy);
+            dbs.getLogger().append(entry);
             
             synchronized (result) {
                 if (!result.done)
@@ -425,8 +538,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
             throw new BabuDBException(ErrorCode.INTERNAL_ERROR, ie.getMessage());
         }
         
-        // return its LSN
-        return dummy.getLSN();
+        return entry;
     }
     
     /**

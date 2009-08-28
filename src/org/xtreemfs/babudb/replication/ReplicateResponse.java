@@ -5,10 +5,9 @@
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-package org.xtreemfs.babudb.replication.events;
+package org.xtreemfs.babudb.replication;
 
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.LatestLSNUpdateListener;
 
 /**
  * Proxy for the overall response of broadcast requests.
@@ -17,7 +16,7 @@ import org.xtreemfs.babudb.replication.LatestLSNUpdateListener;
  * @since 06/07/2009
  */
 
-public class EventResponse extends LatestLSNUpdateListener {  
+class ReplicateResponse extends LatestLSNUpdateListener {  
 
     private boolean failed = false;
     private boolean finished = false;
@@ -30,7 +29,7 @@ public class EventResponse extends LatestLSNUpdateListener {
      * @param lsn
      * @param slavesThatCanFail - buffer for negative RPCResponses.
      */
-    public EventResponse(LSN lsn, int slavesThatCanFail) {
+    ReplicateResponse(LSN lsn, int slavesThatCanFail) {
         super(lsn);
         permittedFailures = slavesThatCanFail;
     }
@@ -38,7 +37,7 @@ public class EventResponse extends LatestLSNUpdateListener {
     /**
      * Use this function to update the permitted failures on this response.
      */
-    public synchronized void decrementPermittedFailures(){
+    synchronized void decrementPermittedFailures(){
         if (--permittedFailures == 0 && !finished) {
             failed = true;
             finished = true;
@@ -62,7 +61,7 @@ public class EventResponse extends LatestLSNUpdateListener {
      * @return true if the broadcast succeeded, false otherwise.
      * @throws InterruptedException 
      */
-    public synchronized boolean succeeded() throws InterruptedException {
+    synchronized boolean succeeded() throws InterruptedException {
         if (!finished) wait();
         return !failed;
     }
