@@ -39,9 +39,6 @@ public class ReplicationInterface
             case 1014: return new chunkRequest();
             case 1015: return new heartbeatRequest();
             case 1016: return new replicateRequest();
-            case 1017: return new createRequest();
-            case 1018: return new copyRequest();
-            case 1019: return new deleteRequest();
 
             default: throw new Exception( "unknown request tag " + Integer.toString( header.getProcedure() ) );
         }
@@ -51,7 +48,7 @@ public class ReplicationInterface
     {
         switch( header.getXID() )
         {
-            case 1011: return new stateResponse();            case 1012: return new replicaResponse();            case 1013: return new loadResponse();            case 1014: return new chunkResponse();            case 1015: return new heartbeatResponse();            case 1016: return new replicateResponse();            case 1017: return new createResponse();            case 1018: return new copyResponse();            case 1019: return new deleteResponse();
+            case 1011: return new stateResponse();            case 1012: return new replicaResponse();            case 1013: return new loadResponse();            case 1014: return new chunkResponse();            case 1015: return new heartbeatResponse();            case 1016: return new replicateResponse();
             default: throw new Exception( "unknown response XID " + Integer.toString( header.getXID() ) );
         }
     }    

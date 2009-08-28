@@ -20,6 +20,7 @@ import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.MasterRequestDispatcher;
 import org.xtreemfs.babudb.replication.Request;
+import org.xtreemfs.include.common.logging.Logging;
 
 /**
  * {@link Operation} to request a {@link DBFileMetaDataSet} from the master.
@@ -76,7 +77,9 @@ public class LoadOperation extends Operation {
     public void startRequest(Request rq) {
         DBFileMetaDataSet result = new DBFileMetaDataSet();
         loadRequest request = (loadRequest) rq.getRequestMessage();
-
+        
+        Logging.logMessage(Logging.LEVEL_INFO, dispatcher, "LOAD from %s.", request.getLsn().toString());
+        
         if (dispatcher.lastOnView != null && 
                 new LSN(request.getLsn().getViewId(),request.getLsn().getSequenceNo())
                 .equals(dispatcher.lastOnView))
@@ -87,7 +90,7 @@ public class LoadOperation extends Operation {
             String path = dispatcher.dbs.getDBConfigPath();
             long length = new File(path).length();
             result.add(new DBFileMetaData(path,length,chunkSize));
-
+            
             // add the latest snapshot files for every DB,
             // if available
             for (Database db : ((DatabaseManagerImpl) dispatcher.dbs.getDatabaseManager()).getDatabases())

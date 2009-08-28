@@ -37,12 +37,12 @@ public class ReplicationLongrunTestConfig {
     	    MIN_SEQUENCENO = 1000L;
     	    MAX_SEQUENCENO = Integer.MAX_VALUE;
     	}else{
-    	    MIN_SLEEP_INTERVAL = 30*1000;
-    	    MAX_SLEEP_INTERVAL = 2*60*1000;
+    	    MIN_SLEEP_INTERVAL = 5*1000;
+    	    MAX_SLEEP_INTERVAL = 20*1000;
     	    MAX_DOWN_TIME = 30*1000;
     	    PATH = "/tmp/babuDB/";
     	    MIN_SEQUENCENO = 100L;
-    	    MAX_SEQUENCENO = 100000L;
+    	    MAX_SEQUENCENO = 200000L;
     	}
     }
 }

@@ -13,14 +13,17 @@ import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
 import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.SimplifiedBabuDBRequestListener;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.interfaces.LogEntries;
+import org.xtreemfs.babudb.interfaces.utils.ONCRPCError;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCException;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
 import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.replication.operations.ErrNo;
 import org.xtreemfs.babudb.replication.stages.ReplicationStage;
 import org.xtreemfs.babudb.replication.stages.ReplicationStage.ConnectionLostException;
 import org.xtreemfs.include.common.buffer.BufferPool;
@@ -29,7 +32,6 @@ import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
 
 import static org.xtreemfs.babudb.replication.stages.ReplicationStage.ConnectionLostException;
 import static org.xtreemfs.babudb.replication.stages.logic.LogicID.*;
-
 /**
  * <p>Requests missing {@link LogEntry}s at the 
  * master and inserts them into the DBS.</p>
@@ -68,25 +70,28 @@ public class RequestLogic extends Logic {
         Logging.logMessage(Logging.LEVEL_INFO, this, "Replica-range is missing: %s", missing.toString());
         
         // get the missing logEntries
-        RPCResponse<LogEntries> rp = stage.dispatcher.master.getReplica(missing);
+        RPCResponse<LogEntries> rp = null;    
         LogEntries logEntries = null;
+        
         try {
+            rp = stage.dispatcher.master.getReplica(missing);
             logEntries = (LogEntries) rp.get();
             final AtomicInteger count = new AtomicInteger(logEntries.size());
             // insert all logEntries
             for (org.xtreemfs.babudb.interfaces.LogEntry le : logEntries) {
                 LogEntry logentry = null;
+                LSMDBRequest dbRq = null;
                 try {
                     logentry = LogEntry.deserialize(le.getPayload(), checksum);
-                    LSMDBRequest dbRq = SharedLogic.retrieveRequest(logentry, new SimplifiedBabuDBRequestListener() {
+                    dbRq = SharedLogic.retrieveRequest(logentry, new SimplifiedBabuDBRequestListener() {
                     
                         @Override
-                        void finished(Object context, BabuDBException error) {
+                        public void finished(Object context, BabuDBException error) {
                             synchronized (count) {
                                 // insert succeeded
                                 if (error == null) {
                                     assert (context instanceof LSN);
-                                    stage.loadUntil = (LSN) context;
+                                    stage.lastInserted = (LSN) context;
                                     if (count.decrementAndGet() == 0)
                                         count.notify();
                                 // insert failed
@@ -98,11 +103,11 @@ public class RequestLogic extends Logic {
                             }
                         }
                     }, logentry.getLSN(), ((DatabaseManagerImpl) stage.dispatcher.dbs.getDatabaseManager()).getDatabaseMap());
-                    SharedLogic.writeLogEntry(dbRq, stage.dispatcher.dbs);
                 } finally {
                     checksum.reset();
                     if (logentry!=null) logentry.free();
                 }  
+                SharedLogic.writeLogEntry(dbRq, stage.dispatcher.dbs);
             }
             
             // block until all inserts are finished
@@ -115,24 +120,35 @@ public class RequestLogic extends Logic {
             if (count.get() == -1) throw new LogEntryException("At least one insert could not be proceeded.");
  
             // all went fine --> back to basic
-            stage.dispatcher.updateLatestLSN(stage.loadUntil);
-            stage.setLogic(BASIC);
+            stage.dispatcher.updateLatestLSN(stage.lastInserted);
+            stage.setLogic(BASIC, "Request went fine, we can went on with the basicLogic.");
             
-        } catch (ONCRPCException once) {
+            if (Thread.interrupted()) throw new InterruptedException("Replication was interrupted after executing a replicaOperation.");
+        } catch (ONCRPCException e) {
             // remote failure (connection lost)
-            throw new ConnectionLostException(once.getMessage());
+            int errNo = (e != null && e instanceof ONCRPCError) ? 
+                    ((ONCRPCError) e).getAcceptStat() : ErrNo.UNKNOWN;
+            throw new ConnectionLostException(e.getTypeName()+": "+e.getMessage(),errNo);
         } catch (IOException ioe) {
             // failure on transmission
-            throw new ConnectionLostException(ioe.getMessage());
+            throw new ConnectionLostException(ioe.getMessage(),ErrNo.UNKNOWN);
         } catch (LogEntryException lee) {
             // decoding failed --> retry with new range
             Logging.logError(Logging.LEVEL_WARN, this, lee);
-            stage.missing = new LSNRange(missing.getViewId(), stage.loadUntil.getSequenceNo()+1L, missing.getSequenceEnd());
+            stage.missing = new LSNRange(missing.getViewId(), stage.lastInserted.getSequenceNo()+1L, missing.getSequenceEnd());
         } catch (BabuDBException be) {
             // the insert failed due an DB error
             Logging.logError(Logging.LEVEL_WARN, this, be);
-            stage.setLogic(LOAD);
+            stage.setLogic(LOAD, be.getMessage());
+        } catch (InterruptedException i) {
+            // finally will not be executed, if the thread was interrupted ... -.-
+            if (rp!=null) rp.freeBuffers();
+            if (logEntries!=null) 
+                for (org.xtreemfs.babudb.interfaces.LogEntry le : logEntries) 
+                    if (le.getPayload()!=null) BufferPool.free(le.getPayload());
+            throw i;
         } finally {
+            // finally will not be executed, if the thread was interrupted ... -.-
             if (rp!=null) rp.freeBuffers();
             if (logEntries!=null) 
                 for (org.xtreemfs.babudb.interfaces.LogEntry le : logEntries) 

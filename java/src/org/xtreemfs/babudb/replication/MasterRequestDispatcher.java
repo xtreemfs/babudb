@@ -12,25 +12,27 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 
 import java.util.List;
+import java.util.zip.CRC32;
+import java.util.zip.Checksum;
 
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.clients.SlaveClient;
+import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.SlavesStates.NotEnoughAvailableSlavesException;
 import org.xtreemfs.babudb.replication.SlavesStates.UnknownParticipantException;
-import org.xtreemfs.babudb.replication.events.CopyEvent;
-import org.xtreemfs.babudb.replication.events.CreateEvent;
-import org.xtreemfs.babudb.replication.events.DeleteEvent;
-import org.xtreemfs.babudb.replication.events.Event;
-import org.xtreemfs.babudb.replication.events.ReplicateEvent;
 import org.xtreemfs.babudb.replication.operations.ChunkOperation;
 import org.xtreemfs.babudb.replication.operations.HeartbeatOperation;
 import org.xtreemfs.babudb.replication.operations.LoadOperation;
 import org.xtreemfs.babudb.replication.operations.Operation;
 import org.xtreemfs.babudb.replication.operations.ReplicaOperation;
 import org.xtreemfs.babudb.replication.operations.StateOperation;
+import org.xtreemfs.include.common.buffer.BufferPool;
+import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.config.MasterConfig;
 import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
+import org.xtreemfs.include.foundation.oncrpc.client.RPCResponseAvailableListener;
 
 /**
  * Dispatches incoming master-requests.
@@ -42,6 +44,7 @@ import org.xtreemfs.include.common.logging.Logging;
 
 public class MasterRequestDispatcher extends RequestDispatcher {
     
+    private final Checksum checksum = new CRC32();
     private final SlavesStates states;
     private final int syncN;
     
@@ -63,7 +66,9 @@ public class MasterRequestDispatcher extends RequestDispatcher {
         this.syncN = config.getSyncN();
         this.chunkSize = config.getChunkSize();
         this.states = new SlavesStates(config.getSyncN(),config.getSlaves(),rpcClient);
-        this.lastOnView = initial;
+        
+        // the sequence number of the initial LSN before incrementing the viewID cannot be 0 
+        this.lastOnView = (initial.getSequenceNo() == 0L) ? new LSN(0,0L) : initial;
     }
     
     /**
@@ -103,25 +108,6 @@ public class MasterRequestDispatcher extends RequestDispatcher {
         
         op = new HeartbeatOperation(this);
         operations.put(op.getProcedureId(),op);
-    }
-    
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.RequestDispatcher#initializeEvents()
-     */
-    @Override
-    protected void initializeEvents() {
-        Event ev = new ReplicateEvent(this);
-        events.put(ev.getProcedureId(), ev);
-        
-        ev = new CreateEvent(this);
-        events.put(ev.getProcedureId(), ev);
-        
-        ev = new CopyEvent(this);
-        events.put(ev.getProcedureId(), ev);
-        
-        ev = new DeleteEvent(this);
-        events.put(ev.getProcedureId(), ev);
     }
     
     /**
@@ -200,5 +186,58 @@ public class MasterRequestDispatcher extends RequestDispatcher {
     public DispatcherBackupState stop() {
         this.shutdown();
         return new DispatcherBackupState(states.getLatestCommon());
+    }
+
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#replicate(org.xtreemfs.babudb.log.LogEntry)
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    protected void replicate(final LogEntry le)
+            throws NotEnoughAvailableSlavesException, InterruptedException, IOException {
+        try {
+            final ReusableBuffer buffer = le.serialize(checksum);
+            
+            List<SlaveClient> slaves = getSlavesForBroadCast(); 
+            
+            // setup the response
+            final ReplicateResponse result = new ReplicateResponse(le.getLSN(),slaves.size()-getSyncN()) {
+                @Override
+                public void upToDate() {
+                    super.upToDate();
+                    le.getAttachment().getListener().insertFinished(le.getAttachment().getContext());
+                }
+            };
+            subscribeListener(result);
+            
+            // make the replicate call at the clients
+            if (slaves.size() == 0) { 
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, "There are no slaves available anymore! BabuDB runs if it would be in non-replicated mode.");
+                if (buffer!=null) BufferPool.free(buffer); // FIXME : just for testing: replication with no slave is no replication... --> failover!
+            } else {
+                for (final SlaveClient slave : slaves) {
+                    ((RPCResponse<Object>) slave.replicate(le.getLSN(), buffer))
+                        .registerListener(new RPCResponseAvailableListener<Object>() {
+                    
+                        @Override
+                        public void responseAvailable(RPCResponse<Object> r) {
+                            // evaluate the response
+                            try {
+                                r.get();
+                                markSlaveAsFinished(slave);
+                            } catch (Exception e) {
+                                result.decrementPermittedFailures();
+                                markSlaveAsDead(slave);
+                            } finally {
+                                if (r!=null) r.freeBuffers();
+                            }
+                        }
+                    });
+                }
+            }
+        } finally {
+            checksum.reset();
+        }
     }
 }

@@ -12,12 +12,6 @@ import java.net.InetSocketAddress;
 import org.xtreemfs.babudb.interfaces.LSN;
 import org.xtreemfs.babudb.interfaces.LogEntry;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.ReplicationInterface;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.copyRequest;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.copyResponse;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.createRequest;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.createResponse;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.deleteRequest;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.deleteResponse;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateResponse;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
@@ -63,90 +57,6 @@ public class SlaveClient extends ONCRPCClient {
                 rp.deserialize(data);
                 return null;
             }
-        });
-        
-        return r;
-    }
-    
-    /**
-     * Performs a create-DB call on the slave.
-     * 
-     * @param lsn
-     * @param databaseName
-     * @param numIndices
-     * @return the {@link RPCResponse}.
-     */
-    public RPCResponse<?> create (org.xtreemfs.babudb.lsmdb.LSN lsn, String databaseName, int numIndices) {
-        createRequest rq = new createRequest(new LSN(lsn.getViewId(),lsn.getSequenceNo()), databaseName, numIndices);
-        
-        RPCResponse<?> r = sendRequest(null, rq.getTag(), rq, new RPCResponseDecoder<Object>() {
-
-            /*
-             * (non-Javadoc)
-             * @see org.xtreemfs.include.foundation.oncrpc.client.RPCResponseDecoder#getResult(org.xtreemfs.include.common.buffer.ReusableBuffer)
-             */
-            @Override 
-            public Object getResult(ReusableBuffer data) {
-                final createResponse rp = new createResponse();
-                rp.deserialize(data);
-                return null;
-            } 
-        });
-        
-        return r;
-    }
-    
-    /**
-     * Performs a copy-DB call on the slave.
-     * 
-     * @param lsn
-     * @param sourceDB
-     * @param destDB
-     * @return the {@link RPCResponse}.
-     */
-    public RPCResponse<?> copy (org.xtreemfs.babudb.lsmdb.LSN lsn, String sourceDB, String destDB) {
-        copyRequest rq = new copyRequest(new LSN(lsn.getViewId(),lsn.getSequenceNo()), sourceDB, destDB);
-        
-        RPCResponse<?> r = sendRequest(null, rq.getTag(), rq, new RPCResponseDecoder<Object>() {
-
-            /*
-             * (non-Javadoc)
-             * @see org.xtreemfs.include.foundation.oncrpc.client.RPCResponseDecoder#getResult(org.xtreemfs.include.common.buffer.ReusableBuffer)
-             */
-            @Override 
-            public Object getResult(ReusableBuffer data) {
-                final copyResponse rp = new copyResponse();
-                rp.deserialize(data);
-                return null;
-            } 
-        });
-        
-        return r;
-    }
-
-    /**
-     * Performs a delete-DB request on the slave.
-     * 
-     * @param lsn
-     * @param databaseName
-     * @param deleteFiles
-     * @return the {@link RPCResponse}.
-     */
-    public RPCResponse<?> delete (org.xtreemfs.babudb.lsmdb.LSN lsn, String databaseName, boolean deleteFiles) {
-        deleteRequest rq = new deleteRequest(new LSN(lsn.getViewId(),lsn.getSequenceNo()), databaseName, deleteFiles);
-        
-        RPCResponse<?> r = sendRequest(null, rq.getTag(), rq, new RPCResponseDecoder<Object>() {
-
-            /*
-             * (non-Javadoc)
-             * @see org.xtreemfs.include.foundation.oncrpc.client.RPCResponseDecoder#getResult(org.xtreemfs.include.common.buffer.ReusableBuffer)
-             */
-            @Override 
-            public Object getResult(ReusableBuffer data) {
-                final deleteResponse rp = new deleteResponse();
-                rp.deserialize(data);
-                return null;
-            } 
         });
         
         return r;

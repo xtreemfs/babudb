@@ -13,9 +13,7 @@ import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.clients.MasterClient;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.operations.CopyOperation;
-import org.xtreemfs.babudb.replication.operations.CreateOperation;
-import org.xtreemfs.babudb.replication.operations.DeleteOperation;
+import org.xtreemfs.babudb.replication.SlavesStates.NotEnoughAvailableSlavesException;
 import org.xtreemfs.babudb.replication.operations.Operation;
 import org.xtreemfs.babudb.replication.operations.ReplicateOperation;
 import org.xtreemfs.babudb.replication.operations.StateOperation;
@@ -59,7 +57,7 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
         // initialize internal stages
         // --------------------------
         
-        this.replication = new ReplicationStage(this, config.getMaxQ(), null);   
+        this.replication = new ReplicationStage(this, config.getMaxQ(), null, initial);   
         this.heartbeat = new HeartbeatThread(this, initial);
         
         // --------------------------
@@ -85,7 +83,7 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
         // initialize internal stages
         // --------------------------
         
-        this.replication = new ReplicationStage(this, config.getMaxQ(), backupState.requestQueue);   
+        this.replication = new ReplicationStage(this, config.getMaxQ(), backupState.requestQueue, backupState.latest);   
         this.heartbeat = new HeartbeatThread(this, backupState.latest);
         
         // --------------------------
@@ -155,29 +153,11 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
         Operation op = new StateOperation(this);
         operations.put(op.getProcedureId(),op);
         
-        op = new CreateOperation(this);
-        operations.put(op.getProcedureId(),op);
-
-        op = new CopyOperation(this);
-        operations.put(op.getProcedureId(),op);
-        
-        op = new DeleteOperation(this);
-        operations.put(op.getProcedureId(),op);
-        
         op = new ReplicateOperation(this);
         operations.put(op.getProcedureId(),op);
     }
-    
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.RequestDispatcher#initializeEvents()
-     */
-    @Override
-    protected void initializeEvents() {
-        /* no events registered at the moment */      
-    }
 
-    /**
+   /**
      * Updates the {@link LSN} identifying the last written {@link LogEntry}.
      * 
      * @param lsn
@@ -211,6 +191,25 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
             Logging.logMessage(Logging.LEVEL_ERROR, this, "could not stop the dispatcher");
         }
         super.shutdown();
-        return new DispatcherBackupState(dbs.getLogger().getLatestLSN(),replication.backupQueue());
+        
+        // spinLock to wait for the logger-queue to run empty
+        try {
+            while (dbs.getLogger().getQLength() != 0)
+                Thread.sleep(100);
+        } catch (InterruptedException ie) {
+            ie.printStackTrace();
+        }
+        
+        return new DispatcherBackupState(getLatestLSN(), replication.backupQueue());
+    }
+
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#replicate(org.xtreemfs.babudb.log.LogEntry)
+     */
+    @Override
+    protected void replicate(LogEntry le)
+            throws NotEnoughAvailableSlavesException, InterruptedException {
+        throw new UnsupportedOperationException();
     } 
 }

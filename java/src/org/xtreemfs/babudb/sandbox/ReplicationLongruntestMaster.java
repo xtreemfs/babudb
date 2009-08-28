@@ -42,7 +42,7 @@ public class ReplicationLongruntestMaster {
     public final static int MAX_REPLICATION_Q_LENGTH = 0;
     
     // log-file size boundary in bytes (0,5 MB)
-    public final static long MAX_LOG_FILE_SIZE = 512*1024;
+    public final static long MAX_LOG_FILE_SIZE = 512*1024; 
     // every 5 seconds
     public final static int CHECK_INTERVAL = 5;
     
@@ -96,6 +96,12 @@ public class ReplicationLongruntestMaster {
         long time;
         
         for (int i=1;i<ReplicationLongrunTestConfig.MAX_SEQUENCENO;i++){
+            /* make a break every 100 inserts to let the slave get the latest DB log-file 
+            if (i%100 == 0) { TODO this could be necessary for cluster-tests
+                System.err.println("ASLEEP. For 3 seconds to give the slave a chance to catch up.");
+                Thread.sleep(3000);
+            } */
+            
             List<Object> operation = scenario.get(i);
             if (operation!=null) {
                 nOmetaOp++;

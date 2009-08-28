@@ -12,8 +12,6 @@ import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.zip.CRC32;
-import java.util.zip.Checksum;
 
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDB;
@@ -23,10 +21,6 @@ import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherBackupState;
-import org.xtreemfs.babudb.replication.trigger.CopyTrigger;
-import org.xtreemfs.babudb.replication.trigger.CreateTrigger;
-import org.xtreemfs.babudb.replication.trigger.DeleteTrigger;
-import org.xtreemfs.babudb.replication.trigger.ReplicateTrigger;
 import org.xtreemfs.include.common.TimeSync;
 import org.xtreemfs.include.common.config.MasterConfig;
 import org.xtreemfs.include.common.config.ReplicationConfig;
@@ -47,7 +41,6 @@ public class ReplicationManager {
     
     private boolean isMaster;
     private RequestDispatcher dispatcher;
-    private final Checksum checksum = new CRC32();
     private final BabuDB dbs;
     private volatile boolean stopped = true;
     
@@ -94,90 +87,20 @@ public class ReplicationManager {
     public void replicate(LogEntry le) throws BabuDBException {
         Logging.logMessage(Logging.LEVEL_NOTICE, this, "Performing requests: replicate...");
         
-        if (!isMaster) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "This BabuDB is not running in master-mode! The operation is not available.");
-        else if (stopped) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "Replication is disabled at the moment!");
+        if (!isMaster) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
+                "This BabuDB is not running in master-mode! The operation is not available.");
+        else if (stopped) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
+                "Replication is disabled at the moment!");
         else {
             try {
-                dispatcher.receiveEvent(new ReplicateTrigger(
-                        le,le.getAttachment().getListener(),
-                        le.getAttachment().getContext(),checksum));
+                dispatcher.replicate(le);
             } catch (Exception e){
-                le.getAttachment().getListener().requestFailed(le.getAttachment().getContext(), 
-                        new BabuDBException(ErrorCode.REPLICATION_FAILURE,
+                le.getAttachment().getListener().requestFailed(le.getAttachment().
+                        getContext(), new BabuDBException(ErrorCode.REPLICATION_FAILURE,
                                 "A LogEntry could not be replicated because: "+e.getMessage()));
-            } finally {
-                checksum.reset();
-            }
+            } 
         }
     }
-    
-    /**
-     * <p>Send a create request to all available slaves.</p>
-     * <p>N-synchronous function.</p>
-     * 
-     * @param lsn
-     * @param databaseName
-     * @param numIndices
-     * @throws BabuDBException if create request could not be replicated.
-     */
-    public void create(LSN lsn, String databaseName, int numIndices) throws BabuDBException {
-        Logging.logMessage(Logging.LEVEL_NOTICE, this, "Performing requests: create...");
-        if (!isMaster) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,"This BabuDB is not running in master-mode! The operation is not available.");
-        else if (stopped) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "Replication is disabled at the moment!");
-        else {
-            try {
-                dispatcher.receiveEvent(new CreateTrigger(lsn,databaseName,numIndices));
-            } catch (Exception e) {
-                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,e.getMessage());
-            }
-        }
-    }
-    
-    /**
-     * <p>Send a copy request to all available slaves.</p>
-     * <p>Synchronous function, because if there are any inconsistencies in this case,
-     * concerned slaves will produce a lot of errors and will never be consistent again.</p>
-     * 
-     * @param lsn
-     * @param sourceDB
-     * @param destDB
-     * @throws BabuDBException if create request could not be replicated.
-     */
-    public void copy(LSN lsn, String sourceDB, String destDB) throws BabuDBException {
-        Logging.logMessage(Logging.LEVEL_NOTICE, this, "Performing requests: copy...");
-        if (!isMaster) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,"This BabuDB is not running in master-mode! The operation is not available.");
-        else if (stopped) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "Replication is disabled at the moment!");
-        else {
-            try {
-                dispatcher.receiveEvent(new CopyTrigger(lsn,sourceDB,destDB));
-            } catch (Exception e) {
-                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,e.getMessage());
-            }
-        }
-    }
-    
-    /**
-     * <p>Send a delete request to all available slaves.</p>
-     * <p>Synchronous function, because if there are any inconsistencies in this case,
-     * concerned slaves will produce a lot of errors and will never be consistent again.</p>
-     * 
-     * @param lsn
-     * @param databaseName
-     * @param deleteFiles
-     * @throws BabuDBException if create request could not be replicated.
-     */
-    public void delete(LSN lsn, String databaseName, boolean deleteFiles) throws BabuDBException {
-        Logging.logMessage(Logging.LEVEL_NOTICE, this, "Performing requests: delete...");
-        if (!isMaster) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,"This BabuDB is not running in master-mode! The operation is not available.");
-        else if (stopped) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "Replication is disabled at the moment!");
-        else {
-            try {
-                dispatcher.receiveEvent(new DeleteTrigger(lsn,databaseName,deleteFiles));
-            } catch (Exception e) {
-                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,e.getMessage());
-            }
-        }
-    }  
     
     /**
      * <p>Performs a network broadcast to get the latest LSN from every available DB.</p>

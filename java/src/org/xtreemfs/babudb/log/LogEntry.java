@@ -34,6 +34,12 @@ public class LogEntry {
     
     public static final byte    PAYLOAD_TYPE_SNAP   = 1;
     
+    public static final byte    PAYLOAD_TYPE_CREATE = 2;
+    
+    public static final byte    PAYLOAD_TYPE_COPY   = 3;
+    
+    public static final byte    PAYLOAD_TYPE_DELETE = 4;
+    
     /**
      * view ID of the log entry. The view ID is an epoch number which creates a
      * total order on the log entries (viewId.logSequenceNo).
@@ -54,7 +60,7 @@ public class LogEntry {
     
     private LogEntry() {
     }
-    
+        
     public LogEntry(ReusableBuffer payload, SyncListener l, byte payloadType) {
         this.payload = payload;
         this.listener = l;
@@ -100,6 +106,10 @@ public class LogEntry {
         return buf;
     }
     
+    public void setListener(SyncListener listener) {
+        this.listener = listener;
+    }
+    
     public SyncListener getListener() {
         return listener;
     }
@@ -117,7 +127,8 @@ public class LogEntry {
     }
     
     public LSN getLSN() {
-        return new LSN(this.viewId, this.logSequenceNo);
+        if (this.viewId == -1 && this.logSequenceNo == -1L) return null;
+        else return new LSN(this.viewId, this.logSequenceNo);
     }
     
     public static void checkIntegrity(ReusableBuffer data) throws LogEntryException {

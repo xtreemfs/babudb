@@ -19,6 +19,7 @@ import org.xtreemfs.babudb.interfaces.utils.Serializable;
 import org.xtreemfs.babudb.replication.Request;
 import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import org.xtreemfs.include.common.logging.Logging;
 
 /**
  * {@link Operation} to request a {@link Chunk} from the master.
@@ -75,6 +76,8 @@ public class ChunkOperation extends Operation {
         Chunk chunk = request.getChunk();
         int length = (int) (chunk.getEnd() - chunk.getBegin());
       
+        Logging.logMessage(Logging.LEVEL_INFO, this, "CHUNK request received: %s", chunk.toString());
+        
         FileChannel channel = null;
         ReusableBuffer payload = null;
         try {
@@ -87,7 +90,7 @@ public class ChunkOperation extends Operation {
             rq.sendSuccess(new chunkResponse(payload));
             
         } catch (Exception e) {
-            rq.sendReplicationException(ErrNo.FILE_UNAVAILABLE.ordinal());
+            rq.sendReplicationException(ErrNo.FILE_UNAVAILABLE);
         } finally {
             try {
                 if (channel != null) channel.close();

@@ -191,7 +191,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
                     // critical block...
                     logger.lockLogger();
                     for (Database db : databases) {
-                        snapIds[i++] = ((DatabaseImpl) db).createSnapshot();
+                        snapIds[i++] = ((DatabaseImpl) db).proceedCreateSnapshot();
                     }
                     lastWrittenLSN = logger.switchLogFile(incrementViewId);
                 } finally {
@@ -200,9 +200,9 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
                 
                 i = 0;
                 for (Database db : databases) {
-                    ((DatabaseImpl) db).writeSnapshot(lastWrittenLSN.getViewId(), lastWrittenLSN
+                    ((DatabaseImpl) db).proceedWriteSnapshot(lastWrittenLSN.getViewId(), lastWrittenLSN
                             .getSequenceNo(), snapIds[i++]);
-                    ((DatabaseImpl) db).cleanupSnapshot(lastWrittenLSN.getViewId(), lastWrittenLSN
+                    ((DatabaseImpl) db).proceedCleanupSnapshot(lastWrittenLSN.getViewId(), lastWrittenLSN
                             .getSequenceNo());
                 }
                 
@@ -327,7 +327,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
                             SnapshotManagerImpl snapMan = (SnapshotManagerImpl) dbs.getSnapshotManager();
                             
                             // write the snapshot
-                            ((DatabaseImpl) dbs.getDatabaseManager().getDatabase(rq.dbName)).writeSnapshot(
+                            ((DatabaseImpl) dbs.getDatabaseManager().getDatabase(rq.dbName)).proceedWriteSnapshot(
                                 rq.snapIDs, snapMan.getSnapshotDir(rq.dbName, rq.snap.getName()), rq.snap);
                             
                             // notify the snapshot manager about the completion
@@ -335,8 +335,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
                             // the snapshot
                             snapMan.snapshotComplete(rq.dbName, rq.snap);
                             
-                            Logging
-                                    .logMessage(Logging.LEVEL_DEBUG, this,
+                            Logging.logMessage(Logging.LEVEL_DEBUG, this,
                                         "snapshot materialization complete");
                         }
                         

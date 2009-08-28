@@ -23,8 +23,6 @@ import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
 
-import static org.xtreemfs.babudb.replication.stages.ReplicationStage.REPLICATE;
-
 /**
  * {@link Operation} to replicate a {@link LogEntry} from the master on a slave.
  * 
@@ -69,7 +67,7 @@ public class ReplicateOperation extends Operation {
             rq.setAttachment(LogEntry.deserialize(data, checksum));
         } catch (LogEntryException e){
             Logging.logError(Logging.LEVEL_ERROR, this, e);
-            rq.sendReplicationException(ErrNo.INTERNAL_ERROR.ordinal());
+            rq.sendReplicationException(ErrNo.INTERNAL_ERROR);
             return rpcrq;
         } finally {
             checksum.reset();
@@ -98,11 +96,11 @@ public class ReplicateOperation extends Operation {
         final LSN lsn = new LSN(request.getLsn().getViewId(),request.getLsn().getSequenceNo());
         LogEntry le = (LogEntry) rq.getAttachment();
         try {
-            dispatcher.replication.enqueueOperation(REPLICATE, new Object[]{ lsn, le });
+            dispatcher.replication.enqueueOperation(new Object[]{ lsn, le });
             rq.sendSuccess(new replicateResponse());
         } catch (TooBusyException e) {
             if (le!=null) le.free();
-            rq.sendReplicationException(ErrNo.TOO_BUSY.ordinal());
+            rq.sendReplicationException(ErrNo.TOO_BUSY);
         }
     }
 }

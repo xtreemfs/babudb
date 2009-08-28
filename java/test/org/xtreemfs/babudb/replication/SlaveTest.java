@@ -17,6 +17,7 @@ import java.util.Random;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.zip.CRC32;
+import java.util.zip.Checksum;
 
 import org.junit.After;
 import org.junit.AfterClass;
@@ -33,6 +34,7 @@ import org.xtreemfs.babudb.interfaces.ReplicationInterface.heartbeatResponse;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.loadRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicaRequest;
 import org.xtreemfs.babudb.log.LogEntry;
+import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
@@ -53,12 +55,13 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
     public final static int viewID = 1;
     public final static int MAX_MESSAGES_PRO_TEST = 10;
     
+    private final static Checksum   csumAlgo = new CRC32();
     private RPCNIOSocketServer      rpcServer;
     private static SlaveConfig      conf;
     private RPCNIOSocketClient      rpcClient;
     private SlaveClient             client;
     private BabuDB                  db;
-    private LSN                     current = new LSN(0,0L);  
+    public LSN                     current;  
     private long                    replicaRangeLength = new Random().nextInt(100)+1L;
     private BlockingQueue<Integer>  mailbox;
      
@@ -85,6 +88,7 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
         p = Runtime.getRuntime().exec("rm -rf " + conf.getBackupDir());
         assertEquals(0, p.waitFor());
         
+        current = new LSN(0,0L);
         mailbox = new ArrayBlockingQueue<Integer>(MAX_MESSAGES_PRO_TEST);
         try {
             assertTrue (conf.getSSLOptions() == null);
@@ -167,6 +171,7 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
         System.out.println("Test: replicate failure");
         makeDB();
         replicate();
+        awaitHeartbeat();
         provokeReplicateFailure();
     }
 
@@ -175,15 +180,8 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
         System.out.println("Test: load1");
         makeDB();
         replicate();
+        awaitHeartbeat();
         provokeLoad1();
-    }
-    
-    @Test
-    public void testLoad2() throws Exception {
-        System.out.println("Test: load2");
-        makeDB();
-        replicate();
-        provokeLoad2();
     }
     
     private void awaitHeartbeat() throws Exception {
@@ -191,37 +189,91 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
     }
     
     private void makeDB() throws Exception {
-        RPCResponse<?> rp = client.create(new LSN(viewID,1L), testDB, testDBIndices);  
+        ReusableBuffer buf = ReusableBuffer.wrap(
+                new byte[(Integer.SIZE/4)+testDB.getBytes().length]);
+        buf.putInt(testDBIndices);
+        buf.putString(testDB);
+        buf.flip();
+        RPCResponse<?> rp  = null;
         try {
+            LogEntry le = new LogEntry(buf,new SyncListener() {
+            
+                @Override
+                public void synced(LogEntry entry) {}
+            
+                @Override
+                public void failed(LogEntry entry, Exception ex) {
+                    fail(ex.getMessage());
+                }
+            },LogEntry.PAYLOAD_TYPE_CREATE);
+            le.assignId(viewID, 1L);
+            rp = client.replicate(new LSN(viewID,1L), le.serialize(csumAlgo));  
             rp.get();
         } catch (Exception e) {
             fail("ERROR: "+e.getMessage());
         } finally {
-            rp.freeBuffers();
+            csumAlgo.reset();
+            if (rp != null) rp.freeBuffers();
         }
         awaitHeartbeat();
     }
     
     private void copyDB() throws Exception {
-        RPCResponse<?> rp = client.copy(new LSN(viewID,3L), testDB, copyTestDB);        
+        ReusableBuffer buf = ReusableBuffer.wrap(
+                new byte[(Integer.SIZE/4)+testDB.getBytes().length+copyTestDB.getBytes().length]);
+        buf.putString(testDB);
+        buf.putString(copyTestDB);
+        buf.flip();
+        RPCResponse<?> rp  = null;
         try {
+            LogEntry le = new LogEntry(buf,new SyncListener() {
+            
+                @Override
+                public void synced(LogEntry entry) {}
+            
+                @Override
+                public void failed(LogEntry entry, Exception ex) {
+                    fail(ex.getMessage());
+                }
+            },LogEntry.PAYLOAD_TYPE_COPY);
+            le.assignId(viewID, 3L);
+            rp = client.replicate(new LSN(viewID,3L), le.serialize(csumAlgo));  
             rp.get();
         } catch (Exception e) {
             fail("ERROR: "+e.getMessage());
         } finally {
-            rp.freeBuffers();
+            csumAlgo.reset();
+            if (rp != null) rp.freeBuffers();
         }
         awaitHeartbeat();
     }
     
     private void deleteDB() throws Exception {
-        RPCResponse<?> rp = client.delete(new LSN(viewID,4L), copyTestDB, true);
+        ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE/8)+copyTestDB.getBytes().length+1]);
+        buf.putString(copyTestDB);
+        buf.putBoolean(true);
+        buf.flip();
+        
+        RPCResponse<?> rp  = null;
         try {
+            LogEntry le = new LogEntry(buf,new SyncListener() {
+            
+                @Override
+                public void synced(LogEntry entry) {}
+            
+                @Override
+                public void failed(LogEntry entry, Exception ex) {
+                    fail(ex.getMessage());
+                }
+            },LogEntry.PAYLOAD_TYPE_DELETE);
+            le.assignId(viewID, 4L);
+            rp = client.replicate(new LSN(viewID,4L), le.serialize(csumAlgo));  
             rp.get();
         } catch (Exception e) {
             fail("ERROR: "+e.getMessage());
         } finally {
-            rp.freeBuffers();
+            csumAlgo.reset();
+            if (rp != null) rp.freeBuffers();
         }
         awaitHeartbeat();
     }
@@ -298,18 +350,6 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
         assertEquals(loadOperation, (int) mailbox.take());
     }
     
-    private void provokeLoad2() throws Exception {
-        RPCResponse<?> rp = client.create(new LSN(viewID+1,1L), testDB, testDBIndices);  
-        try {
-            rp.get();
-        } catch (Exception e) {
-            fail("ERROR: "+e.getMessage());
-        } finally {
-            rp.freeBuffers();
-        }
-        assertEquals(loadOperation, (int) mailbox.take());
-    }
-    
     @Override
     public void receiveRecord(ONCRPCRequest rq) {
         int opNum = rq.getRequestHeader().getProcedure();
@@ -318,7 +358,6 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
             request.deserialize(rq.getRequestFragment());
             LSN lsn = new LSN(request.getLsn().getViewId(),
                     request.getLsn().getSequenceNo());
-            assertTrue(lsn.compareTo(current)>0);
             current = lsn;
             
             rq.sendResponse(new heartbeatResponse());   

@@ -24,8 +24,8 @@ import org.xtreemfs.include.foundation.oncrpc.client.RPCResponseAvailableListene
 
 public class HeartbeatThread extends LifeCycleThread {
     
-    /** 30 seconds */
-    public final static long MAX_DELAY_BETWEEN_HEARTBEATS = 30*1000; 
+    /** 10 seconds */
+    public final static long MAX_DELAY_BETWEEN_HEARTBEATS = 10*1000; 
     
     private final SlaveRequestDispatcher dispatcher;
     

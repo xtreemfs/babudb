@@ -604,7 +604,8 @@ public class DatabaseImpl implements Database {
             dbs.getLogger().lockLogger();
             ids = lsmDB.createSnapshot();
         } finally {
-            dbs.getLogger().unlockLogger();
+            if (dbs.getLogger().hasLock())
+                dbs.getLogger().unlockLogger();
         }
         
         File dbDir = new File(dbs.getConfig().getBaseDir() + destDB);
@@ -626,7 +627,7 @@ public class DatabaseImpl implements Database {
      * NOTE: this method should only be invoked by the framework
      * 
      * @throws BabuDBException
-     *             if the checkpoint was not successful
+     *             if isSlave_check succeeded
      * @throws InterruptedException
      * @return an array with the snapshot ID for each index in the database
      */
@@ -635,7 +636,20 @@ public class DatabaseImpl implements Database {
         if (dbs.replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
-        
+        return proceedCreateSnapshot();
+    }
+
+    /**
+     * Creates an in-memory snapshot of all indices in a single database. The
+     * snapshot will be discarded when the system is restarted.
+     * This Operation comes without slave-protection.
+     * 
+     * NOTE: this method should only be invoked by the framework
+     * 
+     * @throws InterruptedException
+     * @return an array with the snapshot ID for each index in the database
+     */
+    public int[] proceedCreateSnapshot() throws InterruptedException {       
         try {
             // critical block...
             dbs.getLogger().lockLogger();
@@ -644,6 +658,7 @@ public class DatabaseImpl implements Database {
             dbs.getLogger().unlockLogger();
         }
     }
+
     
     /**
      * Creates an in-memory snapshot of a given set of indices in a single
@@ -749,7 +764,8 @@ public class DatabaseImpl implements Database {
      * @param cfg
      *            the snapshot configuration
      * @throws BabuDBException
-     *             if the snapshot cannot be written
+     *             if the snapshot cannot be written,
+     *             or isSlave_check was positive
      */
     public void writeSnapshot(int[] snapIds, String directory, SnapshotConfig cfg) throws BabuDBException {
         
@@ -757,6 +773,24 @@ public class DatabaseImpl implements Database {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
         
+        proceedWriteSnapshot(snapIds, directory, cfg);
+    }
+    
+    /**
+     * Writes a snapshot to disk. Without isSlave protection.
+     * 
+     * NOTE: this method should only be invoked by the framework
+     * 
+     * @param snapIds
+     *            the snapshot IDs obtained from createSnapshot
+     * @param directory
+     *            the directory in which the snapshots are written
+     * @param cfg
+     *            the snapshot configuration
+     * @throws BabuDBException
+     *             if the snapshot cannot be written
+     */
+    public void proceedWriteSnapshot(int[] snapIds, String directory, SnapshotConfig cfg) throws BabuDBException {
         try {
             lsmDB.writeSnapshot(directory, snapIds, cfg);
         } catch (IOException ex) {
@@ -774,14 +808,30 @@ public class DatabaseImpl implements Database {
      * @param snapIds
      *            the snapshot Ids (obtained via createSnapshot).
      * @throws BabuDBException
-     *             if a snapshot cannot be written
+     *             if a snapshot cannot be written,
+     *             or BabuDB is running in slave-mode.
      */
     public void writeSnapshot(int viewId, long sequenceNo, int[] snapIds) throws BabuDBException {
         
         if (dbs.replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
-        
+        proceedWriteSnapshot(viewId, sequenceNo, snapIds);
+    }
+    
+    /**
+     * Writes the snapshots to disk. Without slave-protection.
+     * 
+     * @param viewId
+     *            current viewId (i.e. of the last write)
+     * @param sequenceNo
+     *            current sequenceNo (i.e. of the last write)
+     * @param snapIds
+     *            the snapshot Ids (obtained via createSnapshot).
+     * @throws BabuDBException
+     *             if a snapshot cannot be written
+     */
+    public void proceedWriteSnapshot(int viewId, long sequenceNo, int[] snapIds) throws BabuDBException {
         try {
             lsmDB.writeSnapshot(viewId, sequenceNo, snapIds);
         } catch (IOException ex) {
@@ -806,13 +856,25 @@ public class DatabaseImpl implements Database {
         if (dbs.replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
-        
+        proceedCleanupSnapshot(viewId, sequenceNo);
+    }
+    
+    /**
+     * Links the indices to the latest on-disk snapshot, cleans up any
+     * unnecessary in-memory and on-disk data. Without slave-protection.
+     * 
+     * @param viewId
+     *            the viewId of the snapshot
+     * @param sequenceNo
+     *            the sequenceNo of the snaphot
+     * @throws BabuDBException
+     *             if snapshots cannot be cleaned up
+     */
+    public void proceedCleanupSnapshot(final int viewId, final long sequenceNo) throws BabuDBException {
         try {
             lsmDB.cleanupSnapshot(viewId, sequenceNo);
         } catch (IOException ex) {
-            throw new BabuDBException(ErrorCode.IO_ERROR, "cannot write snapshot: " + ex, ex);
+            throw new BabuDBException(ErrorCode.IO_ERROR, "cannot clean up: " + ex, ex);
         }
-        
     }
-    
 }

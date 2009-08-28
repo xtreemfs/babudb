@@ -28,12 +28,9 @@ import org.xtreemfs.babudb.interfaces.utils.Serializable;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.SlavesStates.NotEnoughAvailableSlavesException;
-import org.xtreemfs.babudb.replication.events.Event;
-import org.xtreemfs.babudb.replication.events.EventResponse;
 import org.xtreemfs.babudb.replication.operations.Operation;
 import org.xtreemfs.babudb.replication.operations.StateOperation;
 import org.xtreemfs.babudb.replication.stages.StageRequest;
-import org.xtreemfs.babudb.replication.trigger.Trigger;
 import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.foundation.ErrNo;
@@ -57,9 +54,6 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
     
     /** table of available Operations */
     protected final Map<Integer, Operation> operations;
-    
-    /** table of available internal events */
-    protected final Map<Integer, Event>     events;
         
     /** outgoing requests */
     public final RPCNIOSocketClient         rpcClient;
@@ -98,13 +92,6 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
         Operation op = new StateOperation(this);
         operations.put(op.getProcedureId(), op);
         initializeOperations();
-
-        // ---------------------
-        // initialize events
-        // ---------------------
-        
-        events = new HashMap<Integer, Event>();
-        initializeEvents();
         
         // -------------------------------
         // initialize communication stages
@@ -127,9 +114,15 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
     }
 
     /**
-     * Register the events at the event's table. 
+     * Replicate the given LogEntry.
+     * 
+     * @param le - {@link LogEntry} to replicate.
+     * 
+     * @throws NotEnoughAvailableSlavesException
+     * @throws InterruptedException
      */
-    protected abstract void initializeEvents();
+    protected abstract void replicate(LogEntry le) throws NotEnoughAvailableSlavesException, 
+        InterruptedException, IOException;
 
     /**
      * Register the events at the operation's table. 
@@ -193,7 +186,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
             return;
         }
         
-        Operation op = operations.get(hdr.getTag());       
+        Operation op = operations.get(hdr.getTag());
         if (op == null) {
             rq.sendException(new ProtocolException(ONCRPCResponseHeader.ACCEPT_STAT_PROC_UNAVAIL,
                 ErrNo.EINVAL,"requested operation is not available on this "+name));
@@ -216,20 +209,6 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
             rq.sendInternalServerError(ex,new errnoException(ErrNo.ENOSYS,ex.getMessage(),null));
             return;
         }
-    }
-    
-    /**
-     * Receives internal requests - from a user or BabuDB itself for example.
-     * 
-     * @param trigger
-     * @param Exception if something went horribly wrong.
-     * 
-     * @return the response object.
-     * @throws InterruptedException 
-     * @throws NotEnoughAvailableSlavesException
-     */
-    public EventResponse receiveEvent(Trigger trigger) throws NotEnoughAvailableSlavesException, InterruptedException{
-        return events.get(trigger.getEventNumber()).startEvent(trigger);
     }
 
     /**

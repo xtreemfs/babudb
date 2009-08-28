@@ -14,12 +14,13 @@ package org.xtreemfs.babudb.replication.operations;
  * @author flangner
  */
 
-public enum ErrNo {
-    SLAVE_OUT_OF_SYNC,
-    SERVICE_CALL_MISSED,
-    SECURITY,
-    LOG_CUT,
-    FILE_UNAVAILABLE,
-    INTERNAL_ERROR,
-    TOO_BUSY,
+public final class ErrNo {
+    public static final int SERVICE_CALL_MISSED = 1;
+    public static final int SECURITY            = 2;
+    public static final int LOG_CUT             = 3;
+    public static final int FILE_UNAVAILABLE    = 4;
+    public static final int TOO_BUSY            = 5;
+    public static final int INTERNAL_ERROR      = 6;
+    
+    public static final int UNKNOWN             = 99;
 }
