@@ -181,7 +181,7 @@ public class SnapshotManagerImpl implements SnapshotManager {
             return new String[0];
     }
     
-    public void deleteAllSnapshots(String dbName, boolean deleteFiles) throws BabuDBException {
+    public void deleteAllSnapshots(String dbName) throws BabuDBException {
         
         final Map<String, Snapshot> snapMap = snapshotDBs.get(dbName);
         if (snapMap != null) {
@@ -201,10 +201,7 @@ public class SnapshotManagerImpl implements SnapshotManager {
             // remove the map entry
             snapshotDBs.remove(dbName);
         }
-        
-        if (deleteFiles)
-            FSUtils.delTree(new File(getSnapshotDir(dbName, null)));
-        
+        FSUtils.delTree(new File(getSnapshotDir(dbName, null)));
     }
     
     public String getSnapshotDir(String dbName, String snapshotName) {

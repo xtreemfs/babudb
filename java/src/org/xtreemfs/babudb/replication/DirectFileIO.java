@@ -114,6 +114,7 @@ public class DirectFileIO {
      * 
      * @param sourceDir
      * @param destDir
+     * @param exclude - name of files to exclude from copying.
      * @throws IOException
      */
     private static void copyDir(File sourceDir, File destDir) throws IOException {
@@ -121,7 +122,7 @@ public class DirectFileIO {
         File newFile = null;
         
         for (File f : files) {
-            if (f.isFile()) {
+            if (f.isFile() && !f.getName().contains(".dbl")) {
                 newFile = new File(destDir.getPath()+File.separator+f.getName());
                 newFile.createNewFile();
                 
@@ -131,8 +132,7 @@ public class DirectFileIO {
                 newFile.mkdir();
                 
                 copyDir(f, newFile);
-            } else 
-                assert(false);
+            }
         }
     }
     
@@ -170,13 +170,12 @@ public class DirectFileIO {
             
             // delete existing files
             for (File f : parent.listFiles()) {
-                if (f.isFile())
+                if (f.isFile() && !f.getName().contains(".dbl"))
                     f.delete();
                 else if (f.isDirectory()) {
                     cleanUpFiles(f);
-                    f.delete();
-                } else {
-                    assert(false);
+                    if (f.listFiles().length == 0)
+                        f.delete();
                 }
             }
         }

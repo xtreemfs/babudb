@@ -28,7 +28,7 @@ public abstract class SimplifiedBabuDBRequestListener implements
      * @param context
      * @param error
      */
-    public abstract void finished(Object context, BabuDBException error);
+    public abstract void finished(BabuDBException error);
     
     /*
      * (non-Javadoc)
@@ -36,7 +36,7 @@ public abstract class SimplifiedBabuDBRequestListener implements
      */
     @Override
     public void insertFinished(Object context) {
-        this.finished(context, null);
+        this.finished(null);
     }
 
     /*
@@ -64,7 +64,7 @@ public abstract class SimplifiedBabuDBRequestListener implements
      */
     @Override
     public void requestFailed(Object context, BabuDBException error) {
-        this.finished(context, error);
+        this.finished(error);
     }
 
     /*

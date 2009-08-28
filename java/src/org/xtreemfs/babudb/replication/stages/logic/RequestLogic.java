@@ -20,8 +20,7 @@ import org.xtreemfs.babudb.interfaces.utils.ONCRPCError;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCException;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
-import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
-import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
+import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.operations.ErrNo;
 import org.xtreemfs.babudb.replication.stages.ReplicationStage;
@@ -79,19 +78,17 @@ public class RequestLogic extends Logic {
             final AtomicInteger count = new AtomicInteger(logEntries.size());
             // insert all logEntries
             for (org.xtreemfs.babudb.interfaces.LogEntry le : logEntries) {
-                LogEntry logentry = null;
-                LSMDBRequest dbRq = null;
                 try {
-                    logentry = LogEntry.deserialize(le.getPayload(), checksum);
-                    dbRq = SharedLogic.retrieveRequest(logentry, new SimplifiedBabuDBRequestListener() {
+                    final LogEntry logentry = LogEntry.deserialize(le.getPayload(), checksum);
+                    final LSN lsn = logentry.getLSN();
+                    SharedLogic.handleLogEntry(logentry, new SimplifiedBabuDBRequestListener() {
                     
                         @Override
-                        public void finished(Object context, BabuDBException error) {
+                        public void finished(BabuDBException error) {
                             synchronized (count) {
                                 // insert succeeded
                                 if (error == null) {
-                                    assert (context instanceof LSN);
-                                    stage.lastInserted = (LSN) context;
+                                    stage.lastInserted = lsn;
                                     if (count.decrementAndGet() == 0)
                                         count.notify();
                                 // insert failed
@@ -101,13 +98,33 @@ public class RequestLogic extends Logic {
                                     count.notify();
                                 }
                             }
+                            logentry.free();
                         }
-                    }, logentry.getLSN(), ((DatabaseManagerImpl) stage.dispatcher.dbs.getDatabaseManager()).getDatabaseMap());
+                    }, new SyncListener() {
+                    
+                        @Override
+                        public void synced(LogEntry entry) {
+                            synchronized (count) {
+                                stage.lastInserted = lsn;
+                                if (count.decrementAndGet() == 0)
+                                    count.notify();
+                            }
+                            entry.free();
+                        }
+                    
+                        @Override
+                        public void failed(LogEntry entry, Exception ex) {
+                            Logging.logError(Logging.LEVEL_ERROR, stage, ex);
+                            synchronized (count) {
+                                count.set(-1);
+                                count.notify();
+                            }
+                            entry.free();
+                        }
+                    }, stage.dispatcher.dbs);
                 } finally {
                     checksum.reset();
-                    if (logentry!=null) logentry.free();
                 }  
-                SharedLogic.writeLogEntry(dbRq, stage.dispatcher.dbs);
             }
             
             // block until all inserts are finished

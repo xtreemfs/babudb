@@ -196,7 +196,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
                 le.setAttachment(new LSMDBRequest(new SimplifiedBabuDBRequestListener() {
                 
                     @Override
-                    public void finished(Object context, BabuDBException error) {
+                    public void finished(BabuDBException error) {
                         synchronized (result) {
                             result.done = true;
                             result.error = error;
@@ -228,38 +228,20 @@ public class DatabaseManagerImpl implements DatabaseManager {
     
     @Override
     public void deleteDatabase(String databaseName) throws BabuDBException {
-        synchronized (dbs.getBabuDBModificationLock()) {
-            deleteDatabase(databaseName, true);
-        }
-    }
-    
-    /**
-     * Deletes a database.
-     * 
-     * @param databaseName
-     *            name of database to delete
-     * @param deleteFiles
-     *            if true, all checkpoints are deleted as well
-     * @throws BabuDBException
-     */
-    public void deleteDatabase(String databaseName, boolean deleteFiles) throws BabuDBException {
-        if (dbs.replication_isSlave()) {
+        if (dbs.replication_isSlave())
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
         
-        proceedDelete(databaseName, deleteFiles);
+        proceedDelete(databaseName);
     }
     
     /**
      * Proceeds a Delete, without isSlaveCheck. Replication Approach!
      * 
      * @param databaseName
-     * @param deleteFiles
      * @throws BabuDBException
      */
-    public void proceedDelete(String databaseName, boolean deleteFiles) throws BabuDBException {
-        
-        synchronized (dbModificationLock) {
+    public void proceedDelete(String databaseName) throws BabuDBException { 
+        synchronized (dbModificationLock) {           
             if (!dbNames.containsKey(databaseName)) {
                 throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '" + databaseName
                     + "' does not exists");
@@ -268,21 +250,18 @@ public class DatabaseManagerImpl implements DatabaseManager {
             dbNames.remove(databaseName);
             databases.remove(db.getDatabaseId());
             
-            ((SnapshotManagerImpl) dbs.getSnapshotManager()).deleteAllSnapshots(databaseName, deleteFiles);
+            ((SnapshotManagerImpl) dbs.getSnapshotManager()).deleteAllSnapshots(databaseName);
             
             saveDBconfig();
-            if (deleteFiles) {
-                File dbDir = new File(dbs.getConfig().getBaseDir(), databaseName);
-                if (dbDir.exists())
-                    FSUtils.delTree(dbDir);
-            }
+            File dbDir = new File(dbs.getConfig().getBaseDir(), databaseName);
+            if (dbDir.exists())
+                FSUtils.delTree(dbDir);
         }
         
         // if this is a master it sends the delete-details to all slaves.
         if (dbs.getReplicationManager() == null || dbs.getReplicationManager().isMaster()) {
-            ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE/8)+databaseName.getBytes().length+1]);
+            ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE/8)+databaseName.getBytes().length]);
             buf.putString(databaseName);
-            buf.putBoolean(deleteFiles);
             buf.flip();
             
             LogEntry le = metaInsert(PAYLOAD_TYPE_DELETE, buf);
@@ -292,7 +271,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
                 le.setAttachment(new LSMDBRequest(new SimplifiedBabuDBRequestListener() {
                 
                     @Override
-                    public void finished(Object context, BabuDBException error) {
+                    public void finished(BabuDBException error) {
                         synchronized (result) {
                             result.done = true;
                             result.error = error;
@@ -390,7 +369,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
                 le.setAttachment(new LSMDBRequest(new SimplifiedBabuDBRequestListener() {
                 
                     @Override
-                    public void finished(Object context, BabuDBException error) {
+                    public void finished(BabuDBException error) {
                         synchronized (result) {
                             result.done = true;
                             result.error = error;
@@ -584,4 +563,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
         }
     }
     
+    public Object getDBModificationLock(){
+        return dbModificationLock;
+    }
 }

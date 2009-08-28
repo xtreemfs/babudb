@@ -304,7 +304,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
                     else
                         Logging.logMessage(Logging.LEVEL_INFO, this, "triggered manual checkpoint");
                     
-                    synchronized (dbs.getBabuDBModificationLock()) {
+                    synchronized (((DatabaseManagerImpl)dbs.getDatabaseManager()).getDBModificationLock()) {
                         
                         // materialize all snapshots in the queue before
                         // creating

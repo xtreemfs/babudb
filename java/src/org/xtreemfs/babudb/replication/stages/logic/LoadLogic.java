@@ -117,7 +117,6 @@ public class LoadLogic extends Logic {
             synchronized (openChunks) {
                 // request the chunks
                 for (DBFileMetaData fileData : result) {
-                    
                     // validate the informations
                     String fileName = fileData.getFileName();
                     long fileSize = fileData.getFileSize();
