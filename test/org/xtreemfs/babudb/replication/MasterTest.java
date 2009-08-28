@@ -291,7 +291,6 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
                     case PAYLOAD_TYPE_DELETE:
                         assertEquals(new LSN(viewID,4L), le.getLSN());
                         assertEquals(copyTestDB,le.getPayload().getString());
-                        assertEquals(true,le.getPayload().getBoolean());
                         break;
                         
                     default:

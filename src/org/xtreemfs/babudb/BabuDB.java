@@ -98,13 +98,7 @@ public class BabuDB {
     /**
      * All necessary parameters to run the BabuDB.
      */
-    private final BabuDBConfig        configuration;
-    
-    /**
-     * object used to synchronize snapshot/checkpoint creation with database
-     * deletions
-     */
-    private final Object                       babuDBModificationLock;
+    private final BabuDBConfig        configuration; 
     
     /**
      * Starts the BabuDB database. If conf is instance of MasterConfig it comes
@@ -124,7 +118,6 @@ public class BabuDB {
         this.databaseManager = new DatabaseManagerImpl(this);
         this.snapshotManager = new SnapshotManagerImpl(this);
         this.dbCheckptr = new CheckpointerImpl(this);
-        this.babuDBModificationLock = new Object();
         
         // determine the last LSN and replay the log
         LSN dbLsn = null;
@@ -203,7 +196,6 @@ public class BabuDB {
         configuration = null;
         snapshotManager = null;
         databaseManager = null;
-        babuDBModificationLock = new Object();
     }
     
     /**
@@ -544,9 +536,5 @@ public class BabuDB {
             return false;
         }
         return !replicationManager.isMaster();
-    }
-    
-    public Object getBabuDBModificationLock() {
-        return babuDBModificationLock;
     }
 }

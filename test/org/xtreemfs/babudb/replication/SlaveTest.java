@@ -249,9 +249,8 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
     }
     
     private void deleteDB() throws Exception {
-        ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE/8)+copyTestDB.getBytes().length+1]);
+        ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE/8)+copyTestDB.getBytes().length]);
         buf.putString(copyTestDB);
-        buf.putBoolean(true);
         buf.flip();
         
         RPCResponse<?> rp  = null;
@@ -366,7 +365,7 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
             request.deserialize(rq.getRequestFragment());
             LSNRange r = request.getRange();
             assertEquals(1, r.getViewId());
-            assertEquals(replicaRangeLength-1L, r.getSequenceEnd()-r.getSequenceStart());
+            assertEquals(replicaRangeLength, r.getSequenceEnd()-r.getSequenceStart());
         } else if (opNum == loadOperation) {
             loadRequest request = new loadRequest();
             request.deserialize(rq.getRequestFragment());
