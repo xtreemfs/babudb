@@ -9,6 +9,7 @@
 package org.xtreemfs.babudb.lsmdb;
 
 import java.io.IOException;
+import java.util.Map;
 
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
@@ -18,12 +19,23 @@ public interface DatabaseManager {
     /**
      * Returns the database with the given name.
      * 
-     * @param dbName the database name
+     * @param dbName
+     *            the database name
      * @return the database
-     * @throws BabuDBException if the database does not exist
+     * @throws BabuDBException
+     *             if the database does not exist
      */
     public Database getDatabase(String dbName) throws BabuDBException;
-        
+    
+    /**
+     * Returns a map containing all databases.
+     * 
+     * @return a map containing all databases
+     * @throws BabuDBException
+     *             if an error occurs
+     */
+    public Map<String, Database> getDatabases() throws BabuDBException;
+    
     /**
      * Creates a new database.
      * 
@@ -55,7 +67,7 @@ public interface DatabaseManager {
      */
     public Database createDatabase(String databaseName, int numIndices, ByteRangeComparator[] comparators)
         throws BabuDBException;
-     
+    
     /**
      * Deletes a database.
      * 
@@ -64,7 +76,7 @@ public interface DatabaseManager {
      * @throws BabuDBException
      */
     public void deleteDatabase(String databaseName) throws BabuDBException;
-     
+    
     /**
      * Creates a copy of database sourceDB by taking a snapshot, materializing
      * it and loading it as destDB. This does not interrupt operations on
@@ -79,5 +91,5 @@ public interface DatabaseManager {
      */
     public void copyDatabase(String sourceDB, String destDB) throws BabuDBException, IOException,
         InterruptedException;
-       
+    
 }

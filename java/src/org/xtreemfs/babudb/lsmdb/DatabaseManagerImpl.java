@@ -8,6 +8,11 @@
 
 package org.xtreemfs.babudb.lsmdb;
 
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_COPY;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_CREATE;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_DELETE;
+import static org.xtreemfs.include.common.config.SlaveConfig.slaveProtection;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -34,9 +39,6 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.common.util.FSUtils;
 
-import static org.xtreemfs.babudb.log.LogEntry.*;
-import static org.xtreemfs.include.common.config.SlaveConfig.slaveProtection;
-
 public class DatabaseManagerImpl implements DatabaseManager {
     
     private BabuDB                                 dbs;
@@ -44,12 +46,12 @@ public class DatabaseManagerImpl implements DatabaseManager {
     /**
      * Mapping from database name to database id
      */
-    private final Map<String, Database>            dbNames;
+    private final Map<String, Database>            dbsByName;
     
     /**
      * Mapping from dbId to database
      */
-    private final Map<Integer, Database>           databases;
+    private final Map<Integer, Database>           dbsById;
     
     /**
      * a map containing all comparators sorted by their class names
@@ -70,8 +72,8 @@ public class DatabaseManagerImpl implements DatabaseManager {
         
         this.dbs = master;
         
-        this.dbNames = new HashMap<String, Database>();
-        this.databases = new HashMap<Integer, Database>();
+        this.dbsByName = new HashMap<String, Database>();
+        this.dbsById = new HashMap<Integer, Database>();
         
         this.compInstances = new HashMap<String, ByteRangeComparator>();
         this.compInstances.put(DefaultByteRangeComparator.class.getName(), new DefaultByteRangeComparator());
@@ -84,8 +86,8 @@ public class DatabaseManagerImpl implements DatabaseManager {
     
     public void reset() throws BabuDBException {
         
-        dbNames.clear();
-        databases.clear();
+        dbsByName.clear();
+        dbsById.clear();
         
         nextDbId = 1;
         
@@ -95,28 +97,29 @@ public class DatabaseManagerImpl implements DatabaseManager {
         loadDBs();
     }
     
-    public Collection<Database> getDatabases() {
+    @Override
+    public Map<String, Database> getDatabases() {
         synchronized (dbModificationLock) {
-            return new ArrayList<Database>(databases.values());
+            return new HashMap<String, Database>(dbsByName);
         }
     }
     
-    public Map<String, Database> getDatabaseNameMap() {
+    public Map<Integer, Database> getDatabasesById() {
         synchronized (dbModificationLock) {
-            return new HashMap<String, Database>(dbNames);
+            return new HashMap<Integer, Database>(dbsById);
         }
     }
     
-    public Map<Integer, Database> getDatabaseMap() {
+    public Collection<Database> getDatabaseList() {
         synchronized (dbModificationLock) {
-            return new HashMap<Integer, Database>(databases);
+            return new ArrayList<Database>(dbsById.values());
         }
     }
     
     @Override
     public Database getDatabase(String dbName) throws BabuDBException {
         
-        Database db = dbNames.get(dbName);
+        Database db = dbsByName.get(dbName);
         
         if (db == null)
             throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database does not exist");
@@ -124,7 +127,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
     }
     
     public Database getDatabase(int dbId) {
-        return databases.get(dbId);
+        return dbsById.get(dbId);
     }
     
     @Override
@@ -169,22 +172,22 @@ public class DatabaseManagerImpl implements DatabaseManager {
         
         DatabaseImpl db = null;
         synchronized (dbModificationLock) {
-            if (dbNames.containsKey(databaseName)) {
+            if (dbsByName.containsKey(databaseName)) {
                 throw new BabuDBException(ErrorCode.DB_EXISTS, "database '" + databaseName
                     + "' already exists");
             }
             final int dbId = nextDbId++;
             db = new DatabaseImpl(dbs, new LSMDatabase(databaseName, dbId, dbs.getConfig().getBaseDir()
                 + databaseName + File.separatorChar, numIndices, false, comparators));
-            databases.put(dbId, db);
-            dbNames.put(databaseName, db);
+            dbsById.put(dbId, db);
+            dbsByName.put(databaseName, db);
             saveDBconfig();
         }
-                
+        
         // if this is a master it sends the create-details to all slaves.
         if (dbs.getReplicationManager() == null || dbs.getReplicationManager().isMaster()) {
-            ReusableBuffer buf = ReusableBuffer.wrap(
-                    new byte[databaseName.getBytes().length+(Integer.SIZE/4)]);
+            ReusableBuffer buf = ReusableBuffer.wrap(new byte[databaseName.getBytes().length
+                + (Integer.SIZE / 4)]);
             buf.putInt(numIndices);
             buf.putString(databaseName);
             buf.flip();
@@ -194,7 +197,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
                 final AsyncResult result = new AsyncResult();
                 
                 le.setAttachment(new LSMDBRequest(new SimplifiedBabuDBRequestListener() {
-                
+                    
                     @Override
                     public void finished(BabuDBException error) {
                         synchronized (result) {
@@ -203,7 +206,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
                             result.notify();
                         }
                     }
-                },null));
+                }, null));
                 
                 // replicate the entry
                 dbs.getReplicationManager().replicate(le);
@@ -213,13 +216,16 @@ public class DatabaseManagerImpl implements DatabaseManager {
                         if (!result.done)
                             result.wait();
                     } catch (InterruptedException i) {
-                        throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "Replication was interrupted.");
+                        throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,
+                            "Replication was interrupted.");
                     }
                     
-                    if (result.error != null) throw result.error;
+                    if (result.error != null)
+                        throw result.error;
                 }
             } else {
-                if (le!=null) le.free();
+                if (le != null)
+                    le.free();
             }
         }
         
@@ -240,15 +246,15 @@ public class DatabaseManagerImpl implements DatabaseManager {
      * @param databaseName
      * @throws BabuDBException
      */
-    public void proceedDelete(String databaseName) throws BabuDBException { 
-        synchronized (dbModificationLock) {           
-            if (!dbNames.containsKey(databaseName)) {
+    public void proceedDelete(String databaseName) throws BabuDBException {
+        synchronized (dbModificationLock) {
+            if (!dbsByName.containsKey(databaseName)) {
                 throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '" + databaseName
                     + "' does not exists");
             }
-            final LSMDatabase db = ((DatabaseImpl) dbNames.get(databaseName)).getLSMDB();
-            dbNames.remove(databaseName);
-            databases.remove(db.getDatabaseId());
+            final LSMDatabase db = ((DatabaseImpl) dbsByName.get(databaseName)).getLSMDB();
+            dbsByName.remove(databaseName);
+            dbsById.remove(db.getDatabaseId());
             
             ((SnapshotManagerImpl) dbs.getSnapshotManager()).deleteAllSnapshots(databaseName);
             
@@ -260,7 +266,8 @@ public class DatabaseManagerImpl implements DatabaseManager {
         
         // if this is a master it sends the delete-details to all slaves.
         if (dbs.getReplicationManager() == null || dbs.getReplicationManager().isMaster()) {
-            ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE/8)+databaseName.getBytes().length]);
+            ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE / 8)
+                + databaseName.getBytes().length]);
             buf.putString(databaseName);
             buf.flip();
             
@@ -269,7 +276,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
                 final AsyncResult result = new AsyncResult();
                 
                 le.setAttachment(new LSMDBRequest(new SimplifiedBabuDBRequestListener() {
-                
+                    
                     @Override
                     public void finished(BabuDBException error) {
                         synchronized (result) {
@@ -278,7 +285,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
                             result.notify();
                         }
                     }
-                },null));
+                }, null));
                 
                 // replicate the entry
                 dbs.getReplicationManager().replicate(le);
@@ -288,13 +295,16 @@ public class DatabaseManagerImpl implements DatabaseManager {
                         if (!result.done)
                             result.wait();
                     } catch (InterruptedException i) {
-                        throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "Replication was interrupted.");
+                        throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,
+                            "Replication was interrupted.");
                     }
                     
-                    if (result.error != null) throw result.error;
+                    if (result.error != null)
+                        throw result.error;
                 }
             } else {
-                if (le!=null) le.free();
+                if (le != null)
+                    le.free();
             }
         }
     }
@@ -319,19 +329,19 @@ public class DatabaseManagerImpl implements DatabaseManager {
      */
     public void proceedCopy(String sourceDB, String destDB) throws BabuDBException {
         
-        final DatabaseImpl sDB = (DatabaseImpl) dbNames.get(sourceDB);
+        final DatabaseImpl sDB = (DatabaseImpl) dbsByName.get(sourceDB);
         if (sDB == null) {
             throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '" + sourceDB + "' does not exist");
         }
         
         final int dbId;
         synchronized (dbModificationLock) {
-            if (dbNames.containsKey(destDB)) {
+            if (dbsByName.containsKey(destDB)) {
                 throw new BabuDBException(ErrorCode.DB_EXISTS, "database '" + destDB + "' already exists");
             }
             dbId = nextDbId++;
             // just "reserve" the name
-            dbNames.put(destDB, null);
+            dbsByName.put(destDB, null);
             saveDBconfig();
             
         }
@@ -349,25 +359,25 @@ public class DatabaseManagerImpl implements DatabaseManager {
         
         // insert real database
         synchronized (dbModificationLock) {
-            databases.put(dbId, newDB);
-            dbNames.put(destDB, newDB);
+            dbsById.put(dbId, newDB);
+            dbsByName.put(destDB, newDB);
             saveDBconfig();
         }
         
         // if this is a master it sends the copy-details to all slaves.
         if (dbs.getReplicationManager() == null || dbs.getReplicationManager().isMaster()) {
-            ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE/4)+
-                         sourceDB.getBytes().length+destDB.getBytes().length]);
+            ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE / 4) + sourceDB.getBytes().length
+                + destDB.getBytes().length]);
             buf.putString(sourceDB);
             buf.putString(destDB);
             buf.flip();
-
+            
             LogEntry le = metaInsert(PAYLOAD_TYPE_COPY, buf);
             if (dbs.getReplicationManager() != null) {
                 final AsyncResult result = new AsyncResult();
                 
                 le.setAttachment(new LSMDBRequest(new SimplifiedBabuDBRequestListener() {
-                
+                    
                     @Override
                     public void finished(BabuDBException error) {
                         synchronized (result) {
@@ -376,7 +386,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
                             result.notify();
                         }
                     }
-                },null));
+                }, null));
                 
                 // replicate the entry
                 dbs.getReplicationManager().replicate(le);
@@ -386,19 +396,22 @@ public class DatabaseManagerImpl implements DatabaseManager {
                         if (!result.done)
                             result.wait();
                     } catch (InterruptedException i) {
-                        throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "Replication was interrupted.");
+                        throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,
+                            "Replication was interrupted.");
                     }
                     
-                    if (result.error != null) throw result.error;
+                    if (result.error != null)
+                        throw result.error;
                 }
             } else {
-                if (le!=null) le.free();
+                if (le != null)
+                    le.free();
             }
         }
     }
     
     public void shutdown() throws BabuDBException {
-        for (Database db : databases.values())
+        for (Database db : dbsById.values())
             db.shutdown();
     }
     
@@ -442,8 +455,8 @@ public class DatabaseManagerImpl implements DatabaseManager {
                     Database db = new DatabaseImpl(dbs, new LSMDatabase(dbName, dbId, dbs.getConfig()
                             .getBaseDir()
                         + dbName + File.separatorChar, numIndex, true, comps));
-                    databases.put(dbId, db);
-                    dbNames.put(dbName, db);
+                    dbsById.put(dbId, db);
+                    dbsByName.put(dbName, db);
                     Logging.logMessage(Logging.LEVEL_DEBUG, this, "loaded DB " + dbName + " successfully.");
                 }
                 
@@ -469,14 +482,13 @@ public class DatabaseManagerImpl implements DatabaseManager {
     
     /**
      * <p>
-     * Performs a logEntry-insert at the {@link DiskLogger} that 
-     * will make metaCall replay-able.
+     * Performs a logEntry-insert at the {@link DiskLogger} that will make
+     * metaCall replay-able.
      * </p>
      * 
      * @return the logEntry after insertion.
      * @throws BabuDBException
-     *             if {@link LogEntry} could not be appended to the
-     *             DiskLogger.
+     *             if {@link LogEntry} could not be appended to the DiskLogger.
      */
     private LogEntry metaInsert(byte type, ReusableBuffer parameters) throws BabuDBException {
         final AsyncResult result = new AsyncResult();
@@ -536,10 +548,10 @@ public class DatabaseManagerImpl implements DatabaseManager {
                     + dbs.getConfig().getDbCfgFile() + ".in_progress");
                 ObjectOutputStream oos = new ObjectOutputStream(fos);
                 oos.writeInt(BabuDB.BABUDB_DB_FORMAT_VERSION);
-                oos.writeInt(databases.size());
+                oos.writeInt(dbsById.size());
                 oos.writeInt(nextDbId);
-                for (int dbId : databases.keySet()) {
-                    LSMDatabase db = ((DatabaseImpl) databases.get(dbId)).getLSMDB();
+                for (int dbId : dbsById.keySet()) {
+                    LSMDatabase db = ((DatabaseImpl) dbsById.get(dbId)).getLSMDB();
                     oos.writeObject(db.getDatabaseName());
                     oos.writeInt(dbId);
                     oos.writeInt(db.getIndexCount());
@@ -563,7 +575,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
         }
     }
     
-    public Object getDBModificationLock(){
+    public Object getDBModificationLock() {
         return dbModificationLock;
     }
 }

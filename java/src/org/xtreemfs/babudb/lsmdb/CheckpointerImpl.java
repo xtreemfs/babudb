@@ -179,7 +179,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
     
     private void createCheckpoint() throws BabuDBException, InterruptedException {
         
-        Collection<Database> databases = ((DatabaseManagerImpl) dbs.getDatabaseManager()).getDatabases();
+        Collection<Database> databases = ((DatabaseManagerImpl) dbs.getDatabaseManager()).getDatabaseList();
         
         synchronized (checkpointLock) {
             try {
@@ -304,7 +304,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
                     else
                         Logging.logMessage(Logging.LEVEL_INFO, this, "triggered manual checkpoint");
                     
-                    synchronized (((DatabaseManagerImpl)dbs.getDatabaseManager()).getDBModificationLock()) {
+                    synchronized (((DatabaseManagerImpl) dbs.getDatabaseManager()).getDBModificationLock()) {
                         
                         // materialize all snapshots in the queue before
                         // creating
@@ -327,15 +327,17 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
                             SnapshotManagerImpl snapMan = (SnapshotManagerImpl) dbs.getSnapshotManager();
                             
                             // write the snapshot
-                            ((DatabaseImpl) dbs.getDatabaseManager().getDatabase(rq.dbName)).proceedWriteSnapshot(
-                                rq.snapIDs, snapMan.getSnapshotDir(rq.dbName, rq.snap.getName()), rq.snap);
+                            ((DatabaseImpl) dbs.getDatabaseManager().getDatabase(rq.dbName))
+                                    .proceedWriteSnapshot(rq.snapIDs, snapMan.getSnapshotDir(rq.dbName,
+                                        rq.snap.getName()), rq.snap);
                             
                             // notify the snapshot manager about the completion
                             // of
                             // the snapshot
                             snapMan.snapshotComplete(rq.dbName, rq.snap);
                             
-                            Logging.logMessage(Logging.LEVEL_DEBUG, this,
+                            Logging
+                                    .logMessage(Logging.LEVEL_DEBUG, this,
                                         "snapshot materialization complete");
                         }
                         
