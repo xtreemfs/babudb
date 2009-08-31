@@ -93,7 +93,7 @@ public class LoadOperation extends Operation {
             
             // add the latest snapshot files for every DB,
             // if available
-            for (Database db : ((DatabaseManagerImpl) dispatcher.dbs.getDatabaseManager()).getDatabases())
+            for (Database db : ((DatabaseManagerImpl) dispatcher.dbs.getDatabaseManager()).getDatabaseList())
                 result.addAll(((DatabaseImpl) db).getLSMDB().getLastestSnapshotFiles(chunkSize));
             
             rq.sendSuccess(new loadResponse(result));

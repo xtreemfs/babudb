@@ -7,6 +7,9 @@
  */
 package org.xtreemfs.babudb;
 
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_INSERT;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_SNAP;
+
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FilenameFilter;
@@ -43,8 +46,6 @@ import org.xtreemfs.include.common.config.BabuDBConfig;
 import org.xtreemfs.include.common.config.MasterConfig;
 import org.xtreemfs.include.common.config.SlaveConfig;
 import org.xtreemfs.include.common.logging.Logging;
-
-import static org.xtreemfs.babudb.log.LogEntry.*;
 
 /**
  * <p>
@@ -98,7 +99,7 @@ public class BabuDB {
     /**
      * All necessary parameters to run the BabuDB.
      */
-    private final BabuDBConfig        configuration; 
+    private final BabuDBConfig        configuration;
     
     /**
      * Starts the BabuDB database. If conf is instance of MasterConfig it comes
@@ -121,7 +122,7 @@ public class BabuDB {
         
         // determine the last LSN and replay the log
         LSN dbLsn = null;
-        for (Database db : databaseManager.getDatabases()) {
+        for (Database db : databaseManager.getDatabaseList()) {
             if (dbLsn == null)
                 dbLsn = ((DatabaseImpl) db).getLSMDB().getOndiskLSN();
             else {
@@ -145,7 +146,7 @@ public class BabuDB {
         Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done, using LSN: " + nextLSN);
         
         // set up the replication service
-        LSN lastLSN = new LSN(nextLSN.getViewId(),nextLSN.getSequenceNo()-1);
+        LSN lastLSN = new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo() - 1);
         try {
             if (conf instanceof MasterConfig)
                 this.replicationManager = new ReplicationManager((MasterConfig) conf, this, lastLSN);
@@ -179,13 +180,14 @@ public class BabuDB {
         dbCheckptr.init(logger, conf.getCheckInterval(), conf.getMaxLogfileSize());
         dbCheckptr.start();
         
-        // start the replication service after all other components of babuDB have
+        // start the replication service after all other components of babuDB
+        // have
         // been started successfully
         if (this.replicationManager != null)
             this.replicationManager.initialize();
         
-        Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running (version " + 
-                BABUDB_VERSION + ")");
+        Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running (version " + BABUDB_VERSION
+            + ")");
     }
     
     /**
@@ -232,7 +234,7 @@ public class BabuDB {
         dbCheckptr = new CheckpointerImpl(this);
         
         LSN dbLsn = null;
-        for (Database dbRaw : databaseManager.getDatabases()) {
+        for (Database dbRaw : databaseManager.getDatabaseList()) {
             DatabaseImpl db = (DatabaseImpl) dbRaw;
             if (dbLsn == null)
                 dbLsn = db.getLSMDB().getOndiskLSN();
@@ -274,11 +276,11 @@ public class BabuDB {
         
         dbCheckptr.init(logger, configuration.getCheckInterval(), configuration.getMaxLogfileSize());
         dbCheckptr.start();
-                
+        
         Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running (version " + BABUDB_VERSION
             + ")");
         
-        return new LSN(nextLSN.getViewId(),nextLSN.getSequenceNo()-1L);
+        return new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo() - 1L);
     }
     
     /*
@@ -363,11 +365,12 @@ public class BabuDB {
     /**
      * Replay the database operations log.
      * 
-     * @param from - LSN to replay the logs from.
+     * @param from
+     *            - LSN to replay the logs from.
      * @return the LSN to assign to the next operation
      * @throws BabuDBException
      */
-    private LSN replayLogs(LSN from) throws BabuDBException {  
+    private LSN replayLogs(LSN from) throws BabuDBException {
         try {
             File f = new File(configuration.getDbLogDir());
             String[] logs = f.list(new FilenameFilter() {
@@ -396,13 +399,14 @@ public class BabuDB {
                 Iterator<LSN> iter = orderedLogList.iterator();
                 LSN last = null;
                 while (iter.hasNext()) {
-                    if (last == null) last = iter.next();
+                    if (last == null)
+                        last = iter.next();
                     else {
                         LSN that = iter.next();
                         if (that.compareTo(from) <= 0) {
                             orderedLogList.remove(last);
                             last = that;
-                        } else 
+                        } else
                             break;
                     }
                 }
@@ -413,7 +417,7 @@ public class BabuDB {
                     while (dlf.hasNext()) {
                         le = dlf.next();
                         // do something
-                        if (le.getLSN().compareTo(from)<0) {
+                        if (le.getLSN().compareTo(from) < 0) {
                             le.free();
                             le = null;
                         } else if (le.getPayloadType() == PAYLOAD_TYPE_INSERT) {
@@ -429,11 +433,13 @@ public class BabuDB {
                                 snapshotManager.createPersistentSnapshot(databaseManager.getDatabase(dbId)
                                         .getName(), snap, false);
                             } catch (Exception e) {
-                                if (le != null) le.free();
+                                if (le != null)
+                                    le.free();
                                 throw new BabuDBException(ErrorCode.IO_ERROR,
-                                        "Snapshot could not be recouvered because: "+e.getMessage(), e);
+                                    "Snapshot could not be recouvered because: " + e.getMessage(), e);
                             } finally {
-                                if (oin != null) oin.close();
+                                if (oin != null)
+                                    oin.close();
                             }
                         } // else ignored
                         le.free();

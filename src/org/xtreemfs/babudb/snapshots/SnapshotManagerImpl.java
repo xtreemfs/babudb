@@ -39,7 +39,7 @@ public class SnapshotManagerImpl implements SnapshotManager {
         
         // load persisted snapshots from disk
         for (Entry<String, Database> entry : ((DatabaseManagerImpl) dbs.getDatabaseManager())
-                .getDatabaseNameMap().entrySet()) {
+                .getDatabases().entrySet()) {
             
             final File snapDir = new File(dbs.getConfig().getBaseDir(), entry.getKey() + "/snapshots");
             if (snapDir.exists()) {

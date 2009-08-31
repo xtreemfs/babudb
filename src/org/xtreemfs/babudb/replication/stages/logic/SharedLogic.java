@@ -59,8 +59,7 @@ final class SharedLogic {
         if (entry.getPayloadType() == PAYLOAD_TYPE_INSERT) {
             // prepare the LSMDBrequest
             LSMDBRequest rq = SharedLogic.retrieveRequest(entry, listener, 
-                    ((DatabaseManagerImpl) dbs.getDatabaseManager()).
-                                                getDatabaseMap());
+                    ((DatabaseManagerImpl) dbs.getDatabaseManager()).getDatabasesById());
             
             // start the LSMDBrequest
             SharedLogic.writeLogEntry(rq, dbs);
