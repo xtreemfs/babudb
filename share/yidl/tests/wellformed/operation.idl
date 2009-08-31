@@ -1,0 +1,7 @@
+module test
+{
+  interface TestInterface
+  {
+    void testOperation();
+  };
+};

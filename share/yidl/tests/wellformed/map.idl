@@ -1,0 +1,4 @@
+module test
+{
+  typedef map<string, string> TestMap;
+};

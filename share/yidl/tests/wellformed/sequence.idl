@@ -1,0 +1,4 @@
+module test
+{
+  typedef sequence<string> TestSet;
+};
