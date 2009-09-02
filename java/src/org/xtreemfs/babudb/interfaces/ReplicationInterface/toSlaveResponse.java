@@ -10,24 +10,24 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 
 
-public class heartbeatResponse implements org.xtreemfs.babudb.interfaces.utils.Response
+public class toSlaveResponse implements org.xtreemfs.babudb.interfaces.utils.Response
 {
-    public static final int TAG = 1018;
+    public static final int TAG = 1014;
 
     
-    public heartbeatResponse() {  }
-    public heartbeatResponse( Object from_hash_map ) {  this.deserialize( from_hash_map ); }
-    public heartbeatResponse( Object[] from_array ) { this.deserialize( from_array ); }
+    public toSlaveResponse() {  }
+    public toSlaveResponse( Object from_hash_map ) {  this.deserialize( from_hash_map ); }
+    public toSlaveResponse( Object[] from_array ) { this.deserialize( from_array ); }
 
     // Object
     public String toString()
     {
-        return "heartbeatResponse()";
+        return "toSlaveResponse()";
     }
 
     // Serializable
-    public int getTag() { return 1018; }
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::heartbeatResponse"; }
+    public int getTag() { return 1014; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::toSlaveResponse"; }
 
     public void deserialize( Object from_hash_map )
     {

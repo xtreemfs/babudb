@@ -63,6 +63,7 @@ public class MasterRequestDispatcher extends RequestDispatcher {
      */
     public MasterRequestDispatcher(MasterConfig config, BabuDB dbs, LSN initial) throws IOException {
         super("Master", config, dbs);
+        this.isMaster = true;
         this.syncN = config.getSyncN();
         this.chunkSize = config.getChunkSize();
         this.states = new SlavesStates(config.getSyncN(),config.getSlaves(),rpcClient);
@@ -80,7 +81,7 @@ public class MasterRequestDispatcher extends RequestDispatcher {
      * @param backupState - needed if the dispatcher shall be reset. Includes the initial LSN.
      * @throws IOException
      */
-    public MasterRequestDispatcher(MasterConfig config, BabuDB dbs, DispatcherBackupState backupState) throws IOException {
+    public MasterRequestDispatcher(MasterConfig config, BabuDB dbs, DispatcherState backupState) throws IOException {
         super("Master", config, dbs);
         this.syncN = config.getSyncN();
         this.chunkSize = config.getChunkSize();
@@ -171,33 +172,14 @@ public class MasterRequestDispatcher extends RequestDispatcher {
 
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.RequestDispatcher#getLatestLSN()
-     */
-    @Override
-    public LSN getLatestLSN() {
-        return states.getLatestCommon();
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.RequestDispatcher#stop()
-     */
-    @Override
-    public DispatcherBackupState stop() {
-        this.shutdown();
-        return new DispatcherBackupState(states.getLatestCommon());
-    }
-
-    /*
-     * (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.RequestDispatcher#replicate(org.xtreemfs.babudb.log.LogEntry)
      */
     @SuppressWarnings("unchecked")
     @Override
-    protected void replicate(final LogEntry le)
+    protected void _replicate(final LogEntry le)
             throws NotEnoughAvailableSlavesException, InterruptedException, IOException {
         try {
-            final ReusableBuffer buffer = le.serialize(checksum);
+            ReusableBuffer buffer = le.serialize(checksum);
             
             List<SlaveClient> slaves = getSlavesForBroadCast(); 
             
@@ -239,5 +221,14 @@ public class MasterRequestDispatcher extends RequestDispatcher {
         } finally {
             checksum.reset();
         }
+    }
+
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#getState()
+     */
+    @Override
+    public DispatcherState getState() {
+        return new DispatcherState(dbs.getLogger().getLatestLSN());
     }
 }

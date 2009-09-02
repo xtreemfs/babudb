@@ -10,24 +10,24 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 
 
-public class heartbeatResponse implements org.xtreemfs.babudb.interfaces.utils.Response
+public class remoteStopRequest implements org.xtreemfs.babudb.interfaces.utils.Request
 {
-    public static final int TAG = 1018;
+    public static final int TAG = 1012;
 
     
-    public heartbeatResponse() {  }
-    public heartbeatResponse( Object from_hash_map ) {  this.deserialize( from_hash_map ); }
-    public heartbeatResponse( Object[] from_array ) { this.deserialize( from_array ); }
+    public remoteStopRequest() {  }
+    public remoteStopRequest( Object from_hash_map ) {  this.deserialize( from_hash_map ); }
+    public remoteStopRequest( Object[] from_array ) { this.deserialize( from_array ); }
 
     // Object
     public String toString()
     {
-        return "heartbeatResponse()";
+        return "remoteStopRequest()";
     }
 
     // Serializable
-    public int getTag() { return 1018; }
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::heartbeatResponse"; }
+    public int getTag() { return 1012; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::remoteStopRequest"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -66,6 +66,9 @@ return to_hash_map;
 
         return my_size;
     }
+
+    // Request
+    public Response createDefaultResponse() { return new remoteStopResponse(); }
     
 
 }

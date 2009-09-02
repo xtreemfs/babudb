@@ -7,30 +7,34 @@
  */
 package org.xtreemfs.babudb.replication.operations;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.SimplifiedBabuDBRequestListener;
 import org.xtreemfs.babudb.interfaces.LSN;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.stateRequest;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.stateResponse;
+import org.xtreemfs.babudb.interfaces.ReplicationInterface.remoteStopRequest;
+import org.xtreemfs.babudb.interfaces.ReplicationInterface.remoteStopResponse;
 import org.xtreemfs.babudb.interfaces.utils.Serializable;
 import org.xtreemfs.babudb.replication.Request;
 import org.xtreemfs.babudb.replication.RequestDispatcher;
 import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherState;
 
 /**
- * {@link Operation} to request the latest {@link org.xtreemfs.babudb.lsmdb.LSN} on a list of {@link BabuDB}s.
+ * {@link Operation} to stop an instance of {@link BabuDB} remotely.
  * 
- * @since 05/03/2009
+ * @since 08/31/2009
  * @author flangner
  */
 
-public class StateOperation extends Operation {
+public class RemoteStopOperation extends Operation {
 
     private final int procId;
     
     private final RequestDispatcher dispatcher;
     
-    public StateOperation(RequestDispatcher dispatcher) {
+    public RemoteStopOperation(RequestDispatcher dispatcher) {
         this.dispatcher = dispatcher;
-        procId = new stateRequest().getTag();
+        procId = new remoteStopRequest().getTag();
     }
 
     /*
@@ -48,7 +52,7 @@ public class StateOperation extends Operation {
      */
     @Override
     public Serializable parseRPCMessage(Request rq) {
-        stateRequest rpcrq = new stateRequest();
+        remoteStopRequest rpcrq = new remoteStopRequest();
         rq.deserializeMessage(rpcrq);
         
         return null;
@@ -68,9 +72,36 @@ public class StateOperation extends Operation {
      * @see org.xtreemfs.babudb.replication.operations.Operation#startRequest(org.xtreemfs.babudb.replication.Request)
      */
     @Override
-    public void startRequest(final Request rq) {
-        DispatcherState state = dispatcher.getState();       
-        rq.sendSuccess(new stateResponse(new LSN(state.latest.getViewId(),state.latest.getSequenceNo())));
+    public void startRequest(Request rq) {
+        // stop the replication
+        final AtomicBoolean ready = new AtomicBoolean(false);
+        
+        dispatcher.pauses(new SimplifiedBabuDBRequestListener() {
+        
+            @Override
+            public void finished(BabuDBException error) {
+                synchronized (ready) {
+                    ready.set(true);
+                    ready.notify();
+                }
+            }
+        });
+        
+        synchronized (ready) {
+            try {
+                if (!ready.get())
+                    ready.wait();
+            } catch (InterruptedException ie) {
+                rq.sendReplicationException(ErrNo.INTERNAL_ERROR);
+                return;
+            }
+        }
+        
+        // stop the babuDB
+        dispatcher.dbs.stop();
+        DispatcherState state = dispatcher.getState();
+        LSN result = new LSN(state.latest.getViewId(),state.latest.getSequenceNo());
+        rq.sendSuccess(new remoteStopResponse(result));
     }
 
     /*

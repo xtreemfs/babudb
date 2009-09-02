@@ -16,8 +16,12 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.xtreemfs.babudb.BabuDB;
+import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.SimplifiedBabuDBRequestListener;
+import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.ProtocolException;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.ReplicationInterface;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
@@ -29,7 +33,10 @@ import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.SlavesStates.NotEnoughAvailableSlavesException;
 import org.xtreemfs.babudb.replication.operations.Operation;
+import org.xtreemfs.babudb.replication.operations.RemoteStopOperation;
 import org.xtreemfs.babudb.replication.operations.StateOperation;
+import org.xtreemfs.babudb.replication.operations.ToMasterOperation;
+import org.xtreemfs.babudb.replication.operations.ToSlaveOperation;
 import org.xtreemfs.babudb.replication.stages.StageRequest;
 import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
@@ -67,6 +74,15 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
     /** interface for babuDB core-components */
     public final BabuDB                     dbs;
     
+    /** determines if the replication is running in master mode */
+    protected boolean                       isMaster;
+    
+    /** counter for eventually running requests */
+    private final AtomicInteger             activeRequests = new AtomicInteger(0);
+    /** flag that determines if the replication is out of service at the moment */
+    private volatile boolean                stopped = true;
+    
+    private SimplifiedBabuDBRequestListener listener = null;
 /*
  * stages
  */
@@ -89,8 +105,19 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
         // ---------------------
         
         operations = new HashMap<Integer, Operation>();
+        
         Operation op = new StateOperation(this);
         operations.put(op.getProcedureId(), op);
+        
+        op = new RemoteStopOperation(this);
+        operations.put(op.getProcedureId(), op);
+        
+        op = new ToSlaveOperation(this);
+        operations.put(op.getProcedureId(), op);
+        
+        op = new ToMasterOperation(this);
+        operations.put(op.getProcedureId(), op);
+        
         initializeOperations();
         
         // -------------------------------
@@ -118,18 +145,45 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
      * 
      * @param le - {@link LogEntry} to replicate.
      * 
+     * @throws IOException 
      * @throws NotEnoughAvailableSlavesException
      * @throws InterruptedException
      */
-    protected abstract void replicate(LogEntry le) throws NotEnoughAvailableSlavesException, 
+    abstract void _replicate(LogEntry le) throws NotEnoughAvailableSlavesException, 
         InterruptedException, IOException;
 
+    /**
+     * Replicate the given LogEntry.
+     * 
+     * @param le - {@link LogEntry} to replicate.
+     * 
+     * @throws IOException 
+     * @throws NotEnoughAvailableSlavesException
+     * @throws InterruptedException
+     * @throws BabuDBException if request was not allowed to proceed.
+     */
+    public void replicate(LogEntry le) throws NotEnoughAvailableSlavesException, InterruptedException, 
+                                                IOException, BabuDBException {
+        if (!isMaster) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
+            "This BabuDB is not running in master-mode! The operation is not available.");
+        else if (!startRequest()) 
+            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "Replication is disabled at the moment!");
+        else {
+            try {
+                _replicate(le);
+            } finally {
+                finishRequest(true);
+            }
+        }
+    }
+    
     /**
      * Register the events at the operation's table. 
      */
     protected abstract void initializeOperations();
         
-    public void start() {    
+    public void start() {   
+        this.stopped = false;
         try {  
             rpcServer.start();
             rpcClient.start();
@@ -144,6 +198,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
     }
     
     public void asyncShutdown() {
+        this.stopped = true;
         try {
             rpcServer.shutdown();
             rpcClient.shutdown();
@@ -164,6 +219,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
             Logging.logMessage(Logging.LEVEL_ERROR, this, "shutdown failed");
             Logging.logError(Logging.LEVEL_ERROR, this, ex);
         }
+        this.stopped = true;
     }
 
     /*
@@ -171,7 +227,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
      * @see org.xtreemfs.include.foundation.oncrpc.server.RPCServerRequestListener#receiveRecord(org.xtreemfs.include.foundation.oncrpc.server.ONCRPCRequest)
      */
     @Override
-    public void receiveRecord(ONCRPCRequest rq){
+    public void receiveRecord(ONCRPCRequest rq){       
         if (!checkIdentity(rq.getClientIdentity())){
             rq.sendException(new ProtocolException(ONCRPCResponseHeader.ACCEPT_STAT_PROC_UNAVAIL,
                     ErrNo.EACCES,"you "+rq.getClientIdentity().toString()+" have no access rights to execute the requested operation on this "+name));
@@ -193,6 +249,11 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
             return;
         } 
         
+        if (op.canBeDisabled() && !startRequest()){
+            rq.sendErrorCode(org.xtreemfs.babudb.replication.operations.ErrNo.SERVICE_UNAVAILABLE);
+            return;
+        }
+        
         Request rpcrq = new Request(rq);
         try {
             Serializable message = op.parseRPCMessage(rpcrq);
@@ -200,6 +261,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
         } catch (Throwable ex) {
             rq.sendGarbageArgs(ex.toString(),new ProtocolException(ONCRPCResponseHeader.ACCEPT_STAT_SYSTEM_ERR, 
                 ErrNo.EINVAL,"message could not be retrieved"));
+            finishRequest(op.canBeDisabled());
             return;
         }
         
@@ -207,7 +269,36 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
             op.startRequest(rpcrq);
         } catch (Throwable ex) {
             rq.sendInternalServerError(ex,new errnoException(ErrNo.ENOSYS,ex.getMessage(),null));
+            finishRequest(op.canBeDisabled());
             return;
+        }
+        finishRequest(op.canBeDisabled());
+    }
+    
+    /**
+     * Increment an internal counter, if the request can be proceed.
+     * 
+     * @return true, if the request can be proceed, or false if the replication was stopped before.
+     */
+    private boolean startRequest() {
+        synchronized (activeRequests) {
+            if (stopped) return false;
+            else activeRequests.incrementAndGet();
+            return true;
+        }
+    }
+    
+    /**
+     * Notifies the listener if available if there are no requests left.
+     * 
+     * @param canBeDisabled - if the operation of the request to finish can be disabled.
+     */
+    private void finishRequest(boolean canBeDisabled) {
+        if (canBeDisabled) {
+            synchronized (activeRequests) {
+                if (activeRequests.decrementAndGet() == 0 && listener != null)
+                    listener.finished(null);
+            }
         }
     }
 
@@ -274,16 +365,33 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
     /**
      * Needed to respond {@link stateRequest}s.
      * 
-     * @return the {@link LSN} of the last locally written {@link LogEntry}.
+     * @return the {@link DispatcherState} of the {@link RequestDispatcher}, 
+     *      including the {@link LSN} of the last locally written {@link LogEntry}.
      */
-    public abstract LSN getLatestLSN();
+    public abstract DispatcherState getState();
     
     /**
-     * Stops the dispatcher, by saving its last state.
-     * 
-     * @return the latest state of this dispatcher and its components.
+     * Stops the dispatcher, by disabling all its replication features.
      */
-    public abstract DispatcherBackupState stop();
+    public void pauses(SimplifiedBabuDBRequestListener listener) {
+        this.stopped = true;
+        this.isMaster = false;
+        synchronized (activeRequests) {
+            if (activeRequests.get() == 0) listener.finished(null);
+            else this.listener = listener;
+        }
+    }
+    
+    /**
+     * Starts the dispatcher, by resetting all its replication features.
+     * 
+     * @param state
+     * @throws BabuDBException 
+     */
+    public void continues(DispatcherState state) throws BabuDBException {
+        if (!this.stopped) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "The replication has to be stopped, before it can be continued!");
+        this.stopped = false;
+    }
     
     /**
      * State of the dispatcher after shutting it down.
@@ -291,17 +399,17 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
      * @author flangner
      * @since 08/07/2009
      */
-    public class DispatcherBackupState {
+    public class DispatcherState {
         
         public final LSN latest;
         public final BlockingQueue<StageRequest> requestQueue;
         
-        DispatcherBackupState(LSN latest, BlockingQueue<StageRequest> backupQueue) {
+        DispatcherState(LSN latest, BlockingQueue<StageRequest> backupQueue) {
             this.latest = latest;
             this.requestQueue = backupQueue;
         }
         
-        DispatcherBackupState(LSN latest) {
+        DispatcherState(LSN latest) {
             this.latest = latest;
             this.requestQueue = null;
         }

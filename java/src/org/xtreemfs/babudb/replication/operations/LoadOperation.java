@@ -14,6 +14,7 @@ import org.xtreemfs.babudb.interfaces.DBFileMetaDataSet;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.loadRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.loadResponse;
 import org.xtreemfs.babudb.interfaces.utils.Serializable;
+import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
 import org.xtreemfs.babudb.lsmdb.Database;
 import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
 import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
@@ -85,18 +86,31 @@ public class LoadOperation extends Operation {
                 .equals(dispatcher.lastOnView))
             rq.sendSuccess(new loadResponse());
         else {
-            // add the DB-structure-file metadata
-            int chunkSize = dispatcher.chunkSize;
-            String path = dispatcher.dbs.getDBConfigPath();
-            long length = new File(path).length();
-            result.add(new DBFileMetaData(path,length,chunkSize));
-            
-            // add the latest snapshot files for every DB,
-            // if available
-            for (Database db : ((DatabaseManagerImpl) dispatcher.dbs.getDatabaseManager()).getDatabaseList())
-                result.addAll(((DatabaseImpl) db).getLSMDB().getLastestSnapshotFiles(chunkSize));
-            
+            synchronized (((DatabaseManagerImpl) dispatcher.dbs.getDatabaseManager()).getDBModificationLock()) {
+                synchronized (((CheckpointerImpl) dispatcher.dbs.getCheckpointer()).getCheckpointerLock()) {                  
+                    // add the DB-structure-file metadata
+                    int chunkSize = dispatcher.chunkSize;
+                    String path = dispatcher.dbs.getDBConfigPath();
+                    assert (path!=null) : "No checkpoint available!";
+                    long length = new File(path).length();
+                    result.add(new DBFileMetaData(path,length,chunkSize));
+                    
+                    // add the latest snapshot files for every DB,
+                    // if available
+                    for (Database db : ((DatabaseManagerImpl) dispatcher.dbs.getDatabaseManager()).getDatabaseList())
+                        result.addAll(((DatabaseImpl) db).getLSMDB().getLastestSnapshotFiles(chunkSize));
+                }
+            }
             rq.sendSuccess(new loadResponse(result));
         }
+    }
+
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.operations.Operation#canBeDisabled()
+     */
+    @Override
+    public boolean canBeDisabled() {
+        return true;
     }
 }

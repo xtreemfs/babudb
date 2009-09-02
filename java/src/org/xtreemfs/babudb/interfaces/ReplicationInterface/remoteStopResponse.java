@@ -10,28 +10,28 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 
 
-public class loadResponse implements org.xtreemfs.babudb.interfaces.utils.Response
+public class remoteStopResponse implements org.xtreemfs.babudb.interfaces.utils.Response
 {
-    public static final int TAG = 1016;
+    public static final int TAG = 1012;
 
     
-    public loadResponse() { returnValue = new DBFileMetaDataSet(); }
-    public loadResponse( DBFileMetaDataSet returnValue ) { this.returnValue = returnValue; }
-    public loadResponse( Object from_hash_map ) { returnValue = new DBFileMetaDataSet(); this.deserialize( from_hash_map ); }
-    public loadResponse( Object[] from_array ) { returnValue = new DBFileMetaDataSet();this.deserialize( from_array ); }
+    public remoteStopResponse() { returnValue = new LSN(); }
+    public remoteStopResponse( LSN returnValue ) { this.returnValue = returnValue; }
+    public remoteStopResponse( Object from_hash_map ) { returnValue = new LSN(); this.deserialize( from_hash_map ); }
+    public remoteStopResponse( Object[] from_array ) { returnValue = new LSN();this.deserialize( from_array ); }
 
-    public DBFileMetaDataSet getReturnValue() { return returnValue; }
-    public void setReturnValue( DBFileMetaDataSet returnValue ) { this.returnValue = returnValue; }
+    public LSN getReturnValue() { return returnValue; }
+    public void setReturnValue( LSN returnValue ) { this.returnValue = returnValue; }
 
     // Object
     public String toString()
     {
-        return "loadResponse( " + returnValue.toString() + " )";
+        return "remoteStopResponse( " + returnValue.toString() + " )";
     }
 
     // Serializable
-    public int getTag() { return 1016; }
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::loadResponse"; }
+    public int getTag() { return 1012; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::remoteStopResponse"; }
 
     public void deserialize( Object from_hash_map )
     {
@@ -40,17 +40,17 @@ public class loadResponse implements org.xtreemfs.babudb.interfaces.utils.Respon
         
     public void deserialize( HashMap<String, Object> from_hash_map )
     {
-        this.returnValue.deserialize( ( Object[] )from_hash_map.get( "returnValue" ) );
+        this.returnValue.deserialize( from_hash_map.get( "returnValue" ) );
     }
     
     public void deserialize( Object[] from_array )
     {
-        this.returnValue.deserialize( ( Object[] )from_array[0] );        
+        this.returnValue.deserialize( from_array[0] );        
     }
 
     public void deserialize( ReusableBuffer buf )
     {
-        returnValue = new DBFileMetaDataSet(); returnValue.deserialize( buf );
+        returnValue = new LSN(); returnValue.deserialize( buf );
     }
 
     public Object serialize()
@@ -73,7 +73,7 @@ public class loadResponse implements org.xtreemfs.babudb.interfaces.utils.Respon
     }
 
 
-    private DBFileMetaDataSet returnValue;    
+    private LSN returnValue;    
 
 }
 

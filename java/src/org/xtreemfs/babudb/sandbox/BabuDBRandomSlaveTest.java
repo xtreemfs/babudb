@@ -20,7 +20,7 @@ import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.ReplicationInterface;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherBackupState;
+import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherState;
 import org.xtreemfs.babudb.sandbox.RandomGenerator.LookupGroup;
 import org.xtreemfs.include.common.config.SlaveConfig;
 import org.xtreemfs.include.common.logging.Logging;
@@ -190,7 +190,7 @@ public class BabuDBRandomSlaveTest {
 	 */
 	private static boolean performConsistencyCheck() throws Exception{
 	    boolean result = false;
-	    DispatcherBackupState lastState = DBS.getReplicationManager().stop();
+	    DispatcherState lastState = DBS.getReplicationManager().stop();
 	    
 	    if (lastState.latest!=null){
 	        LookupGroup lookupGroup = generator.getLookupGroup(lastState.latest);

@@ -99,4 +99,13 @@ public class ChunkOperation extends Operation {
             if (payload!=null) BufferPool.free(payload);
         }
     }
+
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.operations.Operation#canBeDisabled()
+     */
+    @Override
+    public boolean canBeDisabled() {
+        return true;
+    }
 }

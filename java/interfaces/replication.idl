@@ -20,15 +20,18 @@ module org # 1000
 	  // Functions	
 	  // shared
 	  LSN state() # 1;							// state request from master/slave 
+	  LSN remoteStop() # 2;							// stop request from master/slave
+	  void toMaster(InetAddress address) # 3;				// sets a BabuDB into a pseudo-master-mode
+	  void toSlave(InetAddress address) # 4; 				// sets a BabuDB into the slave-mode
 
 	  // master
-	  LogEntries replica (LSNRange range) # 2;				// getReplica request from the slave
-	  DBFileMetaDataSet load (LSN lsn) # 3;					// load request from the slave
-	  buffer chunk (Chunk chunk) # 4;					// chunk request from the slave
-	  void heartbeat(LSN lsn) # 5;	  					// heartbeat message from the slave
+	  LogEntries replica (LSNRange range) # 5;				// getReplica request from the slave
+	  DBFileMetaDataSet load (LSN lsn) # 6;					// load request from the slave
+	  buffer chunk (Chunk chunk) # 7;					// chunk request from the slave
+	  void heartbeat(LSN lsn) # 8;	  					// heartbeat message from the slave
 
 	  // slave
-	  void replicate (LSN lsn, LogEntry logEntry) # 6;			// replicate request from the master
+	  void replicate (LSN lsn, LogEntry logEntry) # 9;			// replicate request from the master
 
 	  exception ProtocolException # 90 { uint32_t accept_stat; uint32_t error_code; string stack_trace; };
 	  exception errnoException # 91 { uint32_t error_code; string error_message; string stack_trace; };

@@ -8,38 +8,44 @@ module org # 1000
       {
 	struct DBFileMetaData # 20 
 	{
-	  string fileName;
+	  string   fileName;
 	  uint64_t fileSize;
 	  uint32_t maxChunkSize;
 	};
 
-	typedef sequence<DBFileMetaData> DBFileMetaDataSet # 30;
+	typedef sequence<DBFileMetaData> DBFileMetaDataSet # 21;
 
-	struct LogEntry # 40
+	struct LogEntry # 22
 	{
 	  buffer payload;
 	};
 
-	typedef sequence<LogEntry> LogEntries # 50;
+	typedef sequence<LogEntry> LogEntries # 23;
 
-	struct LSN # 60
+	struct LSN # 24
 	{
 	  uint32_t viewId;
 	  uint64_t sequenceNo;
 	};
 
-	struct Chunk # 70
+	struct Chunk # 25
 	{
-	  string fileName;
+	  string   fileName;
 	  uint64_t begin;
 	  uint64_t end;
 	};
 
-	struct LSNRange # 80
+	struct LSNRange # 26
 	{
 	  uint32_t viewId;
 	  uint64_t sequenceStart;
 	  uint64_t sequenceEnd;
+	};
+
+	struct InetAddress # 27
+	{
+	  string   address;
+	  uint32_t port;
 	};
       };
     };

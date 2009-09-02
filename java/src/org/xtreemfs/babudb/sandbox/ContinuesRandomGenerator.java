@@ -14,8 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-import org.xtreemfs.include.common.logging.Logging;
-
 import static org.xtreemfs.babudb.sandbox.ContinuesRandomGenerator.Operation.*;
 
 /**
@@ -506,19 +504,15 @@ public class ContinuesRandomGenerator {
      */
     @Override
     public String toString() {
-        String string = "ContinuesRandomGenerator-"+this.id+"\n";
-        
-        if (Logging.isDebug()) {    
-            string += "The operations scenario:\n";
-            string += "SequenceNo | Operation | Parameters\n";
-            string += "-----------------------------------\n";
-            List<Integer> seqs = new LinkedList<Integer>(operationsScenario.keySet());
-            Collections.sort(seqs);
-            for (Integer seq : seqs){
-                string += operationToString(seq, operationsScenario.get(seq));
-            }
-            string += "\n\r";
+        String string = "ContinuesRandomGenerator-"+this.id+"\n"; 
+        string += "The operations scenario:\n";
+        string += "SequenceNo | Operation | Parameters\n";
+        string += "-----------------------------------\n";
+        List<Integer> seqs = new LinkedList<Integer>(operationsScenario.keySet());
+        Collections.sort(seqs);
+        for (Integer seq : seqs){
+            string += operationToString(seq, operationsScenario.get(seq));
         }
-        return string;
+        return string += "\n\r";
     }
 }

@@ -12,7 +12,7 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class chunkResponse implements org.xtreemfs.babudb.interfaces.utils.Response
 {
-    public static final int TAG = 1014;
+    public static final int TAG = 1017;
 
     
     public chunkResponse() { returnValue = null; }
@@ -30,7 +30,7 @@ public class chunkResponse implements org.xtreemfs.babudb.interfaces.utils.Respo
     }
 
     // Serializable
-    public int getTag() { return 1014; }
+    public int getTag() { return 1017; }
     public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::chunkResponse"; }
 
     public void deserialize( Object from_hash_map )

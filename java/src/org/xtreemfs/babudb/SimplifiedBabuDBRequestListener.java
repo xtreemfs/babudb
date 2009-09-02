@@ -25,7 +25,6 @@ public abstract class SimplifiedBabuDBRequestListener implements
     /**
      * The simplified listener function.
      * 
-     * @param context
      * @param error
      */
     public abstract void finished(BabuDBException error);

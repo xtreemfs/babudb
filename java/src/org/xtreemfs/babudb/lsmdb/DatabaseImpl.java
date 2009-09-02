@@ -24,6 +24,7 @@ import org.xtreemfs.babudb.UserDefinedLookup;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
+import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
@@ -636,27 +637,30 @@ public class DatabaseImpl implements Database {
         if (dbs.replication_isSlave()) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
         }
-        return proceedCreateSnapshot();
+        
+        int[] result = null;
+        try {
+            // critical block...
+            dbs.getLogger().lockLogger();
+            result = proceedCreateSnapshot();
+        } finally {
+            dbs.getLogger().unlockLogger();
+        }
+        return result;
     }
 
     /**
      * Creates an in-memory snapshot of all indices in a single database. The
      * snapshot will be discarded when the system is restarted.
      * This Operation comes without slave-protection.
+     * The {@link DiskLogger} has to be locked before executing this method. 
      * 
      * NOTE: this method should only be invoked by the framework
      * 
-     * @throws InterruptedException
      * @return an array with the snapshot ID for each index in the database
      */
-    public int[] proceedCreateSnapshot() throws InterruptedException {       
-        try {
-            // critical block...
-            dbs.getLogger().lockLogger();
-            return lsmDB.createSnapshot();
-        } finally {
-            dbs.getLogger().unlockLogger();
-        }
+    public int[] proceedCreateSnapshot() {       
+        return lsmDB.createSnapshot();
     }
 
     

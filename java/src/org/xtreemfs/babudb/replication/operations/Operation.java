@@ -27,6 +27,11 @@ public abstract class Operation {
      * @return the unique operationId.
      */
     public abstract int getProcedureId();
+    
+    /**
+     * @return true, if this operation can be disabled, false otherwise. 
+     */
+    public abstract boolean canBeDisabled();
 
     /**
      * Parses the request.

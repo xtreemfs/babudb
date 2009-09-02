@@ -94,13 +94,9 @@ public class ReplicaOperation extends Operation {
                 try {
                     le = dlf.next();
                     if (le.getLSN().equals(start)) {
-                        if (le.getPayload().array().length == 0) {
-                            rq.sendReplicationException(ErrNo.SERVICE_CALL_MISSED);
-                            i = -1;
-                        } else {
-                            result.add(new org.xtreemfs.babudb.interfaces.LogEntry(le.serialize(checksum)));
-                            i++;
-                        }
+                        assert (le.getPayload().array().length > 0) : "Empty logentries are not allowed anymore!";
+                        result.add(new org.xtreemfs.babudb.interfaces.LogEntry(le.serialize(checksum)));
+                        i++;
                     }
                 } catch (LogEntryException e) {
                     rq.sendReplicationException(ErrNo.LOG_CUT);
@@ -117,16 +113,11 @@ public class ReplicaOperation extends Operation {
             if (i > 0) {
                 try {
                     for (int j=i;j<numOfLEs;j++) {
-                        le = dlf.next();               
-                        if (le.getPayload().array().length == 0) {
-                            rq.sendReplicationException(ErrNo.SERVICE_CALL_MISSED);
-                            i = -1;
-                            break;
-                        } else {
-                            result.add(new org.xtreemfs.babudb.interfaces.LogEntry(le.serialize(checksum)));
-                            checksum.reset();
-                            le.free();
-                        }
+                        le = dlf.next();           
+                        assert (le.getPayload().array().length > 0) : "Empty logentries are not allowed anymore!";
+                        result.add(new org.xtreemfs.babudb.interfaces.LogEntry(le.serialize(checksum)));
+                        checksum.reset();
+                        le.free();
                     }
                 } catch (LogEntryException e) {
                     rq.sendReplicationException(ErrNo.LOG_CUT);
@@ -151,5 +142,14 @@ public class ReplicaOperation extends Operation {
                 } catch (IOException e) { /* ignored */ }
             }
         }
+    }
+
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.operations.Operation#canBeDisabled()
+     */
+    @Override
+    public boolean canBeDisabled() {
+        return true;
     }
 }

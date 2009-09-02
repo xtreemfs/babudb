@@ -29,6 +29,7 @@ import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.lsmdb.Checkpointer;
 import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
+import org.xtreemfs.babudb.lsmdb.DBConfig;
 import org.xtreemfs.babudb.lsmdb.Database;
 import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
 import org.xtreemfs.babudb.lsmdb.DatabaseManager;
@@ -38,6 +39,7 @@ import org.xtreemfs.babudb.lsmdb.LSMDBWorker;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
+import org.xtreemfs.babudb.replication.DirectFileIO;
 import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManager;
@@ -102,6 +104,11 @@ public class BabuDB {
     private final BabuDBConfig        configuration;
     
     /**
+     * File used to store meta-informations about DBs.
+     */
+    private final DBConfig            dbConfigFile;
+    
+    /**
      * Starts the BabuDB database. If conf is instance of MasterConfig it comes
      * with replication in master-mode. If conf is instance of SlaveConfig it
      * comes with replication in slave-mode.
@@ -117,9 +124,17 @@ public class BabuDB {
         
         this.configuration = conf;
         this.databaseManager = new DatabaseManagerImpl(this);
+        this.dbConfigFile = new DBConfig(this);
         this.snapshotManager = new SnapshotManagerImpl(this);
         this.dbCheckptr = new CheckpointerImpl(this);
         
+        try {
+            if (conf instanceof SlaveConfig)
+                DirectFileIO.replayBackupFiles((SlaveConfig) conf);
+        } catch (IOException io) {
+            Logging.logMessage(Logging.LEVEL_ERROR, this, "Could not retrieve the " +
+            		"slave backup files, because: ", io.getMessage());
+        }
         // determine the last LSN and replay the log
         LSN dbLsn = null;
         for (Database db : databaseManager.getDatabaseList()) {
@@ -150,7 +165,7 @@ public class BabuDB {
         try {
             if (conf instanceof MasterConfig)
                 this.replicationManager = new ReplicationManager((MasterConfig) conf, this, lastLSN);
-            else if (conf instanceof SlaveConfig)
+            else if (conf instanceof SlaveConfig) 
                 this.replicationManager = new ReplicationManager((SlaveConfig) conf, this, lastLSN);
             else
                 this.replicationManager = null;
@@ -191,25 +206,12 @@ public class BabuDB {
     }
     
     /**
-     * DUMMY - constructor for testing only!
-     */
-    public BabuDB() {
-        replicationManager = null;
-        configuration = null;
-        snapshotManager = null;
-        databaseManager = null;
-    }
-    
-    /**
      * <p>
-     * Needed for the initial load process of the babuDB, done by the
-     * replication.
+     * Operation to stop babuDB by remote.
+     * Without stopping the replication.
      * </p>
-     * 
-     * @throws BabuDBException
-     * @return the next LSN.
      */
-    public LSN reset() throws BabuDBException {
+    public void stop() {
         for (LSMDBWorker w : worker) {
             w.shutdown();
         }
@@ -228,19 +230,30 @@ public class BabuDB {
         } catch (InterruptedException ex) {
         }
         Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB has been stopped by the Replication.");
-        
+    }
+    
+    /**
+     * Restart call to use after stop().
+     * 
+     * @return the latest loaded LSN.
+     * @throws BabuDBException
+     */
+    public LSN restart() throws BabuDBException {
         databaseManager.reset();
         
         dbCheckptr = new CheckpointerImpl(this);
         
         LSN dbLsn = null;
+        LSN zero = new LSN(0,0L);
         for (Database dbRaw : databaseManager.getDatabaseList()) {
             DatabaseImpl db = (DatabaseImpl) dbRaw;
-            if (dbLsn == null)
-                dbLsn = db.getLSMDB().getOndiskLSN();
-            else {
-                if (!dbLsn.equals(db.getLSMDB().getOndiskLSN()))
-                    throw new RuntimeException("databases have different LSNs!");
+            LSN onDisk = db.getLSMDB().getOndiskLSN();
+            if (dbLsn == null && !onDisk.equals(zero))
+                dbLsn = onDisk;
+            else if (dbLsn != null) {
+                if (!onDisk.equals(zero) && !dbLsn.equals(onDisk))
+                    throw new RuntimeException("databases have different LSNs! "+
+                    dbLsn.toString()+" != "+db.getLSMDB().getOndiskLSN().toString());
             }
         }
         if (dbLsn == null) {
@@ -281,6 +294,20 @@ public class BabuDB {
             + ")");
         
         return new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo() - 1L);
+    }
+    
+    /**
+     * <p>
+     * Needed for the initial load process of the babuDB, done by the
+     * replication.
+     * </p>
+     * 
+     * @throws BabuDBException
+     * @return the next LSN.
+     */
+    public LSN reset() throws BabuDBException {
+        stop();
+        return restart();
     }
     
     /*
@@ -355,11 +382,32 @@ public class BabuDB {
      *         otherwise.
      */
     public String getDBConfigPath() {
-        String result = configuration.getBaseDir() + configuration.getDbCfgFile();
-        File f = new File(result);
-        if (f.exists())
-            return result;
-        return null;
+        String[] checkpoints = new File(configuration.getBaseDir())
+                                        .list(new FilenameFilter() {
+        
+            @Override
+            public boolean accept(File dir, String name) {
+                return name.endsWith("."+configuration.getDbCfgFile());
+            }
+        });
+        if (checkpoints.length==1)
+            return configuration.getBaseDir()+checkpoints[0];
+        else if (checkpoints.length>1) {
+            LSN lsn = null;
+            String result = null;
+            for (String f : checkpoints) {
+                if (lsn == null || lsn.compareTo(DBConfig.fromDBConfigFileName(
+                        f, configuration.getDbCfgFile())) < 0){
+                    
+                    lsn = DBConfig.fromDBConfigFileName(f, 
+                            configuration.getDbCfgFile());
+                    result = f;
+                }
+            }
+            
+            return configuration.getBaseDir()+result;
+        } else
+            return null;
     }
     
     /**
@@ -417,36 +465,33 @@ public class BabuDB {
                     while (dlf.hasNext()) {
                         le = dlf.next();
                         // do something
-                        if (le.getLSN().compareTo(from) < 0) {
-                            le.free();
-                            le = null;
-                        } else if (le.getPayloadType() == PAYLOAD_TYPE_INSERT) {
-                            InsertRecordGroup ai = InsertRecordGroup.deserialize(le.getPayload());
-                            insert(ai);
-                        } else if (le.getPayloadType() == PAYLOAD_TYPE_SNAP) {
-                            ObjectInputStream oin = null;
-                            try {
-                                oin = new ObjectInputStream(new ByteArrayInputStream(le.getPayload().array()));
-                                // deserialize the snapshot configuration
-                                int dbId = oin.readInt();
-                                SnapshotConfig snap = (SnapshotConfig) oin.readObject();
-                                snapshotManager.createPersistentSnapshot(databaseManager.getDatabase(dbId)
-                                        .getName(), snap, false);
-                            } catch (Exception e) {
-                                if (le != null)
-                                    le.free();
-                                throw new BabuDBException(ErrorCode.IO_ERROR,
-                                    "Snapshot could not be recouvered because: " + e.getMessage(), e);
-                            } finally {
-                                if (oin != null)
-                                    oin.close();
-                            }
-                        } // else ignored
-                        le.free();
-                    }
-                    // set lsn'
-                    if (le != null) {
-                        nextLSN = new LSN(le.getViewId(), le.getLogSequenceNo() + 1);
+                        if (le.getLSN().compareTo(from) >= 0) {
+                            // ignored
+                            if (le.getPayloadType() == PAYLOAD_TYPE_INSERT) {
+                                InsertRecordGroup ai = InsertRecordGroup.deserialize(le.getPayload());
+                                insert(ai);
+                            } else if (le.getPayloadType() == PAYLOAD_TYPE_SNAP) {
+                                ObjectInputStream oin = null;
+                                try {
+                                    oin = new ObjectInputStream(new ByteArrayInputStream(le.getPayload().array()));
+                                    // deserialize the snapshot configuration
+                                    int dbId = oin.readInt();
+                                    SnapshotConfig snap = (SnapshotConfig) oin.readObject();
+                                    snapshotManager.createPersistentSnapshot(databaseManager.getDatabase(dbId)
+                                            .getName(), snap, false);
+                                } catch (Exception e) {
+                                    if (le != null) le.free();
+                                    throw new BabuDBException(ErrorCode.IO_ERROR,
+                                            "Snapshot could not be recouvered because: "+e.getMessage(), e);
+                                } finally {
+                                    if (oin != null) oin.close();
+                                }
+                            } // else ignored
+                            // set lsn'
+                            if (le != null)
+                                nextLSN = new LSN(le.getViewId(), le.getLogSequenceNo() + 1);
+                        } 
+                        if (le != null) le.free();
                     }
                 }
             }
@@ -513,6 +558,10 @@ public class BabuDB {
     
     public SnapshotManager getSnapshotManager() {
         return snapshotManager;
+    }
+    
+    public DBConfig getDBConfigFile() {
+        return dbConfigFile;
     }
     
     /**

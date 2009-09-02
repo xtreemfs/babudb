@@ -45,6 +45,13 @@ public class SlaveConfig extends ReplicationConfig {
         super(filename);
     }
     
+    public SlaveConfig(MasterConfig c, InetSocketAddress master, String backupDir) {
+        super(c.baseDir,c.dbLogDir,c.numThreads,c.maxLogfileSize,c.checkInterval,
+                c.syncMode,c.pseudoSyncWait,c.maxQueueLength,c.port,c.address,
+                master,null,c.localTimeRenew,c.sslOptions,0);
+        this.backupDir = backupDir;
+    }
+    
     public SlaveConfig(String baseDir, String logDir, int numThreads, long maxLogFileSize, 
             int checkInterval, SyncMode mode, int pseudoSyncWait, int maxQ,
             int port, InetAddress address, InetSocketAddress master, List<InetSocketAddress> slaves, 

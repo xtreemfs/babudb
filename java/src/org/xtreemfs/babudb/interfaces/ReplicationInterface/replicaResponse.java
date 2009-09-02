@@ -12,7 +12,7 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class replicaResponse implements org.xtreemfs.babudb.interfaces.utils.Response
 {
-    public static final int TAG = 1012;
+    public static final int TAG = 1015;
 
     
     public replicaResponse() { returnValue = new LogEntries(); }
@@ -30,7 +30,7 @@ public class replicaResponse implements org.xtreemfs.babudb.interfaces.utils.Res
     }
 
     // Serializable
-    public int getTag() { return 1012; }
+    public int getTag() { return 1015; }
     public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::replicaResponse"; }
 
     public void deserialize( Object from_hash_map )

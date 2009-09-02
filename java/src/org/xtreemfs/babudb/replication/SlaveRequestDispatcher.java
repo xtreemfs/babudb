@@ -10,6 +10,8 @@ package org.xtreemfs.babudb.replication;
 import java.io.IOException;
 
 import org.xtreemfs.babudb.BabuDB;
+import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.SimplifiedBabuDBRequestListener;
 import org.xtreemfs.babudb.clients.MasterClient;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
@@ -19,6 +21,7 @@ import org.xtreemfs.babudb.replication.operations.ReplicateOperation;
 import org.xtreemfs.babudb.replication.operations.StateOperation;
 import org.xtreemfs.babudb.replication.stages.HeartbeatThread;
 import org.xtreemfs.babudb.replication.stages.ReplicationStage;
+import org.xtreemfs.babudb.replication.stages.logic.LogicID;
 import org.xtreemfs.include.common.config.SlaveConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
@@ -32,14 +35,14 @@ import org.xtreemfs.include.common.logging.Logging;
 
 public class SlaveRequestDispatcher extends RequestDispatcher {
         
-    public final SlaveConfig        configuration;
-    public final MasterClient       master;
+    public final SlaveConfig    configuration;
+    public final MasterClient   master;
     
     /*
      * stages
      */
-    public final ReplicationStage   replication;
-    public final HeartbeatThread    heartbeat;
+    public ReplicationStage     replication;
+    public HeartbeatThread      heartbeat;
     
     /**
      * Initial setup.
@@ -51,6 +54,7 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
      */
     public SlaveRequestDispatcher(SlaveConfig config, BabuDB dbs, LSN initial) throws IOException {
         super("Slave", config, dbs);
+        this.isMaster = false;
         this.configuration = config;
                 
         // --------------------------
@@ -75,7 +79,7 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
      * @param backupState - needed if the dispatcher shall be reset. Includes the initial LSN.
      * @throws IOException
      */
-    public SlaveRequestDispatcher(SlaveConfig config, BabuDB dbs, DispatcherBackupState backupState) throws IOException {
+    public SlaveRequestDispatcher(SlaveConfig config, BabuDB dbs, DispatcherState backupState) throws IOException {
         super("Slave", config, dbs);
         this.configuration = config;
         
@@ -166,21 +170,30 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
         heartbeat.updateLSN(lsn);
     }
 
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.RequestDispatcher#getLatestLSN()
+    /**
+     * Performs a load on the master to synchronize with the latest state.
+     * 
+     * @param lsn
      */
-    @Override
-    public LSN getLatestLSN() {
-        return dbs.getLogger().getLatestLSN();
+    public void synchronize(LSN lsn){
+        replication.setLogic(LogicID.LOAD, "Manual synchronization to LSN "+lsn.toString());
+        // TODO wait for load-finish
     }
-
+    
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.RequestDispatcher#stop()
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#getState()
      */
     @Override
-    public DispatcherBackupState stop() {
+    public DispatcherState getState() {
+        return new DispatcherState(dbs.getLogger().getLatestLSN(), replication.backupQueue());
+    }
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#pauses(org.xtreemfs.babudb.SimplifiedBabuDBRequestListener)
+     */
+    @Override
+    public void pauses(SimplifiedBabuDBRequestListener listener) {
         try {
             replication.shutdown();
             heartbeat.shutdown();          
@@ -190,26 +203,28 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
         } catch (Exception e) {
             Logging.logMessage(Logging.LEVEL_ERROR, this, "could not stop the dispatcher");
         }
-        super.shutdown();
-        
-        // spinLock to wait for the logger-queue to run empty
-        try {
-            while (dbs.getLogger().getQLength() != 0)
-                Thread.sleep(100);
-        } catch (InterruptedException ie) {
-            ie.printStackTrace();
-        }
-        
-        return new DispatcherBackupState(getLatestLSN(), replication.backupQueue());
+        super.pauses(listener);
+    }
+    
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#continues(org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherState)
+     */
+    @Override
+    public void continues(DispatcherState state) throws BabuDBException {
+        this.replication = new ReplicationStage(this,configuration.getMaxQ(),state.requestQueue,state.latest);
+        this.heartbeat = new HeartbeatThread(this,state.latest);
+        this.start();
+        super.continues(state);
     }
 
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.RequestDispatcher#replicate(org.xtreemfs.babudb.log.LogEntry)
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#_replicate(org.xtreemfs.babudb.log.LogEntry)
      */
     @Override
-    protected void replicate(LogEntry le)
+    protected void _replicate(LogEntry le)
             throws NotEnoughAvailableSlavesException, InterruptedException {
         throw new UnsupportedOperationException();
-    } 
+    }
 }

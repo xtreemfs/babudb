@@ -11,7 +11,7 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class Chunk implements org.xtreemfs.babudb.interfaces.utils.Serializable
 {
-    public static final int TAG = 1070;
+    public static final int TAG = 1025;
 
     
     public Chunk() { fileName = ""; begin = 0; end = 0; }
@@ -33,7 +33,7 @@ public class Chunk implements org.xtreemfs.babudb.interfaces.utils.Serializable
     }
 
     // Serializable
-    public int getTag() { return 1070; }
+    public int getTag() { return 1025; }
     public String getTypeName() { return "org::xtreemfs::babudb::interfaces::Chunk"; }
 
     public void deserialize( Object from_hash_map )

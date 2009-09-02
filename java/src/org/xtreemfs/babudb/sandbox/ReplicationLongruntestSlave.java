@@ -19,7 +19,7 @@ import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.ReplicationInterface;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
-import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherBackupState;
+import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherState;
 import org.xtreemfs.babudb.sandbox.ContinuesRandomGenerator.LookupGroup;
 import org.xtreemfs.include.common.config.SlaveConfig;
 import org.xtreemfs.include.common.logging.Logging;
@@ -124,7 +124,7 @@ public class ReplicationLongruntestSlave {
      * @throws BabuDBException
      */
     private static void performCleanAndRestart(Random random, InetSocketAddress master, List<InetSocketAddress> slaves) throws IOException, InterruptedException, BabuDBException{
-        DispatcherBackupState state = DBS.getReplicationManager().stop();
+        DispatcherState state = DBS.getReplicationManager().stop();
         
         int downTime = random.nextInt(MAX_DOWN_TIME-MIN_DOWN_TIME)+MIN_DOWN_TIME;
         System.out.println("Slave is down for "+downTime/60000.0+" minutes.");
@@ -142,7 +142,7 @@ public class ReplicationLongruntestSlave {
      * @throws Exception
      */
     private static void performConsistencyCheck() throws Exception{
-        DispatcherBackupState state = DBS.getReplicationManager().stop();
+        DispatcherState state = DBS.getReplicationManager().stop();
         System.out.println("Checking entry with LSN: "+state.latest);
         
         if (state.latest!=null && state.latest.getSequenceNo() > 0L){

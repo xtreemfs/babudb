@@ -11,7 +11,7 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class LSNRange implements org.xtreemfs.babudb.interfaces.utils.Serializable
 {
-    public static final int TAG = 1080;
+    public static final int TAG = 1026;
 
     
     public LSNRange() { viewId = 0; sequenceStart = 0; sequenceEnd = 0; }
@@ -33,7 +33,7 @@ public class LSNRange implements org.xtreemfs.babudb.interfaces.utils.Serializab
     }
 
     // Serializable
-    public int getTag() { return 1080; }
+    public int getTag() { return 1026; }
     public String getTypeName() { return "org::xtreemfs::babudb::interfaces::LSNRange"; }
 
     public void deserialize( Object from_hash_map )
