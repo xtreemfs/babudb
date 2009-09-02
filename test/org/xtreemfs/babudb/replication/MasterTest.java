@@ -11,7 +11,6 @@ import static org.junit.Assert.*;
 import static org.xtreemfs.babudb.replication.TestData.*;
 import static org.xtreemfs.babudb.log.LogEntry.*;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -32,9 +31,6 @@ import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.BabuDBRequestListener;
 import org.xtreemfs.babudb.clients.MasterClient;
-import org.xtreemfs.babudb.interfaces.Chunk;
-import org.xtreemfs.babudb.interfaces.DBFileMetaData;
-import org.xtreemfs.babudb.interfaces.DBFileMetaDataSet;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.interfaces.LogEntries;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
@@ -49,9 +45,6 @@ import org.xtreemfs.babudb.lsmdb.Database;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
-import org.xtreemfs.babudb.replication.operations.ErrNo;
-import org.xtreemfs.include.common.buffer.BufferPool;
-import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.config.MasterConfig;
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.common.logging.Logging.Category;
@@ -203,39 +196,39 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         try {
             result.get();
         } catch (ONCRPCError e) {
-            assertEquals(ErrNo.SERVICE_CALL_MISSED, e.getAcceptStat());
+            fail();
         } finally {
             result.freeBuffers();
         }
     }
     
-    @Test
-    public void testInitialLoad() throws Exception {
-        System.out.println("Test: load");
-        makeDB();
-        insertData();
-        
-        RPCResponse<DBFileMetaDataSet> result = client.load(new LSN(1,0L));
-        
-        DBFileMetaDataSet fMDatas = result.get();
-        assertNotNull(fMDatas);
-        assertEquals(1, fMDatas.size());
-        for (DBFileMetaData metaData : fMDatas) {
-            long size = new File(conf.getBaseDir()+conf.getDbCfgFile()).length();
-            assertEquals(conf.getBaseDir()+conf.getDbCfgFile(), metaData.getFileName());
-            assertEquals(size, metaData.getFileSize());
-            assertEquals(conf.getChunkSize(),metaData.getMaxChunkSize());
-        
-            RPCResponse<ReusableBuffer> chunkRp = client.chunk(new Chunk(metaData.getFileName(), 0L, metaData.getFileSize()));
-            
-            ReusableBuffer buf = chunkRp.get();
-            assertEquals(size, buf.capacity());
-            
-            BufferPool.free(buf);
-            chunkRp.freeBuffers();
-        }
-        result.freeBuffers();
-    }
+//    @Test
+//    public void testInitialLoad() throws Exception {
+//        System.out.println("Test: load");
+//        makeDB();
+//        insertData();
+//        
+//        RPCResponse<DBFileMetaDataSet> result = client.load(new LSN(1,0L));
+//        
+//        DBFileMetaDataSet fMDatas = result.get();
+//        assertNotNull(fMDatas);
+//        assertEquals(1, fMDatas.size());
+//        for (DBFileMetaData metaData : fMDatas) {
+//            long size = new File(conf.getBaseDir()+conf.getDbCfgFile()).length();
+//            assertEquals(conf.getBaseDir()+conf.getDbCfgFile(), metaData.getFileName());
+//            assertEquals(size, metaData.getFileSize());
+//            assertEquals(conf.getChunkSize(),metaData.getMaxChunkSize());
+//        
+//            RPCResponse<ReusableBuffer> chunkRp = client.chunk(new Chunk(metaData.getFileName(), 0L, metaData.getFileSize()));
+//            
+//            ReusableBuffer buf = chunkRp.get();
+//            assertEquals(size, buf.capacity());
+//            
+//            BufferPool.free(buf);
+//            chunkRp.freeBuffers();
+//        }
+//        result.freeBuffers();
+//    }
 
     @Override
     public void receiveRecord(ONCRPCRequest rq) {

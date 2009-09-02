@@ -14,11 +14,7 @@ import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_DELETE;
 import static org.xtreemfs.include.common.config.SlaveConfig.slaveProtection;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -36,41 +32,40 @@ import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.DatabaseImpl.AsyncResult;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
-import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.common.util.FSUtils;
 
 public class DatabaseManagerImpl implements DatabaseManager {
     
-    private BabuDB                                 dbs;
+    private BabuDB                          dbs;
     
     /**
      * Mapping from database name to database id
      */
-    private final Map<String, Database>            dbsByName;
+    final Map<String, Database>             dbsByName;
     
     /**
      * Mapping from dbId to database
      */
-    private final Map<Integer, Database>           dbsById;
+    final Map<Integer, Database>            dbsById;
     
     /**
      * a map containing all comparators sorted by their class names
      */
-    private final Map<String, ByteRangeComparator> compInstances;
+    final Map<String, ByteRangeComparator>  compInstances;
     
     /**
      * ID to assign to next database create
      */
-    private int                                    nextDbId;
+    int                                     nextDbId;
     
     /**
      * object used for synchronizing modifications of the database lists.
      */
-    private final Object                           dbModificationLock;
-    
-    public DatabaseManagerImpl(BabuDB master) throws BabuDBException {
+    private final Object                    dbModificationLock;
         
-        this.dbs = master;
+    public DatabaseManagerImpl(BabuDB dbs) throws BabuDBException {
+        
+        this.dbs = dbs;
         
         this.dbsByName = new HashMap<String, Database>();
         this.dbsById = new HashMap<Integer, Database>();
@@ -80,8 +75,6 @@ public class DatabaseManagerImpl implements DatabaseManager {
         
         this.nextDbId = 1;
         this.dbModificationLock = new Object();
-        
-        loadDBs();
     }
     
     public void reset() throws BabuDBException {
@@ -94,7 +87,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
         compInstances.clear();
         compInstances.put(DefaultByteRangeComparator.class.getName(), new DefaultByteRangeComparator());
         
-        loadDBs();
+        dbs.getDBConfigFile().load();
     }
     
     @Override
@@ -181,7 +174,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
                 + databaseName + File.separatorChar, numIndices, false, comparators));
             dbsById.put(dbId, db);
             dbsByName.put(databaseName, db);
-            saveDBconfig();
+            dbs.getDBConfigFile().save();
         }
         
         // if this is a master it sends the create-details to all slaves.
@@ -246,22 +239,24 @@ public class DatabaseManagerImpl implements DatabaseManager {
      * @param databaseName
      * @throws BabuDBException
      */
-    public void proceedDelete(String databaseName) throws BabuDBException {
-        synchronized (dbModificationLock) {
-            if (!dbsByName.containsKey(databaseName)) {
-                throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '" + databaseName
-                    + "' does not exists");
+    public void proceedDelete(String databaseName) throws BabuDBException { 
+        synchronized (dbModificationLock) {           
+            synchronized (((CheckpointerImpl) dbs.getCheckpointer()).getCheckpointerLock()) {
+                if (!dbsByName.containsKey(databaseName)) {
+                    throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '" + databaseName
+                        + "' does not exists");
+                }
+                final LSMDatabase db = ((DatabaseImpl) dbsByName.get(databaseName)).getLSMDB();
+                dbsByName.remove(databaseName);
+                dbsById.remove(db.getDatabaseId());
+                
+                ((SnapshotManagerImpl) dbs.getSnapshotManager()).deleteAllSnapshots(databaseName);
+                
+                dbs.getDBConfigFile().save();
+                File dbDir = new File(dbs.getConfig().getBaseDir(), databaseName);
+                if (dbDir.exists())
+                    FSUtils.delTree(dbDir);
             }
-            final LSMDatabase db = ((DatabaseImpl) dbsByName.get(databaseName)).getLSMDB();
-            dbsByName.remove(databaseName);
-            dbsById.remove(db.getDatabaseId());
-            
-            ((SnapshotManagerImpl) dbs.getSnapshotManager()).deleteAllSnapshots(databaseName);
-            
-            saveDBconfig();
-            File dbDir = new File(dbs.getConfig().getBaseDir(), databaseName);
-            if (dbDir.exists())
-                FSUtils.delTree(dbDir);
         }
         
         // if this is a master it sends the delete-details to all slaves.
@@ -342,7 +337,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
             dbId = nextDbId++;
             // just "reserve" the name
             dbsByName.put(destDB, null);
-            saveDBconfig();
+            dbs.getDBConfigFile().save();
             
         }
         // materializing the snapshot takes some time, we should not hold the
@@ -361,7 +356,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
         synchronized (dbModificationLock) {
             dbsById.put(dbId, newDB);
             dbsByName.put(destDB, newDB);
-            saveDBconfig();
+            dbs.getDBConfigFile().save();
         }
         
         // if this is a master it sends the copy-details to all slaves.
@@ -416,71 +411,6 @@ public class DatabaseManagerImpl implements DatabaseManager {
     }
     
     /**
-     * Loads the configuration and each database from disk
-     * 
-     * @throws BabuDBException
-     */
-    private void loadDBs() throws BabuDBException {
-        try {
-            File f = new File(dbs.getConfig().getBaseDir() + dbs.getConfig().getDbCfgFile());
-            if (f.exists()) {
-                ObjectInputStream ois = new ObjectInputStream(new FileInputStream(f));
-                final int dbFormatVer = ois.readInt();
-                if (dbFormatVer != BabuDB.BABUDB_DB_FORMAT_VERSION) {
-                    throw new BabuDBException(ErrorCode.IO_ERROR, "on-disk format (version " + dbFormatVer
-                        + ") is incompatible with this BabuDB release " + "(uses on-disk format version "
-                        + BabuDB.BABUDB_DB_FORMAT_VERSION + ")");
-                }
-                final int numDB = ois.readInt();
-                nextDbId = ois.readInt();
-                for (int i = 0; i < numDB; i++) {
-                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "loading DB...");
-                    final String dbName = (String) ois.readObject();
-                    final int dbId = ois.readInt();
-                    final int numIndex = ois.readInt();
-                    ByteRangeComparator[] comps = new ByteRangeComparator[numIndex];
-                    for (int idx = 0; idx < numIndex; idx++) {
-                        final String className = (String) ois.readObject();
-                        ByteRangeComparator comp = compInstances.get(className);
-                        if (comp == null) {
-                            Class<?> clazz = Class.forName(className);
-                            comp = (ByteRangeComparator) clazz.newInstance();
-                            compInstances.put(className, comp);
-                        }
-                        
-                        assert (comp != null);
-                        comps[idx] = comp;
-                    }
-                    
-                    Database db = new DatabaseImpl(dbs, new LSMDatabase(dbName, dbId, dbs.getConfig()
-                            .getBaseDir()
-                        + dbName + File.separatorChar, numIndex, true, comps));
-                    dbsById.put(dbId, db);
-                    dbsByName.put(dbName, db);
-                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "loaded DB " + dbName + " successfully.");
-                }
-                
-                ois.close();
-            }
-            
-        } catch (InstantiationException ex) {
-            throw new BabuDBException(ErrorCode.IO_ERROR, "cannot instantiate comparator", ex);
-        } catch (IllegalAccessException ex) {
-            throw new BabuDBException(ErrorCode.IO_ERROR, "cannot instantiate comparator", ex);
-        } catch (IOException ex) {
-            throw new BabuDBException(ErrorCode.IO_ERROR,
-                "cannot load database config, check path and access rights", ex);
-        } catch (ClassNotFoundException ex) {
-            throw new BabuDBException(ErrorCode.IO_ERROR,
-                "cannot load database config, config file might be corrupted", ex);
-        } catch (ClassCastException ex) {
-            throw new BabuDBException(ErrorCode.IO_ERROR,
-                "cannot load database config, config file might be corrupted", ex);
-        }
-        
-    }
-    
-    /**
      * <p>
      * Performs a logEntry-insert at the {@link DiskLogger} that will make
      * metaCall replay-able.
@@ -530,49 +460,6 @@ public class DatabaseManagerImpl implements DatabaseManager {
         }
         
         return entry;
-    }
-    
-    /**
-     * saves the current database config to disk
-     * 
-     * @throws BabuDBException
-     */
-    private void saveDBconfig() throws BabuDBException {
-        /*
-         * File f = new File(baseDir+DBCFG_FILE); f.renameTo(new
-         * File(baseDir+DBCFG_FILE+".old"));
-         */
-        synchronized (dbModificationLock) {
-            try {
-                FileOutputStream fos = new FileOutputStream(dbs.getConfig().getBaseDir()
-                    + dbs.getConfig().getDbCfgFile() + ".in_progress");
-                ObjectOutputStream oos = new ObjectOutputStream(fos);
-                oos.writeInt(BabuDB.BABUDB_DB_FORMAT_VERSION);
-                oos.writeInt(dbsById.size());
-                oos.writeInt(nextDbId);
-                for (int dbId : dbsById.keySet()) {
-                    LSMDatabase db = ((DatabaseImpl) dbsById.get(dbId)).getLSMDB();
-                    oos.writeObject(db.getDatabaseName());
-                    oos.writeInt(dbId);
-                    oos.writeInt(db.getIndexCount());
-                    String[] compClasses = db.getComparatorClassNames();
-                    for (int i = 0; i < db.getIndexCount(); i++) {
-                        oos.writeObject(compClasses[i]);
-                    }
-                }
-                
-                oos.flush();
-                fos.flush();
-                fos.getFD().sync();
-                oos.close();
-                File f = new File(dbs.getConfig().getBaseDir() + dbs.getConfig().getDbCfgFile()
-                    + ".in_progress");
-                f.renameTo(new File(dbs.getConfig().getBaseDir() + dbs.getConfig().getDbCfgFile()));
-            } catch (IOException ex) {
-                throw new BabuDBException(ErrorCode.IO_ERROR, "unable to save database configuration", ex);
-            }
-            
-        }
     }
     
     public Object getDBModificationLock() {

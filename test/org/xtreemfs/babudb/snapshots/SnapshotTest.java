@@ -345,7 +345,8 @@ public class SnapshotTest extends TestCase {
     }
     
     static class TestSnapshotConfig implements SnapshotConfig {
-        
+        private static final long serialVersionUID = 2439296996978183963L;
+
         @Override
         public boolean containsKey(int index, byte[] key) {
             if (index == 0

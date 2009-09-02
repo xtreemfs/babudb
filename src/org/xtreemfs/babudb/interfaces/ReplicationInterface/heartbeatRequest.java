@@ -12,7 +12,7 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class heartbeatRequest implements org.xtreemfs.babudb.interfaces.utils.Request
 {
-    public static final int TAG = 1015;
+    public static final int TAG = 1018;
 
     
     public heartbeatRequest() { lsn = new LSN(); }
@@ -30,7 +30,7 @@ public class heartbeatRequest implements org.xtreemfs.babudb.interfaces.utils.Re
     }
 
     // Serializable
-    public int getTag() { return 1015; }
+    public int getTag() { return 1018; }
     public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::heartbeatRequest"; }
 
     public void deserialize( Object from_hash_map )

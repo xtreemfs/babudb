@@ -38,7 +38,7 @@ public abstract class ReplicationConfig extends BabuDBConfig {
     
     protected int         maxQ;
     
-    private int         localTimeRenew;
+    protected int         localTimeRenew;
     
     public ReplicationConfig() {
         super();

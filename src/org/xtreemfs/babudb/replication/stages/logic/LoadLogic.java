@@ -116,9 +116,19 @@ public class LoadLogic extends Logic {
         try {
             synchronized (openChunks) {
                 // request the chunks
+                LSN lsn = null;
                 for (DBFileMetaData fileData : result) {
+                    System.err.println(result.toString());
+                    
                     // validate the informations
                     String fileName = fileData.getFileName();
+                    if (LSMDatabase.isSnapshotFilename(fileName)) {
+                        if (lsn == null) lsn = LSMDatabase.getSnapshotLSNbyFilename(fileName);
+                        else if (!lsn.equals(LSMDatabase.getSnapshotLSNbyFilename(fileName))){
+                            Logging.logMessage(Logging.LEVEL_WARN, this, "Indexfiles had ambiguous LSNs: %s", "LOAD will be retried.");
+                            return;
+                        }
+                    }
                     long fileSize = fileData.getFileSize();
                     long maxChunkSize = fileData.getMaxChunkSize();
                     // if we got an empty file
@@ -166,7 +176,7 @@ public class LoadLogic extends Logic {
                                         }
                                     }
                                 } catch (Exception e) {
-                                    Logging.logError(Logging.LEVEL_ERROR, this, e);
+                                    Logging.logMessage(Logging.LEVEL_ERROR, this, "Chunk request failed: %s", e.getMessage());
                                     
                                     // make a new initial load
                                     stage.interrupt();

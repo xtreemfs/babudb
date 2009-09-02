@@ -11,7 +11,7 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class LSN implements org.xtreemfs.babudb.interfaces.utils.Serializable
 {
-    public static final int TAG = 1060;
+    public static final int TAG = 1024;
 
     
     public LSN() { viewId = 0; sequenceNo = 0; }
@@ -31,7 +31,7 @@ public class LSN implements org.xtreemfs.babudb.interfaces.utils.Serializable
     }
 
     // Serializable
-    public int getTag() { return 1060; }
+    public int getTag() { return 1024; }
     public String getTypeName() { return "org::xtreemfs::babudb::interfaces::LSN"; }
 
     public void deserialize( Object from_hash_map )

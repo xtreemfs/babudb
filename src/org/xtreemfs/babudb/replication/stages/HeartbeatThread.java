@@ -42,7 +42,7 @@ public class HeartbeatThread extends LifeCycleThread {
         super("HeartbeatThread");
         this.dispatcher = dispatcher;
         setLifeCycleListener(dispatcher);
-        this.latestLSN =initial;
+        this.latestLSN = initial;
     }
     
     /**

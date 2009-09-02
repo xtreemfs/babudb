@@ -133,9 +133,6 @@ public class ReplicationStage extends LifeCycleThread {
                 case LOG_CUT : 
                     setLogic(LOAD, "Master said, logfile was cut off.");
                     break;
-                case SERVICE_CALL_MISSED :
-                    setLogic(LOAD, "Master said, we missed a service-call.");
-                    break;
                 case TOO_BUSY :
                     if (++tries < MAX_RETRIES) break;
                 default :

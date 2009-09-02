@@ -12,7 +12,7 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class loadRequest implements org.xtreemfs.babudb.interfaces.utils.Request
 {
-    public static final int TAG = 1013;
+    public static final int TAG = 1016;
 
     
     public loadRequest() { lsn = new LSN(); }
@@ -30,7 +30,7 @@ public class loadRequest implements org.xtreemfs.babudb.interfaces.utils.Request
     }
 
     // Serializable
-    public int getTag() { return 1013; }
+    public int getTag() { return 1016; }
     public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::loadRequest"; }
 
     public void deserialize( Object from_hash_map )

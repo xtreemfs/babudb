@@ -288,7 +288,9 @@ public class DiskLogger extends Thread {
                         LSN lsn = new LSN(viewID,seqNo);
                         if (le.getLSN() != null && !le.getLSN().equals(lsn)) {
                             throw new IOException("The logentry "+le.getLSN().
-                                    toString()+" does not match: "+lsn.toString());
+                                    toString()+" does not match: "+lsn.toString()+
+                                    " On entry: "+le.getPayloadType()+" | "+le.
+                                    getPayload().array());
                         }
                         le.assignId(viewID, seqNo);
                         ReusableBuffer buf = le.serialize(csumAlgo);

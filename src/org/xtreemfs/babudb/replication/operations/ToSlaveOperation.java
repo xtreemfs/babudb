@@ -7,32 +7,30 @@
  */
 package org.xtreemfs.babudb.replication.operations;
 
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.heartbeatRequest;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.heartbeatResponse;
+import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.interfaces.ReplicationInterface.toSlaveRequest;
+import org.xtreemfs.babudb.interfaces.ReplicationInterface.toSlaveResponse;
 import org.xtreemfs.babudb.interfaces.utils.Serializable;
-import org.xtreemfs.babudb.log.LogEntry;
-import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.MasterRequestDispatcher;
 import org.xtreemfs.babudb.replication.Request;
-import org.xtreemfs.babudb.replication.SlavesStates.UnknownParticipantException;
-import org.xtreemfs.include.common.TimeSync;
+import org.xtreemfs.babudb.replication.RequestDispatcher;
+import org.xtreemfs.include.common.logging.Logging;
 
 /**
- * {@link Operation} to send the {@link LSN} of the latest written {@link LogEntry} to the master.
+ * {@link Operation} to request the latest {@link org.xtreemfs.babudb.lsmdb.LSN} on a list of {@link BabuDB}s.
  * 
- * @since 06/07/2009
+ * @since 08/31/2009
  * @author flangner
  */
 
-public class HeartbeatOperation extends Operation {
+public class ToSlaveOperation extends Operation {
 
     private final int procId;
     
-    private final MasterRequestDispatcher dispatcher;
+    private final RequestDispatcher dispatcher;
     
-    public HeartbeatOperation(MasterRequestDispatcher dispatcher) {
+    public ToSlaveOperation(RequestDispatcher dispatcher) {
         this.dispatcher = dispatcher;
-        procId = new heartbeatRequest().getTag();
+        procId = new toSlaveRequest().getTag();
     }
 
     /*
@@ -50,7 +48,7 @@ public class HeartbeatOperation extends Operation {
      */
     @Override
     public Serializable parseRPCMessage(Request rq) {
-        heartbeatRequest rpcrq = new heartbeatRequest();
+        toSlaveRequest rpcrq = new toSlaveRequest();
         rq.deserializeMessage(rpcrq);
         
         return null;
@@ -71,14 +69,16 @@ public class HeartbeatOperation extends Operation {
      */
     @Override
     public void startRequest(final Request rq) {
-        heartbeatRequest request = (heartbeatRequest) rq.getRequestMessage();
-        LSN lsn = new LSN(request.getLsn().getViewId(),request.getLsn().getSequenceNo());
         try {
-            dispatcher.heartbeat(rq.getRPCRequest().getClientIdentity(), lsn, TimeSync.getLocalSystemTime());
-            rq.sendSuccess(new heartbeatResponse());
-        } catch (UnknownParticipantException e) {
-            rq.sendReplicationException(ErrNo.SECURITY);
-        } 
+            org.xtreemfs.babudb.lsmdb.LSN lsn = dispatcher.dbs.restart();
+            lsn.getSequenceNo();
+            // TODO restart of the replication
+            
+            rq.sendSuccess(new toSlaveResponse());
+        } catch (BabuDBException be) {
+            Logging.logError(Logging.LEVEL_ERROR, this, be);
+            rq.sendReplicationException(ErrNo.INTERNAL_ERROR);
+        }
     }
 
     /*
@@ -87,6 +87,6 @@ public class HeartbeatOperation extends Operation {
      */
     @Override
     public boolean canBeDisabled() {
-        return true;
+        return false;
     }
 }

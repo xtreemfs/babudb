@@ -7,6 +7,7 @@
  */
 package org.xtreemfs.babudb.replication.stages;
 
+import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
@@ -60,7 +61,9 @@ public class StageRequest implements Comparable<StageRequest>{
         for (Object arg : args) {
             if (arg instanceof ReusableBuffer) {
                 BufferPool.free((ReusableBuffer) arg);
-            } 
+            } else if (arg instanceof LogEntry) {
+                ((LogEntry) arg).free();
+            }
         }
     }
 }

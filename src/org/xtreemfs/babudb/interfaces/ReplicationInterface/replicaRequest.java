@@ -12,7 +12,7 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class replicaRequest implements org.xtreemfs.babudb.interfaces.utils.Request
 {
-    public static final int TAG = 1012;
+    public static final int TAG = 1015;
 
     
     public replicaRequest() { range = new LSNRange(); }
@@ -30,7 +30,7 @@ public class replicaRequest implements org.xtreemfs.babudb.interfaces.utils.Requ
     }
 
     // Serializable
-    public int getTag() { return 1012; }
+    public int getTag() { return 1015; }
     public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::replicaRequest"; }
 
     public void deserialize( Object from_hash_map )

@@ -12,7 +12,7 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class replicateRequest implements org.xtreemfs.babudb.interfaces.utils.Request
 {
-    public static final int TAG = 1016;
+    public static final int TAG = 1019;
 
     
     public replicateRequest() { lsn = new LSN(); logEntry = new LogEntry(); }
@@ -32,7 +32,7 @@ public class replicateRequest implements org.xtreemfs.babudb.interfaces.utils.Re
     }
 
     // Serializable
-    public int getTag() { return 1016; }
+    public int getTag() { return 1019; }
     public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::replicateRequest"; }
 
     public void deserialize( Object from_hash_map )

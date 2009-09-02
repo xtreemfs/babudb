@@ -103,4 +103,13 @@ public class ReplicateOperation extends Operation {
             rq.sendReplicationException(ErrNo.TOO_BUSY);
         }
     }
+
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.operations.Operation#canBeDisabled()
+     */
+    @Override
+    public boolean canBeDisabled() {
+        return true;
+    }
 }

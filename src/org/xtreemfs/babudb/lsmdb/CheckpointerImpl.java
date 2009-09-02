@@ -344,6 +344,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
                         // create the checkpoint
                         Logging.logMessage(Logging.LEVEL_INFO, this, "initiating database checkpoint...");
                         createCheckpoint();
+                        dbs.getDBConfigFile().checkpoint(logger.getLatestLSN());
                         Logging.logMessage(Logging.LEVEL_INFO, this, "checkpoint complete");
                         
                     }
@@ -367,5 +368,13 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
             down.set(true);
             down.notifyAll();
         }
+    }
+    
+    /**
+     * 
+     * @return the lock to support mutual exclusion for checkpointing.
+     */
+    public Object getCheckpointerLock() {
+        return checkpointLock;
     }
 }

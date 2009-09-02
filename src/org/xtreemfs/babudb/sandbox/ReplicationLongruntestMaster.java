@@ -82,6 +82,8 @@ public class ReplicationLongruntestMaster {
         
         Map<Integer,List<Object>> scenario = generator.getOperationsScenario();
         
+        System.out.println(generator.toString());
+        
         MasterConfig config = new MasterConfig(PATH, PATH, NUM_WKS, MAX_LOG_FILE_SIZE, CHECK_INTERVAL, SyncMode.ASYNC, 0, 0, 
                 ReplicationInterface.DEFAULT_MASTER_PORT, InetAddress.getLocalHost(), 
                 new InetSocketAddress(InetAddress.getLocalHost(), ReplicationInterface.DEFAULT_MASTER_PORT), slaves, 
@@ -96,11 +98,6 @@ public class ReplicationLongruntestMaster {
         long time;
         
         for (int i=1;i<ReplicationLongrunTestConfig.MAX_SEQUENCENO;i++){
-            /* make a break every 100 inserts to let the slave get the latest DB log-file 
-            if (i%100 == 0) { TODO this could be necessary for cluster-tests
-                System.err.println("ASLEEP. For 3 seconds to give the slave a chance to catch up.");
-                Thread.sleep(3000);
-            } */
             
             List<Object> operation = scenario.get(i);
             if (operation!=null) {

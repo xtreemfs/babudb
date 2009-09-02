@@ -370,7 +370,7 @@ public class LSMDatabase {
      * @return the {@link LSN} retrieved from the filename.
      */
     public static LSN getSnapshotLSNbyFilename(String fname) {
-        Matcher m = Pattern.compile(SNAPSHOT_FILENAME_REGEXP).matcher(fname);
+        Matcher m = Pattern.compile(SNAPSHOT_FILENAME_REGEXP).matcher(new File(fname).getName());
         m.matches();
         
         return new LSN(Integer.valueOf(m.group(2)), Integer.valueOf(m.group(3)));
@@ -382,7 +382,7 @@ public class LSMDatabase {
      *         snapshot-filename-pattern, false otherwise.
      */
     public static boolean isSnapshotFilename(String fileName) {
-        return fileName.matches(SNAPSHOT_FILENAME_REGEXP);
+        return new File(fileName).getName().matches(SNAPSHOT_FILENAME_REGEXP);
     }
     
     /**
