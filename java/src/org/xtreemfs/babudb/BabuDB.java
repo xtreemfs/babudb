@@ -516,11 +516,13 @@ public class BabuDB {
      * @param ins
      */
     private void insert(InsertRecordGroup ins) {
-        final LSMDatabase db = ((DatabaseImpl) databaseManager.getDatabase(ins.getDatabaseId())).getLSMDB();
+        final DatabaseImpl database = ((DatabaseImpl) databaseManager.getDatabase(ins.getDatabaseId()));
         // ignore deleted databases when recovering!
-        if (db == null) {
+        if (database == null) {
             return;
         }
+        
+        LSMDatabase db = database.getLSMDB();
         
         for (InsertRecord ir : ins.getInserts()) {
             LSMTree tree = db.getIndex(ir.getIndexId());
