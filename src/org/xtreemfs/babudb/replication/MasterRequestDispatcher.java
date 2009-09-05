@@ -195,8 +195,10 @@ public class MasterRequestDispatcher extends RequestDispatcher {
             
             // make the replicate call at the clients
             if (slaves.size() == 0) { 
-                Logging.logMessage(Logging.LEVEL_DEBUG, this, "There are no slaves available anymore! BabuDB runs if it would be in non-replicated mode.");
-                if (buffer!=null) BufferPool.free(buffer); // FIXME : just for testing: replication with no slave is no replication... --> failover!
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                        "There are no slaves available anymore! " +
+                        "BabuDB runs if it would be in non-replicated mode.");
+                if (buffer!=null) BufferPool.free(buffer);
             } else {
                 for (final SlaveClient slave : slaves) {
                     ((RPCResponse<Object>) slave.replicate(le.getLSN(), buffer))

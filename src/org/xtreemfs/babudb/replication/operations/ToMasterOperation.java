@@ -71,16 +71,16 @@ public class ToMasterOperation extends Operation {
     public void startRequest(final Request rq) {
         //toMasterRequest request = (toMasterRequest) rq.getRequestMessage();
         //request.getAddress()
-        try {
-            org.xtreemfs.babudb.lsmdb.LSN lsn = dispatcher.dbs.restart();
-            lsn.getSequenceNo();
+     //   try {
+           // org.xtreemfs.babudb.lsmdb.LSN lsn = dispatcher.dbs.restart();
+           // lsn.getSequenceNo();
             // TODO restart of the replication
             
             rq.sendSuccess(new toMasterResponse());
-        } catch (BabuDBException be) {
+    /*    } catch (BabuDBException be) {
             Logging.logError(Logging.LEVEL_ERROR, this, be);
             rq.sendReplicationException(ErrNo.INTERNAL_ERROR);
-        }
+        }*/
     }
 
     /*

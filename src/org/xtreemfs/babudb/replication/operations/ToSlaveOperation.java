@@ -69,16 +69,17 @@ public class ToSlaveOperation extends Operation {
      */
     @Override
     public void startRequest(final Request rq) {
-        try {
-            org.xtreemfs.babudb.lsmdb.LSN lsn = dispatcher.dbs.restart();
-            lsn.getSequenceNo();
+      //  try {
+          //  org.xtreemfs.babudb.lsmdb.LSN lsn = dispatcher.dbs.restart();
+          //  lsn.getSequenceNo();
             // TODO restart of the replication
             
             rq.sendSuccess(new toSlaveResponse());
+            /*
         } catch (BabuDBException be) {
             Logging.logError(Logging.LEVEL_ERROR, this, be);
             rq.sendReplicationException(ErrNo.INTERNAL_ERROR);
-        }
+        }*/
     }
 
     /*

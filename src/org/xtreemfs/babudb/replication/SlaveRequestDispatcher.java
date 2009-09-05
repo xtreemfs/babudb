@@ -194,14 +194,16 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
      */
     @Override
     public void pauses(SimplifiedBabuDBRequestListener listener) {
-        try {
-            replication.shutdown();
-            heartbeat.shutdown();          
-            
-            replication.waitForShutdown();
-            heartbeat.waitForShutdown();  
-        } catch (Exception e) {
-            Logging.logMessage(Logging.LEVEL_ERROR, this, "could not stop the dispatcher");
+        if (!stopped) {
+            try {
+                replication.shutdown();
+                heartbeat.shutdown();          
+                
+                replication.waitForShutdown();
+                heartbeat.waitForShutdown();  
+            } catch (Exception e) {
+                Logging.logMessage(Logging.LEVEL_ERROR, this, "could not stop the dispatcher");
+            }
         }
         super.pauses(listener);
     }

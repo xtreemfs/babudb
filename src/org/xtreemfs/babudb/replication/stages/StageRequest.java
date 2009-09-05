@@ -66,4 +66,15 @@ public class StageRequest implements Comparable<StageRequest>{
             }
         }
     }
+    
+    /*
+     * (non-Javadoc)
+     * @see java.lang.Object#toString()
+     */
+    @Override
+    public String toString() {
+        String result = "LSN: "+lsn.toString() +"\n"; 
+        result += "ARGS: "+args.toString();
+        return result;
+    }
 }

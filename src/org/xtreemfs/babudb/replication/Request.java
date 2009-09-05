@@ -58,11 +58,11 @@ public class Request {
         rpcRequest.sendException(exception);
     }
     
-    public void sendReplicationException(int errno) {
+    public void sendReplicationException(int errno, String message) {
         if (Logging.isDebug()) {
             Logging.logMessage(Logging.LEVEL_DEBUG, this,"sending errno exception #"+errno);
         }
-        getRPCRequest().sendErrorCode(errno);
+        getRPCRequest().sendException(new errnoException(errno, message, null));
     }
     
     /**

@@ -149,6 +149,7 @@ public class ReplicationManager {
      * <p>
      * Stops all declared slaves and synchronizes the local BabuDB 
      * with the latest slave.
+     * Then restarts all participants in slave mode 
      * </p>
      * 
      * @param conf

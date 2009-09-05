@@ -92,13 +92,12 @@ public class RemoteStopOperation extends Operation {
                 if (!ready.get())
                     ready.wait();
             } catch (InterruptedException ie) {
-                rq.sendReplicationException(ErrNo.INTERNAL_ERROR);
+                rq.sendReplicationException(ErrNo.INTERNAL_ERROR, ie.getMessage());
                 return;
             }
         }
         
         // stop the babuDB
-        dispatcher.dbs.stop();
         DispatcherState state = dispatcher.getState();
         LSN result = new LSN(state.latest.getViewId(),state.latest.getSequenceNo());
         rq.sendSuccess(new remoteStopResponse(result));

@@ -286,12 +286,10 @@ public class DiskLogger extends Thread {
                         int viewID = this.currentViewId.get();
                         long seqNo = this.nextLogSequenceNo.getAndIncrement();
                         LSN lsn = new LSN(viewID,seqNo);
-                        if (le.getLSN() != null && !le.getLSN().equals(lsn)) {
-                            throw new IOException("The logentry "+le.getLSN().
-                                    toString()+" does not match: "+lsn.toString()+
-                                    " On entry: "+le.getPayloadType()+" | "+le.
-                                    getPayload().array());
-                        }
+                        assert(le.getLSN() == null || le.getLSN().equals(lsn)) : 
+                            "LogEntry (" + le.getPayloadType() + ") had " +
+                            "unexpected LSN: " + le.getLSN() + "\n" + lsn +
+                            " was expected instead.";
                         le.assignId(viewID, seqNo);
                         ReusableBuffer buf = le.serialize(csumAlgo);
                         csumAlgo.reset();

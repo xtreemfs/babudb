@@ -77,7 +77,8 @@ public class HeartbeatOperation extends Operation {
             dispatcher.heartbeat(rq.getRPCRequest().getClientIdentity(), lsn, TimeSync.getLocalSystemTime());
             rq.sendSuccess(new heartbeatResponse());
         } catch (UnknownParticipantException e) {
-            rq.sendReplicationException(ErrNo.SECURITY);
+            rq.sendReplicationException(ErrNo.SECURITY,
+                    "You are not allowed to request that!");
         } 
     }
 
