@@ -17,7 +17,8 @@ import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.interfaces.Chunk;
 import org.xtreemfs.babudb.interfaces.DBFileMetaData;
 import org.xtreemfs.babudb.interfaces.DBFileMetaDataSet;
-import org.xtreemfs.babudb.interfaces.utils.ONCRPCError;
+import org.xtreemfs.babudb.interfaces.LSNRange;
+import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCException;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
@@ -70,8 +71,8 @@ public class LoadLogic extends Logic {
             result = rp.get();  
         } catch (ONCRPCException e) {
             // connection is lost
-            int errNo = (e != null && e instanceof ONCRPCError) ? 
-                    ((ONCRPCError) e).getAcceptStat() : ErrNo.UNKNOWN;
+            int errNo = (e != null && e instanceof errnoException) ? 
+                    ((errnoException) e).getError_code() : ErrNo.UNKNOWN;
             throw new ConnectionLostException(e.getTypeName()+": "+e.getMessage(),errNo);
         } catch (IOException e) {
             // failure on transmission --> retry
@@ -93,9 +94,21 @@ public class LoadLogic extends Logic {
             } finally {
                 logger.unlockLogger();
             }
-            Logging.logMessage(Logging.LEVEL_INFO, this, "Logfile switched with at LSN: %s", stage.lastInserted.toString());
+            Logging.logMessage(Logging.LEVEL_INFO, this, 
+             "Logfile switched with at LSN: %s", stage.lastInserted.toString());
             stage.lastInserted = new LSN(stage.lastInserted.getViewId()+1,0L);
-            stage.setLogic(BASIC, "Only the viewId changed, we can go on with the basicLogic.");
+            if (stage.missing != null && stage.missing.getSequenceEnd() > 
+                    stage.lastInserted.getSequenceNo()+1L) {
+                stage.missing = new LSNRange(stage.lastInserted.getViewId(),
+                        stage.lastInserted.getSequenceNo()+1L,
+                        stage.missing.getSequenceEnd());
+                stage.setLogic(REQUEST, "There are still some logEntries " +
+                		"missing after switching the logfile.");
+            } else {
+                stage.missing = null;
+                stage.setLogic(BASIC, "Only the viewId changed, " +
+                		"we can go on with the basicLogic.");
+            }
             return;
         }
         
@@ -103,6 +116,7 @@ public class LoadLogic extends Logic {
         stage.dispatcher.heartbeat.infarction();
         
         try {
+            stage.dispatcher.dbs.stop();
             backupFiles(stage.dispatcher.configuration);
         } catch (IOException e) {
             // file backup failed --> retry
@@ -113,97 +127,119 @@ public class LoadLogic extends Logic {
         // #chunks >= #files
         final AtomicInteger openChunks = new AtomicInteger(result.size()); 
         
-        try {
+        // request the chunks
+        LSN lsn = null;
+        for (DBFileMetaData fileData : result) {
+            
+            // validate the informations
+            String fileName = fileData.getFileName();
+            if (LSMDatabase.isSnapshotFilename(fileName)) {
+                if (lsn == null) 
+                    lsn = LSMDatabase.getSnapshotLSNbyFilename(fileName);
+                else if (!lsn.equals(LSMDatabase.
+                        getSnapshotLSNbyFilename(fileName))){
+                    Logging.logMessage(Logging.LEVEL_WARN, this, 
+                            "Indexfiles had ambiguous LSNs: %s", 
+                            "LOAD will be retried.");
+                    return;
+                }
+            }
+            long fileSize = fileData.getFileSize();
+            long maxChunkSize = fileData.getMaxChunkSize();
+            // if we got an empty file
+            if (!(fileSize > 0L)) return;
+            assert (maxChunkSize > 0L) : "Empty chunks are not allowed: "+fileName;
             synchronized (openChunks) {
-                // request the chunks
-                LSN lsn = null;
-                for (DBFileMetaData fileData : result) {
-                    System.err.println(result.toString());
-                    
-                    // validate the informations
-                    String fileName = fileData.getFileName();
-                    if (LSMDatabase.isSnapshotFilename(fileName)) {
-                        if (lsn == null) lsn = LSMDatabase.getSnapshotLSNbyFilename(fileName);
-                        else if (!lsn.equals(LSMDatabase.getSnapshotLSNbyFilename(fileName))){
-                            Logging.logMessage(Logging.LEVEL_WARN, this, "Indexfiles had ambiguous LSNs: %s", "LOAD will be retried.");
-                            return;
+                if (openChunks.get()!=-1)
+                    openChunks.addAndGet((int) (fileSize / maxChunkSize));
+            }
+                
+            // calculate chunks, request them and add them to the list
+            long begin = 0L;
+            for (long end = maxChunkSize; end < (fileSize+maxChunkSize); end += maxChunkSize) {
+                final Chunk chunk = new Chunk(fileName, begin, (end>fileSize) ? fileSize : end);
+                begin = end;
+                
+                // request the chunk
+                final RPCResponse<ReusableBuffer> chunkRp = stage.dispatcher.master.chunk(chunk);       
+                chunkRp.registerListener(new RPCResponseAvailableListener<ReusableBuffer>() {
+                
+                    @Override
+                    public void responseAvailable(RPCResponse<ReusableBuffer> r) {
+                        try {
+                            // insert the chunk
+                            ReusableBuffer buffer = r.get();
+                            
+                            FileChannel fChannel = null;
+                            try {
+                                if (buffer.remaining() == 0){
+                                    Logging.logMessage(Logging.LEVEL_ERROR, this, "CHUNK ERROR: %s", 
+                                            "Empty buffer received!");
+                                    stage.interrupt();
+                                }
+                                // insert the file input
+                                File f = getFile(chunk);
+                                assert (f.exists()) : "File was not created properly: "+chunk.toString();
+                                fChannel = new FileOutputStream(f).getChannel();
+                                fChannel.write(buffer.getBuffer());
+                            } finally {
+                                if (fChannel!=null) fChannel.close();
+                                if (buffer!=null) BufferPool.free(buffer);
+                            }
+                            
+                            // notify, if the last chunk was inserted
+                            synchronized (openChunks) {
+                                if (openChunks.get() != -1 && openChunks.
+                                        decrementAndGet() == 0) 
+                                    openChunks.notify();
+                            }
+                        } catch (Exception e) {
+                            if (e instanceof errnoException) {
+                                errnoException err = (errnoException) e;
+                                Logging.logMessage(Logging.LEVEL_ERROR, this,
+                                       "Chunk request failed: (%d) %s", err.
+                                       getError_code(), err.getError_message());
+                            } else
+                                Logging.logMessage(Logging.LEVEL_ERROR, this, 
+                                    "Chunk request failed: %s", e.getMessage());
+                            
+                            synchronized (openChunks) {
+                                openChunks.set(-1);
+                                openChunks.notify();
+                            }
+                        } finally {
+                            if (r!=null) r.freeBuffers();
                         }
                     }
-                    long fileSize = fileData.getFileSize();
-                    long maxChunkSize = fileData.getMaxChunkSize();
-                    // if we got an empty file
-                    if (!(fileSize > 0L)) return;
-                    assert (maxChunkSize > 0L) : "Empty chunks are not allowed: "+fileName;
-                    openChunks.addAndGet((int) (fileSize / maxChunkSize));
-                        
-                    // calculate chunks, request them and add them to the list
-                    long begin = 0L;
-                    for (long end = maxChunkSize; end < (fileSize+maxChunkSize); end += maxChunkSize) {
-                        final Chunk chunk = new Chunk(fileName, begin, (end>fileSize) ? fileSize : end);
-                        begin = end;
-                        
-                        // request the chunk
-                        final RPCResponse<ReusableBuffer> chunkRp = stage.dispatcher.master.chunk(chunk);       
-                        chunkRp.registerListener(new RPCResponseAvailableListener<ReusableBuffer>() {
-                        
-                            @Override
-                            public void responseAvailable(RPCResponse<ReusableBuffer> r) {
-                                try {
-                                    // insert the chunk
-                                    ReusableBuffer buffer = r.get();
-                                    
-                                    FileChannel fChannel = null;
-                                    try {
-                                        if (buffer.remaining() == 0){
-                                            Logging.logMessage(Logging.LEVEL_ERROR, this, "CHUNK ERROR: %s", 
-                                                    "Empty buffer received!");
-                                            stage.interrupt();
-                                        }
-                                        // insert the file input
-                                        File f = getFile(chunk);
-                                        assert (f.exists()) : "File was not created properly: "+chunk.toString();
-                                        fChannel = new FileOutputStream(f).getChannel();
-                                        fChannel.write(buffer.getBuffer());
-                                    } finally {
-                                        if (fChannel!=null) fChannel.close();
-                                        if (buffer!=null) BufferPool.free(buffer);
-                                    }
-                                    
-                                    // notify, if the last chunk was inserted
-                                    if (openChunks.decrementAndGet() == 0) {
-                                        synchronized (openChunks) {
-                                            openChunks.notify();
-                                        }
-                                    }
-                                } catch (Exception e) {
-                                    Logging.logMessage(Logging.LEVEL_ERROR, this, "Chunk request failed: %s", e.getMessage());
-                                    
-                                    // make a new initial load
-                                    stage.interrupt();
-                                } finally {
-                                    if (r!=null) r.freeBuffers();
-                                }
-                            }
-                        });
-                    }        
-                }
-    
-                // wait for the last response
-                openChunks.wait();
-            }
-        } catch (InterruptedException e) {
-            // if interrupted by a failed chunk-write --> retry
-            if (!stage.isTerminating()) return;
-            // else drop the exception to the replication stage
-            else throw e;
+                });
+            }        
         }
+    
+        // wait for the last response
+        synchronized (openChunks) {
+            if (openChunks.get()>0)
+                openChunks.wait();
+        }
+
+        // some chunks failed -> retry
+        if (openChunks.get() == -1) return;
         
         // reload the DBS
         try {
             stage.dispatcher.updateLatestLSN(
-                    stage.lastInserted = stage.dispatcher.dbs.reset());
+                    stage.lastInserted = stage.dispatcher.dbs.restart());
             removeBackupFiles(stage.dispatcher.configuration);
-            stage.setLogic(BASIC, "Loading finished, we can go on with the basicLogic.");
+            if (stage.missing != null && stage.missing.getSequenceEnd() > 
+                    stage.lastInserted.getSequenceNo()+1L) {
+                stage.missing = new LSNRange(stage.lastInserted.getViewId(),
+                        stage.lastInserted.getSequenceNo()+1L,
+                        stage.missing.getSequenceEnd());
+                stage.setLogic(REQUEST, "There are still some logEntries missing after switching the logfile.");
+            } else {
+                stage.missing = null;
+                stage.setLogic(BASIC, "Loading finished with LSN("+stage.
+                        lastInserted+"), we can go on with the basicLogic.");
+            }
         } catch (BabuDBException e) {
             // resetting the DBS failed --> retry
             Logging.logMessage(Logging.LEVEL_WARN, this, "Loading failed, because the " +

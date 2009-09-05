@@ -103,7 +103,9 @@ public class ReplicationLongruntestSlave {
             Thread.sleep(sleepInterval);
         
             int event = random.nextInt(100);
-            if (event<P_CONSISTENCY_CHECK) {
+            if (event == -1) {
+                // disabled
+            } else if (event<P_CONSISTENCY_CHECK) {
                 System.out.print("CONISTENCY CHECK:");
                 performConsistencyCheck();  
             }else{

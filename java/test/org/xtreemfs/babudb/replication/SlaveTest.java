@@ -190,9 +190,10 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
     
     private void makeDB() throws Exception {
         ReusableBuffer buf = ReusableBuffer.wrap(
-                new byte[(Integer.SIZE/4)+testDB.getBytes().length]);
-        buf.putInt(testDBIndices);
+                new byte[(Integer.SIZE*3/8)+testDB.getBytes().length]);
+        buf.putInt(1);
         buf.putString(testDB);
+        buf.putInt(testDBIndices);
         buf.flip();
         RPCResponse<?> rp  = null;
         try {
@@ -220,7 +221,9 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
     
     private void copyDB() throws Exception {
         ReusableBuffer buf = ReusableBuffer.wrap(
-                new byte[(Integer.SIZE/4)+testDB.getBytes().length+copyTestDB.getBytes().length]);
+                new byte[(Integer.SIZE/2)+testDB.getBytes().length+copyTestDB.getBytes().length]);
+        buf.putInt(1);
+        buf.putInt(2);
         buf.putString(testDB);
         buf.putString(copyTestDB);
         buf.flip();
@@ -249,7 +252,8 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
     }
     
     private void deleteDB() throws Exception {
-        ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE/8)+copyTestDB.getBytes().length]);
+        ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE/4)+copyTestDB.getBytes().length]);
+        buf.putInt(2);
         buf.putString(copyTestDB);
         buf.flip();
         

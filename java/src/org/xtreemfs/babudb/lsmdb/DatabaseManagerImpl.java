@@ -26,12 +26,15 @@ import org.xtreemfs.babudb.SimplifiedBabuDBRequestListener;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
+import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.DatabaseImpl.AsyncResult;
+import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.common.util.FSUtils;
 
 public class DatabaseManagerImpl implements DatabaseManager {
@@ -180,9 +183,10 @@ public class DatabaseManagerImpl implements DatabaseManager {
         // if this is a master it sends the create-details to all slaves.
         if (dbs.getReplicationManager() == null || dbs.getReplicationManager().isMaster()) {
             ReusableBuffer buf = ReusableBuffer.wrap(new byte[databaseName.getBytes().length
-                + (Integer.SIZE / 4)]);
-            buf.putInt(numIndices);
+                + (Integer.SIZE*3/8)]);
+            buf.putInt(db.getLSMDB().getDatabaseId());
             buf.putString(databaseName);
+            buf.putInt(numIndices);
             buf.flip();
             
             LogEntry le = metaInsert(PAYLOAD_TYPE_CREATE, buf);
@@ -240,6 +244,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
      * @throws BabuDBException
      */
     public void proceedDelete(String databaseName) throws BabuDBException { 
+        int dbId = -1;
         synchronized (dbModificationLock) {           
             synchronized (((CheckpointerImpl) dbs.getCheckpointer()).getCheckpointerLock()) {
                 if (!dbsByName.containsKey(databaseName)) {
@@ -247,8 +252,9 @@ public class DatabaseManagerImpl implements DatabaseManager {
                         + "' does not exists");
                 }
                 final LSMDatabase db = ((DatabaseImpl) dbsByName.get(databaseName)).getLSMDB();
+                dbId = db.getDatabaseId();
                 dbsByName.remove(databaseName);
-                dbsById.remove(db.getDatabaseId());
+                dbsById.remove(dbId);
                 
                 ((SnapshotManagerImpl) dbs.getSnapshotManager()).deleteAllSnapshots(databaseName);
                 
@@ -261,8 +267,9 @@ public class DatabaseManagerImpl implements DatabaseManager {
         
         // if this is a master it sends the delete-details to all slaves.
         if (dbs.getReplicationManager() == null || dbs.getReplicationManager().isMaster()) {
-            ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE / 8)
+            ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE / 2)
                 + databaseName.getBytes().length]);
+            buf.putInt(dbId);
             buf.putString(databaseName);
             buf.flip();
             
@@ -361,8 +368,10 @@ public class DatabaseManagerImpl implements DatabaseManager {
         
         // if this is a master it sends the copy-details to all slaves.
         if (dbs.getReplicationManager() == null || dbs.getReplicationManager().isMaster()) {
-            ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE / 4) + sourceDB.getBytes().length
+            ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE / 2) + sourceDB.getBytes().length
                 + destDB.getBytes().length]);
+            buf.putInt(sDB.getLSMDB().getDatabaseId());
+            buf.putInt(dbId);
             buf.putString(sourceDB);
             buf.putString(destDB);
             buf.flip();
@@ -460,6 +469,30 @@ public class DatabaseManagerImpl implements DatabaseManager {
         }
         
         return entry;
+    }
+    
+    /**
+     * Insert a full record group. Only to be used by log replay.
+     * 
+     * @param ins
+     */
+    public void insert(InsertRecordGroup ins) {
+        final DatabaseImpl database = ((DatabaseImpl) getDatabase(ins.getDatabaseId()));
+        // ignore deleted databases when recovering!
+        if (database == null) {
+            return;
+        }
+        
+        LSMDatabase db = database.getLSMDB();
+        
+        for (InsertRecord ir : ins.getInserts()) {
+            LSMTree tree = db.getIndex(ir.getIndexId());
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "insert " + new String(ir.getKey()) + "="
+                + (ir.getValue() == null ? null : new String(ir.getValue())) + " into "
+                + db.getDatabaseName() + " " + ir.getIndexId());
+            tree.insert(ir.getKey(), ir.getValue());
+        }
+        
     }
     
     public Object getDBModificationLock() {

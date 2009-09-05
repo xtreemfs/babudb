@@ -80,7 +80,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
     /** counter for eventually running requests */
     private final AtomicInteger             activeRequests = new AtomicInteger(0);
     /** flag that determines if the replication is out of service at the moment */
-    private volatile boolean                stopped = true;
+    protected volatile boolean              stopped = true;
     
     private SimplifiedBabuDBRequestListener listener = null;
 /*
@@ -250,7 +250,9 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
         } 
         
         if (op.canBeDisabled() && !startRequest()){
-            rq.sendErrorCode(org.xtreemfs.babudb.replication.operations.ErrNo.SERVICE_UNAVAILABLE);
+            rq.sendException(new errnoException(
+                    org.xtreemfs.babudb.replication.operations.ErrNo.SERVICE_UNAVAILABLE,
+                    "Replication is paused!",null));
             return;
         }
         
@@ -296,8 +298,10 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
     private void finishRequest(boolean canBeDisabled) {
         if (canBeDisabled) {
             synchronized (activeRequests) {
-                if (activeRequests.decrementAndGet() == 0 && listener != null)
+                if (activeRequests.decrementAndGet() == 0 && listener != null) {
                     listener.finished(null);
+                    listener = null;
+                }
             }
         }
     }
@@ -322,9 +326,9 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
      */
     @Override
     public void crashPerformed() {
-        Logging.logMessage(Logging.LEVEL_ERROR, this, "crashed... shutting down system!");
-        shutdown();
-        // FIXME make the failover
+        Logging.logMessage(Logging.LEVEL_ERROR, this, "crashed... " +
+        		"pauses replication!");
+        pauses(null);
     }
 
     /*
@@ -372,13 +376,16 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
     
     /**
      * Stops the dispatcher, by disabling all its replication features.
+     * @param listener - can be null.
      */
     public void pauses(SimplifiedBabuDBRequestListener listener) {
         this.stopped = true;
         this.isMaster = false;
-        synchronized (activeRequests) {
-            if (activeRequests.get() == 0) listener.finished(null);
-            else this.listener = listener;
+        if (listener!=null) {
+            synchronized (activeRequests) {
+                if (activeRequests.get() == 0) listener.finished(null);
+                else this.listener = listener;
+            }
         }
     }
     

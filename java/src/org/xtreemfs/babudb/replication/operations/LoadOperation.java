@@ -86,22 +86,33 @@ public class LoadOperation extends Operation {
                 .equals(dispatcher.lastOnView))
             rq.sendSuccess(new loadResponse());
         else {
-            synchronized (((DatabaseManagerImpl) dispatcher.dbs.getDatabaseManager()).getDBModificationLock()) {
-                synchronized (((CheckpointerImpl) dispatcher.dbs.getCheckpointer()).getCheckpointerLock()) {                  
-                    // add the DB-structure-file metadata
-                    int chunkSize = dispatcher.chunkSize;
-                    String path = dispatcher.dbs.getDBConfigPath();
-                    assert (path!=null) : "No checkpoint available!";
-                    long length = new File(path).length();
-                    result.add(new DBFileMetaData(path,length,chunkSize));
-                    
-                    // add the latest snapshot files for every DB,
-                    // if available
-                    for (Database db : ((DatabaseManagerImpl) dispatcher.dbs.getDatabaseManager()).getDatabaseList())
-                        result.addAll(((DatabaseImpl) db).getLSMDB().getLastestSnapshotFiles(chunkSize));
+            try {
+                synchronized (((DatabaseManagerImpl) dispatcher.dbs.
+                        getDatabaseManager()).getDBModificationLock()) {
+                    synchronized (((CheckpointerImpl) dispatcher.dbs.
+                            getCheckpointer()).getCheckpointerLock()) {
+                        ((CheckpointerImpl) dispatcher.dbs.getCheckpointer()).
+                            waitForCheckpoint();
+                        // add the DB-structure-file metadata
+                        int chunkSize = dispatcher.chunkSize;
+                        String path = dispatcher.dbs.getDBConfigPath();
+                        assert (path!=null) : "No checkpoint available!";
+                        long length = new File(path).length();
+                        result.add(new DBFileMetaData(path,length,chunkSize));
+                        
+                        // add the latest snapshot files for every DB,
+                        // if available
+                        for (Database db : ((DatabaseManagerImpl) dispatcher.
+                                dbs.getDatabaseManager()).getDatabaseList())
+                            result.addAll(((DatabaseImpl) db).getLSMDB().
+                                    getLastestSnapshotFiles(chunkSize));  
+                    }
                 }
+                rq.sendSuccess(new loadResponse(result));
+            } catch (InterruptedException e) {
+                rq.sendReplicationException(ErrNo.INTERNAL_ERROR, 
+                        "Load Operation: "+e.getMessage());
             }
-            rq.sendSuccess(new loadResponse(result));
         }
     }
 

@@ -90,7 +90,8 @@ public class ChunkOperation extends Operation {
             rq.sendSuccess(new chunkResponse(payload));
             
         } catch (Exception e) {
-            rq.sendReplicationException(ErrNo.FILE_UNAVAILABLE);
+            rq.sendReplicationException(ErrNo.FILE_UNAVAILABLE, 
+                    "The requested chunk is not available anymore: "+chunk.toString());
         } finally {
             try {
                 if (channel != null) channel.close();

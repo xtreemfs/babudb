@@ -7,11 +7,9 @@
  */
 package org.xtreemfs.babudb.replication.stages.logic;
 
-import java.io.IOException;
 import java.util.concurrent.BlockingQueue;
 
 import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.SimplifiedBabuDBRequestListener;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
@@ -55,6 +53,7 @@ public class BasicLogic extends Logic {
      */
     @Override
     public void run() throws InterruptedException {     
+        assert (stage.missing == null) : "Programmers fault!";
         
         final StageRequest op = queue.take();
         final LSN lsn = op.getLSN();
@@ -86,14 +85,7 @@ public class BasicLogic extends Logic {
         // try to finish the request
         try {     
             // perform the operation
-            SharedLogic.handleLogEntry((LogEntry) op.getArgs()[1], new SimplifiedBabuDBRequestListener() {
-            
-                @Override
-                public void finished(BabuDBException error) {
-                    if (error == null) stage.dispatcher.updateLatestLSN(lsn); 
-                    stage.finalizeRequest(op);
-                }
-            }, new SyncListener() {
+            SharedLogic.handleLogEntry((LogEntry) op.getArgs()[1], new SyncListener() {
                 
                 @Override
                 public void synced(LogEntry entry) {
@@ -103,6 +95,9 @@ public class BasicLogic extends Logic {
             
                 @Override
                 public void failed(LogEntry entry, Exception ex) {
+                    System.err.println("Last inserted: "+stage.lastInserted.toString());
+                    System.err.println("MISSING: "+stage.missing);
+                    System.err.println("Operation: "+op.toString());
                     stage.finalizeRequest(op);
                     stage.lastInserted = new LSN(lsn.getViewId(),lsn.getSequenceNo()-1L);
                     Logging.logError(Logging.LEVEL_ERROR, stage, ex);
@@ -110,16 +105,12 @@ public class BasicLogic extends Logic {
             }, stage.dispatcher.dbs);
             stage.lastInserted = lsn;
         } catch (BabuDBException e) {
-            // the insert failed due an DB error
+            // the insert failed due a DB error
             queue.add(op);
             stage.setLogic(LOAD, e.getMessage());            
-        } catch (IOException c) {
-            // request could not be decoded --> it is rejected
-            Logging.logMessage(Logging.LEVEL_WARN, this, "Damaged request received: %s", c.getMessage());
-            stage.finalizeRequest(op);  
         } catch (InterruptedException i) {
             // crash or shutdown signal received
-            stage.finalizeRequest(op);
+            queue.add(op);
             throw i;
         }
     }

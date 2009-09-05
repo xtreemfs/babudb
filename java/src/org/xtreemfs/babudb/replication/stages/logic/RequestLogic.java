@@ -13,10 +13,9 @@ import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
 import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.SimplifiedBabuDBRequestListener;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.interfaces.LogEntries;
-import org.xtreemfs.babudb.interfaces.utils.ONCRPCError;
+import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCException;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
@@ -62,18 +61,14 @@ public class RequestLogic extends Logic {
      */
     @Override
     public void run() throws InterruptedException, ConnectionLostException{
-        // get and reset the missing range
-        LSNRange missing = stage.missing;
-        assert(missing!=null);
-        stage.missing = null;
-        Logging.logMessage(Logging.LEVEL_INFO, this, "Replica-range is missing: %s", missing.toString());
+        Logging.logMessage(Logging.LEVEL_INFO, this, "Replica-range is missing: %s", stage.missing.toString());
         
         // get the missing logEntries
         RPCResponse<LogEntries> rp = null;    
         LogEntries logEntries = null;
         
         try {
-            rp = stage.dispatcher.master.getReplica(missing);
+            rp = stage.dispatcher.master.getReplica(stage.missing);
             logEntries = (LogEntries) rp.get();
             final AtomicInteger count = new AtomicInteger(logEntries.size());
             // insert all logEntries
@@ -81,26 +76,7 @@ public class RequestLogic extends Logic {
                 try {
                     final LogEntry logentry = LogEntry.deserialize(le.getPayload(), checksum);
                     final LSN lsn = logentry.getLSN();
-                    SharedLogic.handleLogEntry(logentry, new SimplifiedBabuDBRequestListener() {
-                    
-                        @Override
-                        public void finished(BabuDBException error) {
-                            synchronized (count) {
-                                // insert succeeded
-                                if (error == null) {
-                                    stage.lastInserted = lsn;
-                                    if (count.decrementAndGet() == 0)
-                                        count.notify();
-                                // insert failed
-                                } else if (error != null){
-                                    Logging.logError(Logging.LEVEL_ERROR, this, error);
-                                    count.set(-1);
-                                    count.notify();
-                                }
-                            }
-                            logentry.free();
-                        }
-                    }, new SyncListener() {
+                    SharedLogic.handleLogEntry(logentry, new SyncListener() {
                     
                         @Override
                         public void synced(LogEntry entry) {
@@ -138,13 +114,14 @@ public class RequestLogic extends Logic {
  
             // all went fine --> back to basic
             stage.dispatcher.updateLatestLSN(stage.lastInserted);
+            stage.missing = null;
             stage.setLogic(BASIC, "Request went fine, we can went on with the basicLogic.");
             
             if (Thread.interrupted()) throw new InterruptedException("Replication was interrupted after executing a replicaOperation.");
         } catch (ONCRPCException e) {
             // remote failure (connection lost)
-            int errNo = (e != null && e instanceof ONCRPCError) ? 
-                    ((ONCRPCError) e).getAcceptStat() : ErrNo.UNKNOWN;
+            int errNo = (e != null && e instanceof errnoException) ? 
+                    ((errnoException) e).getError_code() : ErrNo.UNKNOWN;
             throw new ConnectionLostException(e.getTypeName()+": "+e.getMessage(),errNo);
         } catch (IOException ioe) {
             // failure on transmission
@@ -152,7 +129,7 @@ public class RequestLogic extends Logic {
         } catch (LogEntryException lee) {
             // decoding failed --> retry with new range
             Logging.logError(Logging.LEVEL_WARN, this, lee);
-            stage.missing = new LSNRange(missing.getViewId(), stage.lastInserted.getSequenceNo()+1L, missing.getSequenceEnd());
+            stage.missing = new LSNRange(stage.missing.getViewId(), stage.lastInserted.getSequenceNo()+1L, stage.missing.getSequenceEnd());
         } catch (BabuDBException be) {
             // the insert failed due an DB error
             Logging.logError(Logging.LEVEL_WARN, this, be);

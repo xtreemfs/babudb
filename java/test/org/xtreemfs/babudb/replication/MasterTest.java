@@ -271,17 +271,21 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
                         
                     case PAYLOAD_TYPE_CREATE:
                         assertEquals(new LSN(viewID,1L), le.getLSN());
-                        assertEquals(testDBIndices, le.getPayload().getInt());
+                        assertEquals(1,le.getPayload().getInt());
                         assertEquals(testDB,le.getPayload().getString());
+                        assertEquals(testDBIndices, le.getPayload().getInt());
                         break;
                         
                     case PAYLOAD_TYPE_COPY:
                         assertEquals(new LSN(viewID,3L), le.getLSN());
+                        assertEquals(1,le.getPayload().getInt());
+                        assertEquals(2,le.getPayload().getInt());
                         assertEquals(testDB,le.getPayload().getString());
                         assertEquals(copyTestDB,le.getPayload().getString());
                         break;
                         
                     case PAYLOAD_TYPE_DELETE:
+                        assertEquals(2,le.getPayload().getInt());
                         assertEquals(new LSN(viewID,4L), le.getLSN());
                         assertEquals(copyTestDB,le.getPayload().getString());
                         break;

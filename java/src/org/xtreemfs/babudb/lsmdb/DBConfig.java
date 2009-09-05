@@ -10,18 +10,14 @@ package org.xtreemfs.babudb.lsmdb;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
-import org.xtreemfs.babudb.replication.DirectFileIO;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
@@ -159,92 +155,5 @@ public class DBConfig {
             }
             
         }
-    }
-    
-    /**
-     * <p>
-     * Saves the currently used config-file.
-     * Creates a copy of the currently used config-file, 
-     * corresponding to the latest checkpoint, 
-     * identified by the latest {@link LSN}.
-     * </p>
-     * 
-     * @param lsn
-     * 
-     * @throws BabuDBException 
-     */
-    public void checkpoint(LSN lsn) throws BabuDBException {
-        save();
-        if (configFile.exists()) {
-            File checkpoint = new File(dbs.getConfig().getBaseDir() + 
-                    toDBConfigFileName(lsn, dbs.getConfig().getDbCfgFile()));
-            try {
-                checkpoint.createNewFile();
-                DirectFileIO.copyFile(configFile, checkpoint);
-            } catch (IOException io) {
-                throw new BabuDBException(ErrorCode.IO_ERROR,"Could not create"+
-                	" a checkpoint of the DB-config-file: "+io.getMessage());
-            }
-            cleanupOldCheckpoints(lsn);
-        } else {
-            throw new BabuDBException(ErrorCode.IO_ERROR, 
-                    "No config-file available at the moment.");
-        }
-    }
-    
-    /**
-     * Removes DB-config-files of out-dated checkpoints.
-     * 
-     * @param lsn
-     */
-    private void cleanupOldCheckpoints(LSN lsn) {
-        File f = new File(dbs.getConfig().getBaseDir());
-        String[] confs = f.list(new FilenameFilter() {
-            
-            public boolean accept(File dir, String name) {
-                return name.endsWith("."+dbs.getConfig().getDbCfgFile());
-            }
-        });
-        
-        for (String conf : confs) {
-            if (fromDBConfigFileName(conf,dbs.getConfig().getDbCfgFile())
-                    .compareTo(lsn) < 0) {
-                Logging.logMessage(Logging.LEVEL_DEBUG, this, "deleting old " +
-                		"DB config-file: " + conf);
-                f = new File(dbs.getConfig().getBaseDir() + conf);
-                f.delete();
-            }
-        }
-    }
-    
-    /**
-     * 
-     * @param configFileName
-     * @return the {@link LSN} of the configFileName.
-     */
-    public static LSN fromDBConfigFileName(String configFileName, 
-            String basicDBConfigFileName) {
-        Pattern p = Pattern.compile("(\\d+)\\.(\\d+)\\."+basicDBConfigFileName);
-        
-        Matcher m = p.matcher(configFileName);
-        m.matches();
-        String tmp = m.group(1);
-        int viewId = Integer.valueOf(tmp);
-        tmp = m.group(2);
-        int seqNo = Integer.valueOf(tmp);
-        return new LSN(viewId, seqNo);
-    }
-    
-    /**
-     * 
-     * @param basicDBConfigFileName - the basic name.
-     * @param lsn
-     * @return the DBconfigFile to the given {@link LSN}.
-     */
-    public static String toDBConfigFileName(LSN lsn, 
-            String basicDBConfigFileName) {
-        
-        return lsn.getViewId()+"."+lsn.getSequenceNo()+"."
-                        +basicDBConfigFileName;
     }
 }

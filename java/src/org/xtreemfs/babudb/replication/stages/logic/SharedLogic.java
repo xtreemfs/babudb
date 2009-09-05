@@ -12,20 +12,14 @@ import static org.xtreemfs.babudb.log.LogEntry.*;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.util.Map;
 
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.SimplifiedBabuDBRequestListener;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
-import org.xtreemfs.babudb.lsmdb.Database;
-import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
 import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
-import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
-import org.xtreemfs.babudb.lsmdb.LSMDBWorker;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
 
@@ -37,7 +31,7 @@ import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
  */
 
 final class SharedLogic {
-        
+    
     /**
      * <p>
      * Retrieve the information from a {@link LogEntry} to replicate it's operation
@@ -46,117 +40,82 @@ final class SharedLogic {
      * </p>
      * 
      * @param entry - the {@link LogEntry}.
-     * @param listener - will be notified, if insert was replicated.
-     * @param sListener - will be notified, if create/copy/delete/snap was replicated. 
+     * @param listener - will be notified, if entry was replicated. 
      *                                      
      * @param dbs - the {@link BabuDB} database system.
      * @throws BabuDBException 
-     * @throws InterruptedException 
-     * @throws IOException 
+     * @throws InterruptedException the entry will not be written, if thrown.
      */
-    static void handleLogEntry(LogEntry entry, SimplifiedBabuDBRequestListener listener, SyncListener sListener, BabuDB dbs) throws BabuDBException, InterruptedException, IOException {
-        // perform the operation
-        if (entry.getPayloadType() == PAYLOAD_TYPE_INSERT) {
-            // prepare the LSMDBrequest
-            LSMDBRequest rq = SharedLogic.retrieveRequest(entry, listener, 
-                    ((DatabaseManagerImpl) dbs.getDatabaseManager()).getDatabasesById());
+    static void handleLogEntry(LogEntry entry, SyncListener listener, BabuDB dbs) 
+            throws BabuDBException, InterruptedException {
+        DatabaseManagerImpl dbMan = (DatabaseManagerImpl) dbs.getDatabaseManager();
+
+        // check the payload type
+        switch (entry.getPayloadType()) { 
+        
+        case PAYLOAD_TYPE_INSERT:
+            InsertRecordGroup irg = InsertRecordGroup.deserialize(entry.getPayload());
+            dbMan.insert(irg);
+            break;
+        
+        case PAYLOAD_TYPE_CREATE:
+            // deserialize the create call
+            int dbId = entry.getPayload().getInt();
+            String dbName = entry.getPayload().getString();
+            int indices = entry.getPayload().getInt();
+            if (dbMan.getDatabase(dbId) == null)
+                dbMan.proceedCreate(dbName, indices, null);
+            break;
             
-            // start the LSMDBrequest
-            SharedLogic.writeLogEntry(rq, dbs);
-        } else {          
-            // check the payload type
-            switch (entry.getPayloadType()) {                      
-            case PAYLOAD_TYPE_CREATE:
-                // deserialize the create call
-                int indices = entry.getPayload().getInt();
-                String dbName = entry.getPayload().getString();
-                ((DatabaseManagerImpl) dbs.getDatabaseManager()).
-                    proceedCreate(dbName, indices, null);
-                break;
-                
-            case PAYLOAD_TYPE_COPY:
-                // deserialize the copy call
-                String dbSource = entry.getPayload().getString();
-                dbName = entry.getPayload().getString();
-                ((DatabaseManagerImpl) dbs.getDatabaseManager()).
-                    proceedCopy(dbSource, dbName);
-                break;
-                
-            case PAYLOAD_TYPE_DELETE:
-                // deserialize the create operation call
-                dbName = entry.getPayload().getString();
-                ((DatabaseManagerImpl) dbs.getDatabaseManager()).
-                    proceedDelete(dbName);
-                break;
-                
-            case PAYLOAD_TYPE_SNAP:
-                ObjectInputStream oin = null;
+        case PAYLOAD_TYPE_COPY:
+            // deserialize the copy call
+            entry.getPayload().getInt(); // do not delete!
+            dbId = entry.getPayload().getInt();
+            String dbSource = entry.getPayload().getString();
+            dbName = entry.getPayload().getString();
+            if (dbMan.getDatabase(dbId) == null)
+                dbMan.proceedCopy(dbSource, dbName);
+            break;
+            
+        case PAYLOAD_TYPE_DELETE:
+            // deserialize the create operation call
+            dbId = entry.getPayload().getInt();
+            dbName = entry.getPayload().getString();
+            if (dbMan.getDatabase(dbId) != null)
+                dbMan.proceedDelete(dbName);
+            break;
+            
+        case PAYLOAD_TYPE_SNAP:
+            ObjectInputStream oin = null;
+            try {
+                oin = new ObjectInputStream(new ByteArrayInputStream(
+                        entry.getPayload().array()));
+                // deserialize the snapshot configuration
+                dbId = oin.readInt();
+                SnapshotConfig snap = (SnapshotConfig) oin.readObject();
+                ((SnapshotManagerImpl) dbs.getSnapshotManager()).
+                    createPersistentSnapshot(dbMan.getDatabase(dbId).
+                            getName(),snap, false);
+            } catch (Exception e) {
+                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,
+                        "Could not deserialize operation of type "+entry.
+                        getPayloadType()+", because: "+e.getMessage(), e);
+            } finally {
                 try {
-                    oin = new ObjectInputStream(new ByteArrayInputStream(entry.getPayload().
-                            array()));
-                    // deserialize the snapshot configuration
-                    int dbId = oin.readInt();
-                    SnapshotConfig snap = (SnapshotConfig) oin.readObject();
-                    ((SnapshotManagerImpl) dbs.getSnapshotManager()).
-                        createPersistentSnapshot(((DatabaseManagerImpl) dbs.
-                                getDatabaseManager()).getDatabase(dbId).getName(), 
-                                snap, false);
-                } catch (Exception e) {
-                    throw new IOException("Could not deserialize operation of type "+
-                            entry.getPayloadType()+", because: "+e.getMessage(), e);
-                } finally {
-                    if (oin != null) oin.close();
+                if (oin != null) oin.close();
+                } catch (IOException ioe) {
+                    /* who cares? */
                 }
-                break;
-                    
-            default: new IOException("unknown payload-type");
             }
-            entry.getPayload().flip();
-            entry.setListener(sListener);
-            
-            // append logEntry to the logFile
-            dbs.getLogger().append(entry);  
+            break;
+                
+        default: new BabuDBException(ErrorCode.INTERNAL_ERROR,
+                "unknown payload-type");
         }
-    }
-    
-/*
- * private methods
- */
-    
-    /**
-     * @param context
-     * @param listener
-     * @param le - {@link LogEntry}
-     * @param dbs 
-     * @return the LSMDBRequest retrieved from the logEntry
-     * @throws BabuDBException 
-     *              if the DBS is not consistent and should be loaded.
-     */
-    private static LSMDBRequest retrieveRequest(LogEntry le, SimplifiedBabuDBRequestListener listener, Map<Integer, Database> dbs) throws BabuDBException {       
-        // build a LSMDBRequest
-        InsertRecordGroup irg = InsertRecordGroup.deserialize(le.getPayload());
-
-        if (!dbs.containsKey(irg.getDatabaseId()))
-            throw new BabuDBException(ErrorCode.NO_SUCH_DB,"Database does not exist.Load DB!");
-
-        return new LSMDBRequest(((DatabaseImpl) dbs.get(irg.getDatabaseId())).getLSMDB(), 
-                listener, irg, null);
-    }
-    
-    /**
-     * <p>
-     * Write the {@link LogEntry} given by a generated {@link LSMDBRequest}
-     * <code>rq</code> the DiskLogger and insert it into the LSM-tree.
-     * </p>
-     * 
-     * @param dbs
-     * @param rq
-     * @throws InterruptedException
-     *             if an error occurs.
-     */
-    private static void writeLogEntry(LSMDBRequest rq, BabuDB dbs) throws InterruptedException {
-        int dbId = rq.getInsertData().getDatabaseId();
-        LSMDBWorker w = dbs.getWorker(dbId);
-        w.addRequest(rq);
+        entry.getPayload().flip();
+        entry.setListener(listener);
+        
+        // append logEntry to the logFile
+        dbs.getLogger().append(entry);  
     }
 }

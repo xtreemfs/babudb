@@ -143,7 +143,7 @@ public class DirectFileIO {
      * @param destFile
      * @throws IOException
      */
-    public static void copyFile(File sourceFile, File destFile) throws IOException {
+    private static void copyFile(File sourceFile, File destFile) throws IOException {
         assert (sourceFile.isFile());
         assert (destFile.isFile());
         

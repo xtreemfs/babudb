@@ -67,7 +67,8 @@ public class ReplicateOperation extends Operation {
             rq.setAttachment(LogEntry.deserialize(data, checksum));
         } catch (LogEntryException e){
             Logging.logError(Logging.LEVEL_ERROR, this, e);
-            rq.sendReplicationException(ErrNo.INTERNAL_ERROR);
+            rq.sendReplicationException(ErrNo.INTERNAL_ERROR, 
+                    "LogEntry could not be deserialized: "+e.getMessage());
             return rpcrq;
         } finally {
             checksum.reset();
@@ -100,7 +101,7 @@ public class ReplicateOperation extends Operation {
             rq.sendSuccess(new replicateResponse());
         } catch (TooBusyException e) {
             if (le!=null) le.free();
-            rq.sendReplicationException(ErrNo.TOO_BUSY);
+            rq.sendReplicationException(ErrNo.TOO_BUSY,e.getMessage());
         }
     }
 

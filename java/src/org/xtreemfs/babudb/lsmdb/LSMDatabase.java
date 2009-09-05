@@ -282,11 +282,11 @@ public class LSMDatabase {
         Logging.logMessage(Logging.LEVEL_INFO, this, "snapshot written, database = " + databaseName);
     }
     
-    public void writeSnapshot(String directory, int[] snapIds) throws IOException {
+    public void writeSnapshot(String directory, int[] snapIds, int viewId, long sequenceNumber) throws IOException {
         
         for (int index = 0; index < trees.size(); index++) {
             final LSMTree tree = trees.get(index);
-            final String newFileName = directory + "/" + getSnapshotFilename(index, 0, 0);
+            final String newFileName = directory + "/" + getSnapshotFilename(index, viewId, sequenceNumber);
             tree.materializeSnapshot(newFileName, snapIds[index]);
         }
     }

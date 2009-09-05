@@ -15,14 +15,12 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.util.Iterator;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
-import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.log.DiskLogFile;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
@@ -38,14 +36,13 @@ import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSMDBWorker;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
 import org.xtreemfs.babudb.replication.DirectFileIO;
 import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManager;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
 import org.xtreemfs.include.common.config.BabuDBConfig;
-import org.xtreemfs.include.common.config.MasterConfig;
+import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.config.SlaveConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
@@ -73,8 +70,6 @@ public class BabuDB {
     
     /**
      * the disk logger is used to write InsertRecordGroups persistently to disk
-     * - visibility changed to public, because the replication needs access to
-     * the {@link DiskLogger}
      */
     private DiskLogger                logger;
     
@@ -83,8 +78,7 @@ public class BabuDB {
     private final ReplicationManager  replicationManager;
     
     /**
-     * Checkpointer thread for automatic checkpointing -has to be public for
-     * replication issues
+     * Checkpointer thread for automatic checkpointing
      */
     private CheckpointerImpl          dbCheckptr;
     
@@ -107,6 +101,11 @@ public class BabuDB {
      * File used to store meta-informations about DBs.
      */
     private final DBConfig            dbConfigFile;
+    
+    /** 
+     * Flag that shows the replication if babuDB is running at the moment.
+     */
+    private volatile boolean          stopped;
     
     /**
      * Starts the BabuDB database. If conf is instance of MasterConfig it comes
@@ -163,10 +162,8 @@ public class BabuDB {
         // set up the replication service
         LSN lastLSN = new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo() - 1);
         try {
-            if (conf instanceof MasterConfig)
-                this.replicationManager = new ReplicationManager((MasterConfig) conf, this, lastLSN);
-            else if (conf instanceof SlaveConfig) 
-                this.replicationManager = new ReplicationManager((SlaveConfig) conf, this, lastLSN);
+            if (conf instanceof ReplicationConfig)
+                this.replicationManager = new ReplicationManager((ReplicationConfig) conf, this, lastLSN);
             else
                 this.replicationManager = null;
         } catch (IOException e) {
@@ -196,22 +193,22 @@ public class BabuDB {
         dbCheckptr.start();
         
         // start the replication service after all other components of babuDB
-        // have
-        // been started successfully
+        // have been started successfully
+        this.stopped = false;
         if (this.replicationManager != null)
             this.replicationManager.initialize();
         
         Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running (version " + BABUDB_VERSION
             + ")");
     }
-    
+        
     /**
-     * <p>
-     * Operation to stop babuDB by remote.
-     * Without stopping the replication.
-     * </p>
+     * REPLICATION
+     * Stops the BabuDB for an initial Load.
      */
     public void stop() {
+        if (this.stopped) return;
+        
         for (LSMDBWorker w : worker) {
             w.shutdown();
         }
@@ -229,16 +226,23 @@ public class BabuDB {
             }
         } catch (InterruptedException ex) {
         }
+        this.stopped = true;
         Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB has been stopped by the Replication.");
     }
     
     /**
-     * Restart call to use after stop().
+     * <p>
+     * Needed for the initial load process of the babuDB, done by the
+     * replication.
+     * </p>
      * 
-     * @return the latest loaded LSN.
      * @throws BabuDBException
+     * @return the next LSN.
      */
     public LSN restart() throws BabuDBException {
+        if (!this.stopped) throw new BabuDBException(ErrorCode.IO_ERROR,
+                "BabuDB has to be stopped before!");
+        
         databaseManager.reset();
         
         dbCheckptr = new CheckpointerImpl(this);
@@ -282,32 +286,21 @@ public class BabuDB {
         
         worker = new LSMDBWorker[configuration.getNumThreads()];
         for (int i = 0; i < configuration.getNumThreads(); i++) {
-            worker[i] = new LSMDBWorker(logger, i, (configuration.getPseudoSyncWait() > 0), configuration
+            worker[i] = new LSMDBWorker(logger, i, (
+                    configuration.getPseudoSyncWait() > 0), configuration
                     .getMaxQueueLength(), replicationManager);
             worker[i].start();
         }
         
-        dbCheckptr.init(logger, configuration.getCheckInterval(), configuration.getMaxLogfileSize());
+        dbCheckptr.init(logger, configuration.getCheckInterval(), 
+                configuration.getMaxLogfileSize());
         dbCheckptr.start();
         
-        Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running (version " + BABUDB_VERSION
-            + ")");
+        Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is " +
+        		"running (version " + BABUDB_VERSION + ")");
         
-        return new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo() - 1L);
-    }
-    
-    /**
-     * <p>
-     * Needed for the initial load process of the babuDB, done by the
-     * replication.
-     * </p>
-     * 
-     * @throws BabuDBException
-     * @return the next LSN.
-     */
-    public LSN reset() throws BabuDBException {
-        stop();
-        return restart();
+        this.stopped = false;
+        return new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo());
     }
     
     /*
@@ -382,32 +375,11 @@ public class BabuDB {
      *         otherwise.
      */
     public String getDBConfigPath() {
-        String[] checkpoints = new File(configuration.getBaseDir())
-                                        .list(new FilenameFilter() {
-        
-            @Override
-            public boolean accept(File dir, String name) {
-                return name.endsWith("."+configuration.getDbCfgFile());
-            }
-        });
-        if (checkpoints.length==1)
-            return configuration.getBaseDir()+checkpoints[0];
-        else if (checkpoints.length>1) {
-            LSN lsn = null;
-            String result = null;
-            for (String f : checkpoints) {
-                if (lsn == null || lsn.compareTo(DBConfig.fromDBConfigFileName(
-                        f, configuration.getDbCfgFile())) < 0){
-                    
-                    lsn = DBConfig.fromDBConfigFileName(f, 
-                            configuration.getDbCfgFile());
-                    result = f;
-                }
-            }
-            
-            return configuration.getBaseDir()+result;
-        } else
-            return null;
+        String result = configuration.getBaseDir() + configuration.getDbCfgFile();
+        File f = new File(result);
+        if (f.exists())
+            return result;
+        return null;
     }
     
     /**
@@ -444,16 +416,15 @@ public class BabuDB {
                     orderedLogList.add(new LSN(viewId, seqNo));
                     count++;
                 }
-                Iterator<LSN> iter = orderedLogList.iterator();
+                LSN[] copy = orderedLogList.toArray(new LSN[orderedLogList.size()]);
                 LSN last = null;
-                while (iter.hasNext()) {
+                for (LSN lsn : copy) {
                     if (last == null)
-                        last = iter.next();
+                        last = lsn;
                     else {
-                        LSN that = iter.next();
-                        if (that.compareTo(from) <= 0) {
+                        if (lsn.compareTo(from) <= 0) {
                             orderedLogList.remove(last);
-                            last = that;
+                            last = lsn;
                         } else
                             break;
                     }
@@ -469,7 +440,7 @@ public class BabuDB {
                             // ignored
                             if (le.getPayloadType() == PAYLOAD_TYPE_INSERT) {
                                 InsertRecordGroup ai = InsertRecordGroup.deserialize(le.getPayload());
-                                insert(ai);
+                                databaseManager.insert(ai);
                             } else if (le.getPayloadType() == PAYLOAD_TYPE_SNAP) {
                                 ObjectInputStream oin = null;
                                 try {
@@ -489,7 +460,7 @@ public class BabuDB {
                             } // else ignored
                             // set lsn'
                             if (le != null)
-                                nextLSN = new LSN(le.getViewId(), le.getLogSequenceNo() + 1);
+                                nextLSN = new LSN(le.getViewId(), le.getLogSequenceNo() + 1L);
                         } 
                         if (le != null) le.free();
                     }
@@ -508,30 +479,6 @@ public class BabuDB {
             throw new BabuDBException(ErrorCode.IO_ERROR,
                 "corrupted/incomplete log entry in database operations log", ex);
         }
-    }
-    
-    /**
-     * Insert a full record group. Only to be used by log replay.
-     * 
-     * @param ins
-     */
-    private void insert(InsertRecordGroup ins) {
-        final DatabaseImpl database = ((DatabaseImpl) databaseManager.getDatabase(ins.getDatabaseId()));
-        // ignore deleted databases when recovering!
-        if (database == null) {
-            return;
-        }
-        
-        LSMDatabase db = database.getLSMDB();
-        
-        for (InsertRecord ir : ins.getInserts()) {
-            LSMTree tree = db.getIndex(ir.getIndexId());
-            Logging.logMessage(Logging.LEVEL_DEBUG, this, "insert " + new String(ir.getKey()) + "="
-                + (ir.getValue() == null ? null : new String(ir.getValue())) + " into "
-                + db.getDatabaseName() + " " + ir.getIndexId());
-            tree.insert(ir.getKey(), ir.getValue());
-        }
-        
     }
     
     /**

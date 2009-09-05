@@ -84,7 +84,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
     /**
      * indicates when the current checkpoint is complete
      */
-    private boolean                            checkpointComplete;
+    private boolean                            checkpointComplete = false;
     
     /**
      * object used to ensure that only one checkpoint is created synchronously
@@ -158,13 +158,10 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
         }
         
         // wait for the checkpoint to complete
-        synchronized (checkpointCompletionLock) {
-            if (!checkpointComplete)
-                try {
-                    checkpointCompletionLock.wait();
-                } catch (InterruptedException e) {
-                    throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "interrupted", e);
-                }
+        try {
+            waitForCheckpoint();
+        } catch (InterruptedException e) {
+            throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "interrupted", e);
         }
     }
     
@@ -344,7 +341,6 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
                         // create the checkpoint
                         Logging.logMessage(Logging.LEVEL_INFO, this, "initiating database checkpoint...");
                         createCheckpoint();
-                        dbs.getDBConfigFile().checkpoint(logger.getLatestLSN());
                         Logging.logMessage(Logging.LEVEL_INFO, this, "checkpoint complete");
                         
                     }
@@ -376,5 +372,17 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
      */
     public Object getCheckpointerLock() {
         return checkpointLock;
+    }
+    
+    /**
+     * Wait until the current checkpoint is complete.
+     * 
+     * @throws InterruptedException
+     */
+    public void waitForCheckpoint() throws InterruptedException {
+        synchronized (checkpointCompletionLock) {
+            if (!checkpointComplete)
+                checkpointCompletionLock.wait();
+        }
     }
 }

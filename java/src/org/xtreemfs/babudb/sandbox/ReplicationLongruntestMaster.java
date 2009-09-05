@@ -82,8 +82,6 @@ public class ReplicationLongruntestMaster {
         
         Map<Integer,List<Object>> scenario = generator.getOperationsScenario();
         
-        System.out.println(generator.toString());
-        
         MasterConfig config = new MasterConfig(PATH, PATH, NUM_WKS, MAX_LOG_FILE_SIZE, CHECK_INTERVAL, SyncMode.ASYNC, 0, 0, 
                 ReplicationInterface.DEFAULT_MASTER_PORT, InetAddress.getLocalHost(), 
                 new InetSocketAddress(InetAddress.getLocalHost(), ReplicationInterface.DEFAULT_MASTER_PORT), slaves, 

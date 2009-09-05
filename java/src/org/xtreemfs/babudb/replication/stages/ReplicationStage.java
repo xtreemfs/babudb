@@ -106,13 +106,16 @@ public class ReplicationStage extends LifeCycleThread {
     }
 
     /**
-     * shut the stage thread down
+     * Shut the stage thread down.
+     * Resets inner state.
      */
     public void shutdown() {
         if (quit!=true) {
             this.quit = true;
             this.interrupt();
         }
+        missing = null;
+        logicID = BASIC;
     }
 
     /*
@@ -135,10 +138,12 @@ public class ReplicationStage extends LifeCycleThread {
                     break;
                 case TOO_BUSY :
                     if (++tries < MAX_RETRIES) break;
+                case SERVICE_UNAVAILABLE : 
+                    // fail-over: pauses()
                 default :
-                    // TODO failover!
                     Logging.logError(Logging.LEVEL_WARN, this, cle);
                     quit = true;
+                    dispatcher.pauses(null);
                     break;
                 }
             } catch(InterruptedException ie) {
@@ -161,7 +166,7 @@ public class ReplicationStage extends LifeCycleThread {
      * @param reason - for the logic change, needed for logging purpose.
      */
     public void setLogic(LogicID lgc, String reason) {
-        Logging.logMessage(Logging.LEVEL_ERROR, this, "Replication logic changed: %s, because: %s", lgc.toString(), reason);
+        Logging.logMessage(Logging.LEVEL_INFO, this, "Replication logic changed: %s, because: %s", lgc.toString(), reason);
         this.logicID = lgc;
     }
     
@@ -179,12 +184,6 @@ public class ReplicationStage extends LifeCycleThread {
         assert(numRqs >= 0) : "The number of requests cannot be negative, especially not '"+numRqs+"'.";
     }
 
-    /**
-     * @return the volatile flag, if this stage shall be terminated.
-     */
-    public boolean isTerminating() {
-        return quit;
-    }
     /**
      * Needed for resetting the dispatcher.
      * 

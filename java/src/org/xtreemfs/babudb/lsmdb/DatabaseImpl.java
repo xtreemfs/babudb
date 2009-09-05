@@ -615,7 +615,9 @@ public class DatabaseImpl implements Database {
         }
         
         try {
-            lsmDB.writeSnapshot(dbs.getConfig().getBaseDir() + destDB + File.separatorChar, ids);
+            LSN lsn = lsmDB.getOndiskLSN();
+            lsmDB.writeSnapshot(dbs.getConfig().getBaseDir() + destDB + File.
+                    separatorChar, ids, lsn.getViewId(), lsn.getSequenceNo());
         } catch (IOException ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot write snapshot: " + ex, ex);
         }

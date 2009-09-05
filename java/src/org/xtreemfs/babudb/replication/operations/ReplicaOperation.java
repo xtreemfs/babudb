@@ -99,7 +99,7 @@ public class ReplicaOperation extends Operation {
                         i++;
                     }
                 } catch (LogEntryException e) {
-                    rq.sendReplicationException(ErrNo.LOG_CUT);
+                    rq.sendReplicationException(ErrNo.LOG_CUT,"LogEntry unavailable: "+e.getMessage());
                     i = -1;
                 } finally {
                     checksum.reset();
@@ -120,7 +120,7 @@ public class ReplicaOperation extends Operation {
                         le.free();
                     }
                 } catch (LogEntryException e) {
-                    rq.sendReplicationException(ErrNo.LOG_CUT);
+                    rq.sendReplicationException(ErrNo.LOG_CUT,"LogEntry unavailable: "+e.getMessage());
                     i = -1;
                 } finally {
                     checksum.reset();
@@ -132,9 +132,9 @@ public class ReplicaOperation extends Operation {
             // send the response, if the requested log entries are found
             if (i > 0) rq.sendSuccess(new replicaResponse(result));
             // send a replication exception if not done so far
-            else if (i==0) rq.sendReplicationException(ErrNo.LOG_CUT);
+            else if (i==0) rq.sendReplicationException(ErrNo.LOG_CUT,"LogEntry unavailable.");
         } catch (IOException e) {
-            rq.sendReplicationException(ErrNo.INTERNAL_ERROR);
+            rq.sendReplicationException(ErrNo.INTERNAL_ERROR,"Request not finished: "+e.getMessage());
         } finally {
             if (dlf!=null) {
                 try {
