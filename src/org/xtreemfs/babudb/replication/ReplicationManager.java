@@ -157,8 +157,9 @@ public class ReplicationManager {
      * @throws IOException 
      * @throws InterruptedException 
      * @throws ONCRPCException 
+     * @throws BabuDBException 
      */
-    public void declareToMaster(MasterConfig conf) throws NotEnoughAvailableSlavesException, IOException, ONCRPCException, InterruptedException {
+    public void declareToMaster(MasterConfig conf) throws NotEnoughAvailableSlavesException, IOException, ONCRPCException, InterruptedException, BabuDBException {
         if (dispatcher.isMaster) return;
         
         // stop the slaves and get their states
@@ -169,7 +170,9 @@ public class ReplicationManager {
         List<LSN> values = new LinkedList<LSN>(states.values());
         Collections.sort(values);
         LSN latest = values.get(values.size()-1);
-        String backupDir = new File(conf.getBaseDir()).getParent()+File.separator+"BACKUP";
+        
+        // use a remote backup directory
+        String backupDir = new File(conf.getBaseDir()).getParent()+File.separator+"RBACKUP";
         
         // stop the replication locally
         DispatcherState state = stop();
@@ -180,7 +183,7 @@ public class ReplicationManager {
         if (latest.compareTo(state.latest) > 0) {
             for (Entry<InetSocketAddress,LSN> entry : states.entrySet()) {
                 if (entry.getValue().equals(latest)) {
-                    set(new SlaveConfig(conf,entry.getKey(),backupDir), dispatcher.new DispatcherState(state.latest));
+                    changeConfiguration(new SlaveConfig(conf,entry.getKey(),backupDir));
                     StateClient c = new StateClient(dispatcher.rpcClient, entry.getKey());
                     c.toMaster(conf.getMaster()).get();
                     
@@ -189,14 +192,13 @@ public class ReplicationManager {
                     break;
                 }
             }
-            state = stop();
         }
         
         // put them all into slave-mode
         allToSlaves(conf.getSlaves(), conf.getSyncN(), conf.getMaster());
         
         // reset the master
-        set(conf,state);
+        changeConfiguration(conf);
     }
        
     /**
@@ -206,6 +208,8 @@ public class ReplicationManager {
      * was running in master-mode and the request was a user operation,
      * like inserts or create, copy, delete operation.
      * </p>
+     * 
+     * @see ReplicationManager.restart()
      * 
      * @return dispatcher backup state.
      * @throws InterruptedException 
@@ -231,31 +235,19 @@ public class ReplicationManager {
     }
     
     /**
-     * <p>Changes the replication configuration.</p>
-     * <p>Makes a new checkPoint and increments the viewID, 
-     * if a <code>config</code> is a {@link MasterConfig}, 
-     * or {@link SlaveConfig}.</p>
+     * <p>
+     * Continues with the replication.
+     * </p>
      * 
-     * <p><b>The replication has to be stopped before!</b></p>
+     * @see ReplicationManager.stop()
      * 
-     * @param config
-     * @param lastState
-     * 
-     * @throws IOException
-     * @throws BabuDBException 
-     * @throws NotEnoughAvailableSlavesException 
-     * @see ReplcationManager.stop()
+     * @param state
+     * @throws BabuDBException
      */
-    public void changeConfiguration(ReplicationConfig config, DispatcherState lastState) throws IOException, BabuDBException {
-        if (config instanceof MasterConfig) {
-            ((CheckpointerImpl) dbs.getCheckpointer()).checkpoint(true);
-            set((MasterConfig) config, lastState);
-        } else if (config instanceof SlaveConfig) {
-            ((CheckpointerImpl) dbs.getCheckpointer()).checkpoint(false);
-            set((SlaveConfig) config, lastState);
-        } else assert(false);
-    } 
-
+    public void restart(DispatcherState state) throws BabuDBException {
+        dispatcher.continues(state);
+    }
+    
     /**
      * <p>Stops the replication process by shutting down the dispatcher.
      * And resetting the its state.</p>
@@ -364,21 +356,28 @@ public class ReplicationManager {
     }
     
     /**
-     * <p>Sets the replication service in addition to change the configuration.
-     * Replication must not be running!</p>
+     * <p>Changes the replication configuration synchronously.</p>
+     * <p>Makes a new checkPoint and increments the viewID, 
+     * if a <code>config</code> is a {@link MasterConfig}.</p>
      * 
      * @param config
-     * @param lastState
-     * @throws IOException 
+     * @throws IOException
+     * @throws BabuDBException 
      */
-    private void set(ReplicationConfig config, DispatcherState lastState) throws IOException {
-        assert(lastState!=null) : "Use the constructor instead";
-        if (config instanceof MasterConfig)
+    private void changeConfiguration(ReplicationConfig config) throws IOException, BabuDBException {
+        shutdown();        
+        
+        DispatcherState lastState = dispatcher.getState();        
+        if (config instanceof MasterConfig) {
+            ((CheckpointerImpl) dbs.getCheckpointer()).checkpoint(true);
             dispatcher = new MasterRequestDispatcher((MasterConfig) config, dbs, lastState);
-        else {
+        } else if (config instanceof SlaveConfig) {
+            ((CheckpointerImpl) dbs.getCheckpointer()).checkpoint(false);
             DirectFileIO.replayBackupFiles((SlaveConfig) config);
             dispatcher = new SlaveRequestDispatcher((SlaveConfig) config, dbs, lastState);
-        }
+        } else 
+            assert(false);
+        
         initialize();
-    }
+    } 
 }

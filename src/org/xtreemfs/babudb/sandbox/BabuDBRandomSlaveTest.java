@@ -207,7 +207,7 @@ public class BabuDBRandomSlaveTest {
 	    } else 
 		System.out.println("Check could not be performed, because of the slave is LOADING from the master.");
 	    
-	    DBS.getReplicationManager().changeConfiguration(CONFIGURATION, lastState);
+	    DBS.getReplicationManager().restart(lastState);
 	    
 	    return result;
 	} 
