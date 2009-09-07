@@ -123,16 +123,18 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
      */
     @Override
     public void shutdown() {
-        try {
-            replication.shutdown();
-            heartbeat.shutdown();          
-            
-            replication.waitForShutdown();
-            heartbeat.waitForShutdown();  
-            
-            replication.clearQueue();
-        } catch (Exception e) {
-            Logging.logMessage(Logging.LEVEL_ERROR, this, "shutdown failed");
+        if (!stopped) {
+            try {
+                replication.shutdown();
+                heartbeat.shutdown();          
+                
+                replication.waitForShutdown();
+                heartbeat.waitForShutdown();  
+                
+                replication.clearQueue();
+            } catch (Exception e) {
+                Logging.logMessage(Logging.LEVEL_ERROR, this, "shutdown failed");
+            }
         }
         super.shutdown();
     }
@@ -216,7 +218,17 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
     public void continues(DispatcherState state) throws BabuDBException {
         this.replication = new ReplicationStage(this,configuration.getMaxQ(),state.requestQueue,state.latest);
         this.heartbeat = new HeartbeatThread(this,state.latest);
-        this.start();
+        try {
+            replication.start();
+            heartbeat.start();
+            
+            replication.waitForStartup();
+            heartbeat.waitForStartup();
+        } catch (Exception ex) {
+            Logging.logMessage(Logging.LEVEL_ERROR, this, "startup failed");
+            Logging.logMessage(Logging.LEVEL_ERROR, this, ex.getMessage());
+            System.exit(1);
+        }
         super.continues(state);
     }
 

@@ -122,7 +122,7 @@ public class DirectFileIO {
         File newFile = null;
         
         for (File f : files) {
-            if (f.isFile() && !f.getName().contains(".dbl")) {
+            if (f.isFile()) {
                 newFile = new File(destDir.getPath()+File.separator+f.getName());
                 newFile.createNewFile();
                 
@@ -132,7 +132,8 @@ public class DirectFileIO {
                 newFile.mkdir();
                 
                 copyDir(f, newFile);
-            }
+            } else
+                assert(false);
         }
     }
     
@@ -170,13 +171,14 @@ public class DirectFileIO {
             
             // delete existing files
             for (File f : parent.listFiles()) {
-                if (f.isFile() && !f.getName().contains(".dbl"))
+                if (f.isFile())
                     f.delete();
                 else if (f.isDirectory()) {
                     cleanUpFiles(f);
                     if (f.listFiles().length == 0)
                         f.delete();
-                }
+                } else
+                    assert(false);
             }
         }
     }

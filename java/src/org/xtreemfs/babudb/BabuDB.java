@@ -277,7 +277,7 @@ public class BabuDB {
         
         try {
             logger = new DiskLogger(configuration.getDbLogDir(), nextLSN.getViewId(),
-                nextLSN.getSequenceNo() + 1L, configuration.getSyncMode(), configuration.getPseudoSyncWait(),
+                nextLSN.getSequenceNo(), configuration.getSyncMode(), configuration.getPseudoSyncWait(),
                 configuration.getMaxQueueLength() * configuration.getNumThreads());
             logger.start();
         } catch (IOException ex) {
@@ -300,7 +300,7 @@ public class BabuDB {
         		"running (version " + BABUDB_VERSION + ")");
         
         this.stopped = false;
-        return new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo());
+        return new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo()-1L);
     }
     
     /*

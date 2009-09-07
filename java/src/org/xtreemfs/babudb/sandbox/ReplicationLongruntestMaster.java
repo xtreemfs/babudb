@@ -118,6 +118,9 @@ public class ReplicationLongruntestMaster {
         System.out.format("total throughput for meta-operations : %12.2f ops/s\n", metaTroughput);
         System.out.format("total throughput for inserts : %12.2f insertGroups/s\n", insertThroughput);
         
+        // wait for the slave
+        Thread.sleep(60*1000);
+        
         DBS.shutdown();
     }
     

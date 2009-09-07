@@ -136,7 +136,7 @@ public class ReplicationLongruntestSlave {
         Process p = Runtime.getRuntime().exec("rm -rf "+PATH);
         p.waitFor();
     
-        DBS.getReplicationManager().changeConfiguration(CONFIGURATION, state);
+        DBS.getReplicationManager().restart(state);
     }
     
     /**
@@ -175,7 +175,7 @@ public class ReplicationLongruntestSlave {
             System.out.println("Unable to perform lookup.LSN "+state.latest.toString()+" describes a meta-operation.");
         }
         
-        DBS.getReplicationManager().changeConfiguration(CONFIGURATION, state);
+        DBS.getReplicationManager().restart(state);
     } 
     
     /**

@@ -42,7 +42,7 @@ public class ReplicationLongrunTestConfig {
     	    MAX_DOWN_TIME = 30*1000;
     	    PATH = "/tmp/babuDB/";
     	    MIN_SEQUENCENO = 100L;
-    	    MAX_SEQUENCENO = 200000L;
+    	    MAX_SEQUENCENO = 50000L;
     	}
     }
 }

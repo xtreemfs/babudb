@@ -114,7 +114,7 @@ public class BabuDBRandomMasterTest {
             insertOpTime += System.currentTimeMillis() - time;
             System.out.println("done. Last insert was LSN ("+lsn.toString()+").");
 			
-            DBS.getReplicationManager().changeConfiguration(config,DBS.getReplicationManager().stop());
+            DBS.getReplicationManager().restart(DBS.getReplicationManager().stop());
         }
         double metaTroughput = ((double)nOmetaOp)/(((double) metaOpTime)/1000.0);
         double insertThroughput = ((double)nOinsertOp)/(((double) insertOpTime)/1000.0);
