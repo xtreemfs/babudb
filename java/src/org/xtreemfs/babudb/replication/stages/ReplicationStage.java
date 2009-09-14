@@ -173,11 +173,21 @@ public class ReplicationStage extends LifeCycleThread {
     public void setLogic(LogicID lgc, String reason) {
         Logging.logMessage(Logging.LEVEL_INFO, this, "Replication logic changed: %s, because: %s", lgc.toString(), reason);
         this.logicID = lgc;
-        if (listener != null && lgc.equals(BASIC)) listener.finished(null);
+        if (listener != null && lgc.equals(BASIC)){
+            listener.finished(null);
+            listener = null;
+        }
     }
     
-    public void setLogic(LogicID lgc, SimplifiedBabuDBRequestListener listener) {
-        setLogic(lgc, "manually synchronization");
+    /**
+     * Method to trigger a Load manually.
+     * 
+     * @param listener
+     */
+    public void manualLoad(SimplifiedBabuDBRequestListener listener) {
+        this.listener = listener;
+        setLogic(LOAD, "manually synchronization");
+        q.add(new StageRequest(null));
     }
     
     /**
