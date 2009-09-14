@@ -13,6 +13,8 @@ import static org.junit.Assert.*;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -27,6 +29,7 @@ import org.junit.Test;
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.clients.SlaveClient;
+import org.xtreemfs.babudb.clients.StateClient;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.heartbeatRequest;
@@ -38,7 +41,7 @@ import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
-import org.xtreemfs.include.common.config.SlaveConfig;
+import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.common.logging.Logging.Category;
 import org.xtreemfs.include.foundation.LifeCycleListener;
@@ -55,21 +58,22 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
     public final static int viewID = 1;
     public final static int MAX_MESSAGES_PRO_TEST = 10;
     
-    private final static Checksum   csumAlgo = new CRC32();
-    private RPCNIOSocketServer      rpcServer;
-    private static SlaveConfig      conf;
-    private RPCNIOSocketClient      rpcClient;
-    private SlaveClient             client;
-    private BabuDB                  db;
-    public LSN                     current;  
-    private long                    replicaRangeLength = new Random().nextInt(100)+1L;
-    private BlockingQueue<Integer>  mailbox;
+    private final static Checksum    csumAlgo = new CRC32();
+    private RPCNIOSocketServer       rpcServer;
+    private static ReplicationConfig conf;
+    private RPCNIOSocketClient       rpcClient;
+    private SlaveClient              client;
+    private StateClient              sClient;
+    private BabuDB                   db;
+    public LSN                       current;  
+    private long                     replicaRangeLength = new Random().nextInt(100)+1L;
+    private BlockingQueue<Integer>   mailbox;
      
     
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
         Logging.start(Logging.LEVEL_ERROR, Category.all);
-        conf = new SlaveConfig("config/slave.properties");
+        conf = new ReplicationConfig("config/replication.properties");
         conf.read();
     }
 
@@ -95,19 +99,30 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
            
             rpcClient = new RPCNIOSocketClient(null,5000,10000);
             rpcClient.setLifeCycleListener(this);  
-            client = new SlaveClient(rpcClient,new InetSocketAddress(conf.getAddress(),conf.getPort()));
+            client = new SlaveClient(rpcClient,conf.getInetSocketAddress());
+            sClient = new StateClient(rpcClient,conf.getInetSocketAddress());
             
-            int port = conf.getMaster().getPort();
-            InetAddress address = conf.getMaster().getAddress();
+            List<InetSocketAddress> openAddresses = 
+                new LinkedList<InetSocketAddress>(conf.getParticipants());
+            openAddresses.remove(conf.getInetSocketAddress());
+            int port = openAddresses.get(0).getPort();
+            InetAddress address = openAddresses.get(0).getAddress();
             rpcServer = new RPCNIOSocketServer(port,address,this,null);
             rpcServer.setLifeCycleListener(this);
             rpcServer.start();
             rpcServer.waitForStartup();
             
-            db = BabuDBFactory.createSlaveBabuDB(conf);
+            db = BabuDBFactory.createReplicatedBabuDB(conf);
             
             rpcClient.start();
             rpcClient.waitForStartup();
+            
+            RPCResponse<LSN> rsp = sClient.remoteStop();
+            assertEquals(new LSN(1,0L), rsp.get());
+            RPCResponse<Object> rp = sClient.toSlave(
+                    new InetSocketAddress(address,port));
+            
+            rp.get();
         } catch (Exception e) {
             System.err.println("BEFORE-FAILED: "+e.getMessage());
             throw e;

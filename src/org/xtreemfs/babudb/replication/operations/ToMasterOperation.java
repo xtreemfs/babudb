@@ -7,10 +7,13 @@
  */
 package org.xtreemfs.babudb.replication.operations;
 
+import java.io.IOException;
+
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.toMasterRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.toMasterResponse;
 import org.xtreemfs.babudb.interfaces.utils.Serializable;
+import org.xtreemfs.babudb.replication.MasterRequestDispatcher;
 import org.xtreemfs.babudb.replication.Request;
 import org.xtreemfs.babudb.replication.RequestDispatcher;
 import org.xtreemfs.include.common.logging.Logging;
@@ -69,20 +72,33 @@ public class ToMasterOperation extends Operation {
      */
     @Override
     public void startRequest(final Request rq) {
-        //toMasterRequest request = (toMasterRequest) rq.getRequestMessage();
-        //request.getAddress()
-     //   try {
-           // org.xtreemfs.babudb.lsmdb.LSN lsn = dispatcher.dbs.restart();
-           // lsn.getSequenceNo();
-            // TODO restart of the replication
-            
-            rq.sendSuccess(new toMasterResponse());
-    /*    } catch (BabuDBException be) {
-            Logging.logError(Logging.LEVEL_ERROR, this, be);
-            rq.sendReplicationException(ErrNo.INTERNAL_ERROR);
-        }*/
-    }
 
+        if (!dispatcher.stopped) rq.sendReplicationException(ErrNo.
+                SERVICE_UNAVAILABLE, "Replication is running at the moment!");
+        else {
+            try {
+                MasterRequestDispatcher newDispatcher = 
+                    new MasterRequestDispatcher(dispatcher,dispatcher.
+                            configuration.getInetSocketAddress());
+                
+                dispatcher.dbs.getReplicationManager().renewDispatcher(
+                        newDispatcher);
+                
+                newDispatcher.continues(dispatcher.getState());
+                
+                rq.sendSuccess(new toMasterResponse());
+            } catch (IOException e) {
+                Logging.logError(Logging.LEVEL_ERROR, this, e);
+                rq.sendReplicationException(ErrNo.INTERNAL_ERROR,e.getMessage());
+            } catch (BabuDBException e) {
+                Logging.logError(Logging.LEVEL_ERROR, this, e);
+                rq.sendReplicationException(ErrNo.INTERNAL_ERROR,
+                        "Replication could not be restarted, because: " +
+                        e.getMessage());
+            }
+        }
+    }
+    
     /*
      * (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.operations.Operation#canBeDisabled()

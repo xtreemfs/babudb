@@ -20,8 +20,7 @@ import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.sandbox.CLIParser.CliOption;
 import org.xtreemfs.include.common.config.BabuDBConfig;
-import org.xtreemfs.include.common.config.MasterConfig;
-import org.xtreemfs.include.common.config.SlaveConfig;
+//import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
@@ -49,7 +48,7 @@ public class BabuDBBenchmark {
     private final int minKeyLength;
     private final int maxKeyLength;
     
-    private final BabuDB slaveDB;
+   // private final BabuDB slaveDB;
 
     private final byte[] payload;
 
@@ -72,13 +71,13 @@ public class BabuDBBenchmark {
             throw new IllegalArgumentException(maxKeyLength+" is too short to create enough unique keys for "+numKeys+" keys");
 
         //use one worker because we use one database TODO rebuild
-        //database = BabuDBFactory.createBabuDB(new BabuDBConfig(dbDir, dbDir, numDBWorkers, 1, 0, syncMode, pseudoModeWait, maxQ));
-        SlaveConfig sConf = new SlaveConfig("config/slave.properties");
-        sConf.read();
-        MasterConfig conf = new MasterConfig("config/master.properties");
+        database = BabuDBFactory.createBabuDB(new BabuDBConfig(dbDir, dbDir, numDBWorkers, 1, 0, syncMode, pseudoModeWait, maxQ));
+        /*
+        ReplicationConfig conf = new ReplicationConfig("config/replication.properties");
         conf.read();
         database = BabuDBFactory.createBabuDB(conf);
-        slaveDB = BabuDBFactory.createBabuDB(sConf);
+        slaveDB = BabuDBFactory.createBabuDB(conf);
+        */
         
         for (int i = 1; i <= numThreads; i++)
         database.getDatabaseManager().createDatabase(""+i, 1);
@@ -109,6 +108,7 @@ public class BabuDBBenchmark {
     public void shutdown() throws Exception {  
         database.shutdown();
         
+        /*
         try {
             // wait until the queue is runs empty
             Thread.sleep(20000);
@@ -118,6 +118,7 @@ public class BabuDBBenchmark {
             e.printStackTrace();
         }
         slaveDB.shutdown(); 
+        */
     }
 
     public double benchmarkInserts() throws Exception {

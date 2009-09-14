@@ -80,9 +80,11 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
     /** counter for eventually running requests */
     private final AtomicInteger             activeRequests = new AtomicInteger(0);
     /** flag that determines if the replication is out of service at the moment */
-    protected volatile boolean              stopped = true;
+    public volatile boolean                 stopped = true;
     
     private SimplifiedBabuDBRequestListener listener = null;
+    
+    public final ReplicationConfig          configuration;
 /*
  * stages
  */
@@ -91,14 +93,14 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
      * Initializing of the RequestDispatcher.
      * 
      * @param name
-     * @param config
      * @param dbs
      * @throws IOException
      */
-    public RequestDispatcher(String name, ReplicationConfig config, BabuDB dbs) throws IOException {
+    public RequestDispatcher(String name, BabuDB dbs) throws IOException {
         this.name = name;
         this.dbs = dbs;
         this.permittedClients = new LinkedList<InetAddress>();
+        this.configuration = (ReplicationConfig) dbs.getConfig();
         
         // ---------------------
         // initialize operations
@@ -124,20 +126,60 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
         // initialize communication stages
         // -------------------------------
 
-        rpcServer = new RPCNIOSocketServer(config.getPort(), config.getAddress(), this, config.getSSLOptions());
+        rpcServer = new RPCNIOSocketServer(configuration.getPort(), 
+                configuration.getInetSocketAddress().getAddress(), this, 
+                configuration.getSSLOptions());
         rpcServer.setLifeCycleListener(this);
         
-        rpcClient = new RPCNIOSocketClient(config.getSSLOptions(), 5000, 5*60*1000);
+        rpcClient = new RPCNIOSocketClient(configuration.getSSLOptions(), 
+                5000, 5*60*1000);
         rpcClient.setLifeCycleListener(this);
         
         // -------------------------------
         // fill the permitted clients list
         // -------------------------------
+           
+        for (InetSocketAddress slave : configuration.getParticipants())
+            if (!slave.equals(configuration.getInetSocketAddress()))
+                permittedClients.add(slave.getAddress());
+    }
+    
+    /**
+     * Uses the given old dispatcher to copy its fields for the new one.
+     * 
+     * @param name
+     * @param oldDispatcher
+     */
+    public RequestDispatcher(String name, RequestDispatcher oldDispatcher) {
+        this.rpcServer = oldDispatcher.rpcServer;
+        this.rpcServer.updateRequestDispatcher(this);
+        this.rpcServer.setLifeCycleListener(this);
+        this.rpcClient = oldDispatcher.rpcClient;
+        this.rpcClient.setLifeCycleListener(this);
+        this.permittedClients = oldDispatcher.permittedClients;
+        this.name = name;
+        this.dbs = oldDispatcher.dbs;
+        this.configuration = oldDispatcher.configuration;
         
-        permittedClients.add(config.getMaster().getAddress());       
-        for (InetSocketAddress slave : config.getSlaves()){
-            permittedClients.add(slave.getAddress());
-        }
+        // ---------------------
+        // initialize operations
+        // ---------------------
+        
+        this.operations = new HashMap<Integer, Operation>();
+        
+        Operation op = new StateOperation(this);
+        this.operations.put(op.getProcedureId(), op);
+        
+        op = new RemoteStopOperation(this);
+        this.operations.put(op.getProcedureId(), op);
+        
+        op = new ToSlaveOperation(this);
+        this.operations.put(op.getProcedureId(), op);
+        
+        op = new ToMasterOperation(this);
+        this.operations.put(op.getProcedureId(), op);
+        
+        initializeOperations();
     }
 
     /**
@@ -406,10 +448,10 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
      * @author flangner
      * @since 08/07/2009
      */
-    public class DispatcherState {
+    public static class DispatcherState {
         
         public final LSN latest;
-        public final BlockingQueue<StageRequest> requestQueue;
+        public BlockingQueue<StageRequest> requestQueue;
         
         DispatcherState(LSN latest, BlockingQueue<StageRequest> backupQueue) {
             this.latest = latest;

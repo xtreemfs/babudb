@@ -136,8 +136,8 @@ public class StateClient extends ONCRPCClient {
      * @return the response proxy.
      */
     @SuppressWarnings("unchecked")
-    public RPCResponse<Object> toMaster (InetSocketAddress address) {
-        toMasterRequest rq = new toMasterRequest(new InetAddress(address.getHostName(),address.getPort()));
+    public RPCResponse<Object> toMaster () {
+        toMasterRequest rq = new toMasterRequest();
         
         RPCResponse<Object> r = (RPCResponse<Object>) sendRequest(null, rq.getTag(), rq, new RPCResponseDecoder<Object>() {
         

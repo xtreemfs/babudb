@@ -7,7 +7,6 @@
  */
 package org.xtreemfs.babudb.replication;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Collections;
@@ -26,15 +25,12 @@ import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.clients.StateClient;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCException;
 import org.xtreemfs.babudb.log.LogEntry;
-import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherState;
 import org.xtreemfs.babudb.replication.SlavesStates.NotEnoughAvailableSlavesException;
 import org.xtreemfs.babudb.replication.stages.StageRequest;
 import org.xtreemfs.include.common.TimeSync;
-import org.xtreemfs.include.common.config.MasterConfig;
 import org.xtreemfs.include.common.config.ReplicationConfig;
-import org.xtreemfs.include.common.config.SlaveConfig;
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
 import org.xtreemfs.include.foundation.oncrpc.client.RPCResponseAvailableListener;
@@ -50,24 +46,23 @@ import org.xtreemfs.include.foundation.oncrpc.client.RPCResponseAvailableListene
 
 public class ReplicationManager {
     
-    private RequestDispatcher dispatcher;
-    private final BabuDB dbs;
+    private RequestDispatcher   dispatcher;
     
     /**
-     * For setting up the {@link BabuDB} with replication. 
+     * <p>For setting up the {@link BabuDB} with replication. 
+     * Replication instance will be remaining stopped and in slave-mode.</p>
      * 
-     * @param config
      * @param dbs
      * @param initial
      * @throws IOException
+     * @throws InterruptedException 
      */
-    public ReplicationManager(ReplicationConfig config, BabuDB dbs, LSN initial) throws IOException {
-        this.dbs = dbs;
-        TimeSync.initialize(config.getLocalTimeRenew());
-        if (config instanceof MasterConfig)
-            this.dispatcher = new MasterRequestDispatcher((MasterConfig) config, dbs, initial);
-        else 
-            this.dispatcher = new SlaveRequestDispatcher((SlaveConfig) config, dbs, initial);
+    public ReplicationManager(BabuDB dbs, LSN initial) 
+        throws IOException, InterruptedException {
+        TimeSync.initialize(((ReplicationConfig) dbs.getConfig()).
+                getLocalTimeRenew());
+        this.dispatcher = new SlaveRequestDispatcher(dbs, 
+                new DispatcherState(initial));
     }
     
 /*
@@ -159,46 +154,77 @@ public class ReplicationManager {
      * @throws ONCRPCException 
      * @throws BabuDBException 
      */
-    public void declareToMaster(MasterConfig conf) throws NotEnoughAvailableSlavesException, IOException, ONCRPCException, InterruptedException, BabuDBException {
+    public void declareToMaster() throws 
+        NotEnoughAvailableSlavesException, IOException, ONCRPCException, 
+        InterruptedException, BabuDBException {
+        
         if (dispatcher.isMaster) return;
-        
-        // stop the slaves and get their states
-        Map<InetSocketAddress,LSN> states = stopAll(conf.getSlaves());
-        if (states.size()<conf.getSyncN()) throw new NotEnoughAvailableSlavesException("to get a state from");
-        
-        // if one of them is more up to date, then synchronize with it
-        List<LSN> values = new LinkedList<LSN>(states.values());
-        Collections.sort(values);
-        LSN latest = values.get(values.size()-1);
-        
-        // use a remote backup directory
-        String backupDir = new File(conf.getBaseDir()).getParent()+File.separator+"RBACKUP";
         
         // stop the replication locally
         DispatcherState state = stop();
         if (state.requestQueue != null)
             for (StageRequest rq : state.requestQueue)
                 rq.free();
+        state.requestQueue = null;
         
-        if (latest.compareTo(state.latest) > 0) {
-            for (Entry<InetSocketAddress,LSN> entry : states.entrySet()) {
-                if (entry.getValue().equals(latest)) {
-                    changeConfiguration(new SlaveConfig(conf,entry.getKey(),backupDir));
-                    StateClient c = new StateClient(dispatcher.rpcClient, entry.getKey());
-                    c.toMaster(conf.getMaster()).get();
-                    
-                    ((SlaveRequestDispatcher) dispatcher).synchronize(latest);
-                    c.remoteStop().get();
-                    break;
+        this.dispatcher = new SlaveRequestDispatcher(this.dispatcher);
+        SlaveRequestDispatcher lDisp = (SlaveRequestDispatcher) dispatcher;
+        
+        // get a list of the registered slaves
+        List<InetSocketAddress> slaves = new LinkedList<InetSocketAddress>(
+                dispatcher.configuration.getParticipants());
+        slaves.remove(dispatcher.configuration.getInetSocketAddress());
+        
+        if (slaves.size() > 0) {
+            // stop the slaves and get their states
+            Map<InetSocketAddress,LSN> states = stopAll(slaves);
+            if (states.size()<dispatcher.configuration.getSyncN()) throw 
+                new NotEnoughAvailableSlavesException("to get a state from");
+            
+            if (states.size() > 0) {                
+                // if one of them is more up to date, then synchronize with it
+                List<LSN> values = new LinkedList<LSN>(states.values());
+                Collections.sort(values);
+                LSN latest = values.get(values.size()-1);
+                
+                if (latest.compareTo(state.latest) > 0) {
+                    for (Entry<InetSocketAddress,LSN> entry : states.entrySet()) {
+                        if (entry.getValue().equals(latest)) {
+                            lDisp.coin(entry.getKey());
+                            StateClient c = new StateClient(dispatcher.rpcClient, 
+                                    entry.getKey());
+                            RPCResponse<Object> rp = null;
+                            try {
+                                rp = c.toMaster();
+                                rp.get();
+                            } finally {
+                                if (rp!=null) rp.freeBuffers();
+                            }
+                            
+                            lDisp.synchronize(state.latest, latest);
+                            
+                            RPCResponse<LSN> rps = null;
+                            try {
+                                rps = c.remoteStop();
+                                rps.get();
+                            } finally {
+                                if (rps!=null) rps.freeBuffers();
+                            }
+                            break;
+                        }
+                    }
                 }
+                
+                
             }
+            // put them all into slave-mode
+            allToSlaves(slaves, dispatcher.configuration.getSyncN(), 
+                    dispatcher.configuration.getInetSocketAddress());
         }
-        
-        // put them all into slave-mode
-        allToSlaves(conf.getSlaves(), conf.getSyncN(), conf.getMaster());
-        
-        // reset the master
-        changeConfiguration(conf);
+        // reset the new master
+        this.dispatcher = new MasterRequestDispatcher(dispatcher, 
+                dispatcher.configuration.getInetSocketAddress());        
+        restart(state);
     }
        
     /**
@@ -257,6 +283,24 @@ public class ReplicationManager {
         dispatcher.shutdown();
     }
     
+    /**
+     * Used to remotely renew the request dispatcher to change its behavior.
+     * 
+     * @param dispatcher
+     */
+    public void renewDispatcher (RequestDispatcher dispatcher) {
+        this.dispatcher = dispatcher;
+    }
+    
+    /**
+     * 
+     * @return true, if the dispatcher is running at the moment, or false,
+     *              if it is disabled.
+     */
+    public boolean isRunning() {
+        return !dispatcher.stopped;
+    }
+    
 /*
  * private methods
  */
@@ -301,6 +345,8 @@ public class ReplicationManager {
                             if (openRequests.decrementAndGet() < (syncN-synced.get()))
                                 openRequests.notify();
                         }
+                    } finally {
+                        r.freeBuffers();
                     }
                 }
             });
@@ -346,7 +392,9 @@ public class ReplicationManager {
                 LSN val = rps[i].get();
                 result.put(babuDBs.get(i), val);
             } catch (Exception e) {
-                result.put(babuDBs.get(i), null);
+                Logging.logMessage(Logging.LEVEL_ERROR, this, "'%s' could not" +
+                		" be stopped, because: %s", babuDBs.get(i).toString(), 
+                		e.getMessage());
             } finally {
                 if (rps[i]!=null) rps[i].freeBuffers();
             }
@@ -354,30 +402,4 @@ public class ReplicationManager {
         
         return result;
     }
-    
-    /**
-     * <p>Changes the replication configuration synchronously.</p>
-     * <p>Makes a new checkPoint and increments the viewID, 
-     * if a <code>config</code> is a {@link MasterConfig}.</p>
-     * 
-     * @param config
-     * @throws IOException
-     * @throws BabuDBException 
-     */
-    private void changeConfiguration(ReplicationConfig config) throws IOException, BabuDBException {
-        shutdown();        
-        
-        DispatcherState lastState = dispatcher.getState();        
-        if (config instanceof MasterConfig) {
-            ((CheckpointerImpl) dbs.getCheckpointer()).checkpoint(true);
-            dispatcher = new MasterRequestDispatcher((MasterConfig) config, dbs, lastState);
-        } else if (config instanceof SlaveConfig) {
-            ((CheckpointerImpl) dbs.getCheckpointer()).checkpoint(false);
-            DirectFileIO.replayBackupFiles((SlaveConfig) config);
-            dispatcher = new SlaveRequestDispatcher((SlaveConfig) config, dbs, lastState);
-        } else 
-            assert(false);
-        
-        initialize();
-    } 
 }

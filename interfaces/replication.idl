@@ -21,7 +21,7 @@ module org # 1000
 	  // shared
 	  LSN state() # 1;							// state request from master/slave 
 	  LSN remoteStop() # 2;							// stop request from master/slave
-	  void toMaster(InetAddress address) # 3;				// sets a BabuDB into a pseudo-master-mode
+	  void toMaster() # 3;							// sets a BabuDB into a pseudo-master-mode
 	  void toSlave(InetAddress address) # 4; 				// sets a BabuDB into the slave-mode
 
 	  // master

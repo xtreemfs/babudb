@@ -13,6 +13,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.xtreemfs.babudb.SimplifiedBabuDBRequestListener;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
@@ -66,7 +67,9 @@ public class ReplicationStage extends LifeCycleThread {
     private final Map<LogicID, Logic>           logics;
     
     /** Counter for the number of tries needed to perform an operation */
-    private int tries = 0;
+    private int                                 tries = 0;
+    
+    private SimplifiedBabuDBRequestListener     listener = null;
     
     /**
      * 
@@ -75,8 +78,10 @@ public class ReplicationStage extends LifeCycleThread {
      * @param queue - the backup of an existing queue.
      * @param last - to load from.
      */
-    public ReplicationStage(SlaveRequestDispatcher dispatcher, int max_q, BlockingQueue<StageRequest> queue, LSN last) {
+    public ReplicationStage(SlaveRequestDispatcher dispatcher, int max_q, 
+            BlockingQueue<StageRequest> queue, LSN last) {
         super("ReplicationStage");
+        
         if (queue!=null) {
             this.q = queue;
             this.numRequests = new AtomicInteger(queue.size());
@@ -168,6 +173,11 @@ public class ReplicationStage extends LifeCycleThread {
     public void setLogic(LogicID lgc, String reason) {
         Logging.logMessage(Logging.LEVEL_INFO, this, "Replication logic changed: %s, because: %s", lgc.toString(), reason);
         this.logicID = lgc;
+        if (listener != null && lgc.equals(BASIC)) listener.finished(null);
+    }
+    
+    public void setLogic(LogicID lgc, SimplifiedBabuDBRequestListener listener) {
+        setLogic(lgc, "manually synchronization");
     }
     
     /**

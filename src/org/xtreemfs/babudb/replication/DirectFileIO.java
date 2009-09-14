@@ -13,7 +13,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 
-import org.xtreemfs.include.common.config.SlaveConfig;
+import org.xtreemfs.include.common.config.ReplicationConfig;
 
 /**
  * <p>Methods to perform direct file Operations.<br><br>
@@ -32,7 +32,7 @@ public class DirectFileIO {
      * 
      * @param configuration
      */
-    public static void removeBackupFiles(SlaveConfig configuration) {
+    public static void removeBackupFiles(ReplicationConfig configuration) {
         File backupDir = new File(configuration.getBackupDir());
         if (backupDir.exists()) { 
             File backupLock = new File (backupDir.getPath()+File.separator+BACKUP_LOCK_FILE);
@@ -48,7 +48,7 @@ public class DirectFileIO {
      * @param configuration
      * @throws IOException 
      */
-    public static void replayBackupFiles(SlaveConfig configuration) throws IOException {
+    public static void replayBackupFiles(ReplicationConfig configuration) throws IOException {
         File backupDir = new File(configuration.getBackupDir());
         if (backupDir.exists()) {
             File backupLock = new File (backupDir.getPath()+File.separator+BACKUP_LOCK_FILE);
@@ -79,7 +79,7 @@ public class DirectFileIO {
      * @param configuration
      * @throws IOException
      */
-    public static void backupFiles(SlaveConfig configuration) throws IOException {
+    public static void backupFiles(ReplicationConfig configuration) throws IOException {
         File backupDir = new File(configuration.getBackupDir());
         File baseDir = new File(configuration.getBaseDir());
         File logDir = new File(configuration.getDbLogDir());

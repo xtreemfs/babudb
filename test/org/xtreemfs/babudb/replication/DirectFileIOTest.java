@@ -18,7 +18,7 @@ import java.io.IOException;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.xtreemfs.include.common.config.SlaveConfig;
+import org.xtreemfs.include.common.config.ReplicationConfig;
 
 import static org.xtreemfs.babudb.replication.DirectFileIO.*;
 
@@ -30,7 +30,7 @@ import static org.xtreemfs.babudb.replication.DirectFileIO.*;
 
 public class DirectFileIOTest {
 
-    private static SlaveConfig conf;
+    private static ReplicationConfig conf;
     
     // define the test data
     String baseFile = "base.file";
@@ -45,7 +45,7 @@ public class DirectFileIOTest {
     
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
-        conf = new SlaveConfig("config/slave.properties");
+        conf = new ReplicationConfig("config/replication.properties");
         conf.read();
     }
     

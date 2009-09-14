@@ -7,13 +7,14 @@
  */
 package org.xtreemfs.babudb.replication.operations;
 
-import org.xtreemfs.babudb.BabuDBException;
+import java.net.InetSocketAddress;
+
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.toSlaveRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.toSlaveResponse;
 import org.xtreemfs.babudb.interfaces.utils.Serializable;
 import org.xtreemfs.babudb.replication.Request;
 import org.xtreemfs.babudb.replication.RequestDispatcher;
-import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.babudb.replication.SlaveRequestDispatcher;
 
 /**
  * {@link Operation} to request the latest {@link org.xtreemfs.babudb.lsmdb.LSN} on a list of {@link BabuDB}s.
@@ -69,17 +70,21 @@ public class ToSlaveOperation extends Operation {
      */
     @Override
     public void startRequest(final Request rq) {
-      //  try {
-          //  org.xtreemfs.babudb.lsmdb.LSN lsn = dispatcher.dbs.restart();
-          //  lsn.getSequenceNo();
-            // TODO restart of the replication
+        toSlaveRequest request = (toSlaveRequest) rq.getRequestMessage();
+        
+        if (!dispatcher.stopped) rq.sendReplicationException(ErrNo.
+                SERVICE_UNAVAILABLE, "Replication is running at the moment!");
+        else {
+            InetSocketAddress masterAddress = new InetSocketAddress(request.
+                    getAddress().getAddress(),request.getAddress().getPort());
             
+            SlaveRequestDispatcher newDispatcher = new SlaveRequestDispatcher(
+                    dispatcher);
+            
+            dispatcher.dbs.getReplicationManager().renewDispatcher(newDispatcher);
+            newDispatcher.coin(masterAddress);
             rq.sendSuccess(new toSlaveResponse());
-            /*
-        } catch (BabuDBException be) {
-            Logging.logError(Logging.LEVEL_ERROR, this, be);
-            rq.sendReplicationException(ErrNo.INTERNAL_ERROR);
-        }*/
+        }
     }
 
     /*

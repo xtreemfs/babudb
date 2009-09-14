@@ -9,8 +9,11 @@ package org.xtreemfs.babudb.replication;
 
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.heartbeatRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.loadRequest;
+import org.xtreemfs.babudb.interfaces.ReplicationInterface.remoteStopRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicaRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateRequest;
+import org.xtreemfs.babudb.interfaces.ReplicationInterface.toMasterRequest;
+import org.xtreemfs.babudb.interfaces.ReplicationInterface.toSlaveRequest;
 
 public final class TestData {
     public final static String testDB = "testDB";
@@ -27,4 +30,8 @@ public final class TestData {
     public static final int heartbeatOperation = new heartbeatRequest().getTag();
     public static final int replicaOperation = new replicaRequest().getTag();
     public static final int loadOperation = new loadRequest().getTag();
+    
+    public static final int toMasterOperation = new toMasterRequest().getTag();
+    public static final int toSlaveOperation = new toSlaveRequest().getTag();
+    public static final int remoteStopOperation = new remoteStopRequest().getTag();
 }

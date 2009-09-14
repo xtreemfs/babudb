@@ -85,9 +85,9 @@ public class RPCNIOSocketServer extends LifeCycleThread {
     private volatile boolean quit;
 
     /**
-     * The receiver that gets all incomming requests.
+     * The receiver that gets all incoming requests.
      */
-    private final RPCServerRequestListener receiver;
+    private RPCServerRequestListener receiver;
 
     /**
      * sslOptions if SSL is enabled, null otherwise
@@ -647,5 +647,9 @@ public class RPCNIOSocketServer extends LifeCycleThread {
 
     public long getPendingRequests() {
         return this.pendingRequests;
+    }
+    
+    public void updateRequestDispatcher(RPCServerRequestListener dispatcher) {
+        this.receiver = dispatcher;
     }
 }

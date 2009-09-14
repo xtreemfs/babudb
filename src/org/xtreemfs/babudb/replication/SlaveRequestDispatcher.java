@@ -8,6 +8,8 @@
 package org.xtreemfs.babudb.replication;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
@@ -22,7 +24,7 @@ import org.xtreemfs.babudb.replication.operations.StateOperation;
 import org.xtreemfs.babudb.replication.stages.HeartbeatThread;
 import org.xtreemfs.babudb.replication.stages.ReplicationStage;
 import org.xtreemfs.babudb.replication.stages.logic.LogicID;
-import org.xtreemfs.include.common.config.SlaveConfig;
+import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
@@ -35,75 +37,66 @@ import org.xtreemfs.include.common.logging.Logging;
 
 public class SlaveRequestDispatcher extends RequestDispatcher {
         
-    public final SlaveConfig    configuration;
-    public final MasterClient   master;
+    public MasterClient     master;
     
     /*
      * stages
      */
-    public ReplicationStage     replication;
-    public HeartbeatThread      heartbeat;
+    public ReplicationStage replication;
+    public HeartbeatThread  heartbeat;
     
     /**
-     * Initial setup.
+     * Initial setup. The master will not be registered at this point.
      * 
-     * @param config
      * @param dbs
-     * @param initial
+     * @param state - to start with.
      * @throws IOException
      */
-    public SlaveRequestDispatcher(SlaveConfig config, BabuDB dbs, LSN initial) throws IOException {
-        super("Slave", config, dbs);
+    public SlaveRequestDispatcher(BabuDB dbs, DispatcherState state) 
+        throws IOException {
+        
+        super("Slave", dbs);
         this.isMaster = false;
-        this.configuration = config;
-                
+        
         // --------------------------
         // initialize internal stages
         // --------------------------
         
-        this.replication = new ReplicationStage(this, config.getMaxQ(), null, initial);   
-        this.heartbeat = new HeartbeatThread(this, initial);
-        
-        // --------------------------
-        // register the master client
-        // --------------------------
-        
-        this.master = new MasterClient(rpcClient,config.getMaster());
+        this.replication = new ReplicationStage(this, ((ReplicationConfig) dbs.
+                getConfig()).getMaxQ(), null, state.latest);   
+        this.heartbeat = new HeartbeatThread(this, state.latest);
     }
     
     /**
-     * Reset configuration.
+     * Constructor to change the {@link RequestDispatcher} behavior to
+     * master using the old dispatcher.
      * 
-     * @param config
-     * @param dbs
-     * @param backupState - needed if the dispatcher shall be reset. Includes the initial LSN.
-     * @throws IOException
+     * @param oldDispatcher
      */
-    public SlaveRequestDispatcher(SlaveConfig config, BabuDB dbs, DispatcherState backupState) throws IOException {
-        super("Slave", config, dbs);
-        this.configuration = config;
+    public SlaveRequestDispatcher(RequestDispatcher oldDispatcher) {
+        super("Slave", oldDispatcher);
+        LSN latest = oldDispatcher.getState().latest;
         
         // --------------------------
         // initialize internal stages
         // --------------------------
         
-        this.replication = new ReplicationStage(this, config.getMaxQ(), backupState.requestQueue, backupState.latest);   
-        this.heartbeat = new HeartbeatThread(this, backupState.latest);
+        this.replication = new ReplicationStage(this, ((ReplicationConfig) dbs.
+                getConfig()).getMaxQ(), null, latest);   
+        this.heartbeat = new HeartbeatThread(this, latest);
+    }
+    
+    /**
+     * Coin the {@link SlaveRequestDispatcher} on the given master.
+     * 
+     * @param master
+     */
+    public void coin(InetSocketAddress master) {
         
         // --------------------------
         // register the master client
         // --------------------------
-        
-        this.master = new MasterClient(rpcClient,config.getMaster());
-    }
-    
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.RequestDispatcher#start()
-     */
-    @Override
-    public void start() {
-        super.start();
+        this.master = new MasterClient(rpcClient, master);
         try {
             replication.start();
             heartbeat.start();
@@ -115,6 +108,17 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
             Logging.logMessage(Logging.LEVEL_ERROR, this, ex.getMessage());
             System.exit(1);
         }
+        this.stopped = false;
+    }
+    
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#start()
+     */
+    @Override
+    public void start() {
+        super.start();
+        this.stopped = true;
     }
     
     /*
@@ -175,11 +179,50 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
     /**
      * Performs a load on the master to synchronize with the latest state.
      * 
-     * @param lsn
+     * @param from
+     * @param to
+     * @throws BabuDBException 
+     * @throws InterruptedException 
      */
-    public void synchronize(LSN lsn){
-        replication.setLogic(LogicID.LOAD, "Manual synchronization to LSN "+lsn.toString());
-        // TODO wait for load-finish
+    public void synchronize(LSN from, LSN to) throws BabuDBException, InterruptedException{
+        final AtomicBoolean ready = new AtomicBoolean(false);
+        replication.setLogic(LogicID.LOAD, new SimplifiedBabuDBRequestListener() {
+        
+            @Override
+            public void finished(BabuDBException error) {
+                synchronized (ready) {
+                    ready.set(true);
+                    ready.notify();
+                }
+            }
+        });
+        continues(new DispatcherState(from));
+        
+        synchronized (ready) {
+            if (!ready.get())
+                ready.wait();
+            
+            ready.set(false);
+        }
+        
+        pauses(new SimplifiedBabuDBRequestListener() {
+        
+            @Override
+            public void finished(BabuDBException error) {
+                synchronized (ready) {
+                    ready.set(true);
+                    ready.notify();
+                }
+            }
+        });
+        
+        synchronized (ready) {
+            if (!ready.get())
+                ready.wait();
+        }
+        
+        assert(to.equals(getState().latest)) : "Synchronization failed: "
+            +to.toString()+" != "+getState().latest;
     }
     
     /*
@@ -216,6 +259,10 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
      */
     @Override
     public void continues(DispatcherState state) throws BabuDBException {
+        if (this.master == null) throw new UnsupportedOperationException(
+                "Cannot continue the replication, while it was not coined." +
+                "Use coin() instead!");
+        
         this.replication = new ReplicationStage(this,configuration.getMaxQ(),state.requestQueue,state.latest);
         this.heartbeat = new HeartbeatThread(this,state.latest);
         try {

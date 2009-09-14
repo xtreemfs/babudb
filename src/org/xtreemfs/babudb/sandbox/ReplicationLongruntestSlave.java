@@ -10,9 +10,9 @@ package org.xtreemfs.babudb.sandbox;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
@@ -21,7 +21,7 @@ import org.xtreemfs.babudb.interfaces.ReplicationInterface.ReplicationInterface;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherState;
 import org.xtreemfs.babudb.sandbox.ContinuesRandomGenerator.LookupGroup;
-import org.xtreemfs.include.common.config.SlaveConfig;
+import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
@@ -48,11 +48,11 @@ public class ReplicationLongruntestSlave {
     public final static int NUM_WKS = 1;
     
     public final static int MAX_REPLICATION_Q_LENGTH = 0;
-    public final static String BACKUP_DIR = ReplicationLongrunTestConfig.PATH+"backup";
+    public final static String BACKUP_DIR = ReplicationLongrunTestConfig.PATH+"Sbackup";
     
     private static ContinuesRandomGenerator generator;
     private static BabuDB DBS;
-    private static SlaveConfig CONFIGURATION;
+    private static ReplicationConfig CONFIGURATION;
     
     /**
      * 
@@ -63,7 +63,7 @@ public class ReplicationLongruntestSlave {
         System.out.println("LONGRUNTEST OF THE BABUDB in slave-mode");
         Logging.start(Logging.LEVEL_WARN);
         
-        if (args.length!=3) usage();
+        if (args.length!=2) usage();
         
         // delete existing files
         Process p = Runtime.getRuntime().exec("rm -rf "+PATH);
@@ -79,20 +79,21 @@ public class ReplicationLongruntestSlave {
             error("Illegal seed: "+args[0]);
         }
         
-        InetSocketAddress master = parseAddress(args[1]);
-        
-        List<InetSocketAddress> slaves = new LinkedList<InetSocketAddress>();    
-        if (args[2].indexOf(",") == -1)
-            slaves.add(parseAddress(args[2]));
+        Set<InetSocketAddress> participants = new HashSet<InetSocketAddress>();    
+        if (args[1].indexOf(",") == -1)
+            participants.add(parseAddress(args[1]));
         else
-            for (String adr : args[2].split(","))
-                slaves.add(parseAddress(adr));
+            for (String adr : args[1].split(","))
+                participants.add(parseAddress(adr));
         
-        CONFIGURATION = new SlaveConfig(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, 
-                ReplicationInterface.DEFAULT_SLAVE_PORT, InetAddress.getLocalHost(), master, slaves, 50, null, 
-                MAX_REPLICATION_Q_LENGTH, BACKUP_DIR);
+        participants.add(new InetSocketAddress(InetAddress.getByAddress(
+                new byte[]{127,0,0,1}),ReplicationInterface.DEFAULT_SLAVE_PORT));
         
-        DBS = (BabuDB) BabuDBFactory.createSlaveBabuDB(CONFIGURATION);
+        CONFIGURATION = new ReplicationConfig(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, 
+                ReplicationInterface.DEFAULT_SLAVE_PORT, InetAddress.getByAddress(new byte[]{127,0,0,1}), participants, 50, null, 
+                MAX_REPLICATION_Q_LENGTH, 0,BACKUP_DIR);
+        
+        DBS = (BabuDB) BabuDBFactory.createReplicatedBabuDB(CONFIGURATION);
         generator = new ContinuesRandomGenerator(seed, ReplicationLongrunTestConfig.MAX_SEQUENCENO);
         Random random = new Random();
         
@@ -103,14 +104,14 @@ public class ReplicationLongruntestSlave {
             Thread.sleep(sleepInterval);
         
             int event = random.nextInt(100);
-            if (event == -1) {
-                // disabled
+            if (!DBS.getReplicationManager().isRunning()) {
+                System.out.println("The slave is currently inactive.");
             } else if (event<P_CONSISTENCY_CHECK) {
                 System.out.print("CONISTENCY CHECK:");
                 performConsistencyCheck();  
             }else{
                 System.out.print("CLEAN RESTART:");
-                performCleanAndRestart(random, master, slaves);
+                performCleanAndRestart(random);
             } 
         } 
     }
@@ -119,13 +120,12 @@ public class ReplicationLongruntestSlave {
      * Restarts the BabuDB with complete data-loss.
      * Remains stopped a random down-time.
      * 
-     * @param master
-     * @param slaves
+     * @param random
      * @throws IOException
      * @throws InterruptedException
      * @throws BabuDBException
      */
-    private static void performCleanAndRestart(Random random, InetSocketAddress master, List<InetSocketAddress> slaves) throws IOException, InterruptedException, BabuDBException{
+    private static void performCleanAndRestart(Random random) throws IOException, InterruptedException, BabuDBException{
         DispatcherState state = DBS.getReplicationManager().stop();
         
         int downTime = random.nextInt(MAX_DOWN_TIME-MIN_DOWN_TIME)+MIN_DOWN_TIME;
@@ -213,10 +213,9 @@ public class ReplicationLongruntestSlave {
      *  Prints out usage informations and terminates the application.
      */
     public static void usage(){
-            System.out.println("BabuDBRandomSlaveTest <seed> <master_address:port> <slave_address:port>[,<slave_address:port>]");
+            System.out.println("BabuDBRandomSlaveTest <seed> <participant_address:port>[,<participant_address:port>]");
             System.out.println("  "+"<seed> long value from which the scenario will be generated");
-            System.out.println("  "+"<master_address:port> the IP or URL to the master BabuDB and the port it is listening at");
-            System.out.println("  "+"<slave_address:port> same as for the master for all available slaves separated by ','");
+            System.out.println("  "+"<participant_address:port> replication participants separated by ','");
             System.exit(1);
     }
 }

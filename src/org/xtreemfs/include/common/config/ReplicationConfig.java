@@ -6,11 +6,13 @@
 
 package org.xtreemfs.include.common.config;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.Properties;
 
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
@@ -24,21 +26,34 @@ import org.xtreemfs.include.foundation.pinky.SSLOptions;
  *
  */
 
-public abstract class ReplicationConfig extends BabuDBConfig {
+public class ReplicationConfig extends BabuDBConfig {
     
-    protected int         port;
-    
-    protected InetAddress address;
+    protected InetSocketAddress address;
         
-    protected SSLOptions  sslOptions;
+    protected SSLOptions        sslOptions;
     
-    protected List<InetSocketAddress>   slaves;
+    protected Set<InetSocketAddress>   participants;
     
-    protected InetSocketAddress         master;
+    protected int               maxQ;
     
-    protected int         maxQ;
+    protected int               localTimeRenew;
     
-    protected int         localTimeRenew;
+    // for master usage only
+    
+    protected int               syncN;
+    
+    /** Chunk size, for initial load of file chunks. */
+    protected int               chunkSize;
+    
+    public final static int     DEFAULT_MAX_CHUNK_SIZE = 5*1024*1024;
+    
+    // for slave usage only
+    
+    protected String            backupDir;
+    
+    /** Error message. */
+    public static final String  slaveProtection = "You are not allowed to " +
+    		"proceed this operation, because this DB is running as a slave!";
     
     public ReplicationConfig() {
         super();
@@ -52,27 +67,33 @@ public abstract class ReplicationConfig extends BabuDBConfig {
         super(filename);
     }
     
-    public ReplicationConfig(String baseDir, String logDir, int numThreads, long maxLogFileSize, 
-            int checkInterval, SyncMode mode, int pseudoSyncWait, int maxQ,
-            int port, InetAddress address, InetSocketAddress master, List<InetSocketAddress> slaves, 
-            int localTimeRenew, SSLOptions sslOptions, int repMaxQ) {
+    public ReplicationConfig(String baseDir, String logDir, int numThreads, 
+            long maxLogFileSize, int checkInterval, SyncMode mode, 
+            int pseudoSyncWait, int maxQ, int port, InetAddress address, 
+            Set<InetSocketAddress> participants, int localTimeRenew, 
+            SSLOptions sslOptions, int repMaxQ, int syncN, String backupDir) {
         
-        super(baseDir, logDir, numThreads, maxLogFileSize, checkInterval, mode, pseudoSyncWait, maxQ);
-        this.master = master;
-        this.slaves = slaves;
+        super(baseDir, logDir, numThreads, maxLogFileSize, checkInterval, mode, 
+                pseudoSyncWait, maxQ);
+        this.participants = participants;
         this.maxQ = repMaxQ;
         this.localTimeRenew = localTimeRenew;
-        this.address = address;
-        this.port = port;
+        this.address = new InetSocketAddress(address,port);
         this.sslOptions = sslOptions;
+        this.syncN = syncN;
+        this.chunkSize = DEFAULT_MAX_CHUNK_SIZE;
+        this.backupDir = backupDir;
     }
     
     public void read() throws IOException {
         super.read();
         
-        this.port = this.readRequiredInt("listen.port");
+        int port = this.readRequiredInt("listen.port");
         
-        this.address = this.readOptionalInetAddr("listen.address", null);
+        InetAddress addr = this.readOptionalInetAddr("listen.address", null);
+        
+        this.address = (addr != null) ? new InetSocketAddress(addr,port) : 
+                        new InetSocketAddress(port);
         
         this.maxQ = this.readOptionalInt("maxQ", 0);
         
@@ -80,35 +101,65 @@ public abstract class ReplicationConfig extends BabuDBConfig {
         
         if (this.readRequiredBoolean("ssl.enabled")) {
             this.sslOptions = new SSLOptions(
-                    new FileInputStream(this.readRequiredString("ssl.service_creds")),
+                    new FileInputStream(
+                            this.readRequiredString("ssl.service_creds")),
                     this.readRequiredString("ssl.service_creds.pw"), 
                     this.readRequiredString("ssl.service_creds.container"),
-                    new FileInputStream(this.readRequiredString("ssl.trusted_certs")),
+                    new FileInputStream(
+                            this.readRequiredString("ssl.trusted_certs")),
                     this.readRequiredString("ssl.trusted_certs.pw"),
                     this.readRequiredString("ssl.trusted_certs.container"),
-                    this.readRequiredBoolean("ssl.authenticationWithoutEncryption")
-                    );
+                    this.readRequiredBoolean(
+                            "ssl.authenticationWithoutEncryption"));
         }
+        
+        // read the participants
+        this.participants = new HashSet<InetSocketAddress>();
+        int number = 0;
+        this.participants.add(this.readRequiredInetAddr("participant."+number, 
+                "participant."+number+".port"));
+        number++;
+        
+        InetSocketAddress addrs;
+        while ((addrs = this.readOptionalInetSocketAddr("participant."+number, 
+                "participant."+number+".port",null))!=null){
+            
+            this.participants.add(addrs);
+            number++;
+        }
+
+        this.chunkSize = this.readOptionalInt("chunkSize", 
+                DEFAULT_MAX_CHUNK_SIZE);
+        
+        this.syncN = this.readOptionalInt("sync.n", 0);
+        
+        String backupDir = this.readRequiredString("db.backupDir");
+        if (backupDir.equals(baseDir) || backupDir.equals(dbLogDir)) 
+            throw new IOException("backup directory has to be different to " +
+            		"the dbLog directory and the base directory");   
+        
+        this.backupDir = (backupDir.endsWith(File.separator)) ? backupDir : 
+            backupDir+File.separator;
+    }
+    
+    public InetSocketAddress getInetSocketAddress() {
+        return this.address;
     }
     
     public int getPort() {
-        return this.port;
+        return this.address.getPort();
     }
 
     public InetAddress getAddress() {
-        return this.address;
+        return this.address.getAddress();
     }
     
     public SSLOptions getSSLOptions() {
         return this.sslOptions;
     }
     
-    public InetSocketAddress getMaster(){
-        return this.master;
-    }
-    
-    public List<InetSocketAddress> getSlaves(){
-        return this.slaves;
+    public Set<InetSocketAddress> getParticipants(){
+        return this.participants;
     }
 
     public int getMaxQ() {
@@ -117,5 +168,17 @@ public abstract class ReplicationConfig extends BabuDBConfig {
 
     public int getLocalTimeRenew() {
         return localTimeRenew;
+    }
+    
+    public int getSyncN(){
+        return this.syncN;
+    }
+    
+    public int getChunkSize() {
+        return this.chunkSize;
+    }
+    
+    public String getBackupDir() {
+        return backupDir;
     }
 }
