@@ -23,7 +23,6 @@ import org.xtreemfs.babudb.replication.operations.ReplicateOperation;
 import org.xtreemfs.babudb.replication.operations.StateOperation;
 import org.xtreemfs.babudb.replication.stages.HeartbeatThread;
 import org.xtreemfs.babudb.replication.stages.ReplicationStage;
-import org.xtreemfs.babudb.replication.stages.logic.LogicID;
 import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
@@ -185,8 +184,10 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
      * @throws InterruptedException 
      */
     public void synchronize(LSN from, LSN to) throws BabuDBException, InterruptedException{
+        assert(!stopped) : "The Replication may not be stopped before!";
+        
         final AtomicBoolean ready = new AtomicBoolean(false);
-        replication.setLogic(LogicID.LOAD, new SimplifiedBabuDBRequestListener() {
+        replication.manualLoad(new SimplifiedBabuDBRequestListener() {
         
             @Override
             public void finished(BabuDBException error) {
@@ -196,7 +197,6 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
                 }
             }
         });
-        continues(new DispatcherState(from));
         
         synchronized (ready) {
             if (!ready.get())

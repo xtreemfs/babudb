@@ -156,7 +156,12 @@ public class ReplicationManagerImpl implements ReplicationManager {
         if (dispatcher.isMaster) return;
         
         // stop the replication locally
-        DispatcherState state = stop();
+        DispatcherState state = null;
+        if (isRunning()) {
+            state = stop();
+        } else {
+            state = dispatcher.getState();
+        }
         if (state.requestQueue != null)
             for (StageRequest rq : state.requestQueue)
                 rq.free();
@@ -183,11 +188,12 @@ public class ReplicationManagerImpl implements ReplicationManager {
                 LSN latest = values.get(values.size()-1);
                 
                 if (latest.compareTo(state.latest) > 0) {
-                    for (Entry<InetSocketAddress,LSN> entry : states.entrySet()) {
+                    for (Entry<InetSocketAddress,LSN> entry : states.entrySet()) 
+                    {
                         if (entry.getValue().equals(latest)) {
                             lDisp.coin(entry.getKey());
-                            StateClient c = new StateClient(dispatcher.rpcClient, 
-                                    entry.getKey());
+                            StateClient c = new StateClient(
+                                    dispatcher.rpcClient, entry.getKey());
                             RPCResponse<Object> rp = null;
                             try {
                                 rp = c.toMaster();

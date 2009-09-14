@@ -30,7 +30,7 @@ public class StageRequest implements Comparable<StageRequest>{
      */
     public StageRequest(Object[] args) {
         this.args = args;
-        if (args[0] instanceof LSN)
+        if (args != null && args[0] instanceof LSN)
             this.lsn = (LSN) args[0];
         else 
             this.lsn = null;
