@@ -14,6 +14,7 @@ import org.xtreemfs.babudb.interfaces.ReplicationInterface.toMasterRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.toMasterResponse;
 import org.xtreemfs.babudb.interfaces.utils.Serializable;
 import org.xtreemfs.babudb.replication.MasterRequestDispatcher;
+import org.xtreemfs.babudb.replication.ReplicationManagerImpl;
 import org.xtreemfs.babudb.replication.Request;
 import org.xtreemfs.babudb.replication.RequestDispatcher;
 import org.xtreemfs.include.common.logging.Logging;
@@ -81,8 +82,8 @@ public class ToMasterOperation extends Operation {
                     new MasterRequestDispatcher(dispatcher,dispatcher.
                             configuration.getInetSocketAddress());
                 
-                dispatcher.dbs.getReplicationManager().renewDispatcher(
-                        newDispatcher);
+                ((ReplicationManagerImpl) dispatcher.dbs.getReplicationManager()
+                        ).renewDispatcher(newDispatcher);
                 
                 newDispatcher.continues(dispatcher.getState());
                 

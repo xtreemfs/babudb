@@ -12,6 +12,7 @@ import java.net.InetSocketAddress;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.toSlaveRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.toSlaveResponse;
 import org.xtreemfs.babudb.interfaces.utils.Serializable;
+import org.xtreemfs.babudb.replication.ReplicationManagerImpl;
 import org.xtreemfs.babudb.replication.Request;
 import org.xtreemfs.babudb.replication.RequestDispatcher;
 import org.xtreemfs.babudb.replication.SlaveRequestDispatcher;
@@ -81,7 +82,8 @@ public class ToSlaveOperation extends Operation {
             SlaveRequestDispatcher newDispatcher = new SlaveRequestDispatcher(
                     dispatcher);
             
-            dispatcher.dbs.getReplicationManager().renewDispatcher(newDispatcher);
+            ((ReplicationManagerImpl) dispatcher.dbs.getReplicationManager()).
+                        renewDispatcher(newDispatcher);
             newDispatcher.coin(masterAddress);
             rq.sendSuccess(new toSlaveResponse());
         }
