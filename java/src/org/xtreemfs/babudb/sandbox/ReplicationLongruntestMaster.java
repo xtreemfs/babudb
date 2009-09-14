@@ -10,9 +10,10 @@ package org.xtreemfs.babudb.sandbox;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.util.LinkedList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
@@ -24,7 +25,7 @@ import org.xtreemfs.babudb.lsmdb.Database;
 import org.xtreemfs.babudb.lsmdb.DatabaseManager;
 import org.xtreemfs.babudb.sandbox.ContinuesRandomGenerator.Operation;
 import org.xtreemfs.babudb.sandbox.ContinuesRandomGenerator.InsertGroup;
-import org.xtreemfs.include.common.config.MasterConfig;
+import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
@@ -45,6 +46,8 @@ public class ReplicationLongruntestMaster {
     public final static long MAX_LOG_FILE_SIZE = 512*1024; 
     // every 5 seconds
     public final static int CHECK_INTERVAL = 5;
+    
+    public final static String BACKUP_DIR = ReplicationLongrunTestConfig.PATH+"Mbackup";
     
     private static ContinuesRandomGenerator generator;
     private static BabuDB DBS;
@@ -71,23 +74,29 @@ public class ReplicationLongruntestMaster {
             error("Illegal seed: "+args[0]);
         }
         
-        List<InetSocketAddress> slaves = new LinkedList<InetSocketAddress>();    
+        Set<InetSocketAddress> participants = new HashSet<InetSocketAddress>();    
         if (args[1].indexOf(",")==-1)
-            slaves.add(parseAddress(args[1]));
+            participants.add(parseAddress(args[1]));
         else
             for (String adr : args[1].split(","))
-                slaves.add(parseAddress(adr));
+                participants.add(parseAddress(adr));
+        participants.add(new InetSocketAddress(InetAddress.getByAddress(
+                new byte[]{127,0,0,1}),ReplicationInterface.DEFAULT_MASTER_PORT));
+        
         
         generator = new ContinuesRandomGenerator(seed, ReplicationLongrunTestConfig.MAX_SEQUENCENO);
         
         Map<Integer,List<Object>> scenario = generator.getOperationsScenario();
         
-        MasterConfig config = new MasterConfig(PATH, PATH, NUM_WKS, MAX_LOG_FILE_SIZE, CHECK_INTERVAL, SyncMode.ASYNC, 0, 0, 
-                ReplicationInterface.DEFAULT_MASTER_PORT, InetAddress.getLocalHost(), 
-                new InetSocketAddress(InetAddress.getLocalHost(), ReplicationInterface.DEFAULT_MASTER_PORT), slaves, 
-                50, null, MAX_REPLICATION_Q_LENGTH, 0);
+        ReplicationConfig config = new ReplicationConfig(PATH, PATH, NUM_WKS, 
+                MAX_LOG_FILE_SIZE, CHECK_INTERVAL, SyncMode.ASYNC, 0, 0, 
+                ReplicationInterface.DEFAULT_MASTER_PORT, InetAddress.
+                getByAddress(new byte[]{127,0,0,1}), participants, 50, null, 
+                MAX_REPLICATION_Q_LENGTH, 0,BACKUP_DIR);
         
-        DBS = (BabuDB) BabuDBFactory.createMasterBabuDB(config);
+        DBS = (BabuDB) BabuDBFactory.createReplicatedBabuDB(config);
+        
+        DBS.getReplicationManager().declareToMaster();
         
         int nOmetaOp = 0;
         long metaOpTime = 0L;
@@ -212,9 +221,9 @@ public class ReplicationLongruntestMaster {
      *  Prints out usage informations and terminates the application.
      */
     public static void usage(){
-        System.out.println("ReplicationLongrungtestMaster <seed> <slave_address:port>[,<slave_address:port>]");
+        System.out.println("ReplicationLongrungtestMaster <seed> <participant_address:port>[,<participant_address:port>]");
         System.out.println("  "+"<seed> long value from which the scenario will be generated");
-        System.out.println("  "+"<slave_address:port> same as for the master for all available slaves separated by ','");
+        System.out.println("  "+"<participant_address:port> participants of the replication separated by ','");
         System.exit(1);
     }
 }

@@ -43,7 +43,6 @@ import org.xtreemfs.babudb.snapshots.SnapshotManager;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
 import org.xtreemfs.include.common.config.BabuDBConfig;
 import org.xtreemfs.include.common.config.ReplicationConfig;
-import org.xtreemfs.include.common.config.SlaveConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
@@ -128,8 +127,8 @@ public class BabuDB {
         this.dbCheckptr = new CheckpointerImpl(this);
         
         try {
-            if (conf instanceof SlaveConfig)
-                DirectFileIO.replayBackupFiles((SlaveConfig) conf);
+            if (conf instanceof ReplicationConfig)
+                DirectFileIO.replayBackupFiles((ReplicationConfig) conf);
         } catch (IOException io) {
             Logging.logMessage(Logging.LEVEL_ERROR, this, "Could not retrieve the " +
             		"slave backup files, because: ", io.getMessage());
@@ -163,10 +162,10 @@ public class BabuDB {
         LSN lastLSN = new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo() - 1);
         try {
             if (conf instanceof ReplicationConfig)
-                this.replicationManager = new ReplicationManager((ReplicationConfig) conf, this, lastLSN);
+                this.replicationManager = new ReplicationManager(this, lastLSN);
             else
                 this.replicationManager = null;
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
         }
         

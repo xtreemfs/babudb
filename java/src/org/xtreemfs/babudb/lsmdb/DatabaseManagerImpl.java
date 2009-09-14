@@ -11,7 +11,7 @@ package org.xtreemfs.babudb.lsmdb;
 import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_COPY;
 import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_CREATE;
 import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_DELETE;
-import static org.xtreemfs.include.common.config.SlaveConfig.slaveProtection;
+import static org.xtreemfs.include.common.config.ReplicationConfig.slaveProtection;
 
 import java.io.File;
 import java.io.IOException;

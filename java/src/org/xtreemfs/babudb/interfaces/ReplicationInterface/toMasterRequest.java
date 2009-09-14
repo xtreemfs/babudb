@@ -15,18 +15,14 @@ public class toMasterRequest implements org.xtreemfs.babudb.interfaces.utils.Req
     public static final int TAG = 1013;
 
     
-    public toMasterRequest() { address = new InetAddress(); }
-    public toMasterRequest( InetAddress address ) { this.address = address; }
-    public toMasterRequest( Object from_hash_map ) { address = new InetAddress(); this.deserialize( from_hash_map ); }
-    public toMasterRequest( Object[] from_array ) { address = new InetAddress();this.deserialize( from_array ); }
-
-    public InetAddress getAddress() { return address; }
-    public void setAddress( InetAddress address ) { this.address = address; }
+    public toMasterRequest() {  }
+    public toMasterRequest( Object from_hash_map ) {  this.deserialize( from_hash_map ); }
+    public toMasterRequest( Object[] from_array ) { this.deserialize( from_array ); }
 
     // Object
     public String toString()
     {
-        return "toMasterRequest( " + address.toString() + " )";
+        return "toMasterRequest()";
     }
 
     // Serializable
@@ -40,43 +36,40 @@ public class toMasterRequest implements org.xtreemfs.babudb.interfaces.utils.Req
         
     public void deserialize( HashMap<String, Object> from_hash_map )
     {
-        this.address.deserialize( from_hash_map.get( "address" ) );
+
     }
     
     public void deserialize( Object[] from_array )
     {
-        this.address.deserialize( from_array[0] );        
+        
     }
 
     public void deserialize( ReusableBuffer buf )
     {
-        address = new InetAddress(); address.deserialize( buf );
+
     }
 
     public Object serialize()
     {
         HashMap<String, Object> to_hash_map = new HashMap<String, Object>();
-        to_hash_map.put( "address", address.serialize() );
-        return to_hash_map;        
+return to_hash_map;        
     }
 
     public void serialize( ONCRPCBufferWriter writer ) 
     {
-        address.serialize( writer );
+
     }
     
     public int calculateSize()
     {
         int my_size = 0;
-        my_size += address.calculateSize();
+
         return my_size;
     }
 
     // Request
     public Response createDefaultResponse() { return new toMasterResponse(); }
-
-
-    private InetAddress address;    
+    
 
 }
 

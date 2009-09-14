@@ -106,11 +106,16 @@ public class HeartbeatThread extends LifeCycleThread {
      */
     @SuppressWarnings("unchecked")
     private void processHeartbeat() {
-        dispatcher.master.heartbeat(latestLSN).registerListener(new RPCResponseAvailableListener() {
-        
-            @Override
-            public void responseAvailable(RPCResponse r) { if (r!=null) r.freeBuffers(); }
-        });
+        if (dispatcher.master != null) {
+            dispatcher.master.heartbeat(latestLSN).registerListener(
+                    new RPCResponseAvailableListener() {
+            
+                @Override
+                public void responseAvailable(RPCResponse r) { 
+                    if (r!=null) r.freeBuffers(); 
+                }
+            });
+        }
     }
 
     /**

@@ -13,7 +13,6 @@ import static org.xtreemfs.babudb.log.LogEntry.*;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
@@ -34,8 +33,10 @@ import org.xtreemfs.babudb.clients.MasterClient;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.interfaces.LogEntries;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
+import org.xtreemfs.babudb.interfaces.ReplicationInterface.remoteStopResponse;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateResponse;
+import org.xtreemfs.babudb.interfaces.ReplicationInterface.toSlaveResponse;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCError;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCException;
 import org.xtreemfs.babudb.log.LogEntry;
@@ -45,7 +46,7 @@ import org.xtreemfs.babudb.lsmdb.Database;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
-import org.xtreemfs.include.common.config.MasterConfig;
+import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.common.logging.Logging.Category;
 import org.xtreemfs.include.foundation.LifeCycleListener;
@@ -60,7 +61,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
     private static final int viewID = 1;
     
     private RPCNIOSocketServer  rpcServer;
-    private static MasterConfig conf;
+    private static ReplicationConfig conf;
     private RPCNIOSocketClient  rpcClient;
     private MasterClient        client;
     private BabuDB              db;
@@ -69,7 +70,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
         Logging.start(Logging.LEVEL_ERROR, Category.all);
-        conf = new MasterConfig("config/master.properties");
+        conf = new ReplicationConfig("config/replication.properties");
         conf.read();
     }
     
@@ -82,14 +83,15 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         assertEquals(0, p.waitFor());
         
         try {
-            db = BabuDBFactory.createMasterBabuDB(conf);
+            db = BabuDBFactory.createReplicatedBabuDB(conf);
             assertTrue (conf.getSSLOptions() == null);
             rpcClient = new RPCNIOSocketClient(null,5000,10000);
             rpcClient.setLifeCycleListener(this);
-            client = new MasterClient(rpcClient,new InetSocketAddress(conf.getAddress(),conf.getPort()));
-           
-            int port = conf.getSlaves().get(0).getPort();
-            InetAddress address = conf.getSlaves().get(0).getAddress();
+            client = new MasterClient(rpcClient,conf.getInetSocketAddress());
+            
+            int port = 35667;
+            InetAddress address = InetAddress.getByAddress(
+                    new byte[]{127,0,0,1});
             rpcServer = new RPCNIOSocketServer(port,address,this,null);
             rpcServer.setLifeCycleListener(this);
             
@@ -98,6 +100,22 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
             
             rpcClient.waitForStartup();
             rpcServer.waitForStartup();
+            
+            db.getReplicationManager().declareToMaster();
+            synchronized (response) {
+                while (response.get()!=remoteStopOperation)
+                    response.wait();
+                
+                response.set(-1);
+                response.notify();
+                
+                while (response.get()!=toSlaveOperation)
+                    response.wait();
+                
+                response.set(-1);
+                response.notify();
+            }
+            
         } catch (Exception e) {
             System.err.println("BEFORE-FAILED: "+e.getMessage());
             throw e;
@@ -235,79 +253,98 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         int opNum = rq.getRequestHeader().getProcedure();
         final Checksum chksm = new CRC32();
         
-        synchronized (response) {
-            if (opNum == replicateOperation) {
-                replicateRequest request = new replicateRequest();
-                request.deserialize(rq.getRequestFragment());
-                
-                LogEntry le = null;
-                try {
-                    le = LogEntry.deserialize(request.getLogEntry().getPayload(), chksm);
-                    switch (le.getPayloadType()) {
+        try {
+            synchronized (response) {
+                if (opNum == replicateOperation) {
+                    replicateRequest request = new replicateRequest();
+                    request.deserialize(rq.getRequestFragment());
                     
-                    case PAYLOAD_TYPE_INSERT :
-                        assertEquals(viewID, le.getViewId());
-                        assertEquals(2L,le.getLogSequenceNo());
+                    LogEntry le = null;
+                    try {
+                        le = LogEntry.deserialize(request.getLogEntry().getPayload(), chksm);
+                        switch (le.getPayloadType()) {
                         
-                        InsertRecordGroup ig = InsertRecordGroup.deserialize(le.getPayload());
-                        assertEquals(testDBID,ig.getDatabaseId());
-                        
-                        List<InsertRecord> igs = ig.getInserts();
-                        InsertRecord ir = igs.get(0);
-                        assertEquals(0, ir.getIndexId());
-                        assertEquals(testKey1, new String(ir.getKey()));
-                        assertEquals(testValue, new String(ir.getValue()));
-                        
-                        ir = igs.get(1);
-                        assertEquals(0, ir.getIndexId());
-                        assertEquals(testKey2, new String(ir.getKey()));
-                        assertEquals(testValue, new String(ir.getValue()));
-                        
-                        ir = igs.get(2);
-                        assertEquals(0, ir.getIndexId());
-                        assertEquals(testKey3, new String(ir.getKey()));
-                        assertEquals(testValue, new String(ir.getValue()));
-                        break;
-                        
-                    case PAYLOAD_TYPE_CREATE:
-                        assertEquals(new LSN(viewID,1L), le.getLSN());
-                        assertEquals(1,le.getPayload().getInt());
-                        assertEquals(testDB,le.getPayload().getString());
-                        assertEquals(testDBIndices, le.getPayload().getInt());
-                        break;
-                        
-                    case PAYLOAD_TYPE_COPY:
-                        assertEquals(new LSN(viewID,3L), le.getLSN());
-                        assertEquals(1,le.getPayload().getInt());
-                        assertEquals(2,le.getPayload().getInt());
-                        assertEquals(testDB,le.getPayload().getString());
-                        assertEquals(copyTestDB,le.getPayload().getString());
-                        break;
-                        
-                    case PAYLOAD_TYPE_DELETE:
-                        assertEquals(2,le.getPayload().getInt());
-                        assertEquals(new LSN(viewID,4L), le.getLSN());
-                        assertEquals(copyTestDB,le.getPayload().getString());
-                        break;
-                        
-                    default:
-                        rq.sendInternalServerError(new Throwable("TEST-DUMMY-RESPONSE"), new errnoException("TEST-DUMMY-RESPONSE"));
+                        case PAYLOAD_TYPE_INSERT :
+                            assertEquals(viewID, le.getViewId());
+                            assertEquals(2L,le.getLogSequenceNo());
+                            
+                            InsertRecordGroup ig = InsertRecordGroup.deserialize(le.getPayload());
+                            assertEquals(testDBID,ig.getDatabaseId());
+                            
+                            List<InsertRecord> igs = ig.getInserts();
+                            InsertRecord ir = igs.get(0);
+                            assertEquals(0, ir.getIndexId());
+                            assertEquals(testKey1, new String(ir.getKey()));
+                            assertEquals(testValue, new String(ir.getValue()));
+                            
+                            ir = igs.get(1);
+                            assertEquals(0, ir.getIndexId());
+                            assertEquals(testKey2, new String(ir.getKey()));
+                            assertEquals(testValue, new String(ir.getValue()));
+                            
+                            ir = igs.get(2);
+                            assertEquals(0, ir.getIndexId());
+                            assertEquals(testKey3, new String(ir.getKey()));
+                            assertEquals(testValue, new String(ir.getValue()));
+                            break;
+                            
+                        case PAYLOAD_TYPE_CREATE:
+                            assertEquals(new LSN(viewID,1L), le.getLSN());
+                            assertEquals(1,le.getPayload().getInt());
+                            assertEquals(testDB,le.getPayload().getString());
+                            assertEquals(testDBIndices, le.getPayload().getInt());
+                            break;
+                            
+                        case PAYLOAD_TYPE_COPY:
+                            assertEquals(new LSN(viewID,3L), le.getLSN());
+                            assertEquals(1,le.getPayload().getInt());
+                            assertEquals(2,le.getPayload().getInt());
+                            assertEquals(testDB,le.getPayload().getString());
+                            assertEquals(copyTestDB,le.getPayload().getString());
+                            break;
+                            
+                        case PAYLOAD_TYPE_DELETE:
+                            assertEquals(2,le.getPayload().getInt());
+                            assertEquals(new LSN(viewID,4L), le.getLSN());
+                            assertEquals(copyTestDB,le.getPayload().getString());
+                            break;
+                            
+                        default:
+                            rq.sendInternalServerError(new Throwable("TEST-DUMMY-RESPONSE"), new errnoException("TEST-DUMMY-RESPONSE"));
+                            fail();
+                            break;
+                        }
+                        if (response.get() != -1)
+                            response.wait();
+                        response.set(le.getPayloadType());
+                    } catch (LogEntryException e) {
                         fail();
-                        break;
+                    } finally {
+                        chksm.reset();
+                        if (le!=null) le.free();
                     }
-                    response.set(le.getPayloadType());
-                } catch (LogEntryException e) {
+                    rq.sendResponse(new replicateResponse());
+                } else if (opNum == remoteStopOperation) {
+                    rq.sendResponse(new remoteStopResponse(
+                            new org.xtreemfs.babudb.interfaces.LSN(0,0L)));
+                    
+                    if (response.get() != -1)
+                        response.wait();
+                    response.set(remoteStopOperation);
+                } else if (opNum == toSlaveOperation) {
+                    rq.sendResponse(new toSlaveResponse());
+                    
+                    if (response.get() != -1)
+                        response.wait();
+                    response.set(toSlaveOperation);
+                } else {
+                    rq.sendInternalServerError(new Throwable("TEST-DUMMY-RESPONSE"), new errnoException("TEST-DUMMY-RESPONSE"));
                     fail();
-                } finally {
-                    chksm.reset();
-                    if (le!=null) le.free();
                 }
-                rq.sendResponse(new replicateResponse());
-            } else {
-                rq.sendInternalServerError(new Throwable("TEST-DUMMY-RESPONSE"), new errnoException("TEST-DUMMY-RESPONSE"));
-                fail();
+                response.notify();
             }
-            response.notify();
+        } catch (InterruptedException i) {
+            System.err.println("TEST was interrupted!");
         }
     }
     
@@ -325,6 +362,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
                 response.wait();
             
             response.set(-1);
+            response.notify();
         }
     }
     
@@ -336,6 +374,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
                 response.wait();
             
             response.set(-1);
+            response.notify();
         }
     }
     
@@ -347,6 +386,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
                 response.wait();
             
             response.set(-1);
+            response.notify();
         }
     }
     
@@ -391,7 +431,9 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
                 response.wait();
             
             response.set(-1);
+            response.notify();
         }
+        
     }
 
     @Override

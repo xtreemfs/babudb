@@ -8,9 +8,6 @@
 package org.xtreemfs.babudb.replication;
 
 import static org.junit.Assert.*;
-import java.net.InetSocketAddress;
-import java.util.LinkedList;
-import java.util.List;
 
 import org.junit.After;
 import org.junit.Before;
@@ -20,7 +17,7 @@ import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
-import org.xtreemfs.include.common.config.SlaveConfig;
+import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
 public class SecurityTest {
@@ -28,13 +25,13 @@ public class SecurityTest {
     private final static String DB_NAME = "test";
     
     private BabuDB slave;
-    private SlaveConfig conf;
+    private ReplicationConfig conf;
     
     @Before
     public void setUp() throws Exception {   
         Logging.start(Logging.LEVEL_DEBUG);
         
-        conf = new SlaveConfig("config/slave.properties");
+        conf = new ReplicationConfig("config/replication.properties");
         conf.read();
         
         Process p = Runtime.getRuntime().exec("rm -rf "+conf.getBaseDir());
@@ -45,13 +42,10 @@ public class SecurityTest {
         
         p = Runtime.getRuntime().exec("rm -rf "+conf.getBackupDir());
         p.waitFor();
-        
-        List<InetSocketAddress> slaves = new LinkedList<InetSocketAddress>();
-        slaves.add(conf.getSlaves().get(0));
-        
+                
         // start the slave
         try {
-            slave = BabuDBFactory.createSlaveBabuDB(conf);
+            slave = BabuDBFactory.createBabuDB(conf);
             ((DatabaseManagerImpl) slave.getDatabaseManager()).proceedCreate(DB_NAME, 2, null);
         } catch (Exception e){
         	System.out.println("ERROR: "+e.getMessage());

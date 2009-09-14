@@ -9,9 +9,7 @@
 package org.xtreemfs.babudb;
 
 import org.xtreemfs.include.common.config.BabuDBConfig;
-import org.xtreemfs.include.common.config.MasterConfig;
-import org.xtreemfs.include.common.config.SlaveConfig;
-
+import org.xtreemfs.include.common.config.ReplicationConfig;
 
 /**
  * A factory for the creation of BabuDB instances.
@@ -27,28 +25,23 @@ public class BabuDBFactory {
      * @param configuration the configuration
      * @throws BabuDBException
      */
-    public static BabuDB createBabuDB(BabuDBConfig configuration) throws BabuDBException {
+    public static BabuDB createBabuDB(BabuDBConfig configuration) 
+        throws BabuDBException {
+        
         return new BabuDB(configuration);
     }
     
     /**
-     * Initializes a BabuDB instance with replication in master mode.
+     * Initializes a BabuDB instance with replication.
+     * Replication will be suspended until one BabuDB instance
+     * will be declared to master.
      * 
-     * @param configuration the master configuration
+     * @param configuration the {@link ReplicationConfig}
      * @throws BabuDBException 
      */
-    public static BabuDB createMasterBabuDB(MasterConfig configuration) throws BabuDBException {
+    public static BabuDB createReplicatedBabuDB(ReplicationConfig configuration) 
+        throws BabuDBException {
+        
         return new BabuDB(configuration);
     }
-    
-    /**
-     * Initializes a BabuDB instance with replication in slave mode.
-     * 
-     * @param configuration the slave configuration
-     * @throws BabuDBException 
-     */
-    public static BabuDB createSlaveBabuDB(SlaveConfig configuration) throws BabuDBException {
-        return new BabuDB(configuration);
-    }
-    
 }

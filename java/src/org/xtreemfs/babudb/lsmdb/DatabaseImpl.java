@@ -8,7 +8,7 @@
 
 package org.xtreemfs.babudb.lsmdb;
 
-import static org.xtreemfs.include.common.config.SlaveConfig.slaveProtection;
+import static org.xtreemfs.include.common.config.ReplicationConfig.slaveProtection;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;

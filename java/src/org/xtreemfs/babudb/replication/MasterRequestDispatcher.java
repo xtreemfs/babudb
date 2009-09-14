@@ -11,11 +11,11 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 
+import java.util.LinkedList;
 import java.util.List;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
-import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.clients.SlaveClient;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
@@ -29,7 +29,7 @@ import org.xtreemfs.babudb.replication.operations.ReplicaOperation;
 import org.xtreemfs.babudb.replication.operations.StateOperation;
 import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
-import org.xtreemfs.include.common.config.MasterConfig;
+import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
 import org.xtreemfs.include.foundation.oncrpc.client.RPCResponseAvailableListener;
@@ -54,39 +54,33 @@ public class MasterRequestDispatcher extends RequestDispatcher {
     public final LSN lastOnView;
     
     /**
-     * Initial setup.
+     * Constructor to change the {@link RequestDispatcher} behavior to
+     * master using the old dispatcher.
      * 
-     * @param config
-     * @param dbs
-     * @param initial
-     * @throws IOException
+     * @param oldDispatcher
+     * @param own - address of the master.
+     * @throws IOException 
      */
-    public MasterRequestDispatcher(MasterConfig config, BabuDB dbs, LSN initial) throws IOException {
-        super("Master", config, dbs);
-        this.isMaster = true;
-        this.syncN = config.getSyncN();
-        this.chunkSize = config.getChunkSize();
-        this.states = new SlavesStates(config.getSyncN(),config.getSlaves(),rpcClient);
+    public MasterRequestDispatcher(RequestDispatcher oldDispatcher, 
+            InetSocketAddress own) throws IOException {
+        
+        super("Master", oldDispatcher);
+        this.chunkSize = oldDispatcher.configuration.getChunkSize();
+        this.syncN = oldDispatcher.configuration.getSyncN();
+        
+        List<InetSocketAddress> slaves = new LinkedList<InetSocketAddress>(
+                oldDispatcher.configuration.getParticipants());
+        if (!slaves.remove(own)) throw new IOException(own.toString()+" is not"+
+        		" a vaild replication participant.");
+        
+        this.states = new SlavesStates(((ReplicationConfig) dbs.getConfig()).
+                getSyncN(),slaves,rpcClient);
         
         // the sequence number of the initial LSN before incrementing the viewID cannot be 0 
+        LSN initial = oldDispatcher.getState().latest;
         this.lastOnView = (initial.getSequenceNo() == 0L) ? new LSN(0,0L) : initial;
-    }
-    
-    /**
-     * Reset configuration.
-     * 
-     * @param config
-     * @param dbs
-     * @param initial
-     * @param backupState - needed if the dispatcher shall be reset. Includes the initial LSN.
-     * @throws IOException
-     */
-    public MasterRequestDispatcher(MasterConfig config, BabuDB dbs, DispatcherState backupState) throws IOException {
-        super("Master", config, dbs);
-        this.syncN = config.getSyncN();
-        this.chunkSize = config.getChunkSize();
-        this.states = new SlavesStates(config.getSyncN(),config.getSlaves(),rpcClient);
-        this.lastOnView = backupState.latest;
+        
+        this.isMaster = true;
     }
 
     /*
