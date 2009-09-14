@@ -38,6 +38,7 @@ import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.DirectFileIO;
 import org.xtreemfs.babudb.replication.ReplicationManager;
+import org.xtreemfs.babudb.replication.ReplicationManagerImpl;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManager;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
@@ -74,7 +75,7 @@ public class BabuDB {
     
     private LSMDBWorker[]             worker;
     
-    private final ReplicationManager  replicationManager;
+    private final ReplicationManagerImpl  replicationManager;
     
     /**
      * Checkpointer thread for automatic checkpointing
@@ -162,7 +163,7 @@ public class BabuDB {
         LSN lastLSN = new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo() - 1);
         try {
             if (conf instanceof ReplicationConfig)
-                this.replicationManager = new ReplicationManager(this, lastLSN);
+                this.replicationManager = new ReplicationManagerImpl(this, lastLSN);
             else
                 this.replicationManager = null;
         } catch (Exception e) {

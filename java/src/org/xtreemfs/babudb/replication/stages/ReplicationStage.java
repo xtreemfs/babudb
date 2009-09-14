@@ -17,7 +17,7 @@ import org.xtreemfs.babudb.SimplifiedBabuDBRequestListener;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.ReplicationManager;
+import org.xtreemfs.babudb.replication.ReplicationManagerImpl;
 import org.xtreemfs.babudb.replication.SlaveRequestDispatcher;
 import org.xtreemfs.babudb.replication.operations.Operation;
 import org.xtreemfs.babudb.replication.stages.logic.LoadLogic;
@@ -32,7 +32,7 @@ import static org.xtreemfs.babudb.replication.stages.logic.LogicID.*;
 import static org.xtreemfs.babudb.replication.operations.ErrNo.*;
 
 /**
- * Stage to perform {@link ReplicationManager}-{@link Operation}s on the slave.
+ * Stage to perform {@link ReplicationManagerImpl}-{@link Operation}s on the slave.
  * 
  * @since 06/08/2009
  * @author flangner

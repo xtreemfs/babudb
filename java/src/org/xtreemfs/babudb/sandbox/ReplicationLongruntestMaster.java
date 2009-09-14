@@ -128,7 +128,7 @@ public class ReplicationLongruntestMaster {
         System.out.format("total throughput for inserts : %12.2f insertGroups/s\n", insertThroughput);
         
         // wait for the slave
-        Thread.sleep(60*1000);
+        Thread.sleep(10*60*1000);
         
         DBS.shutdown();
     }

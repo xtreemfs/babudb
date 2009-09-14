@@ -18,7 +18,7 @@ import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
-import org.xtreemfs.babudb.replication.ReplicationManager;
+import org.xtreemfs.babudb.replication.ReplicationManagerImpl;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.UserDefinedLookup;
 import org.xtreemfs.include.common.buffer.BufferPool;
@@ -48,10 +48,10 @@ public class LSMDBWorker extends Thread implements SyncListener {
 
     private final boolean       pseudoSync;
     
-    private final ReplicationManager   replicationManager;
+    private final ReplicationManagerImpl   replicationManager;
     
     public LSMDBWorker(DiskLogger logger, int id, boolean pseudoSync, 
-            int maxQ,ReplicationManager replication) {
+            int maxQ,ReplicationManagerImpl replication) {
         super("LSMDBWrkr#"+id);  
         this.down = new AtomicBoolean(false);
         this.replicationManager = replication;        

@@ -32,6 +32,7 @@ import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.DatabaseImpl.AsyncResult;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
+import org.xtreemfs.babudb.replication.ReplicationManagerImpl;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
@@ -181,7 +182,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
         }
         
         // if this is a master it sends the create-details to all slaves.
-        if (dbs.getReplicationManager() == null || dbs.getReplicationManager().isMaster()) {
+        if (dbs.getReplicationManager() == null || ((ReplicationManagerImpl) dbs.getReplicationManager()).isMaster()) {
             ReusableBuffer buf = ReusableBuffer.wrap(new byte[databaseName.getBytes().length
                 + (Integer.SIZE*3/8)]);
             buf.putInt(db.getLSMDB().getDatabaseId());
@@ -206,7 +207,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
                 }, null));
                 
                 // replicate the entry
-                dbs.getReplicationManager().replicate(le);
+                ((ReplicationManagerImpl) dbs.getReplicationManager()).replicate(le);
                 
                 synchronized (result) {
                     try {
@@ -266,7 +267,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
         }
         
         // if this is a master it sends the delete-details to all slaves.
-        if (dbs.getReplicationManager() == null || dbs.getReplicationManager().isMaster()) {
+        if (dbs.getReplicationManager() == null || ((ReplicationManagerImpl) dbs.getReplicationManager()).isMaster()) {
             ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE / 2)
                 + databaseName.getBytes().length]);
             buf.putInt(dbId);
@@ -290,7 +291,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
                 }, null));
                 
                 // replicate the entry
-                dbs.getReplicationManager().replicate(le);
+                ((ReplicationManagerImpl) dbs.getReplicationManager()).replicate(le);
                 
                 synchronized (result) {
                     try {
@@ -367,7 +368,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
         }
         
         // if this is a master it sends the copy-details to all slaves.
-        if (dbs.getReplicationManager() == null || dbs.getReplicationManager().isMaster()) {
+        if (dbs.getReplicationManager() == null || ((ReplicationManagerImpl) dbs.getReplicationManager()).isMaster()) {
             ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE / 2) + sourceDB.getBytes().length
                 + destDB.getBytes().length]);
             buf.putInt(sDB.getLSMDB().getDatabaseId());
@@ -393,7 +394,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
                 }, null));
                 
                 // replicate the entry
-                dbs.getReplicationManager().replicate(le);
+                ((ReplicationManagerImpl) dbs.getReplicationManager()).replicate(le);
                 
                 synchronized (result) {
                     try {
