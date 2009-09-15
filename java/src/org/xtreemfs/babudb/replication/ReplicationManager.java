@@ -74,4 +74,8 @@ public interface ReplicationManager {
      */
     public abstract void shutdown();
 
+    /**
+     * @return the currently designated master, or null, if unknown.
+     */
+    public abstract InetSocketAddress getMaster();
 }

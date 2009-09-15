@@ -8,8 +8,6 @@
 
 package org.xtreemfs.babudb.lsmdb;
 
-import static org.xtreemfs.include.common.config.ReplicationConfig.slaveProtection;
-
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -70,20 +68,14 @@ public class DatabaseImpl implements Database {
     
     @Override
     public BabuDBInsertGroup createInsertGroup() throws BabuDBException {
-        
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
+        dbs.slaveCheck();
         
         return new BabuDBInsertGroup(lsmDB);
     }
     
     @Override
     public void syncSingleInsert(int indexId, byte[] key, byte[] value) throws BabuDBException {
-        
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
+        dbs.slaveCheck();
         
         BabuDBInsertGroup irec = new BabuDBInsertGroup(lsmDB);
         irec.addInsert(indexId, key, value);
@@ -132,10 +124,7 @@ public class DatabaseImpl implements Database {
     
     @Override
     public void syncInsert(BabuDBInsertGroup irg) throws BabuDBException {
-        
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
+        dbs.slaveCheck();
         
         final AsyncResult result = new AsyncResult();
         
@@ -181,9 +170,7 @@ public class DatabaseImpl implements Database {
     @Override
     public void asyncInsert(BabuDBInsertGroup ig, BabuDBRequestListener listener, Object context)
         throws BabuDBException {
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
+        dbs.slaveCheck();
         
         final InsertRecordGroup ins = ig.getRecord();
         final int dbId = ins.getDatabaseId();
@@ -203,9 +190,7 @@ public class DatabaseImpl implements Database {
     
     @Override
     public void directInsert(BabuDBInsertGroup irg) throws BabuDBException {
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
+        dbs.slaveCheck();
         
         final int numIndices = lsmDB.getIndexCount();
         
@@ -276,10 +261,7 @@ public class DatabaseImpl implements Database {
     
     @Override
     public byte[] syncLookup(int indexId, byte[] key) throws BabuDBException {
-        
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
+        dbs.slaveCheck();
         
         final AsyncResult result = new AsyncResult();
         
@@ -327,10 +309,7 @@ public class DatabaseImpl implements Database {
     
     @Override
     public Object syncUserDefinedLookup(UserDefinedLookup udl) throws BabuDBException {
-        
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
+        dbs.slaveCheck();
         
         final AsyncResult result = new AsyncResult();
         
@@ -378,10 +357,7 @@ public class DatabaseImpl implements Database {
     
     @Override
     public Iterator<Entry<byte[], byte[]>> syncPrefixLookup(int indexId, byte[] key) throws BabuDBException {
-        
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
+        dbs.slaveCheck();
         
         final AsyncResult result = new AsyncResult();
         
@@ -430,10 +406,7 @@ public class DatabaseImpl implements Database {
     @Override
     public void asyncUserDefinedLookup(BabuDBRequestListener listener, UserDefinedLookup udl, Object context)
         throws BabuDBException {
-        
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
+        dbs.slaveCheck();
         
         LSMDBWorker w = dbs.getWorker(lsmDB.getDatabaseId());
         if (Logging.isNotice()) {
@@ -451,10 +424,7 @@ public class DatabaseImpl implements Database {
     @Override
     public void asyncLookup(int indexId, byte[] key, BabuDBRequestListener listener, Object context)
         throws BabuDBException {
-        
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
+        dbs.slaveCheck();
         
         LSMDBWorker w = dbs.getWorker(lsmDB.getDatabaseId());
         if (Logging.isNotice()) {
@@ -472,10 +442,7 @@ public class DatabaseImpl implements Database {
     @Override
     public void asyncPrefixLookup(int indexId, byte[] key, BabuDBRequestListener listener, Object context)
         throws BabuDBException {
-        
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
+        dbs.slaveCheck();
         
         LSMDBWorker w = dbs.getWorker(lsmDB.getDatabaseId());
         if (Logging.isNotice()) {
@@ -492,10 +459,7 @@ public class DatabaseImpl implements Database {
     
     @Override
     public byte[] directLookup(int indexId, byte[] key) throws BabuDBException {
-        
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
+        dbs.slaveCheck();
         
         if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
             throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
@@ -504,10 +468,7 @@ public class DatabaseImpl implements Database {
     }
     
     public byte[] directLookup(int indexId, int snapId, byte[] key) throws BabuDBException {
-        
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
+        dbs.slaveCheck();
         
         if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
             throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
@@ -517,10 +478,7 @@ public class DatabaseImpl implements Database {
     
     @Override
     public Iterator<Entry<byte[], byte[]>> directPrefixLookup(int indexId, byte[] key) throws BabuDBException {
-        
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
+        dbs.slaveCheck();
         
         if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
             throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
@@ -531,10 +489,7 @@ public class DatabaseImpl implements Database {
     @Override
     public Iterator<Entry<byte[], byte[]>> directReversePrefixLookup(int indexId, byte[] key)
         throws BabuDBException {
-        
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
+        dbs.slaveCheck();
         
         if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
             throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
@@ -544,10 +499,7 @@ public class DatabaseImpl implements Database {
     
     public Iterator<Entry<byte[], byte[]>> directPrefixLookup(int indexId, int snapId, byte[] key,
         boolean ascending) throws BabuDBException {
-        
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
+        dbs.slaveCheck();
         
         if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
             throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
@@ -635,10 +587,7 @@ public class DatabaseImpl implements Database {
      * @return an array with the snapshot ID for each index in the database
      */
     public int[] createSnapshot() throws BabuDBException, InterruptedException {
-        
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
+        dbs.slaveCheck();
         
         int[] result = null;
         try {
@@ -679,10 +628,7 @@ public class DatabaseImpl implements Database {
      */
     public int[] createSnapshot(SnapshotConfig snap, boolean appendLogEntry) throws BabuDBException,
         InterruptedException {
-        
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
+        dbs.slaveCheck();
         
         if (appendLogEntry) {
             
@@ -774,10 +720,7 @@ public class DatabaseImpl implements Database {
      *             or isSlave_check was positive
      */
     public void writeSnapshot(int[] snapIds, String directory, SnapshotConfig cfg) throws BabuDBException {
-        
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
+        dbs.slaveCheck();
         
         proceedWriteSnapshot(snapIds, directory, cfg);
     }
@@ -818,10 +761,8 @@ public class DatabaseImpl implements Database {
      *             or BabuDB is running in slave-mode.
      */
     public void writeSnapshot(int viewId, long sequenceNo, int[] snapIds) throws BabuDBException {
+        dbs.slaveCheck();
         
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
         proceedWriteSnapshot(viewId, sequenceNo, snapIds);
     }
     
@@ -858,10 +799,8 @@ public class DatabaseImpl implements Database {
      *             if snapshots cannot be cleaned up
      */
     public void cleanupSnapshot(final int viewId, final long sequenceNo) throws BabuDBException {
+        dbs.slaveCheck();
         
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
         proceedCleanupSnapshot(viewId, sequenceNo);
     }
     

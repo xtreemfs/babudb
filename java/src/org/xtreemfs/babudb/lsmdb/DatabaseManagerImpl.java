@@ -11,7 +11,6 @@ package org.xtreemfs.babudb.lsmdb;
 import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_COPY;
 import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_CREATE;
 import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_DELETE;
-import static org.xtreemfs.include.common.config.ReplicationConfig.slaveProtection;
 
 import java.io.File;
 import java.io.IOException;
@@ -135,10 +134,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
     @Override
     public Database createDatabase(String databaseName, int numIndices, ByteRangeComparator[] comparators)
         throws BabuDBException {
-        
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
+        dbs.slaveCheck();
         
         return proceedCreate(databaseName, numIndices, comparators);
     }
@@ -232,8 +228,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
     
     @Override
     public void deleteDatabase(String databaseName) throws BabuDBException {
-        if (dbs.replication_isSlave())
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
+        dbs.slaveCheck();
         
         proceedDelete(databaseName);
     }
@@ -315,9 +310,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
     @Override
     public void copyDatabase(String sourceDB, String destDB) throws BabuDBException, IOException,
         InterruptedException {
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
+        dbs.slaveCheck();
         
         proceedCopy(sourceDB, destDB);
     }

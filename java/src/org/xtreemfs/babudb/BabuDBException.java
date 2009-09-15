@@ -40,6 +40,11 @@ public class BabuDBException extends Exception {
         REPLICATION_FAILURE,
         
         /**
+         * If access was denied due the replication is running in slave-mode.
+         */
+        NO_ACCESS,
+        
+        /**
          * The requested snapshot does not exist in the database
          */
         NO_SUCH_SNAPSHOT,
