@@ -8,8 +8,6 @@
 
 package org.xtreemfs.babudb.lsmdb;
 
-import static org.xtreemfs.include.common.config.ReplicationConfig.slaveProtection;
-
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -167,9 +165,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
     
     @Override
     public void checkpoint() throws BabuDBException, InterruptedException {
-        if (dbs.replication_isSlave()) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, slaveProtection);
-        }
+        dbs.slaveCheck();
         
         checkpoint(false);
     }

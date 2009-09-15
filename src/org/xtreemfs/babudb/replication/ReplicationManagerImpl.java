@@ -401,4 +401,18 @@ public class ReplicationManagerImpl implements ReplicationManager {
         
         return result;
     }
+
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.ReplicationManager#getMaster()
+     */
+    @Override
+    public InetSocketAddress getMaster() {
+        if (isMaster()) 
+            return dispatcher.configuration.getInetSocketAddress();
+        else if (((SlaveRequestDispatcher) dispatcher).master != null) 
+            return ((SlaveRequestDispatcher) dispatcher).master.getDefaultServerAddress();
+        else
+            return null;
+    }
 }

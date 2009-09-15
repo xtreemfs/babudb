@@ -9,6 +9,7 @@ package org.xtreemfs.babudb;
 
 import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_INSERT;
 import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_SNAP;
+import static org.xtreemfs.include.common.config.ReplicationConfig.slaveProtection;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -535,10 +536,8 @@ public class BabuDB {
      * 
      * @return true, if replication runs in slave-mode, false otherwise.
      */
-    public boolean replication_isSlave() {
-        if (replicationManager == null) {
-            return false;
-        }
-        return !replicationManager.isMaster();
+    public void slaveCheck() throws BabuDBException{
+        if (replicationManager != null && !replicationManager.isMaster())
+            throw new BabuDBException(ErrorCode.NO_ACCESS,slaveProtection);
     }
 }
