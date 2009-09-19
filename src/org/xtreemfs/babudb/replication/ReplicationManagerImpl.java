@@ -81,9 +81,8 @@ public class ReplicationManagerImpl implements ReplicationManager {
         try {
             dispatcher.replicate(le);
         } catch (Exception e){
-            le.getAttachment().getListener().requestFailed(le.getAttachment().
-                    getContext(), new BabuDBException(ErrorCode.REPLICATION_FAILURE,
-                            "A LogEntry could not be replicated because: "+e.getMessage()));
+            new BabuDBException(ErrorCode.REPLICATION_FAILURE, "A LogEntry" +
+            		" could not be replicated because: "+e.getMessage());
         } 
     }
     

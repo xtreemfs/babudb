@@ -178,11 +178,13 @@ public class MasterRequestDispatcher extends RequestDispatcher {
             List<SlaveClient> slaves = getSlavesForBroadCast(); 
             
             // setup the response
-            final ReplicateResponse result = new ReplicateResponse(le.getLSN(),slaves.size()-getSyncN()) {
+            final ReplicateResponse result = new ReplicateResponse(le.getLSN(),
+                    slaves.size()-getSyncN()) {
+                
                 @Override
                 public void upToDate() {
                     super.upToDate();
-                    le.getAttachment().getListener().insertFinished(le.getAttachment().getContext());
+                    le.getListener().synced(le);
                 }
             };
             subscribeListener(result);

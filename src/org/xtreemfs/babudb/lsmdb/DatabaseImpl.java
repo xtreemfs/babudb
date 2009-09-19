@@ -246,7 +246,7 @@ public class DatabaseImpl implements Database {
         if (result.error != null) {
             throw result.error;
         }
-        
+                	
         e.free();
         
         for (InsertRecord ir : irg.getRecord().getInserts()) {
@@ -632,8 +632,6 @@ public class DatabaseImpl implements Database {
         
         if (appendLogEntry) {
             
-            // create a log entry
-            
             // serialize the snapshot configuration
             ReusableBuffer buf = null;
             try {
@@ -644,50 +642,13 @@ public class DatabaseImpl implements Database {
                 buf = ReusableBuffer.wrap(bout.toByteArray());
                 oout.close();
             } catch (IOException exc) {
-                throw new BabuDBException(ErrorCode.IO_ERROR, "could not serialize snapshot configuration: "
-                    + snap.getClass(), exc);
+                throw new BabuDBException(ErrorCode.IO_ERROR, 
+                        "could not serialize snapshot configuration: " + 
+                        snap.getClass(), exc);
             }
             
-            final AsyncResult result = new AsyncResult();
-            LogEntry snapshotEntry = new LogEntry(buf, new SyncListener() {
-                
-                @Override
-                public void synced(LogEntry entry) {
-                    synchronized (result) {
-                        result.done = true;
-                        result.notify();
-                    }
-                }
-                
-                @Override
-                public void failed(LogEntry entry, Exception ex) {
-                    synchronized (result) {
-                        result.done = true;
-                        result.error = new BabuDBException(ErrorCode.INTERNAL_ERROR, ex.getMessage());
-                        result.notify();
-                    }
-                }
-                
-            }, LogEntry.PAYLOAD_TYPE_SNAP);
-            
-            dbs.getLogger().append(snapshotEntry);
-            
-            synchronized (result) {
-                if (!result.done) {
-                    try {
-                        result.wait();
-                    } catch (InterruptedException ex) {
-                        throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "cannt write update to disk log",
-                            ex);
-                    }
-                }
-            }
-            
-            if (result.error != null) {
-                throw result.error;
-            }
-            
-            snapshotEntry.free();
+            DatabaseManagerImpl.metaInsert(LogEntry.PAYLOAD_TYPE_SNAP, buf, 
+                    dbs.getLogger());
         }
         
         // critical block...
