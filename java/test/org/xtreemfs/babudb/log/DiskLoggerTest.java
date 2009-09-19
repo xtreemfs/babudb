@@ -23,7 +23,6 @@ import org.junit.Test;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
 import org.junit.Assert;
-import org.xtreemfs.babudb.BabuDBTest;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 
 /**
@@ -50,7 +49,7 @@ public class DiskLoggerTest extends TestCase {
 
     @Before
     public void setUp() throws IOException {
-        l = new DiskLogger(testdir, 1, 1, SyncMode.FSYNC,0,0);
+        l = new DiskLogger(testdir, 1, 1, SyncMode.FSYNC,0,0,null);
         l.start();
     }
 

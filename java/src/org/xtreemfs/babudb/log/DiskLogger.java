@@ -24,7 +24,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.zip.CRC32;
 
+import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.replication.ReplicationManagerImpl;
 import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
@@ -114,11 +116,13 @@ public class DiskLogger extends Thread {
     /**
      * Lock for switching log files atomically
      */
-    private ReentrantLock sync;
+    private ReentrantLock                sync;
 
-    private final SyncMode syncMode;
+    private final SyncMode               syncMode;
 
-    private final int pseudoSyncWait;
+    private final int 	                 pseudoSyncWait;
+    
+    private final ReplicationManagerImpl replMan;
 
     /**
      * Max number of LogEntries to write before sync.
@@ -128,14 +132,17 @@ public class DiskLogger extends Thread {
     /**
      * Creates a new instance of DiskLogger
      * @param logfile Name and path of file to use for append log.
+     * @param dbs
      * @throws java.io.FileNotFoundException If that file cannot be created.
      * @throws java.io.IOException If that file cannot be created.
      */
     public DiskLogger(String logfileDir, int viewId, long nextLSN, SyncMode syncMode,
-            int pseudoSyncWait, int maxQ) throws FileNotFoundException, IOException {
+            int pseudoSyncWait, int maxQ, ReplicationManagerImpl replicationManager) 
+            throws FileNotFoundException, IOException {
 
         super("DiskLogger thr.");
-
+        this.replMan = replicationManager;
+        
         if (logfileDir == null) {
             throw new RuntimeException("expected a non-null logfile directory name!");
         }
@@ -301,7 +308,15 @@ public class DiskLogger extends Thread {
                     else if (this.syncMode == SyncMode.FDATASYNC)
                         channel.force(false);
                     for (LogEntry le : tmpE) {
-                        le.getListener().synced(le);
+                        // replicate the logEntry
+                        if (replMan != null && replMan.isMaster()) {
+                            try {
+                                replMan.replicate(le);
+                            } catch (BabuDBException e) {
+                                le.getListener().failed(le, e);
+                            }
+                        } else 
+                            le.getListener().synced(le);
                     }
                     tmpE.clear();
                     if (pseudoSyncWait > 0) {

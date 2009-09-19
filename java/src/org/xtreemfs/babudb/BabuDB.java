@@ -174,7 +174,8 @@ public class BabuDB {
         // set up and start the disk logger
         try {
             this.logger = new DiskLogger(conf.getDbLogDir(), nextLSN.getViewId(), nextLSN.getSequenceNo(),
-                conf.getSyncMode(), conf.getPseudoSyncWait(), conf.getMaxQueueLength() * conf.getNumThreads());
+                conf.getSyncMode(), conf.getPseudoSyncWait(), conf.getMaxQueueLength() * conf.getNumThreads(),
+                replicationManager);
             this.logger.start();
         } catch (IOException ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot start database operations logger", ex);
@@ -182,8 +183,7 @@ public class BabuDB {
         
         worker = new LSMDBWorker[conf.getNumThreads()];
         for (int i = 0; i < conf.getNumThreads(); i++) {
-            worker[i] = new LSMDBWorker(logger, i, (conf.getPseudoSyncWait() > 0), conf.getMaxQueueLength(),
-                replicationManager);
+            worker[i] = new LSMDBWorker(logger, i, (conf.getPseudoSyncWait() > 0), conf.getMaxQueueLength());
             worker[i].start();
         }
         
@@ -279,7 +279,7 @@ public class BabuDB {
         try {
             logger = new DiskLogger(configuration.getDbLogDir(), nextLSN.getViewId(),
                 nextLSN.getSequenceNo(), configuration.getSyncMode(), configuration.getPseudoSyncWait(),
-                configuration.getMaxQueueLength() * configuration.getNumThreads());
+                configuration.getMaxQueueLength() * configuration.getNumThreads(), replicationManager);
             logger.start();
         } catch (IOException ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot start database operations logger", ex);
@@ -289,7 +289,7 @@ public class BabuDB {
         for (int i = 0; i < configuration.getNumThreads(); i++) {
             worker[i] = new LSMDBWorker(logger, i, (
                     configuration.getPseudoSyncWait() > 0), configuration
-                    .getMaxQueueLength(), replicationManager);
+                    .getMaxQueueLength());
             worker[i].start();
         }
         
