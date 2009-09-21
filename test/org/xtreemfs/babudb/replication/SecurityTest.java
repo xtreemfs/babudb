@@ -43,7 +43,7 @@ public class SecurityTest {
         
         p = Runtime.getRuntime().exec("rm -rf "+conf.getBackupDir());
         p.waitFor();
-                
+        
         // start the slave
         try {
             slave = BabuDBFactory.createBabuDB(conf);
@@ -141,19 +141,6 @@ public class SecurityTest {
             assertEquals(NO_ACCESS,be.getErrorCode());
         }
         
-        try{
-            slave.getDatabaseManager().getDatabase(DB_NAME).directLookup(0, null);
-        }catch (BabuDBException be){
-            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-            assertEquals(NO_ACCESS,be.getErrorCode());
-        }
-        
-        try{
-            slave.getDatabaseManager().getDatabase(DB_NAME).directPrefixLookup(0, null);
-        }catch (BabuDBException be){
-            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-            assertEquals(NO_ACCESS,be.getErrorCode());
-        }
         
         try{
             slave.getDatabaseManager().getDatabase(DB_NAME).syncInsert(null);
