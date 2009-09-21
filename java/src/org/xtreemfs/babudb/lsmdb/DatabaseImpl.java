@@ -459,7 +459,6 @@ public class DatabaseImpl implements Database {
     
     @Override
     public byte[] directLookup(int indexId, byte[] key) throws BabuDBException {
-        dbs.slaveCheck();
         
         if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
             throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
@@ -478,7 +477,6 @@ public class DatabaseImpl implements Database {
     
     @Override
     public Iterator<Entry<byte[], byte[]>> directPrefixLookup(int indexId, byte[] key) throws BabuDBException {
-        dbs.slaveCheck();
         
         if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
             throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
