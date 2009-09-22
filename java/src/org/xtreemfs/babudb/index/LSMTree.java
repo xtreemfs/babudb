@@ -55,7 +55,7 @@ public class LSMTree {
         this.compressed = compressed;
         
         overlay = new MultiOverlayBufferTree(NULL_ELEMENT, comp);
-        index = indexFile == null ? null : new DiskIndex(indexFile, comp, false);
+        index = indexFile == null ? null : new DiskIndex(indexFile, comp, compressed);
         lock = new Object();
     }
     
@@ -383,7 +383,7 @@ public class LSMTree {
     public void linkToSnapshot(String snapshotFile) throws IOException {
         final DiskIndex oldIndex = index;
         synchronized (lock) {
-            index = new DiskIndex(snapshotFile, comp, false);
+            index = new DiskIndex(snapshotFile, comp, this.compressed);
             if (oldIndex != null)
                 oldIndex.destroy();
             overlay.cleanup();

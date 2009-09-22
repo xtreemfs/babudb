@@ -206,6 +206,8 @@ public class BabuDB {
     /**
      * REPLICATION
      * Stops the BabuDB for an initial Load.
+     * 
+     * TODO: What does an "initial load" mean?
      */
     public void stop() {
         if (this.stopped) return;

@@ -76,9 +76,14 @@ public class BabuDBConfig extends Config {
      */
     protected int       pseudoSyncWait;
     
+    /**
+     * Indicates if compression is enabled or not.
+     */
+    protected boolean	compression;
+    
     public BabuDBConfig(String baseDir, String dbLogDir, int numThreads, 
             long maxLogFileSize, int checkInterval,SyncMode syncMode,  
-            int pseudoSyncWait, int maxQ) {
+            int pseudoSyncWait, int maxQ, boolean compression) {
         
         super();
         this.baseDir = (baseDir.endsWith(File.separator)) ? baseDir : baseDir+File.separator;
@@ -90,6 +95,7 @@ public class BabuDBConfig extends Config {
         this.checkInterval = checkInterval;
         this.pseudoSyncWait = pseudoSyncWait;
         this.maxLogfileSize = maxLogFileSize;
+        this.compression = compression;
     }
     
     public BabuDBConfig() {
@@ -129,6 +135,8 @@ public class BabuDBConfig extends Config {
         this.checkInterval = this.readOptionalInt("db.checkInterval", 0);
         
         this.pseudoSyncWait = this.readOptionalInt("db.pseudoSyncWait", 0);
+        
+        this.compression = this.readOptionalBoolean("db.compression", false);
     }
     
     public int getDebugLevel() {
@@ -173,5 +181,9 @@ public class BabuDBConfig extends Config {
 
     public int getPseudoSyncWait() {
         return pseudoSyncWait;
+    }
+    
+    public boolean getCompression() {
+    	return compression;
     }
 }

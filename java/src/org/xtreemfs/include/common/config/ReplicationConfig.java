@@ -71,10 +71,10 @@ public class ReplicationConfig extends BabuDBConfig {
             long maxLogFileSize, int checkInterval, SyncMode mode, 
             int pseudoSyncWait, int maxQ, int port, InetAddress address, 
             Set<InetSocketAddress> participants, int localTimeRenew, 
-            SSLOptions sslOptions, int repMaxQ, int syncN, String backupDir) {
+            SSLOptions sslOptions, int repMaxQ, int syncN, String backupDir, boolean compression) {
         
         super(baseDir, logDir, numThreads, maxLogFileSize, checkInterval, mode, 
-                pseudoSyncWait, maxQ);
+                pseudoSyncWait, maxQ, compression);
         this.participants = participants;
         this.maxQ = repMaxQ;
         this.localTimeRenew = localTimeRenew;

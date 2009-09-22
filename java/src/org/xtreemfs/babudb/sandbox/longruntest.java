@@ -48,7 +48,7 @@ public class longruntest {
     private final TreeMap<String, String>[] controlIndices;
 
     @SuppressWarnings("unchecked")
-    public longruntest(String basedir, String dictFile, int numIndices) throws IOException, BabuDBException {
+    public longruntest(String basedir, String dictFile, int numIndices, boolean compression) throws IOException, BabuDBException {
         dictionary = new ArrayList<String>(maxdictentries);
 
         FileReader fr = new FileReader(dictFile);
@@ -68,7 +68,7 @@ public class longruntest {
         this.numIndices = numIndices;
 
         //checkpoint every 1m and check every 1 min
-        database = BabuDBFactory.createBabuDB(new BabuDBConfig(basedir, basedir, 2, 1024 * 128 , 60 * 1, SyncMode.SYNC_WRITE,0,0));
+        database = BabuDBFactory.createBabuDB(new BabuDBConfig(basedir, basedir, 2, 1024 * 128 , 60 * 1, SyncMode.SYNC_WRITE,0,0, compression));
         
         database.getDatabaseManager().createDatabase(dbname, numIndices);
 
@@ -227,9 +227,10 @@ public class longruntest {
             final String basedir = args[1];
             final int numIndices = Integer.valueOf(args[2]);
             final int runtime = Integer.valueOf(args[3]);
+            final boolean compression = Integer.valueOf(args[4]) == 0 ? false:true;
 
 
-            longruntest test = new longruntest(basedir, dictFile, numIndices);
+            longruntest test = new longruntest(basedir, dictFile, numIndices, compression);
             test.startTest(runtime);
             System.out.println("\n\n-------------------------------------------------");
             System.out.println("test finished successfuly");

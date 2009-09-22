@@ -85,7 +85,7 @@ public class DBConfig {
                     Database db = new DatabaseImpl(this.dbs, 
                             new LSMDatabase(dbName, dbId, this.dbs.getConfig()
                             .getBaseDir()
-                        + dbName + File.separatorChar, numIndex, true, comps));
+                        + dbName + File.separatorChar, numIndex, true, comps, this.dbs.getConfig().getCompression()));
                     dbman.dbsById.put(dbId, db);
                     dbman.dbsByName.put(dbName, db);
                     Logging.logMessage(Logging.LEVEL_DEBUG, this, "loaded DB " + 

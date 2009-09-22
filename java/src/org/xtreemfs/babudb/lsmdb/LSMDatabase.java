@@ -71,6 +71,11 @@ public class LSMDatabase {
     private final ByteRangeComparator[] comparators;
     
     /**
+     * enables compression of the on-disk index 
+     */
+    private final boolean				compression;
+    
+    /**
      * Creates a new database and loads data from disk if requested.
      * 
      * @param databaseName
@@ -86,7 +91,7 @@ public class LSMDatabase {
      *             created
      */
     public LSMDatabase(String databaseName, int databaseId, String databaseDir, int numIndices,
-        boolean readFromDisk, ByteRangeComparator[] comparators) throws BabuDBException {
+        boolean readFromDisk, ByteRangeComparator[] comparators, boolean compression) throws BabuDBException {
         
         this.numIndices = numIndices;
         this.databaseId = databaseId;
@@ -97,13 +102,15 @@ public class LSMDatabase {
         this.databaseName = databaseName;
         this.trees = new ArrayList<LSMTree>(numIndices);
         this.comparators = comparators;
+        this.compression = compression;
+        
         if (readFromDisk) {
             loadFromDisk(numIndices);
         } else {
             try {
                 for (int i = 0; i < numIndices; i++) {
                     assert (comparators[i] != null);
-                    trees.add(new LSMTree(null, comparators[i], false));
+                    trees.add(new LSMTree(null, comparators[i], this.compression));
                 }
                 ondiskLSN = new LSN(0, 0);
             } catch (IOException ex) {
@@ -173,14 +180,14 @@ public class LSMDatabase {
                         + maxSeq);
                     assert (comparators[index] != null);
                     trees.set(index, new LSMTree(databaseDir + getSnapshotFilename(index, maxView, maxSeq),
-                        comparators[index], false));
+                        comparators[index], this.compression));
                     ondiskLSN = new LSN(maxView, maxSeq);
                 } else {
                     ondiskLSN = new LSN(0, 0);
                     Logging.logMessage(Logging.LEVEL_DEBUG, this, "no snapshot for database "
                         + this.databaseName);
                     assert (comparators[index] != null);
-                    trees.set(index, new LSMTree(null, comparators[index], false));
+                    trees.set(index, new LSMTree(null, comparators[index], this.compression));
                 }
             } catch (IOException ex) {
                 throw new BabuDBException(ErrorCode.IO_ERROR, "cannot load index from disk", ex);
