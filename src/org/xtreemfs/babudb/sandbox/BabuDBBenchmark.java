@@ -57,7 +57,7 @@ public class BabuDBBenchmark {
     private final int numThreads;
 
     public BabuDBBenchmark(String dbDir, SyncMode syncMode, int pseudoModeWait, int maxQ, int numThreads, int numDBWorkers,
-            int numKeys, int valueLength, int minKeyLength, int maxKeyLength) throws BabuDBException, IOException {
+            int numKeys, int valueLength, int minKeyLength, int maxKeyLength, boolean compression) throws BabuDBException, IOException {
         this.numKeys = numKeys;
         this.minKeyLength = minKeyLength;
         this.maxKeyLength = maxKeyLength;
@@ -71,7 +71,7 @@ public class BabuDBBenchmark {
             throw new IllegalArgumentException(maxKeyLength+" is too short to create enough unique keys for "+numKeys+" keys");
 
         //use one worker because we use one database TODO rebuild
-        database = BabuDBFactory.createBabuDB(new BabuDBConfig(dbDir, dbDir, numDBWorkers, 1, 0, syncMode, pseudoModeWait, maxQ));
+        database = BabuDBFactory.createBabuDB(new BabuDBConfig(dbDir, dbDir, numDBWorkers, 1, 0, syncMode, pseudoModeWait, maxQ, compression));
         /*
         ReplicationConfig conf = new ReplicationConfig("config/replication.properties");
         conf.read();
@@ -235,6 +235,7 @@ public class BabuDBBenchmark {
             options.put("nocp", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH,false));
             options.put("h", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH,false));
             options.put("warmcache", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH,false));
+            options.put("compression", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH,false));
 
             List<String> arguments = new ArrayList<String>(1);
             CLIParser.parseCLI(args, options, arguments);
@@ -256,7 +257,8 @@ public class BabuDBBenchmark {
                     numKeys,
                     options.get("payload").numValue.intValue(),
                     options.get("keymin").numValue.intValue(),
-                    options.get("keymax").numValue.intValue());
+                    options.get("keymax").numValue.intValue(),
+                    options.get("compression").switchValue);
             double tpIns =benchmark.benchmarkInserts();
             double tpIter = benchmark.benchmarkIterate();
 

@@ -169,7 +169,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
             }
             final int dbId = nextDbId++;
             db = new DatabaseImpl(dbs, new LSMDatabase(databaseName, dbId, dbs.getConfig().getBaseDir()
-                + databaseName + File.separatorChar, numIndices, false, comparators));
+                + databaseName + File.separatorChar, numIndices, false, comparators, dbs.getConfig().getCompression()));
             dbsById.put(dbId, db);
             dbsByName.put(databaseName, db);
             dbs.getDBConfigFile().save();
@@ -277,7 +277,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
         
         // create new DB and load from snapshot
         Database newDB = new DatabaseImpl(dbs, new LSMDatabase(destDB, dbId, dbs.getConfig().getBaseDir()
-            + destDB + File.separatorChar, sDB.getLSMDB().getIndexCount(), true, sDB.getComparators()));
+            + destDB + File.separatorChar, sDB.getLSMDB().getIndexCount(), true, sDB.getComparators(), dbs.getConfig().getCompression()));
         
         // insert real database
         synchronized (dbModificationLock) {

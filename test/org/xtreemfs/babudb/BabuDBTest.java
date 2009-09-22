@@ -32,6 +32,8 @@ public class BabuDBTest extends TestCase {
     
     public static final String baseDir = "/tmp/lsmdb-test/";
     
+    public static final boolean compression = false;
+    
     private BabuDB         database;
     
     public BabuDBTest() {
@@ -57,7 +59,7 @@ public class BabuDBTest extends TestCase {
     @Test
     public void testReplayAfterCrash() throws Exception {
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-                SyncMode.SYNC_WRITE, 0, 0));
+                SyncMode.SYNC_WRITE, 0, 0, compression));
         Database db = database.getDatabaseManager().createDatabase("test", 2);
         db.syncSingleInsert(0, "Yagga".getBytes(), "Brabbel".getBytes());
         database.getCheckpointer().checkpoint();
@@ -79,7 +81,7 @@ public class BabuDBTest extends TestCase {
         Thread.sleep(500);
         
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 2, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0));
+            SyncMode.SYNC_WRITE, 0, 0, compression));
         db = database.getDatabaseManager().getDatabase("test");
         result = db.syncLookup(0, "Yagga".getBytes());
         assertNotNull(result);
@@ -104,7 +106,7 @@ public class BabuDBTest extends TestCase {
     @Test
     public void testShutdownAfterCheckpoint() throws Exception {
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0));
+            SyncMode.SYNC_WRITE, 0, 0, compression));
         Database db = database.getDatabaseManager().createDatabase("test", 2);
         db.syncSingleInsert(0, "Yagga".getBytes(), "Brabbel".getBytes());
         
@@ -126,7 +128,7 @@ public class BabuDBTest extends TestCase {
         database.shutdown();
         
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 2, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0));
+            SyncMode.SYNC_WRITE, 0, 0, compression));
         db = database.getDatabaseManager().getDatabase("test");
         result = db.syncLookup(0, "Yagga".getBytes());
         assertNotNull(result);
@@ -151,7 +153,7 @@ public class BabuDBTest extends TestCase {
     @Test
     public void testMultipleIndices() throws Exception {
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0));
+            SyncMode.SYNC_WRITE, 0, 0, compression));
         Database db = database.getDatabaseManager().createDatabase("test", 3);
         
         BabuDBInsertGroup ir = db.createInsertGroup();
@@ -164,7 +166,7 @@ public class BabuDBTest extends TestCase {
         database.shutdown();
         
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 2, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0));
+            SyncMode.SYNC_WRITE, 0, 0, compression));
         db = database.getDatabaseManager().getDatabase("test");
         
         byte[] result = db.syncLookup(0, "Key1".getBytes());
@@ -190,7 +192,7 @@ public class BabuDBTest extends TestCase {
     @Test
     public void testMultipleIndicesAndCheckpoint() throws Exception {
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0));
+            SyncMode.SYNC_WRITE, 0, 0, compression));
         Database db = database.getDatabaseManager().createDatabase("test", 4);
         
         BabuDBInsertGroup ir = db.createInsertGroup();
@@ -240,7 +242,7 @@ public class BabuDBTest extends TestCase {
     public void testUserDefinedLookup() throws Exception {
         
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0));
+            SyncMode.SYNC_WRITE, 0, 0, compression));
         Database db = database.getDatabaseManager().createDatabase("test", 3);
         
         BabuDBInsertGroup ir = db.createInsertGroup();
@@ -274,7 +276,7 @@ public class BabuDBTest extends TestCase {
     public void testDirectAccess() throws Exception {
         
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0, SyncMode.ASYNC,
-            0, 0));
+            0, 0, compression));
         Database db = database.getDatabaseManager().createDatabase("test", 2);
         
         for (int i = 0; i < 100000; i++) {
@@ -300,7 +302,7 @@ public class BabuDBTest extends TestCase {
     public void testInsDelGet() throws Exception {
 
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0, SyncMode.ASYNC,
-            0, 0));
+            0, 0, compression));
         Database db = database.getDatabaseManager().createDatabase("test", 3);
 
         for (int i = 0; i < 1000; i++) {

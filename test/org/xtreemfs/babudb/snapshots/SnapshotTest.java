@@ -33,7 +33,9 @@ import org.xtreemfs.include.common.logging.Logging;
 public class SnapshotTest extends TestCase {
     
     public static final String baseDir = "/tmp/lsmdb-test/";
-    
+
+    public static final boolean compression = false;
+
     private BabuDB             database;
     
     public SnapshotTest() {
@@ -56,7 +58,7 @@ public class SnapshotTest extends TestCase {
     public void testSimpleSnapshot() throws Exception {
         
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0));
+            SyncMode.SYNC_WRITE, 0, 0, compression));
         Database db = database.getDatabaseManager().createDatabase("test", 3);
         
         // add some key-value pairs
@@ -131,7 +133,7 @@ public class SnapshotTest extends TestCase {
     public void testPartialSnapshot() throws Exception {
         
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0));
+            SyncMode.SYNC_WRITE, 0, 0, compression));
         Database db = database.getDatabaseManager().createDatabase("test", 4);
         
         // add some key-value pairs
@@ -187,7 +189,7 @@ public class SnapshotTest extends TestCase {
     public void testShutdownRestart() throws Exception {
         
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0));
+            SyncMode.SYNC_WRITE, 0, 0, compression));
         Database db = database.getDatabaseManager().createDatabase("test", 4);
         
         // add some key-value pairs
@@ -215,7 +217,7 @@ public class SnapshotTest extends TestCase {
         // restart the database
         database.shutdown();
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0));
+            SyncMode.SYNC_WRITE, 0, 0, compression));
         db = database.getDatabaseManager().getDatabase("test");
         snap1 = database.getSnapshotManager().getSnapshotDB("test", "snap1");
         
@@ -229,7 +231,7 @@ public class SnapshotTest extends TestCase {
         database.getCheckpointer().checkpoint();
         database.shutdown();
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0));
+            SyncMode.SYNC_WRITE, 0, 0, compression));
         db = database.getDatabaseManager().getDatabase("test");
         snap1 = database.getSnapshotManager().getSnapshotDB("test", "snap1");
         
@@ -251,7 +253,7 @@ public class SnapshotTest extends TestCase {
         database.getCheckpointer().checkpoint();
         database.shutdown();
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0));
+            SyncMode.SYNC_WRITE, 0, 0, compression));
         
         DatabaseRO snap2 = database.getSnapshotManager().getSnapshotDB("test", "snap2");
         
@@ -266,7 +268,7 @@ public class SnapshotTest extends TestCase {
     public void testDelete() throws Exception {
         
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0));
+            SyncMode.SYNC_WRITE, 0, 0, compression));
         Database db = database.getDatabaseManager().createDatabase("test", 4);
         
         // add some key-value pairs
@@ -300,7 +302,7 @@ public class SnapshotTest extends TestCase {
         database.getCheckpointer().checkpoint();
         database.shutdown();
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0));
+            SyncMode.SYNC_WRITE, 0, 0, compression));
         
         // check if the formerly deleted snapshot does not exist anymore
         try {

@@ -27,6 +27,8 @@ public class CopyDatabaseTest extends TestCase {
     
     public static final String baseDir = "/tmp/lsmdb-test/";
     
+    public static final boolean compression = false;
+    
     private BabuDB             database;
     
     public CopyDatabaseTest() {
@@ -50,7 +52,7 @@ public class CopyDatabaseTest extends TestCase {
         final int NUMIDX = 5;
         
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0, SyncMode.ASYNC, 0,
-            0));
+            0, compression));
         
         Database db = database.getDatabaseManager().createDatabase("testDB", NUMIDX);
         

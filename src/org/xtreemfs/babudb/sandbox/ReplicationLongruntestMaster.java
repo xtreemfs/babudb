@@ -92,7 +92,7 @@ public class ReplicationLongruntestMaster {
                 MAX_LOG_FILE_SIZE, CHECK_INTERVAL, SyncMode.ASYNC, 0, 0, 
                 ReplicationInterface.DEFAULT_MASTER_PORT, InetAddress.
                 getByAddress(new byte[]{127,0,0,1}), participants, 50, null, 
-                MAX_REPLICATION_Q_LENGTH, 0,BACKUP_DIR);
+                MAX_REPLICATION_Q_LENGTH, 0,BACKUP_DIR,false);
         
         DBS = (BabuDB) BabuDBFactory.createReplicatedBabuDB(config);
         

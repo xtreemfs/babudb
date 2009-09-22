@@ -19,7 +19,7 @@ public class SimpleDemo {
     public static void main(String[] args) throws InterruptedException {
         try {
             //start the database
-            BabuDB database = BabuDBFactory.createBabuDB(new BabuDBConfig("myDatabase/", "myDatabase/", 2, 1024 * 1024 * 16, 5 * 60, SyncMode.SYNC_WRITE,0,0));
+            BabuDB database = BabuDBFactory.createBabuDB(new BabuDBConfig("myDatabase/", "myDatabase/", 2, 1024 * 1024 * 16, 5 * 60, SyncMode.SYNC_WRITE,0,0, false));
             DatabaseManager dbm = database.getDatabaseManager();
                         
             //create a new database called myDB
