@@ -109,6 +109,11 @@ public class BabuDB {
     private volatile boolean          stopped;
     
     /**
+     * Flag that determines if the slaveCheck should be enabled, or not.
+     */
+    private volatile boolean          slaveCheck = true;
+    
+    /**
      * Starts the BabuDB database. If conf is instance of MasterConfig it comes
      * with replication in master-mode. If conf is instance of SlaveConfig it
      * comes with replication in slave-mode.
@@ -534,12 +539,20 @@ public class BabuDB {
         return worker[dbId % worker.length];
     }
     
+    public void enableSlaveCheck() {
+        this.slaveCheck = true;
+    }
+    
+    public void disableSlaveCheck() {
+        this.slaveCheck = false;
+    }
+    
     /**
      * 
      * @return true, if replication runs in slave-mode, false otherwise.
      */
     public void slaveCheck() throws BabuDBException{
-        if (replicationManager != null && !replicationManager.isMaster())
+        if (replicationManager != null && !replicationManager.isMaster() && slaveCheck)
             throw new BabuDBException(ErrorCode.NO_ACCESS,slaveProtection);
     }
 }
