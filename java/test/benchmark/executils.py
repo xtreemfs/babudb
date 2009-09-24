@@ -51,6 +51,8 @@ def exec_repetitions(cmd, args, num_reps=10, pbs_queue=None, pbs_name='storagesi
         args_tmp['base_dir'] = exec_path
         args_tmp['seed'] = seed + i
 
+        print "repetition", i, args_tmp
+
         if not pbs_queue:
             outputs.append(exec_single(cmd, args_tmp))
         else:

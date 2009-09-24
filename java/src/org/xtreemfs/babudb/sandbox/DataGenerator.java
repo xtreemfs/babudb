@@ -1,48 +1,99 @@
 package org.xtreemfs.babudb.sandbox;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Random;
 import java.util.Map.Entry;
 
 public class DataGenerator {
 
-	public static final Iterator fileIterator(final ArrayList<byte[]> lookupHits, final String filename) {
-		char[] bytes = null;
-		
-		try {
-			File f = new File(filename);
-			FileReader fr = new FileReader(filename);
-			bytes = new char[(int) f.length()];
-
-			//while(fr.)
-			int index = 0;
-			for(int charsRead = 0; charsRead > -1; index += 1)
-				charsRead = fr.read(bytes, index, bytes.length - index);
-			fr.close();
-			
-		} catch(IOException e) {
-			// TODO: handle error
-		}
-		
+	public static final Iterator xtreemfsIterator(final ArrayList<byte[]> lookupHits, final int hitrate, final String filename) throws IOException {
 		final ArrayList<String> lines = new ArrayList<String>();
+		String line = null;
+        final Random generator = new Random();
+        
+		BufferedReader bf = new BufferedReader(new FileReader(filename));
 
-		int index = 0;
-		while(index < bytes.length) {
-			StringBuffer sb = new StringBuffer();
-			while(bytes[index] != '\n') {
-				sb.append(bytes[index]);
-			}
-			lines.add(sb.toString());
+		while((line = bf.readLine()) != null) {
+			lines.add(line);
+            if(generator.nextInt() % hitrate == 0)
+            	lookupHits.add(line.getBytes());
 		}
 		
 		final Iterator<String> it = lines.iterator();
+
+		return new Iterator<Entry<byte[], byte[]>>() {
+			@Override
+			public boolean hasNext() {
+				return it.hasNext();
+			}
+
+			@Override
+			public Entry<byte[], byte[]> next() {
+				return new Entry<byte[], byte[]>() {
+
+					final byte[] nextBytes = it.next().getBytes();
+
+					@Override
+					public byte[] getKey() {
+						return nextBytes;
+					}
+
+					@Override
+					public byte[] getValue() {
+						return nextBytes;
+					}
+
+					@Override
+					public byte[] setValue(byte[] value) {
+						throw new UnsupportedOperationException();
+					}
+				};
+			}
+
+			@Override
+			public void remove() {
+                throw new UnsupportedOperationException();
+			}
+		};		
+	}
+	
+	public static final Iterator fileIterator(final ArrayList<byte[]> lookupHits, final int size, final int hitrate, final String filename) throws IOException {
+		final ArrayList<String> lines = new ArrayList<String>();
+		String line = null;
+        final Random generator = new Random();
+        int numLines = 0;
+        
+		BufferedReader bf = new BufferedReader(new FileReader(filename));
+
+		while((line = bf.readLine()) != null) {
+			lines.add(line);
+			numLines++;
+            if(generator.nextInt() % hitrate == 0)
+            	lookupHits.add(line.getBytes());
+		}
+
+		List<String> sorted = null;
+		if(size < numLines) {
+			Collections.shuffle(lines);
+		
+			sorted = lines.subList(0, size);
+			Collections.sort(sorted);
+		} else {
+			sorted = lines;
+		}
+		
+		final Iterator<String> it = sorted.iterator();
 		
 		return new Iterator<Entry<byte[], byte[]>>() {
 			@Override
@@ -130,6 +181,10 @@ public class DataGenerator {
             
         };
 	}
+	
+/*	private static byte[] fileID(String name) {
+		
+	} */
 	
 	private static String createNextString(String st, int minStrLen, int maxStrLen, char minChar,
 			char maxChar) {
