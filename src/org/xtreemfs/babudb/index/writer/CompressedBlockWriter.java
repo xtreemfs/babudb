@@ -154,14 +154,17 @@ public class CompressedBlockWriter implements BlockWriter {
     
     private static ReusableBuffer serializeVarLenPage(List<byte[]> list) {
         
-        List<Integer> offsets = new LinkedList<Integer>();
+        int[] offsets = new int[list.size()];
+//        List<Integer> offsets = new LinkedList<Integer>();
         int size = 0;
+        int offsetPos = 0;
         for (byte[] buf : list) {
             size += buf.length;
-            offsets.add(size);
+            offsets[offsetPos] = size;
+            offsetPos++;
         }
         
-        size += offsets.size() * Integer.SIZE / 8;
+        size += list.size() * Integer.SIZE / 8;
         
         ReusableBuffer newBuf = BufferPool.allocate(size);
         for (byte[] buf : list)
