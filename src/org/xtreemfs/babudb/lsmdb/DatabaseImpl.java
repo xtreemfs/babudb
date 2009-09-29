@@ -190,14 +190,69 @@ public class DatabaseImpl implements Database {
     
     @Override
     public void directInsert(BabuDBInsertGroup irg) throws BabuDBException {
+        final AsyncResult result = new AsyncResult();
+        
+        directInsert(irg, new SyncListener() {
+            
+            public void synced(LogEntry entry) {
+                entry.free();
+                
+                synchronized (result) {
+                    result.done = true;
+                    result.notifyAll();
+                }
+            }
+            
+            public void failed(LogEntry entry, Exception ex) {
+                entry.free();
+                
+                synchronized (result) {
+                    result.done = true;
+                    result.error = new BabuDBException(ErrorCode.IO_ERROR,
+                        "could not execute insert because of IO problem", ex);
+                    result.notifyAll();
+                }
+            }
+        }, false);
+        
+        
+        synchronized (result) {
+            if (!result.done) {
+                try {
+                    result.wait();
+                } catch (InterruptedException ex) {
+                    throw new BabuDBException(ErrorCode.INTERNAL_ERROR, 
+                            "cannot write update to disk log", ex);
+                }
+            }
+        }
+        
+        if (result.error != null) {
+            throw result.error;
+        }
+        
+        for (InsertRecord ir : irg.getRecord().getInserts()) {
+            final LSMTree index = lsmDB.getIndex(ir.getIndexId());
+            if (ir.getValue() != null) {
+                index.insert(ir.getKey(), ir.getValue());
+            } else {
+                index.delete(ir.getKey());
+            }
+        }
+    }
+    
+    @Override
+    public void directInsert(BabuDBInsertGroup irg, SyncListener listener, 
+            boolean optimistic) throws BabuDBException {
+        
         dbs.slaveCheck();
         
         final int numIndices = lsmDB.getIndexCount();
         
         for (InsertRecord ir : irg.getRecord().getInserts()) {
             if ((ir.getIndexId() >= numIndices) || (ir.getIndexId() < 0)) {
-                throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + ir.getIndexId()
-                    + " does not exist");
+                throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + 
+                        ir.getIndexId() + " does not exist");
             }
         }
         
@@ -206,55 +261,23 @@ public class DatabaseImpl implements Database {
         irg.getRecord().serialize(buf);
         buf.flip();
         
-        final AsyncResult result = new AsyncResult();
-        
-        LogEntry e = new LogEntry(buf, new SyncListener() {
-            
-            public void synced(LogEntry entry) {
-                synchronized (result) {
-                    result.done = true;
-                    result.notifyAll();
-                }
-            }
-            
-            public void failed(LogEntry entry, Exception ex) {
-                synchronized (result) {
-                    result.done = true;
-                    result.error = new BabuDBException(ErrorCode.IO_ERROR,
-                        "could not execute insert because of IO problem", ex);
-                    result.notifyAll();
-                }
-            }
-        }, LogEntry.PAYLOAD_TYPE_INSERT);
+        LogEntry e = new LogEntry(buf, listener, LogEntry.PAYLOAD_TYPE_INSERT);
         
         try {
             dbs.getLogger().append(e);
         } catch (InterruptedException ex) {
-            throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "cannt write update to disk log", ex);
+            throw new BabuDBException(ErrorCode.INTERNAL_ERROR, 
+                    "cannot write update to disk log", ex);
         }
         
-        synchronized (result) {
-            if (!result.done) {
-                try {
-                    result.wait();
-                } catch (InterruptedException ex) {
-                    throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "cannt write update to disk log", ex);
+        if (optimistic) {
+            for (InsertRecord ir : irg.getRecord().getInserts()) {
+                final LSMTree index = lsmDB.getIndex(ir.getIndexId());
+                if (ir.getValue() != null) {
+                    index.insert(ir.getKey(), ir.getValue());
+                } else {
+                    index.delete(ir.getKey());
                 }
-            }
-        }
-        
-        if (result.error != null) {
-            throw result.error;
-        }
-                	
-        e.free();
-        
-        for (InsertRecord ir : irg.getRecord().getInserts()) {
-            final LSMTree index = lsmDB.getIndex(ir.getIndexId());
-            if (ir.getValue() != null) {
-                index.insert(ir.getKey(), ir.getValue());
-            } else {
-                index.delete(ir.getKey());
             }
         }
     }
