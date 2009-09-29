@@ -8,7 +8,6 @@
 package org.xtreemfs.babudb.sandbox;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.HashSet;
 import java.util.Random;
@@ -17,7 +16,6 @@ import java.util.Set;
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.ReplicationInterface;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.ReplicationManagerImpl;
@@ -49,7 +47,6 @@ public class ReplicationLongruntestSlave {
     public final static String PATH = ReplicationLongrunTestConfig.PATH+"slave";
     public final static int NUM_WKS = 1;
     
-    public final static int MAX_REPLICATION_Q_LENGTH = 0;
     public final static String BACKUP_DIR = ReplicationLongrunTestConfig.PATH+"Sbackup";
     
     private static ContinuesRandomGenerator generator;
@@ -85,17 +82,15 @@ public class ReplicationLongruntestSlave {
         
         Set<InetSocketAddress> participants = new HashSet<InetSocketAddress>();    
         if (args[1].indexOf(",") == -1)
-            participants.add(parseAddress(args[1]));
+            error("The replication has to run with at least 2 members.");
         else
             for (String adr : args[1].split(","))
                 participants.add(parseAddress(adr));
         
-        participants.add(new InetSocketAddress(InetAddress.getByAddress(
-                new byte[]{127,0,0,1}),ReplicationInterface.DEFAULT_SLAVE_PORT));
         
-        CONFIGURATION = new ReplicationConfig(PATH, PATH, NUM_WKS, 1, 0, SyncMode.ASYNC, 0, 0, 
-                ReplicationInterface.DEFAULT_SLAVE_PORT, InetAddress.getByAddress(new byte[]{127,0,0,1}), participants, 50, null, 
-                MAX_REPLICATION_Q_LENGTH, 0,BACKUP_DIR, false);
+        CONFIGURATION = new ReplicationConfig(PATH, PATH, NUM_WKS, 1, 0,
+                SyncMode.ASYNC, 0, 0, participants, 50, null, 
+                0,BACKUP_DIR, false);
         
         DBS = (BabuDB) BabuDBFactory.createReplicatedBabuDB(CONFIGURATION);
         generator = new ContinuesRandomGenerator(seed, ReplicationLongrunTestConfig.MAX_SEQUENCENO);

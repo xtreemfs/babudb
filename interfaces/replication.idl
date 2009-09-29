@@ -12,10 +12,8 @@ module org # 1000
 	interface ReplicationInterface # 10
 	{
 	  // Constants
-	  const uint32_t DEFAULT_MASTER_PORT = 35666;
-	  const uint32_t DEFAULT_MASTERS_PORT = 35666;
-	  const uint32_t DEFAULT_SLAVE_PORT = 35667;
-	  const uint32_t DEFAULT_SLAVES_PORT = 35667;
+	  const uint32_t DEFAULT_PORT = 35667;
+	  const uint32_t DEFAULT_SPORT = 35667;
 
 	  // Functions	
 	  // shared

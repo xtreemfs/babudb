@@ -172,7 +172,6 @@ public class ReplicationManagerImpl implements ReplicationManager {
         // get a list of the registered slaves
         List<InetSocketAddress> slaves = new LinkedList<InetSocketAddress>(
                 dispatcher.configuration.getParticipants());
-        slaves.remove(dispatcher.configuration.getInetSocketAddress());
         
         if (slaves.size() > 0) {
             // stop the slaves and get their states

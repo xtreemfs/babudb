@@ -8,7 +8,6 @@
 package org.xtreemfs.babudb.sandbox;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.HashSet;
 import java.util.List;
@@ -18,7 +17,6 @@ import java.util.Set;
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.ReplicationInterface;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
 import org.xtreemfs.babudb.lsmdb.Database;
@@ -39,8 +37,6 @@ public class ReplicationLongruntestMaster {
 
     public final static String PATH = ReplicationLongrunTestConfig.PATH+"master";
     public final static int NUM_WKS = 1;
-
-    public final static int MAX_REPLICATION_Q_LENGTH = 0;
     
     // log-file size boundary in bytes (0,5 MB)
     public final static long MAX_LOG_FILE_SIZE = 512*1024; 
@@ -76,13 +72,10 @@ public class ReplicationLongruntestMaster {
         
         Set<InetSocketAddress> participants = new HashSet<InetSocketAddress>();    
         if (args[1].indexOf(",")==-1)
-            participants.add(parseAddress(args[1]));
+            error("The replication has to run with at least 2 members.");
         else
             for (String adr : args[1].split(","))
                 participants.add(parseAddress(adr));
-        participants.add(new InetSocketAddress(InetAddress.getByAddress(
-                new byte[]{127,0,0,1}),ReplicationInterface.DEFAULT_MASTER_PORT));
-        
         
         generator = new ContinuesRandomGenerator(seed, ReplicationLongrunTestConfig.MAX_SEQUENCENO);
         
@@ -90,9 +83,8 @@ public class ReplicationLongruntestMaster {
         
         ReplicationConfig config = new ReplicationConfig(PATH, PATH, NUM_WKS, 
                 MAX_LOG_FILE_SIZE, CHECK_INTERVAL, SyncMode.ASYNC, 0, 0, 
-                ReplicationInterface.DEFAULT_MASTER_PORT, InetAddress.
-                getByAddress(new byte[]{127,0,0,1}), participants, 50, null, 
-                MAX_REPLICATION_Q_LENGTH, 0,BACKUP_DIR,false);
+                participants, 50, null, 
+                0,BACKUP_DIR,false);
         
         DBS = (BabuDB) BabuDBFactory.createReplicatedBabuDB(config);
         
@@ -221,7 +213,7 @@ public class ReplicationLongruntestMaster {
      *  Prints out usage informations and terminates the application.
      */
     public static void usage(){
-        System.out.println("ReplicationLongrungtestMaster <seed> <participant_address:port>[,<participant_address:port>]");
+        System.out.println("ReplicationLongrungtestMaster <seed> <participant_address:port>,<participant_address:port>,[,<participant_address:port>]");
         System.out.println("  "+"<seed> long value from which the scenario will be generated");
         System.out.println("  "+"<participant_address:port> participants of the replication separated by ','");
         System.exit(1);

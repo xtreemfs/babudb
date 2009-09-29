@@ -10,10 +10,8 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 public class ReplicationInterface
 {
-    public static final int DEFAULT_MASTER_PORT = 35666;
-    public static final int DEFAULT_MASTERS_PORT = 35666;
-    public static final int DEFAULT_SLAVE_PORT = 35667;
-    public static final int DEFAULT_SLAVES_PORT = 35667;
+    public static final int DEFAULT_PORT = 35667;
+    public static final int DEFAULT_SPORT = 35667;
 
 
     public static int getVersion() { return 1010; }

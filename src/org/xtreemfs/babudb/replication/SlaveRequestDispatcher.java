@@ -62,7 +62,7 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
         // --------------------------
         
         this.replication = new ReplicationStage(this, ((ReplicationConfig) dbs.
-                getConfig()).getMaxQ(), null, state.latest);   
+                getConfig()).getMaxQueueLength(), null, state.latest);   
         this.heartbeat = new HeartbeatThread(this, state.latest);
     }
     
@@ -81,7 +81,7 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
         // --------------------------
         
         this.replication = new ReplicationStage(this, ((ReplicationConfig) dbs.
-                getConfig()).getMaxQ(), null, latest);   
+                getConfig()).getMaxQueueLength(), null, latest);   
         this.heartbeat = new HeartbeatThread(this, latest);
     }
     
@@ -231,7 +231,8 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
      */
     @Override
     public DispatcherState getState() {
-        return new DispatcherState(dbs.getLogger().getLatestLSN(), replication.backupQueue());
+        return new DispatcherState(dbs.getLogger().getLatestLSN(), 
+                replication.backupQueue());
     }
     /*
      * (non-Javadoc)
@@ -263,7 +264,8 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
                 "Cannot continue the replication, while it was not coined." +
                 "Use coin() instead!");
         
-        this.replication = new ReplicationStage(this,configuration.getMaxQ(),state.requestQueue,state.latest);
+        this.replication = new ReplicationStage(this,configuration
+                .getMaxQueueLength(),state.requestQueue,state.latest);
         this.heartbeat = new HeartbeatThread(this,state.latest);
         try {
             replication.start();

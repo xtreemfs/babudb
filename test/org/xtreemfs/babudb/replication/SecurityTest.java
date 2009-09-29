@@ -32,21 +32,21 @@ public class SecurityTest {
     public void setUp() throws Exception {   
         Logging.start(Logging.LEVEL_DEBUG);
         
-        conf = new ReplicationConfig("config/replication.properties");
-        conf.read();
-        
-        Process p = Runtime.getRuntime().exec("rm -rf "+conf.getBaseDir());
-        p.waitFor();
-        
-        p = Runtime.getRuntime().exec("rm -rf "+conf.getDbLogDir());
-        p.waitFor();
-        
-        p = Runtime.getRuntime().exec("rm -rf "+conf.getBackupDir());
-        p.waitFor();
-        
-        // start the slave
         try {
-            slave = BabuDBFactory.createBabuDB(conf);
+            conf = new ReplicationConfig("config/replication.properties");
+            conf.read();
+            
+            Process p = Runtime.getRuntime().exec("rm -rf "+conf.getBaseDir());
+            p.waitFor();
+            
+            p = Runtime.getRuntime().exec("rm -rf "+conf.getDbLogDir());
+            p.waitFor();
+            
+            p = Runtime.getRuntime().exec("rm -rf "+conf.getBackupDir());
+            p.waitFor();
+        
+            // start the slave
+            slave = BabuDBFactory.createReplicatedBabuDB(conf);
             ((DatabaseManagerImpl) slave.getDatabaseManager()).proceedCreate(DB_NAME, 2, null);
         } catch (Exception e){
         	System.out.println("ERROR: "+e.getMessage());

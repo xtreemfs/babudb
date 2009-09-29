@@ -50,6 +50,7 @@ public class BabuDBConfig extends Config {
     
     /**
      * Max queue length: if > 0, the queue for each worker is limited to maxQ.
+     * The replication remote-request-queue will also be limited to maxQ.
      */
     protected int       maxQueueLength;
     
@@ -86,6 +87,8 @@ public class BabuDBConfig extends Config {
             int pseudoSyncWait, int maxQ, boolean compression) {
         
         super();
+        this.debugLevel = Logging.LEVEL_WARN;
+        this.debugCategory = "all";
         this.baseDir = (baseDir.endsWith(File.separator)) ? baseDir : baseDir+File.separator;
         this.dbCfgFile = "config.db";
         this.dbLogDir = (dbLogDir.endsWith(File.separator)) ? dbLogDir : dbLogDir+File.separator;
