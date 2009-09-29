@@ -40,6 +40,7 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.DirectFileIO;
 import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.replication.ReplicationManagerImpl;
+import org.xtreemfs.babudb.replication.stages.logic.LoadLogic;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManager;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
@@ -204,15 +205,16 @@ public class BabuDB {
         if (this.replicationManager != null)
             this.replicationManager.initialize();
         
-        Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running (version " + BABUDB_VERSION
-            + ")");
+        Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running " +
+        		"(version " + BABUDB_VERSION + ")");
     }
         
     /**
      * REPLICATION
      * Stops the BabuDB for an initial Load.
-     * 
-     * TODO: What does an "initial load" mean?
+     * This is necessary if the replication
+     * has copied the onDiskData from a master-
+     * participant due a {@link LoadLogic} run.
      */
     public void stop() {
         if (this.stopped) return;
@@ -552,7 +554,7 @@ public class BabuDB {
      * @return true, if replication runs in slave-mode, false otherwise.
      */
     public void slaveCheck() throws BabuDBException{
-        if (replicationManager != null && !replicationManager.isMaster() && slaveCheck)
+        if (slaveCheck && replicationManager != null && !replicationManager.isMaster())
             throw new BabuDBException(ErrorCode.NO_ACCESS,slaveProtection);
     }
 }
