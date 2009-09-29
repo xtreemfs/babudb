@@ -63,7 +63,7 @@ public class BabuDB {
     /**
      * Version (name)
      */
-    public static final String        BABUDB_VERSION           = "0.2.2";
+    public static final String        BABUDB_VERSION           = "0.2.3";
     
     /**
      * Version of the DB on-disk format (to detect incompatibilities).
