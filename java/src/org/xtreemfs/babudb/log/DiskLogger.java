@@ -127,7 +127,7 @@ public class DiskLogger extends Thread {
     /**
      * Max number of LogEntries to write before sync.
      */
-    public static final int MAX_ENTRIES_PER_BLOCK = 500;
+    public static final int MAX_ENTRIES_PER_BLOCK = 250;
 
     /**
      * Creates a new instance of DiskLogger

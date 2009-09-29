@@ -9,8 +9,10 @@ package org.xtreemfs.include.common.config;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.BindException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.Properties;
@@ -33,8 +35,6 @@ public class ReplicationConfig extends BabuDBConfig {
     protected SSLOptions        sslOptions;
     
     protected Set<InetSocketAddress>   participants;
-    
-    protected int               maxQ;
     
     protected int               localTimeRenew;
     
@@ -69,16 +69,31 @@ public class ReplicationConfig extends BabuDBConfig {
     
     public ReplicationConfig(String baseDir, String logDir, int numThreads, 
             long maxLogFileSize, int checkInterval, SyncMode mode, 
-            int pseudoSyncWait, int maxQ, int port, InetAddress address, 
-            Set<InetSocketAddress> participants, int localTimeRenew, 
-            SSLOptions sslOptions, int repMaxQ, int syncN, String backupDir, boolean compression) {
+            int pseudoSyncWait, int maxQ, Set<InetSocketAddress> participants, 
+            int localTimeRenew, SSLOptions sslOptions, int syncN, 
+            String backupDir, boolean compression) {
         
         super(baseDir, logDir, numThreads, maxLogFileSize, checkInterval, mode, 
                 pseudoSyncWait, maxQ, compression);
-        this.participants = participants;
-        this.maxQ = repMaxQ;
+        this.participants = new HashSet<InetSocketAddress>();
         this.localTimeRenew = localTimeRenew;
-        this.address = new InetSocketAddress(address,port);
+        Socket s;
+        for (InetSocketAddress participant : participants){
+            s = new Socket();
+            try {
+                s.bind(participant);
+                if (this.address != null) throw new BindException();
+                this.address = participant;
+            } catch (Exception e) {
+                this.participants.add(participant);
+            } finally {
+                try {
+                    s.close();
+                } catch (IOException e) { /* ignored */ }
+            }
+        }
+        assert (this.address != null) : "No one of the given participants " +
+        		"described the localhost!";
         this.sslOptions = sslOptions;
         this.syncN = syncN;
         this.chunkSize = DEFAULT_MAX_CHUNK_SIZE;
@@ -87,16 +102,7 @@ public class ReplicationConfig extends BabuDBConfig {
     
     public void read() throws IOException {
         super.read();
-        
-        int port = this.readRequiredInt("listen.port");
-        
-        InetAddress addr = this.readOptionalInetAddr("listen.address", null);
-        
-        this.address = (addr != null) ? new InetSocketAddress(addr,port) : 
-                        new InetSocketAddress(port);
-        
-        this.maxQ = this.readOptionalInt("maxQ", 0);
-        
+               
         this.localTimeRenew = this.readOptionalInt("localTimeRenew", 3000);
         
         if (this.readRequiredBoolean("ssl.enabled")) {
@@ -115,19 +121,29 @@ public class ReplicationConfig extends BabuDBConfig {
         
         // read the participants
         this.participants = new HashSet<InetSocketAddress>();
-        int number = 0;
-        this.participants.add(this.readRequiredInetAddr("participant."+number, 
-                "participant."+number+".port"));
-        number++;
         
+        int number = 0;
+        Socket s;
         InetSocketAddress addrs;
         while ((addrs = this.readOptionalInetSocketAddr("participant."+number, 
                 "participant."+number+".port",null))!=null){
-            
-            this.participants.add(addrs);
+            s = new Socket();
+            try {
+                s.bind(addrs);
+                if (this.address != null) throw new BindException();
+                this.address = addrs;
+            } catch (BindException e) {
+                this.participants.add(addrs);
+            } finally {
+                try {
+                    s.close();
+                } catch (IOException e) { /* ignored */ }
+            }
             number++;
         }
-
+        assert (this.address != null) : "No one of the given participants " +
+                                        "described the localhost!";
+        
         this.chunkSize = this.readOptionalInt("chunkSize", 
                 DEFAULT_MAX_CHUNK_SIZE);
         
@@ -160,10 +176,6 @@ public class ReplicationConfig extends BabuDBConfig {
     
     public Set<InetSocketAddress> getParticipants(){
         return this.participants;
-    }
-
-    public int getMaxQ() {
-        return this.maxQ;
     }
 
     public int getLocalTimeRenew() {

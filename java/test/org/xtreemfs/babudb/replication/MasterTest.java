@@ -89,7 +89,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
             rpcClient.setLifeCycleListener(this);
             client = new MasterClient(rpcClient,conf.getInetSocketAddress());
             
-            int port = 35667;
+            int port = 35666;
             InetAddress address = InetAddress.getByAddress(
                     new byte[]{127,0,0,1});
             rpcServer = new RPCNIOSocketServer(port,address,this,null);

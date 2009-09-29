@@ -104,7 +104,6 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
             
             List<InetSocketAddress> openAddresses = 
                 new LinkedList<InetSocketAddress>(conf.getParticipants());
-            openAddresses.remove(conf.getInetSocketAddress());
             int port = openAddresses.get(0).getPort();
             InetAddress address = openAddresses.get(0).getAddress();
             rpcServer = new RPCNIOSocketServer(port,address,this,null);

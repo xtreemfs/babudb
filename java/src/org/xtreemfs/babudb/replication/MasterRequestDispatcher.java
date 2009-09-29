@@ -70,8 +70,6 @@ public class MasterRequestDispatcher extends RequestDispatcher {
         
         List<InetSocketAddress> slaves = new LinkedList<InetSocketAddress>(
                 oldDispatcher.configuration.getParticipants());
-        if (!slaves.remove(own)) throw new IOException(own.toString()+" is not"+
-        		" a vaild replication participant.");
         
         this.states = new SlavesStates(((ReplicationConfig) dbs.getConfig()).
                 getSyncN(),slaves,rpcClient);
