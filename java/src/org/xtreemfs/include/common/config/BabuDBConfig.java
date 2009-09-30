@@ -105,8 +105,9 @@ public class BabuDBConfig extends Config {
         super();
     }
     
-    public BabuDBConfig(Properties prop) {
+    public BabuDBConfig(Properties prop) throws IOException {
         super(prop);
+        read();
     }
     
     public BabuDBConfig(String filename) throws IOException {

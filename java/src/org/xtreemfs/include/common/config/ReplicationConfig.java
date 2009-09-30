@@ -59,8 +59,9 @@ public class ReplicationConfig extends BabuDBConfig {
         super();
     }
     
-    public ReplicationConfig(Properties prop) {
+    public ReplicationConfig(Properties prop) throws IOException {
         super(prop);
+        read();
     }
     
     public ReplicationConfig(String filename) throws IOException {
@@ -83,7 +84,7 @@ public class ReplicationConfig extends BabuDBConfig {
             s = new Socket();
             try {
                 s.bind(participant);
-                if (this.address != null) throw new BindException();
+                if (this.address != null && !this.address.equals(participant)) throw new BindException();
                 this.address = participant;
             } catch (Exception e) {
                 this.participants.add(participant);
@@ -131,7 +132,7 @@ public class ReplicationConfig extends BabuDBConfig {
             s = new Socket();
             try {
                 s.bind(addrs);
-                if (this.address != null) throw new BindException();
+                if (this.address != null && !this.address.equals(addrs)) throw new BindException();
                 this.address = addrs;
             } catch (BindException e) {
                 this.participants.add(addrs);

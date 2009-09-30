@@ -287,7 +287,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
         Operation op = operations.get(hdr.getTag());
         if (op == null) {
             rq.sendException(new ProtocolException(ONCRPCResponseHeader.ACCEPT_STAT_PROC_UNAVAIL,
-                ErrNo.EINVAL,"requested operation is not available on this "+name));
+                ErrNo.EINVAL,"requested operation ("+hdr.getTag()+") is not available on this "+name));
             return;
         } 
         
