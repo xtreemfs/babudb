@@ -89,8 +89,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
             client = new MasterClient(rpcClient,conf.getInetSocketAddress());
             
             int port = 35666;
-            InetAddress address = InetAddress.getByAddress(
-                    new byte[]{127,0,0,1});
+            InetAddress address = InetAddress.getByAddress(new byte[]{127,0,0,1});
             rpcServer = new RPCNIOSocketServer(port,address,this,null);
             rpcServer.setLifeCycleListener(this);
             
@@ -310,14 +309,14 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
                             
                         default:
                             rq.sendInternalServerError(new Throwable("TEST-DUMMY-RESPONSE"), new errnoException("TEST-DUMMY-RESPONSE"));
-                            fail();
+                            fail("Unexpected response received!");
                             break;
                         }
                         if (response.get() != -1)
                             response.wait();
                         response.set(le.getPayloadType());
                     } catch (LogEntryException e) {
-                        fail();
+                        fail("Response could not be deserialized!");
                     } finally {
                         chksm.reset();
                         if (le!=null) le.free();
@@ -338,7 +337,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
                     response.set(toSlaveOperation);
                 } else {
                     rq.sendInternalServerError(new Throwable("TEST-DUMMY-RESPONSE"), new errnoException("TEST-DUMMY-RESPONSE"));
-                    fail();
+                    fail("Unexpected response received!");
                 }
                 response.notify();
             }
