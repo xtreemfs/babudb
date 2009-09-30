@@ -46,7 +46,6 @@ public class DirectFileIOTest {
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
         conf = new ReplicationConfig("config/replication.properties");
-        conf.read();
     }
     
     @Before
