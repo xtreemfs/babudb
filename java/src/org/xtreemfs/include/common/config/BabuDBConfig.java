@@ -111,6 +111,7 @@ public class BabuDBConfig extends Config {
     
     public BabuDBConfig(String filename) throws IOException {
         super(filename);
+        read();
     }
     
     public void read() throws IOException {

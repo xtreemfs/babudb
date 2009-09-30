@@ -65,6 +65,7 @@ public class ReplicationConfig extends BabuDBConfig {
     
     public ReplicationConfig(String filename) throws IOException {
         super(filename);
+        read();
     }
     
     public ReplicationConfig(String baseDir, String logDir, int numThreads, 

@@ -71,7 +71,6 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
     public static void setUpBeforeClass() throws Exception {
         Logging.start(Logging.LEVEL_ERROR, Category.all);
         conf = new ReplicationConfig("config/replication.properties");
-        conf.read();
     }
     
     @Before

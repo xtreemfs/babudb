@@ -34,7 +34,6 @@ public class SecurityTest {
         
         try {
             conf = new ReplicationConfig("config/replication.properties");
-            conf.read();
             
             Process p = Runtime.getRuntime().exec("rm -rf "+conf.getBaseDir());
             p.waitFor();
