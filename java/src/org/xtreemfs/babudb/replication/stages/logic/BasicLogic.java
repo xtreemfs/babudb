@@ -53,7 +53,7 @@ public class BasicLogic extends Logic {
      */
     @Override
     public void run() throws InterruptedException {     
-        assert (stage.missing == null) : "Programmers fault!";
+        assert (stage.missing == null) : "Blame the developer!";
         
         final StageRequest op = queue.take();
         if (op.getLSN() == null) return;
@@ -96,9 +96,6 @@ public class BasicLogic extends Logic {
             
                 @Override
                 public void failed(LogEntry entry, Exception ex) {
-                    System.err.println("Last inserted: "+stage.lastInserted.toString());
-                    System.err.println("MISSING: "+stage.missing);
-                    System.err.println("Operation: "+op.toString());
                     stage.finalizeRequest(op);
                     stage.lastInserted = new LSN(lsn.getViewId(),lsn.getSequenceNo()-1L);
                     Logging.logError(Logging.LEVEL_ERROR, stage, ex);

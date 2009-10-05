@@ -18,6 +18,7 @@ import org.xtreemfs.babudb.interfaces.utils.Serializable;
 import org.xtreemfs.babudb.replication.Request;
 import org.xtreemfs.babudb.replication.RequestDispatcher;
 import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherState;
+import org.xtreemfs.include.common.logging.Logging;
 
 /**
  * {@link Operation} to stop an instance of {@link BabuDB} remotely.
@@ -54,7 +55,7 @@ public class RemoteStopOperation extends Operation {
     public Serializable parseRPCMessage(Request rq) {
         remoteStopRequest rpcrq = new remoteStopRequest();
         rq.deserializeMessage(rpcrq);
-        
+                
         return null;
     }
 
@@ -73,6 +74,7 @@ public class RemoteStopOperation extends Operation {
      */
     @Override
     public void startRequest(Request rq) {
+        Logging.logMessage(Logging.LEVEL_INFO, this, "Remote-operation: ", "stop");
         // stop the replication
         final AtomicBoolean ready = new AtomicBoolean(false);
         

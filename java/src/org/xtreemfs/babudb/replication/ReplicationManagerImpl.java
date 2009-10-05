@@ -21,7 +21,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.SimplifiedBabuDBRequestListener;
-import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.clients.StateClient;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCException;
 import org.xtreemfs.babudb.log.LogEntry;
@@ -30,6 +29,7 @@ import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherState;
 import org.xtreemfs.babudb.replication.SlavesStates.NotEnoughAvailableSlavesException;
 import org.xtreemfs.babudb.replication.stages.StageRequest;
 import org.xtreemfs.include.common.TimeSync;
+import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
@@ -72,18 +72,33 @@ public class ReplicationManagerImpl implements ReplicationManager {
     /**
      * <p>Approach for a Worker to announce a new {@link LogEntry} <code>le</code> to the {@link ReplicationThread}.</p>
      * 
-     * @param le
-     * @throws BabuDBException if this is not a master.
+     * @param le - the original {@link LogEntry}.
+     * @param buffer - the serialized {@link LogEntry}.
+     * 
+     * @throws IOException if the replication failed.
+     * 
+     * @return the {@link ReplicateResponse}.
      */
-    public void replicate(LogEntry le) throws BabuDBException {
-        Logging.logMessage(Logging.LEVEL_NOTICE, this, "Performing requests: replicate...");
+    public ReplicateResponse replicate(LogEntry le, ReusableBuffer buffer) throws IOException {
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "Performing requests: replicate...");
 
         try {
-            dispatcher.replicate(le);
-        } catch (Exception e){
-            new BabuDBException(ErrorCode.REPLICATION_FAILURE, "A LogEntry" +
-            		" could not be replicated because: "+e.getMessage());
-        } 
+            return dispatcher.replicate(le, buffer);
+        } catch (Throwable e){
+            throw new IOException("A LogEntry could not be replicated because: " + 
+                    e.getMessage());
+        }
+    }
+    
+    /**
+     * <p>
+     * Registers the listener for a replicate call.
+     * </p>
+     * 
+     * @param response
+     */
+    public void subscribeListener(ReplicateResponse response) {
+        dispatcher.subscribeListener(response);
     }
     
     /* (non-Javadoc)
@@ -91,7 +106,7 @@ public class ReplicationManagerImpl implements ReplicationManager {
      */
     @SuppressWarnings("unchecked")
     public Map<InetSocketAddress,LSN> getStates(List<InetSocketAddress> babuDBs) {
-        Logging.logMessage(Logging.LEVEL_NOTICE, this, "Performing requests: state...");
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "Performing requests: state...");
         
         int numRqs = babuDBs.size();
         Map<InetSocketAddress,LSN> result = new HashMap<InetSocketAddress, LSN>();
@@ -316,7 +331,7 @@ public class ReplicationManagerImpl implements ReplicationManager {
     private void allToSlaves(List<InetSocketAddress> babuDBs, final int syncN, 
             InetSocketAddress newMaster) throws NotEnoughAvailableSlavesException{
                 
-        Logging.logMessage(Logging.LEVEL_NOTICE, this, "Performing requests: toSlave...");
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "Performing requests: toSlave...");
         int numRqs = babuDBs.size();
         if (numRqs<syncN) throw new NotEnoughAvailableSlavesException("could not proceed toSlaves broadcast");
         
@@ -370,7 +385,7 @@ public class ReplicationManagerImpl implements ReplicationManager {
      */
     @SuppressWarnings("unchecked")
     private Map<InetSocketAddress,LSN> stopAll(List<InetSocketAddress> babuDBs) {
-        Logging.logMessage(Logging.LEVEL_NOTICE, this, "Performing requests: stop...");
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "Performing requests: stop...");
         
         int numRqs = babuDBs.size();
         Map<InetSocketAddress,LSN> result = new HashMap<InetSocketAddress, LSN>();
@@ -408,8 +423,12 @@ public class ReplicationManagerImpl implements ReplicationManager {
     public InetSocketAddress getMaster() {
         if (isMaster()) 
             return dispatcher.configuration.getInetSocketAddress();
-        else if (((SlaveRequestDispatcher) dispatcher).master != null) 
-            return ((SlaveRequestDispatcher) dispatcher).master.getDefaultServerAddress();
+        
+        else if (dispatcher instanceof SlaveRequestDispatcher && 
+                ((SlaveRequestDispatcher) dispatcher).master != null)
+            
+            return ((SlaveRequestDispatcher) dispatcher).master
+                .getDefaultServerAddress();
         else
             return null;
     }

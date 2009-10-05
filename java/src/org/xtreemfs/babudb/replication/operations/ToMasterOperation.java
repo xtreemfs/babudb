@@ -77,6 +77,8 @@ public class ToMasterOperation extends Operation {
         if (!dispatcher.stopped) rq.sendReplicationException(ErrNo.
                 SERVICE_UNAVAILABLE, "Replication is running at the moment!");
         else {
+            Logging.logMessage(Logging.LEVEL_INFO, this, "Remote-operation: %s",
+                    "toMaster");
             try {
                 MasterRequestDispatcher newDispatcher = 
                     new MasterRequestDispatcher(dispatcher,dispatcher.

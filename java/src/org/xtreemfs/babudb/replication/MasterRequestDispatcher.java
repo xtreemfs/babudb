@@ -13,8 +13,6 @@ import java.net.SocketAddress;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.zip.CRC32;
-import java.util.zip.Checksum;
 
 import org.xtreemfs.babudb.clients.SlaveClient;
 import org.xtreemfs.babudb.log.LogEntry;
@@ -27,7 +25,6 @@ import org.xtreemfs.babudb.replication.operations.LoadOperation;
 import org.xtreemfs.babudb.replication.operations.Operation;
 import org.xtreemfs.babudb.replication.operations.ReplicaOperation;
 import org.xtreemfs.babudb.replication.operations.StateOperation;
-import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
@@ -44,7 +41,6 @@ import org.xtreemfs.include.foundation.oncrpc.client.RPCResponseAvailableListene
 
 public class MasterRequestDispatcher extends RequestDispatcher {
     
-    private final Checksum checksum = new CRC32();
     private final SlavesStates states;
     private final int syncN;
     
@@ -102,17 +98,7 @@ public class MasterRequestDispatcher extends RequestDispatcher {
         op = new HeartbeatOperation(this);
         operations.put(op.getProcedureId(),op);
     }
-    
-    /**
-     * If an instance has to be notified about latest {@link LSN} changes,
-     * register it here.
-     * 
-     * @param listener
-     */
-    public void subscribeListener(LatestLSNUpdateListener listener){
-        states.subscribeListener(listener);
-    }
-    
+        
     /**
      * @return a list of available {@link SlaveClient}s.
      * @throws NotEnoughAvailableSlavesException
@@ -164,59 +150,62 @@ public class MasterRequestDispatcher extends RequestDispatcher {
 
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.RequestDispatcher#replicate(org.xtreemfs.babudb.log.LogEntry)
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#subscribeListener(org.xtreemfs.babudb.replication.LatestLSNUpdateListener)
+     */
+    @Override
+    public void subscribeListener(LatestLSNUpdateListener listener){
+        states.subscribeListener(listener);
+    }
+    
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#_replicate(org.xtreemfs.babudb.log.LogEntry, org.xtreemfs.include.common.buffer.ReusableBuffer)
      */
     @SuppressWarnings("unchecked")
     @Override
-    protected void _replicate(final LogEntry le)
-            throws NotEnoughAvailableSlavesException, InterruptedException, IOException {
-        try {
-            ReusableBuffer buffer = le.serialize(checksum);
-            
-            List<SlaveClient> slaves = getSlavesForBroadCast(); 
-            
-            // setup the response
-            final ReplicateResponse result = new ReplicateResponse(le.getLSN(),
-                    slaves.size()-getSyncN()) {
+    protected ReplicateResponse _replicate(LogEntry le, ReusableBuffer payload)
+            throws NotEnoughAvailableSlavesException, InterruptedException {
+        
+        List<SlaveClient> slaves = getSlavesForBroadCast(); 
+        final ReplicateResponse result = new ReplicateResponse(le,
+                slaves.size() - getSyncN());
+        
+        // make the replicate call at the clients
+        if (slaves.size() == 0) { 
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                    "There are no slaves available anymore! " +
+                    "BabuDB runs if it would be in non-replicated mode.");
+        } else {  
+            for (final SlaveClient slave : slaves) {
+                ((RPCResponse<Object>) slave.replicate(le.getLSN(), 
+                        payload.createViewBuffer())).registerListener(
+                                new RPCResponseAvailableListener<Object>() {
                 
-                @Override
-                public void upToDate() {
-                    super.upToDate();
-                    le.getListener().synced(le);
-                }
-            };
-            subscribeListener(result);
-            
-            // make the replicate call at the clients
-            if (slaves.size() == 0) { 
-                Logging.logMessage(Logging.LEVEL_DEBUG, this, 
-                        "There are no slaves available anymore! " +
-                        "BabuDB runs if it would be in non-replicated mode.");
-                if (buffer!=null) BufferPool.free(buffer);
-            } else {
-                for (final SlaveClient slave : slaves) {
-                    ((RPCResponse<Object>) slave.replicate(le.getLSN(), buffer))
-                        .registerListener(new RPCResponseAvailableListener<Object>() {
-                    
-                        @Override
-                        public void responseAvailable(RPCResponse<Object> r) {
-                            // evaluate the response
-                            try {
-                                r.get();
-                                markSlaveAsFinished(slave);
-                            } catch (Exception e) {
-                                result.decrementPermittedFailures();
-                                markSlaveAsDead(slave);
-                            } finally {
-                                if (r!=null) r.freeBuffers();
-                            }
+                    @Override
+                    public void responseAvailable(RPCResponse<Object> r) {
+                        // evaluate the response
+                        try {
+                            r.get();
+                            markSlaveAsFinished(slave);
+                        } catch (Exception e) {
+                            markSlaveAsDead(slave);
+                            result.decrementPermittedFailures();
+                            
+                            Logging.logMessage(Logging.LEVEL_INFO, this, 
+                                    "'%s' was marked as dead, because %s", 
+                                    slave.getDefaultServerAddress().toString(), 
+                                    e.getMessage());
+                            if (e.getMessage() == null)
+                                Logging.logError(Logging.LEVEL_DEBUG, this, e);
+                        } finally {
+                            if (r!=null) r.freeBuffers();
                         }
-                    });
-                }
+                    }
+                });
             }
-        } finally {
-            checksum.reset();
         }
+        
+        return result;
     }
 
     /*
