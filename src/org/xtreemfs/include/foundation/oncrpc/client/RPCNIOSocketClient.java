@@ -384,7 +384,11 @@ public class RPCNIOSocketClient extends LifeCycleThread {
         if (rec == null) {
             Logging.logMessage(Logging.LEVEL_WARN, Category.net, this,
                 "received response for unknown request with XID %d", xid);
+            List<ReusableBuffer> toDelete = con.getResponseFragments();
             con.clearResponseFragments();
+            if (toDelete != null) 
+                for (ReusableBuffer buffer : toDelete)
+                    if (buffer!=null) BufferPool.free(buffer);
             return;
         }
         rec.setResponseFragments(con.getResponseFragments());

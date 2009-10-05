@@ -72,10 +72,14 @@ public class RequestLogic extends Logic {
             logEntries = (LogEntries) rp.get();
             final AtomicInteger count = new AtomicInteger(logEntries.size());
             // insert all logEntries
+            LSN check = null;
             for (org.xtreemfs.babudb.interfaces.LogEntry le : logEntries) {
                 try {
                     final LogEntry logentry = LogEntry.deserialize(le.getPayload(), checksum);
                     final LSN lsn = logentry.getLSN();
+                    assert (check == null || check.compareTo(lsn) < 0) : 
+                        "The requested LogEntries have lost their order!";
+                    check = lsn;
                     SharedLogic.handleLogEntry(logentry, new SyncListener() {
                     
                         @Override

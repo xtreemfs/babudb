@@ -8,7 +8,6 @@
 package org.xtreemfs.babudb.replication.operations;
 
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.heartbeatRequest;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.heartbeatResponse;
 import org.xtreemfs.babudb.interfaces.utils.Serializable;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
@@ -75,7 +74,7 @@ public class HeartbeatOperation extends Operation {
         LSN lsn = new LSN(request.getLsn().getViewId(),request.getLsn().getSequenceNo());
         try {
             dispatcher.heartbeat(rq.getRPCRequest().getClientIdentity(), lsn, TimeSync.getLocalSystemTime());
-            rq.sendSuccess(new heartbeatResponse());
+            rq.sendSuccess(request.createDefaultResponse());
         } catch (UnknownParticipantException e) {
             rq.sendReplicationException(ErrNo.SECURITY,
                     "You are not allowed to request that!");

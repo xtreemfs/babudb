@@ -38,6 +38,7 @@ import org.xtreemfs.babudb.replication.operations.StateOperation;
 import org.xtreemfs.babudb.replication.operations.ToMasterOperation;
 import org.xtreemfs.babudb.replication.operations.ToSlaveOperation;
 import org.xtreemfs.babudb.replication.stages.StageRequest;
+import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.foundation.ErrNo;
@@ -132,7 +133,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
         rpcServer.setLifeCycleListener(this);
         
         rpcClient = new RPCNIOSocketClient(configuration.getSSLOptions(), 
-                5000, 5*60*1000);
+                30*1000, 5*60*1000);
         rpcClient.setLifeCycleListener(this);
         
         // -------------------------------
@@ -183,36 +184,54 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
     }
 
     /**
-     * Replicate the given LogEntry.
+     * Registers a listener to notify, if the latest common {@link LSN} has changed.
+     * Listeners will be registered in natural order of their LSNs.
      * 
-     * @param le - {@link LogEntry} to replicate.
-     * 
-     * @throws IOException 
-     * @throws NotEnoughAvailableSlavesException
-     * @throws InterruptedException
+     * @param listener
      */
-    abstract void _replicate(LogEntry le) throws NotEnoughAvailableSlavesException, 
-        InterruptedException, IOException;
+    public abstract void subscribeListener(LatestLSNUpdateListener listener);
 
     /**
      * Replicate the given LogEntry.
      * 
-     * @param le - {@link LogEntry} to replicate.
+     * @param buffer - the serialized {@link LogEntry} to replicate.
+     * @param le - the original {@link LogEntry}.
+     * 
+     * @throws NotEnoughAvailableSlavesException
+     * @throws InterruptedException 
+     *                  if a signal was received while getting the slaves.
+     * @return the {@link ReplicateResponse}.
+     */
+    abstract ReplicateResponse _replicate(LogEntry le, ReusableBuffer buffer) 
+        throws NotEnoughAvailableSlavesException, InterruptedException;
+
+    /**
+     * Replicate the given LogEntry.
+     * 
+     * @param buffer - the serialized {@link LogEntry} to replicate.
+     * @param le - the original {@link LogEntry}.
      * 
      * @throws IOException 
      * @throws NotEnoughAvailableSlavesException
      * @throws InterruptedException
      * @throws BabuDBException if request was not allowed to proceed.
+     * @return the {@link ReplicateResponse}.
      */
-    public void replicate(LogEntry le) throws NotEnoughAvailableSlavesException, InterruptedException, 
-                                                IOException, BabuDBException {
+    public ReplicateResponse replicate(LogEntry le, ReusableBuffer buffer) 
+        throws NotEnoughAvailableSlavesException, InterruptedException, 
+        BabuDBException {
+        
         if (!isMaster) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
-            "This BabuDB is not running in master-mode! The operation is not available.");
+            "This BabuDB is not running in master-mode! " +
+            "The operation is not available.");
+        
         else if (!startRequest()) 
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "Replication is disabled at the moment!");
+            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
+                    "Replication is disabled at the moment!");
+        
         else {
             try {
-                _replicate(le);
+                return _replicate(le, buffer);
             } finally {
                 finishRequest(true);
             }
@@ -354,7 +373,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
      * @param clientIdentity
      * @return true if the client could be identified, false otherwise.
      */
-    private boolean checkIdentity (SocketAddress clientIdentity) {
+    public boolean checkIdentity (SocketAddress clientIdentity) {
         if (clientIdentity instanceof InetSocketAddress) {
             return permittedClients.contains(((InetSocketAddress) clientIdentity).getAddress());
         }

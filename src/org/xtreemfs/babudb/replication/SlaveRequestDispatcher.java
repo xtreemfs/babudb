@@ -23,6 +23,7 @@ import org.xtreemfs.babudb.replication.operations.ReplicateOperation;
 import org.xtreemfs.babudb.replication.operations.StateOperation;
 import org.xtreemfs.babudb.replication.stages.HeartbeatThread;
 import org.xtreemfs.babudb.replication.stages.ReplicationStage;
+import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
@@ -283,11 +284,20 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
 
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.RequestDispatcher#_replicate(org.xtreemfs.babudb.log.LogEntry)
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#_replicate(org.xtreemfs.babudb.log.LogEntry, org.xtreemfs.include.common.buffer.ReusableBuffer)
      */
     @Override
-    protected void _replicate(LogEntry le)
+    protected ReplicateResponse _replicate(LogEntry le, ReusableBuffer payload)
             throws NotEnoughAvailableSlavesException, InterruptedException {
+        throw new UnsupportedOperationException();
+    }
+
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#subscribeListener(org.xtreemfs.babudb.replication.LatestLSNUpdateListener)
+     */
+    @Override
+    public void subscribeListener(LatestLSNUpdateListener listener) {
         throw new UnsupportedOperationException();
     }
 }

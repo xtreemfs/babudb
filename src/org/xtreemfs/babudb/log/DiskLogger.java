@@ -13,7 +13,6 @@ import java.io.FileDescriptor;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.io.SyncFailedException;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -24,8 +23,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.zip.CRC32;
 
-import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.replication.ReplicateResponse;
 import org.xtreemfs.babudb.replication.ReplicationManagerImpl;
 import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
@@ -268,6 +267,9 @@ public class DiskLogger extends Thread {
     public void run() {
 
         ArrayList<LogEntry> tmpE = new ArrayList<LogEntry>(MAX_ENTRIES_PER_BLOCK);
+        ArrayList<ReplicateResponse> responses = 
+            new ArrayList<ReplicateResponse>(MAX_ENTRIES_PER_BLOCK);
+        
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "operational");
 
         CRC32 csumAlgo = new CRC32();
@@ -292,33 +294,49 @@ public class DiskLogger extends Thread {
                         assert (le != null) : "Entry must not be null";
                         int viewID = this.currentViewId.get();
                         long seqNo = this.nextLogSequenceNo.getAndIncrement();
-                        LSN lsn = new LSN(viewID,seqNo);
-                        assert(le.getLSN() == null || le.getLSN().equals(lsn)) : 
+
+                        assert(le.getLSN() == null || 
+                                (le.getLSN().getSequenceNo() == seqNo && 
+                                        le.getLSN().getViewId() == viewID)) : 
                             "LogEntry (" + le.getPayloadType() + ") had " +
-                            "unexpected LSN: " + le.getLSN() + "\n" + lsn +
-                            " was expected instead.";
+                            "unexpected LSN: " + le.getLSN() + "\n" + viewID +
+                            ":" + seqNo + " was expected instead.";
                         le.assignId(viewID, seqNo);
-                        ReusableBuffer buf = le.serialize(csumAlgo);
-                        csumAlgo.reset();
-                        channel.write(buf.getBuffer());
-                        BufferPool.free(buf);
+                        
+                        ReusableBuffer buffer = null;
+                        try {
+                            buffer = le.serialize(csumAlgo);
+                                               
+                            // write the LogEntry to the local disk
+                            channel.write(buffer.getBuffer());
+                        
+                            // replicate the LogEntry
+                            if (replMan != null && replMan.isMaster())
+                                responses.add(replMan.replicate(le,buffer));
+                        } finally {
+                            csumAlgo.reset();
+                            if (buffer != null) BufferPool.free(buffer);
+                        }
                     }
+                    
                     if (this.syncMode == SyncMode.FSYNC)
                         channel.force(true);
                     else if (this.syncMode == SyncMode.FDATASYNC)
                         channel.force(false);
-                    for (LogEntry le : tmpE) {
-                        // replicate the logEntry
-                        if (replMan != null && replMan.isMaster()) {
-                            try {
-                                replMan.replicate(le);
-                            } catch (BabuDBException e) {
-                                le.getListener().failed(le, e);
-                            }
-                        } else 
-                            le.getListener().synced(le);
+                    
+                    // setup the responses
+                    if (responses.size() != 0) {
+                        for (ReplicateResponse rp : responses) {
+                            replMan.subscribeListener(rp);
+                        }
+                    } else {
+                        for (LogEntry le : tmpE) { 
+                            le.getListener().synced(le); 
+                        }    
                     }
+                    responses.clear();
                     tmpE.clear();
+                    
                     if (pseudoSyncWait > 0) {
                         DiskLogger.sleep(pseudoSyncWait);
                     }
@@ -326,12 +344,6 @@ public class DiskLogger extends Thread {
                     sync.unlock();
                 }
                 
-            } catch (SyncFailedException ex) {
-                Logging.logError(Logging.LEVEL_ERROR, this, ex);
-                for (LogEntry le : tmpE) {
-                    le.getListener().failed(le, ex);
-                }
-                tmpE.clear();
             } catch (IOException ex) {
                 Logging.logError(Logging.LEVEL_ERROR, this, ex);
                 for (LogEntry le : tmpE) {
@@ -339,6 +351,7 @@ public class DiskLogger extends Thread {
                 }
                 tmpE.clear();
             } catch (InterruptedException ex) {
+                /* ignored */
             }
 
         }
@@ -378,7 +391,6 @@ public class DiskLogger extends Thread {
         try {
             fdes.sync();
             fos.close();
-        } catch (SyncFailedException ex) {
         } catch (IOException ex) {
         } finally {
             super.finalize();

@@ -14,6 +14,7 @@ import org.xtreemfs.babudb.interfaces.utils.Serializable;
 import org.xtreemfs.babudb.replication.Request;
 import org.xtreemfs.babudb.replication.RequestDispatcher;
 import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherState;
+import org.xtreemfs.include.common.logging.Logging;
 
 /**
  * {@link Operation} to request the latest {@link org.xtreemfs.babudb.lsmdb.LSN} on a list of {@link BabuDB}s.
@@ -69,7 +70,9 @@ public class StateOperation extends Operation {
      */
     @Override
     public void startRequest(final Request rq) {
-        DispatcherState state = dispatcher.getState();       
+        DispatcherState state = dispatcher.getState(); 
+        Logging.logMessage(Logging.LEVEL_INFO, this, "Remote-operation: state" +
+        		" reporting %s", state.latest.toString());
         rq.sendSuccess(new stateResponse(new LSN(state.latest.getViewId(),state.latest.getSequenceNo())));
     }
 

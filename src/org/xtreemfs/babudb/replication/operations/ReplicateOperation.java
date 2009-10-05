@@ -11,7 +11,6 @@ import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateRequest;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateResponse;
 import org.xtreemfs.babudb.interfaces.utils.Serializable;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
@@ -66,9 +65,7 @@ public class ReplicateOperation extends Operation {
         try {
             rq.setAttachment(LogEntry.deserialize(data, checksum));
         } catch (LogEntryException e){
-            Logging.logError(Logging.LEVEL_ERROR, this, e);
-            rq.sendReplicationException(ErrNo.INTERNAL_ERROR, 
-                    "LogEntry could not be deserialized: "+e.getMessage());
+            Logging.logError(Logging.LEVEL_WARN, this, e);
             return rpcrq;
         } finally {
             checksum.reset();
@@ -98,7 +95,7 @@ public class ReplicateOperation extends Operation {
         LogEntry le = (LogEntry) rq.getAttachment();
         try {
             dispatcher.replication.enqueueOperation(new Object[]{ lsn, le });
-            rq.sendSuccess(new replicateResponse());
+            rq.sendSuccess(request.createDefaultResponse());
         } catch (TooBusyException e) {
             if (le!=null) le.free();
             rq.sendReplicationException(ErrNo.TOO_BUSY,e.getMessage());
