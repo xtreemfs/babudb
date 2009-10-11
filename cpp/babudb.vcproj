@@ -40,7 +40,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\yield_platform\include;include\"
+				AdditionalIncludeDirectories="..\yield_platform\include;include\;src\"
 				PreprocessorDefinitions="WIN32;_DEBUG;_LIB"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -105,7 +105,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="..\yield_platform\include;include\"
+				AdditionalIncludeDirectories="..\yield_platform\include;include\;src\"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
@@ -157,55 +157,15 @@
 				>
 			</File>
 			<File
-				RelativePath=".\src\DataIndex.cpp"
+				RelativePath=".\src\log_index.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\src\ImmutableIndex.cpp"
+				RelativePath=".\src\lookup_iterator.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\src\ImmutableIndexWriter.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\IndexMerger.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\Log.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\LogIndex.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\LogIterator.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\LogSection.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\LogStats.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\LookupIterator.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\RecordFrame.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\RecordIterator.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\src\SequentialFile.cpp"
+				RelativePath=".\src\merged_index.cpp"
 				>
 			</File>
 			<File
@@ -223,43 +183,11 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath=".\src\DataIndex.h"
+				RelativePath=".\src\log_index.h"
 				>
 			</File>
 			<File
-				RelativePath=".\src\ImmutableIndex.h"
-				>
-			</File>
-			<File
-				RelativePath=".\src\ImmutableIndexWriter.h"
-				>
-			</File>
-			<File
-				RelativePath=".\src\IndexMerger.h"
-				>
-			</File>
-			<File
-				RelativePath=".\src\Log.h"
-				>
-			</File>
-			<File
-				RelativePath=".\src\LogIndex.h"
-				>
-			</File>
-			<File
-				RelativePath=".\src\LogSection.h"
-				>
-			</File>
-			<File
-				RelativePath=".\src\LogStats.h"
-				>
-			</File>
-			<File
-				RelativePath=".\src\RecordFrame.h"
-				>
-			</File>
-			<File
-				RelativePath=".\src\SequentialFile.h"
+				RelativePath=".\src\merged_index.h"
 				>
 			</File>
 			<File
@@ -275,35 +203,19 @@
 				>
 			</File>
 			<File
+				RelativePath=".\include\babudb\buffer.h"
+				>
+			</File>
+			<File
 				RelativePath=".\include\babudb\Database.h"
 				>
 			</File>
 			<File
-				RelativePath=".\include\babudb\IntConfiguration.h"
-				>
-			</File>
-			<File
-				RelativePath=".\include\babudb\KeyOrder.h"
-				>
-			</File>
-			<File
-				RelativePath=".\include\babudb\LogIterator.h"
+				RelativePath=".\include\babudb\key.h"
 				>
 			</File>
 			<File
 				RelativePath=".\include\babudb\LookupIterator.h"
-				>
-			</File>
-			<File
-				RelativePath=".\include\babudb\Operation.h"
-				>
-			</File>
-			<File
-				RelativePath=".\include\babudb\RecordIterator.h"
-				>
-			</File>
-			<File
-				RelativePath=".\include\babudb\StringConfiguration.h"
 				>
 			</File>
 			<File
@@ -312,6 +224,124 @@
 			</File>
 			<File
 				RelativePath=".\include\babudb\test_helper.h"
+				>
+			</File>
+			<Filter
+				Name="profiles"
+				>
+				<File
+					RelativePath=".\include\babudb\profiles\int_key.h"
+					>
+				</File>
+				<File
+					RelativePath=".\include\babudb\profiles\string_key.h"
+					>
+				</File>
+			</Filter>
+		</Filter>
+		<Filter
+			Name="log"
+			>
+			<File
+				RelativePath=".\src\log\log.cpp"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						ObjectFile="$(IntDir)\$(InputName)1.obj"
+						XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						ObjectFile="$(IntDir)\$(InputName)1.obj"
+						XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\include\babudb\log\log.h"
+				>
+			</File>
+			<File
+				RelativePath=".\src\log\log_iterator.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\include\babudb\log\log_iterator.h"
+				>
+			</File>
+			<File
+				RelativePath=".\src\log\log_section.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\include\babudb\log\log_section.h"
+				>
+			</File>
+			<File
+				RelativePath=".\src\log\log_stats.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\include\babudb\log\log_stats.h"
+				>
+			</File>
+			<File
+				RelativePath=".\src\log\record_frame.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\include\babudb\log\record_frame.h"
+				>
+			</File>
+			<File
+				RelativePath=".\src\log\record_iterator.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\include\babudb\log\record_iterator.h"
+				>
+			</File>
+			<File
+				RelativePath=".\src\log\sequential_file.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\include\babudb\log\sequential_file.h"
+				>
+			</File>
+		</Filter>
+		<Filter
+			Name="index"
+			>
+			<File
+				RelativePath=".\src\index\index.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\src\index\index.h"
+				>
+			</File>
+			<File
+				RelativePath=".\src\index\index_writer.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\src\index\index_writer.h"
+				>
+			</File>
+			<File
+				RelativePath=".\src\index\merger.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\src\index\merger.h"
 				>
 			</File>
 		</Filter>

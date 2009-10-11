@@ -40,7 +40,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\yield_platform\include;include"
+				AdditionalIncludeDirectories="..\yield_platform\include;include;src"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -186,31 +186,31 @@
 				>
 			</File>
 			<File
-				RelativePath=".\src\ImmutableIndex_test.cpp"
+				RelativePath=".\src\index\index_test.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\src\ImmutableIndexWriter_test.cpp"
+				RelativePath=".\src\index\index_writer_test.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\src\Log_test.cpp"
+				RelativePath=".\src\log_index_test.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\src\LogIndex_test.cpp"
+				RelativePath=".\src\log\log_iterator_test.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\src\LogIterator_test.cpp"
+				RelativePath=".\src\log\log_test.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\src\LookupIterator_test.cpp"
+				RelativePath=".\src\lookup_iterator_test.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\src\SequentialFile_test.cpp"
+				RelativePath=".\src\log\sequential_file_test.cpp"
 				>
 			</File>
 			<File

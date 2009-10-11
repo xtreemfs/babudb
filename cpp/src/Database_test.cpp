@@ -1,9 +1,18 @@
+// This file is part of babudb/cpp
+//
 // Copyright (c) 2008, Felix Hupfeld, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist, Zuse Institute Berlin.
+// Copyright (c) 2009, Felix Hupfeld
 // Licensed under the BSD License, see LICENSE file for details.
+//
+// Author: Felix Hupfeld (felix@storagebox.org)
 
 #include "babudb/Database.h"
-#include "babudb/StringConfiguration.h"
+#include <vector>
+#include <utility>
+
+#include "babudb/profiles/string_key.h"
 #include "babudb/test.h"
+#include "index/merger.h"
 
 #include "yield/platform/memory_mapped_file.h"
 using YIELD::MemoryMappedFile;
@@ -11,139 +20,47 @@ using namespace babudb;
 
 TEST_TMPDIR(Database,babudb)
 {
-	StringOrder myorder;
-	Database* db = new Database(testPath("test").getHostCharsetPath(),StringOperationFactory());
-	db->registerIndex("testidx",myorder);
-	db->startup();
+  StringOrder myorder;
+  std::vector<babudb::IndexDescriptor> indices;
+  indices.push_back(std::make_pair("testidx", &myorder));
+  Database* db = Database::Open(testPath("test").getHostCharsetPath(), indices);
 
-	StringSetOperation op("testidx", "Key1","data1");
-	db->execute(op);
+  StringSetOperation("testidx", 1, "Key1","data1").applyTo(*db);
+  StringSetOperation("testidx", 2, "Key2","data2").applyTo(*db);
 
-	StringSetOperation op2("testidx", "Key2","data2");
-	db->execute(op2);
+  EXPECT_FALSE(db->Lookup("testidx",DataHolder("Key1")).isEmpty());
 
-	EXPECT_FALSE(db->lookup("testidx",DataHolder("Key1")).isEmpty());
+  StringSetOperation("testidx", 3, "Key1").applyTo(*db);
 
-	StringSetOperation opdel("testidx", "Key1");
-	db->execute(opdel);
+  EXPECT_TRUE(db->Lookup("testidx",DataHolder("Key1")).isEmpty());
 
-	EXPECT_TRUE(db->lookup("testidx",DataHolder("Key1")).isEmpty());
-
-	db->shutdown();
-	delete db;
-}
-
-TEST_TMPDIR(Database_EmptyReopen,babudb)
-{
-	StringOrder myorder;
-	Database* db = new Database(testPath("test").getHostCharsetPath(),StringOperationFactory());
-	db->registerIndex("testidx",myorder);
-	db->startup();
-
-	StringSetOperation op("testidx", "Key1","data1");
-	db->execute(op);
-
-	db->shutdown();
-	delete db;
-
-	db = new Database(testPath("test").getHostCharsetPath(),StringOperationFactory());
-	db->registerIndex("testidx",myorder);
-	db->startup();
-
-	StringSetOperation op2("testidx", "Key1","data1");
-	db->execute(op2);
-
-	db->shutdown();
-	delete db;
-}
-
-TEST_TMPDIR(Database_Reopen,babudb)
-{
-	StringOrder myorder;
-	Database* db = new Database(testPath("test").getHostCharsetPath(),StringOperationFactory());
-	db->registerIndex("testidx",myorder);
-	db->startup();
-
-	StringSetOperation op("testidx", "Key1","data1");
-	db->execute(op);
-
-	StringSetOperation op2("testidx", "Key2","data2");
-	db->execute(op2);
-	db->commit();
-
-	StringSetOperation opdel("testidx", "Key1");
-	db->execute(opdel);
-
-	// no shutdown
-	delete db;
-
-	db = new Database(testPath("test").getHostCharsetPath(),StringOperationFactory());
-	db->registerIndex("testidx",myorder);
-	db->startup();
-	EXPECT_FALSE(db->lookup("testidx",DataHolder("Key1")).isEmpty());
-	EXPECT_FALSE(db->lookup("testidx",DataHolder("Key2")).isEmpty());
-	db->shutdown();
-	delete db;
-
-	db = new Database(testPath("test").getHostCharsetPath(),StringOperationFactory());
-	db->registerIndex("testidx",myorder);
-	db->startup();
-	EXPECT_FALSE(db->lookup("testidx",DataHolder("Key1")).isEmpty());
-	EXPECT_FALSE(db->lookup("testidx",DataHolder("Key2")).isEmpty());
-	db->shutdown();
-	delete db;
+  delete db;
 }
 
 TEST_TMPDIR(Database_Migration,babudb)
 {
-	StringOrder myorder;
-	Database* db = new Database(testPath("test").getHostCharsetPath(),StringOperationFactory());
-	db->registerIndex("testidx",myorder);
-	db->startup();
+  StringOrder myorder;
 
-	StringSetOperation op("testidx", "Key1","data1");
-	db->execute(op);
-	db->commit();
+  IndexMerger* merger = new IndexMerger(myorder);
+  merger->Add(1, DataHolder("Key1"), DataHolder("data1"));
+  merger->Add(2, DataHolder("Key2"), DataHolder("data2"));
+  merger->Setup(testPath("test-testidx").getHostCharsetPath());
+  merger->Run();
+  delete merger;
 
-	StringSetOperation op2("testidx", "Key2","data2");
-	db->execute(op2);
-	db->commit();
+  std::vector<babudb::IndexDescriptor> indices;
+  indices.push_back(std::make_pair("testidx", &myorder));
+  Database* db = Database::Open(testPath("test").getHostCharsetPath(), indices);
 
-	EXPECT_FALSE(db->migrate("testidx", 10));
-	EXPECT_TRUE(db->migrate("testidx", 10));
-	db->shutdown();
+  EXPECT_EQUAL(db->GetMinimalPersistentLSN(), 2);
+	EXPECT_FALSE(db->Lookup("testidx",DataHolder("Key1")).isEmpty());
+	EXPECT_FALSE(db->Lookup("testidx",DataHolder("Key2")).isEmpty());
+	EXPECT_TRUE(db->Lookup("testidx",DataHolder("Key3")).isEmpty());
 
-	StringSetOperation op3("testidx", "Key3","data3");
-	db->execute(op3);
-	db->commit();
-	db->shutdown();
-	delete db;
-
-	// now restart
-	db = new Database(testPath("test").getHostCharsetPath(),StringOperationFactory());
-	db->registerIndex("testidx",myorder);
-	db->startup();
-
-	EXPECT_FALSE(db->lookup("testidx",DataHolder("Key1")).isEmpty());
-	EXPECT_FALSE(db->lookup("testidx",DataHolder("Key2")).isEmpty());
-	EXPECT_FALSE(db->lookup("testidx",DataHolder("Key3")).isEmpty());
-
-	StringSetOperation op4("testidx", "Key4","data4");
-	db->execute(op4);
-	db->commit();
-
-	EXPECT_FALSE(db->migrate("testidx", 10));
-	EXPECT_TRUE(db->migrate("testidx", 10));
-	db->shutdown();
-	delete db;
-
-	db = new Database(testPath("test").getHostCharsetPath(),StringOperationFactory());
-	db->registerIndex("testidx",myorder);
-	db->startup();
-	EXPECT_FALSE(db->lookup("testidx",DataHolder("Key1")).isEmpty());
-	EXPECT_FALSE(db->lookup("testidx",DataHolder("Key2")).isEmpty());
-	EXPECT_FALSE(db->lookup("testidx",DataHolder("Key3")).isEmpty());
-	EXPECT_FALSE(db->lookup("testidx",DataHolder("Key4")).isEmpty());
-	db->shutdown();
-	delete db;
+  StringSetOperation("testidx", 3, "Key3").applyTo(*db);
+	EXPECT_FALSE(db->Lookup("testidx",DataHolder("Key1")).isEmpty());
+	EXPECT_FALSE(db->Lookup("testidx",DataHolder("Key2")).isEmpty());
+	EXPECT_TRUE(db->Lookup("testidx",DataHolder("Key3")).isEmpty());
+	EXPECT_TRUE(db->Lookup("testidx",DataHolder("Key4")).isEmpty());
+  delete db;
 }

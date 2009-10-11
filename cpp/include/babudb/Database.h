@@ -1,5 +1,31 @@
+// This file is part of babudb/cpp
+//
 // Copyright (c) 2008, Felix Hupfeld, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist, Zuse Institute Berlin.
+// Copyright (c) 2009, Felix Hupfeld
 // Licensed under the BSD License, see LICENSE file for details.
+//
+// Author: Felix Hupfeld (felix@storagebox.org)
+
+// The core Database class. A set of persistent and volatile key-value indices that
+// represent the application-managed log state up to a certain LSN.
+//
+// The application manages a log of operations that can be identified by their 
+// LSNs (log sequence numbers). These operations change the database state via
+// Add() and Remove().
+
+// The database maintains a set if indices that are persistent up to a certain LSN and
+// extended with volatile overlay indices. After Open() the application has to replay its
+// log from GetMinimalLSN() + 1 against the database to re-establish the current state.
+
+// Volatile index overlays can be merged into the persistent index with the Migrate()
+// call. The application marks LSNs which form a complete unit to be merged with the
+// MarkMergeUnit() call.
+
+// TODO: 
+// - implement index with non-unique keys (for full-text indices)
+//   can be implemented as non-unique key or multi-value index.
+//   needs a Remove(key, value)
+
 
 #ifndef BABUDB_DATABASE_H
 #define BABUDB_DATABASE_H
@@ -10,65 +36,49 @@
 #include <string>
 using std::string;
 
-#include "babudb/Operation.h"
-#include "babudb/LogIterator.h"
+#include "babudb/buffer.h"
 
 namespace babudb {
 
 class KeyOrder;
-class DataIndex;
-class Log;
-template <class T> class LogIterator;
+class MergedIndex;
 class IndexCreator;
 class LookupIterator;
 
+typedef std::pair<string, KeyOrder*> IndexDescriptor;
+
 class Database {
-public:
-	Database(const string& name, const OperationFactory& op_f);
-	~Database();
+ public:
+  // Register the indices and open the database
+  static Database* Open(const string& name, const std::vector<IndexDescriptor>& indices);
+  ~Database();
 
-	void startup();
-	void shutdown();
+  void Add(const string& index_name, lsn_t lsn, const Buffer& key, const Buffer& value);
+  void Remove(const string& index_name, lsn_t lsn, const Buffer& key);
 
-	void registerIndex(const string& name, KeyOrder& order);
+  // Single key lookup
+  Buffer Lookup(const string& index, const Buffer& key);
+  // Prefix lookup
+  LookupIterator Lookup(const string& index, const Buffer& lower, const Buffer& upper);
 
-	void execute(Operation& op);
-	void commit();
+  // The next Add or Remove call needs to have change_lsn = GetCurrentlLSN() + 1
+  lsn_t GetCurrentLSN();
+  // Called after Open to find out from where on to replay the log.
+  // Also any log merges need to start from here.
+  lsn_t GetMinimalPersistentLSN();
 
-	Data lookup(const string& index, const Data& key);
-	LookupIterator lookup(const string& index, const Data& lower, const Data& upper);
-
-	typedef LogIteratorForward iterator;
-	typedef LogIteratorBackward reverse_iterator;
-	iterator begin();
-	iterator end();
-	reverse_iterator rbegin();
-	reverse_iterator rend();
-
-	/** Allow the deletion all log entries < from_lsn from the log
-	*/
-
-	void cleanup(lsn_t from_lsn, const string& to);
-
-	/** Migrate the oldest volatile index to disk. Proceed n steps in this
-		process. If finished, it returns true.
-	*/
-
-	bool migrate(const string& index, int steps);
-
-	const OperationFactory& getOperationFactory();
+  // TODO: get merger from here, maybe even multi-index merger
 
 private:
-	friend class OperationTarget;
+  Database(const string& name);
 
-	Log* log;
-	std::map<string,DataIndex*> indices;
-	string name;
-	const OperationFactory& factory;
-	IndexCreator* merger;
-	bool is_running; // startup has been called
+  std::map<string,MergedIndex*> indices;
+  string name;
+
+  lsn_t latest_lsn;  // the latest known LSN in the Database state
+  lsn_t minimal_persistent_lsn;  // the minimum persistent LSN in all indices
 };
 
-};
+};  // namespace babudb
 
 #endif

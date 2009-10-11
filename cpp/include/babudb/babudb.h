@@ -2,7 +2,7 @@
 // Licensed under the BSD License, see LICENSE file for details.
 
 #include "babudb/Database.h"
-#include "babudb/KeyOrder.h"
-#include "babudb/Operation.h"
-#include "babudb/LogIterator.h"
-#include "babudb/LookupIterator.h"
+#include "babudb/key.h"
+#include "babudb/buffer.h"
+#include "babudb/log/log_iterator.h"
+#include "babudb/lookup_iterator.h"

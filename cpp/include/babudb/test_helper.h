@@ -7,22 +7,22 @@
 #include <string>
 using std::string;
 
-#include "babudb/Operation.h"
+#include "babudb/buffer.h"
+#include "babudb/log/log_section.h"
 
-class DummyOperation : public babudb::Operation {
+class DummyOperation : public babudb::Serializable {
 public:
 	DummyOperation(int i) : value(i) {}
 
-	virtual void applyTo(babudb::OperationTarget& target) const {}
-
-	virtual babudb::operation_type_t getType() const { return 1; }
-	virtual bool isMarked() const { return value % 2 == 0; }
-	virtual babudb::Data serialize(babudb::Data data) const {
+	virtual void Serialize(const babudb::Buffer& data) const {
 		*((int*)data.data) = value;
-		return babudb::Data(data.data, sizeof(int));
 	}
 
-	virtual DummyOperation& deserialize(babudb::Data data) {
+	virtual size_t GetSize() const {
+		return sizeof(int);
+	}
+
+	DummyOperation& Deserialize(const babudb::Buffer& data) {
 		value = *((int*)data.data);
 		return *this;
 	}

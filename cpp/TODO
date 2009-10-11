@@ -1,5 +1,7 @@
 == General
-- rename Data to Buffer
+- implement multi-value keys (needs Remove(key, value))
+- get rid of LogStats
+- embed yield foundation
 
 == ImmutableIndex
 - change format from current set of key records to single record with (relative) offset array (saves record frames)
