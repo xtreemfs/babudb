@@ -11,7 +11,7 @@
 
 #include "index/index.h"
 #include "index/index_writer.h"
-#include "LogIndex.h"
+#include "log_index.h"
 
 #include <yield/platform/memory_mapped_file.h>
 #include <yield/platform/assert.h>

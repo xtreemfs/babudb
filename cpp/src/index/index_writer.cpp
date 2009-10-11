@@ -11,7 +11,7 @@
 #include <yield/platform/assert.h>
 #include <yield/platform/memory_mapped_file.h>
 
-#include "LogIndex.h"
+#include "log_index.h"
 #include "index.h"
 #include "babudb/key.h"
 
