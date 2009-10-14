@@ -63,7 +63,7 @@ public class BabuDB {
     /**
      * Version (name)
      */
-    public static final String        BABUDB_VERSION           = "0.2.3";
+    public static final String        BABUDB_VERSION           = "0.2.4";
     
     /**
      * Version of the DB on-disk format (to detect incompatibilities).
@@ -463,7 +463,7 @@ public class BabuDB {
                                 } catch (Exception e) {
                                     if (le != null) le.free();
                                     throw new BabuDBException(ErrorCode.IO_ERROR,
-                                            "Snapshot could not be recouvered because: "+e.getMessage(), e);
+                                            "Snapshot could not be recovered because: "+e.getMessage(), e);
                                 } finally {
                                     if (oin != null) oin.close();
                                 }

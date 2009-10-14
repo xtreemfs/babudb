@@ -38,8 +38,8 @@ public class SnapshotManagerImpl implements SnapshotManager {
         this.snapshotDBs = Collections.synchronizedMap(new HashMap<String, Map<String, Snapshot>>());
         
         // load persisted snapshots from disk
-        for (Entry<String, Database> entry : ((DatabaseManagerImpl) dbs.getDatabaseManager())
-                .getDatabases().entrySet()) {
+        for (Entry<String, Database> entry : ((DatabaseManagerImpl) dbs.getDatabaseManager()).getDatabases()
+                .entrySet()) {
             
             final File snapDir = new File(dbs.getConfig().getBaseDir(), entry.getKey() + "/snapshots");
             if (snapDir.exists()) {
@@ -106,6 +106,10 @@ public class SnapshotManagerImpl implements SnapshotManager {
                 snapshotDBs.put(dbName, snapMap);
             }
             
+            if (snapMap.containsKey(snap.getName()))
+                throw new BabuDBException(ErrorCode.SNAP_EXISTS, "snapshot '" + snap.getName()
+                    + "' already exists");
+            
             snapMap.put(snap.getName(), new Snapshot(null));
             
             // first, create new in-memory snapshots of all indices
@@ -166,6 +170,8 @@ public class SnapshotManagerImpl implements SnapshotManager {
         
         // delete the snapshot subdirectory on disk if available
         FSUtils.delTree(new File(getSnapshotDir(dbName, snapshotName)));
+        
+        // TODO: add deletion request to log
     }
     
     @Override
@@ -202,6 +208,8 @@ public class SnapshotManagerImpl implements SnapshotManager {
             snapshotDBs.remove(dbName);
         }
         FSUtils.delTree(new File(getSnapshotDir(dbName, null)));
+        
+        // TODO: add deletion requests to log
     }
     
     public String getSnapshotDir(String dbName, String snapshotName) {

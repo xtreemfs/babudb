@@ -50,6 +50,11 @@ public class BabuDBException extends Exception {
         NO_SUCH_SNAPSHOT,
         
         /**
+         * The snapshot to create already exists in the database
+         */
+        SNAP_EXISTS,
+        
+        /**
          * Everything else that went wrong
          */
         INTERNAL_ERROR
