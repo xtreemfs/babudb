@@ -52,8 +52,8 @@ public class InMemoryView implements BabuDBView {
         if (snapId == null)
             throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + indexId + " does not exist");
         
-        return (isCovered(indexId, key) && snap.containsKey(indexId, key)) ? db.directLookup(indexId,
-            snapId, key) : null;
+        return (isCovered(indexId, key) && snap.containsKey(indexId, key)) ? db.directLookup(indexId, snapId,
+            key) : null;
     }
     
     @Override
@@ -101,7 +101,7 @@ public class InMemoryView implements BabuDBView {
                 
                 while (it.hasNext()) {
                     next = it.next();
-                    if (snap.containsKey(indexId, next.getKey()))
+                    if (isCovered(indexId, next.getKey()) && snap.containsKey(indexId, next.getKey()))
                         return;
                 }
                 
@@ -129,6 +129,7 @@ public class InMemoryView implements BabuDBView {
     }
     
     private static boolean startsWith(byte[] key, byte[] prefix) {
+        
         if (key.length >= prefix.length) {
             
             for (int i = 0; i < prefix.length; i++)

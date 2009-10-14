@@ -32,11 +32,11 @@ import org.xtreemfs.include.common.logging.Logging;
  */
 public class SnapshotTest extends TestCase {
     
-    public static final String baseDir = "/tmp/lsmdb-test/";
-
+    public static final String  baseDir     = "/tmp/lsmdb-test/";
+    
     public static final boolean compression = false;
-
-    private BabuDB             database;
+    
+    private BabuDB              database;
     
     public SnapshotTest() {
         Logging.start(Logging.LEVEL_DEBUG);
@@ -156,8 +156,9 @@ public class SnapshotTest extends TestCase {
         
         // overwrite original values
         ir = db.createInsertGroup();
-        ir.addInsert(0, "testxyz".getBytes(), "x".getBytes());
+        ir.addInsert(0, "testxyz".getBytes(), null);
         ir.addInsert(0, "test".getBytes(), "x".getBytes());
+        ir.addInsert(0, "test2".getBytes(), "x".getBytes());
         ir.addInsert(0, "yagga".getBytes(), "x".getBytes());
         ir.addInsert(3, "foo".getBytes(), "x".getBytes());
         ir.addInsert(3, "bar".getBytes(), "x".getBytes());
@@ -171,6 +172,16 @@ public class SnapshotTest extends TestCase {
         assertNull(snap1.directLookup(0, "yagga".getBytes()));
         assertEquals("v1", new String(snap1.directLookup(3, "foo".getBytes())));
         assertEquals("v2", new String(snap1.directLookup(3, "bar".getBytes())));
+        assertNull(snap1.directLookup(0, "test2".getBytes()));
+        
+        Iterator<Entry<byte[], byte[]>> it = snap1.directPrefixLookup(0, null);
+        Entry<byte[], byte[]> next = it.next();
+        assertEquals("test", new String(next.getKey()));
+        assertEquals("v2", new String(next.getValue()));
+        next = it.next();
+        assertEquals("testxyz", new String(next.getKey()));
+        assertEquals("v1", new String(next.getValue()));
+        assertFalse(it.hasNext());
         
         // create a checkpoint
         database.getCheckpointer().checkpoint();
@@ -183,6 +194,16 @@ public class SnapshotTest extends TestCase {
         assertNull(snap1.directLookup(0, "yagga".getBytes()));
         assertEquals("v1", new String(snap1.directLookup(3, "foo".getBytes())));
         assertEquals("v2", new String(snap1.directLookup(3, "bar".getBytes())));
+        assertNull(snap1.directLookup(0, "test2".getBytes()));
+        
+        it = snap1.directPrefixLookup(0, null);
+        next = it.next();
+        assertEquals("test", new String(next.getKey()));
+        assertEquals("v2", new String(next.getValue()));
+        next = it.next();
+        assertEquals("testxyz", new String(next.getKey()));
+        assertEquals("v1", new String(next.getValue()));
+        assertFalse(it.hasNext());
         
     }
     
@@ -348,7 +369,7 @@ public class SnapshotTest extends TestCase {
     
     static class TestSnapshotConfig implements SnapshotConfig {
         private static final long serialVersionUID = 2439296996978183963L;
-
+        
         @Override
         public boolean containsKey(int index, byte[] key) {
             if (index == 0
