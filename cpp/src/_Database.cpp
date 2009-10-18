@@ -44,10 +44,16 @@ Database* Database::Open(const string& name, const vector<IndexDescriptor>& inde
   for(map<string,MergedIndex*>::iterator i = database->indices.begin(); i != database->indices.end(); ++i) {
     lsn_t last_persistent_lsn = i->second->GetLastPersistentLSN();
     database->minimal_persistent_lsn = std::min(database->minimal_persistent_lsn, last_persistent_lsn);
-    database->latest_lsn = std::max(database->latest_lsn, last_persistent_lsn);
   }
+  database->latest_lsn = database->minimal_persistent_lsn;
 
   return database;
+}
+
+IndexMerger* Database::GetMerger(const string& index) {
+  return new IndexMerger(name + "-" + index,
+                         indices[index]->getOrder(),
+                         indices[index]->GetBase());
 }
 
 lsn_t Database::GetCurrentLSN() {

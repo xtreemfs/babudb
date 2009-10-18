@@ -25,12 +25,12 @@ TEST_TMPDIR(Database,babudb)
   indices.push_back(std::make_pair("testidx", &myorder));
   Database* db = Database::Open(testPath("test").getHostCharsetPath(), indices);
 
-  StringSetOperation("testidx", 1, "Key1","data1").applyTo(*db);
-  StringSetOperation("testidx", 2, "Key2","data2").applyTo(*db);
+  StringSetOperation("testidx", "Key1","data1").ApplyTo(*db, 1);
+  StringSetOperation("testidx", "Key2","data2").ApplyTo(*db, 2);
 
   EXPECT_FALSE(db->Lookup("testidx",DataHolder("Key1")).isEmpty());
 
-  StringSetOperation("testidx", 3, "Key1").applyTo(*db);
+  StringSetOperation("testidx", "Key1").ApplyTo(*db, 3);
 
   EXPECT_TRUE(db->Lookup("testidx",DataHolder("Key1")).isEmpty());
 
@@ -41,10 +41,9 @@ TEST_TMPDIR(Database_Migration,babudb)
 {
   StringOrder myorder;
 
-  IndexMerger* merger = new IndexMerger(myorder);
+  IndexMerger* merger = new IndexMerger(testPath("test-testidx").getHostCharsetPath(), myorder);
   merger->Add(1, DataHolder("Key1"), DataHolder("data1"));
   merger->Add(2, DataHolder("Key2"), DataHolder("data2"));
-  merger->Setup(testPath("test-testidx").getHostCharsetPath());
   merger->Run();
   delete merger;
 
@@ -57,7 +56,7 @@ TEST_TMPDIR(Database_Migration,babudb)
 	EXPECT_FALSE(db->Lookup("testidx",DataHolder("Key2")).isEmpty());
 	EXPECT_TRUE(db->Lookup("testidx",DataHolder("Key3")).isEmpty());
 
-  StringSetOperation("testidx", 3, "Key3").applyTo(*db);
+  StringSetOperation("testidx", "Key3").ApplyTo(*db, 3);
 	EXPECT_FALSE(db->Lookup("testidx",DataHolder("Key1")).isEmpty());
 	EXPECT_FALSE(db->Lookup("testidx",DataHolder("Key2")).isEmpty());
 	EXPECT_TRUE(db->Lookup("testidx",DataHolder("Key3")).isEmpty());

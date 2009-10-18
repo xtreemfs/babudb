@@ -44,6 +44,7 @@ class KeyOrder;
 class MergedIndex;
 class IndexCreator;
 class LookupIterator;
+class IndexMerger;
 
 typedef std::pair<string, KeyOrder*> IndexDescriptor;
 
@@ -68,6 +69,7 @@ class Database {
   lsn_t GetMinimalPersistentLSN();
 
   // TODO: get merger from here, maybe even multi-index merger
+  IndexMerger* GetMerger(const string& name);
 
 private:
   Database(const string& name);
