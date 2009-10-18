@@ -200,14 +200,14 @@ ImmutableIndex* ImmutableIndex::LoadLatestIntactIndex(DiskIndices& on_disk, cons
   return NULL;
 }
 
-void ImmutableIndex::CleanupObsolete(const string& db_name, const string& index_name, const string& to) {
-	DiskIndices on_disk = FindIndices(db_name  + "-" + index_name);
+void ImmutableIndex::CleanupObsolete(const string& file_name, const string& to) {
+	DiskIndices on_disk = FindIndices(file_name);
   lsn_t current_lsn = GetLastLSN();
 
 	for (DiskIndices::iterator i = on_disk.begin(); i != on_disk.end(); ++i) {
 		if (i->second < current_lsn) {  // not the latest intact index
 			pair<YIELD::Path,YIELD::Path> parts = i->first.split();
-			YIELD::DiskOperations::rename(i->first, YIELD::Path(to) + parts.second);
+      YIELD::DiskOperations::rename(i->first, to + parts.second.getHostCharsetPath());
 		}
 	}
 }

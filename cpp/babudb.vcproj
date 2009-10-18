@@ -153,7 +153,7 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\src\Database.cpp"
+				RelativePath=".\src\database.cpp"
 				>
 			</File>
 			<File
@@ -166,6 +166,10 @@
 			</File>
 			<File
 				RelativePath=".\src\merged_index.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\src\string_db.cpp"
 				>
 			</File>
 			<File
@@ -207,7 +211,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\include\babudb\Database.h"
+				RelativePath=".\include\babudb\database.h"
 				>
 			</File>
 			<File
@@ -215,7 +219,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\include\babudb\LookupIterator.h"
+				RelativePath=".\include\babudb\lookup_iterator.h"
 				>
 			</File>
 			<File
@@ -231,6 +235,10 @@
 				>
 				<File
 					RelativePath=".\include\babudb\profiles\int_key.h"
+					>
+				</File>
+				<File
+					RelativePath=".\include\babudb\profiles\string_db.h"
 					>
 				</File>
 				<File

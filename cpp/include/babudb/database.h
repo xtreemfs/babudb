@@ -70,6 +70,7 @@ class Database {
 
   // TODO: get merger from here, maybe even multi-index merger
   IndexMerger* GetMerger(const string& name);
+  void Cleanup(const string& obsolete_prefix);
 
 private:
   Database(const string& name);

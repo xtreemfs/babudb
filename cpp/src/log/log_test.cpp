@@ -23,21 +23,31 @@ TEST_TMPDIR(Log,babudb)
 	LogSection* tail = log->getTail();
 
 	tail->Append(DummyOperation(1)); tail->Commit();
+
+ 	log->advanceTail();
+	tail = log->getTail();
 	tail->Append(DummyOperation(2)); tail->Commit();
 	tail->Append(DummyOperation(3)); tail->Commit();
 
 	log->advanceTail();
 	tail = log->getTail();
-
 	tail->Append(DummyOperation(4)); tail->Commit();
 	tail->Append(DummyOperation(5)); tail->Commit();
 	tail->Append(DummyOperation(6)); tail->Commit();
 	log->close();
 
 	log.reset(new Log(testPath("testlog")));
-
 	log->loadRequiredLogSections(0);
+	EXPECT_EQUAL(log->getSections().size(), 3);
+	log->close();
+  
+	log.reset(new Log(testPath("testlog")));
+	log->loadRequiredLogSections(1);
+	EXPECT_EQUAL(log->getSections().size(), 2);
+	log->close();
 
+	log.reset(new Log(testPath("testlog")));
+	log->loadRequiredLogSections(2);
 	EXPECT_EQUAL(log->getSections().size(), 2);
 	log->close();
 }

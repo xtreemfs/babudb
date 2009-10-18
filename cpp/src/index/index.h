@@ -50,7 +50,7 @@ public:
   static DiskIndices FindIndices(const string& name_prefix);
   static ImmutableIndex* LoadLatestIntactIndex(DiskIndices& on_disk, 
                                                const KeyOrder& order);
-  void CleanupObsolete(const string& db_name, const string& index_name, 
+  void CleanupObsolete(const string& file_name, 
                        const string& obsolete_prefix); 
 
 private:

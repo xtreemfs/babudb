@@ -182,7 +182,7 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\src\Database_test.cpp"
+				RelativePath=".\src\database_test.cpp"
 				>
 			</File>
 			<File
@@ -211,6 +211,10 @@
 			</File>
 			<File
 				RelativePath=".\src\log\sequential_file_test.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\src\string_db_test.cpp"
 				>
 			</File>
 			<File

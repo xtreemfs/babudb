@@ -32,7 +32,6 @@ public:
 	~Log();
 
 	void loadRequiredLogSections(lsn_t);
-//	void replayToLogIndices(MergedIndexOperationTarget& indices, const OperationFactory&, lsn_t min_lsn);
 	void close();
 
 	void cleanup(lsn_t from_lsn, const string& to);
@@ -46,7 +45,6 @@ public:
 
 	iterator begin();
 	iterator end();
-
 	reverse_iterator rbegin();
 	reverse_iterator rend();
 
@@ -54,7 +52,6 @@ public:
 
 private:
 	std::vector<LogSection*> sections;
-
 	LogSection* tail;
 	string name_prefix;
 };

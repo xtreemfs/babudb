@@ -50,8 +50,10 @@ LogIterator<T>::LogIterator(const T& b,
 	: sections_begin(b), sections_end(e), current_section(c_s), current_record(c),
     current_record_data(Buffer::Empty()) {
 
-	if(current_section != sections_end && current_record.isType(0))
+  if(current_section != sections_end && current_record.isType(0)) {
+    lsn = *(lsn_t*)*current_record;
 		this->operator ++();
+  }
 }
 
 template <class T>
@@ -73,6 +75,7 @@ void LogIterator<T>::operator ++ () {
 
 	// skip LSN records
 	if(current_section != sections_end && current_record != section_end(current_section) && current_record.isType(0)) {
+    lsn = *(lsn_t*)*current_record;
 		this->operator ++();
 	}
 }
@@ -91,9 +94,13 @@ void LogIterator<T>::operator -- () {
 
 	--current_record;
 
+  if (current_record.isType(0)) {
+    lsn = *(lsn_t*)*current_record;
+  }
+
 	// skip LSN records
 	if(current_record.isType(0)) {
-		if(current_section != sections_begin || current_record != section_begin(current_section))
+  	if(current_section != sections_begin || current_record != section_begin(current_section))
 			this->operator --();
 	}
 }

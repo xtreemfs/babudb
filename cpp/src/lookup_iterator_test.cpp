@@ -24,14 +24,13 @@ TEST_TMPDIR(LookupIterator,babudb)
 	DataHolder k3("key3"), v3("value3"), k4("key4"), v4("value4");
 
 	{	// Create an ImmutableIndex
-    IndexMerger* merger = new IndexMerger(sorder);
+    IndexMerger* merger = new IndexMerger(testPath("testdb-testidx"), sorder);
 
 	  merger->Add(1, k1, v1);
 	  merger->Add(2, k2, v2);
 	  merger->Add(3, k3, v3);
 	  merger->Add(4, k4, v4);
-  	
-    merger->Setup(testPath("testdb-testidx"));
+ 
     merger->Run();
     delete merger;
 	}

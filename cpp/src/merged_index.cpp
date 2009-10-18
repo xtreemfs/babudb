@@ -37,7 +37,6 @@ MergedIndex::~MergedIndex() {
     delete *i;
 }
 
-
 lsn_t MergedIndex::GetLastPersistentLSN() {
   if (immutable_index)
     return immutable_index->GetLastLSN();
@@ -72,4 +71,9 @@ Buffer MergedIndex::Lookup(const Buffer& key) {
 
 LookupIterator MergedIndex::Lookup(const Buffer& lower, const Buffer& upper) {
 	return LookupIterator(log_indices, immutable_index, order, lower, upper);
+}
+
+void MergedIndex::Cleanup(const string& to) {
+  if (immutable_index)
+    immutable_index->CleanupObsolete(name_prefix, to);
 }

@@ -33,6 +33,7 @@ public:
 	Buffer getOperationWithFrame() const;
 
 	record_type_t getType() const;
+  lsn_t GetLSN() const { return lsn; };
 
 	static RecordIterator section_begin(T& section);
 	static RecordIterator section_end(T& section);
@@ -43,6 +44,7 @@ private:
 	T  current_section;
 	RecordIterator current_record;
   mutable Buffer current_record_data;
+  lsn_t lsn;
 };
 
 typedef class LogIterator<std::vector<LogSection*>::iterator> LogIteratorForward;

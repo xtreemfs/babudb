@@ -49,21 +49,25 @@ TEST_TMPDIR(LogIterator,babudb)
 	EXPECT_TRUE(i != log->end());
 	EXPECT_TRUE(i.getType() != 0);
 	EXPECT_TRUE(op.Deserialize(*i).value == 'A');
+  EXPECT_TRUE(i.GetLSN() == 1);
 
-	++i;
+  ++i;
 	EXPECT_TRUE(i != log->end());
 	EXPECT_TRUE(i.getType() != 0);
 	EXPECT_TRUE(op.Deserialize(*i).value == 'B');
+  EXPECT_TRUE(i.GetLSN() == 2);
 
 	++i;
 	EXPECT_TRUE(i != log->end());
 	EXPECT_TRUE(i.getType() != 0);
 	EXPECT_TRUE(op.Deserialize(*i).value == 'C');
+  EXPECT_TRUE(i.GetLSN() == 3);
 
 	++i;
 	EXPECT_TRUE(i != log->end());
 	EXPECT_TRUE(i.getType() != 0);
 	EXPECT_TRUE(op.Deserialize(*i).value == 'D');
+  EXPECT_TRUE(i.GetLSN() == 4);
 
 	++i;
 	EXPECT_TRUE(i == log->end());

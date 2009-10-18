@@ -24,14 +24,13 @@ TEST_TMPDIR(ImmutableIndexWriter,babudb)
 {
 	// create ImmutableIndex from LogIndex
 	StringOrder sorder;
-  IndexMerger* merger = new IndexMerger(sorder);
+  IndexMerger* merger = new IndexMerger(testPath("testdb-testidx"), sorder);
 
 	merger->Add(1, DataHolder("key1"), DataHolder("data1"));
 	merger->Add(2, DataHolder("key2"), DataHolder("data2"));
 	merger->Add(3, DataHolder("key3"), DataHolder("data3"));
 	merger->Add(4, DataHolder("key4"), DataHolder("data4"));
 	
-  merger->Setup(testPath("testdb-testidx"));
   merger->Run();
   delete merger;
 
@@ -45,14 +44,13 @@ TEST_TMPDIR(ImmutableIndexWriter,babudb)
 	EXPECT_TRUE(!loadedindex->Lookup(DataHolder("key4")).isEmpty());
 
 	// create another LogIndex
-  merger = new IndexMerger(sorder, loadedindex);
+  merger = new IndexMerger(testPath("testdb-testidx"), sorder, loadedindex);
 
 	merger->Add(5, DataHolder("key12"), DataHolder("data12"));
 	merger->Add(6, DataHolder("key22"), DataHolder("data22"));
 	merger->Add(7, DataHolder("key32"), DataHolder("data32"));
 	merger->Add(8, DataHolder("key42"), DataHolder("data42"));
 	
-  merger->Setup(testPath("testdb-testidx"));
   merger->Run();
   delete merger;
   delete loadedindex;

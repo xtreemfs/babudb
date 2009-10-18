@@ -15,7 +15,8 @@
 
 #include "babudb/key.h"
 #include "babudb/buffer.h"
-#include "babudb/Database.h"
+#include "babudb/database.h"
+#include "babudb/log/log_section.h"
 
 namespace babudb {
 
@@ -34,34 +35,33 @@ public:
 	}
 };
 
-class StringSetOperation {
+class StringSetOperation : public Serializable {
 public:
 	StringSetOperation() {}
-	StringSetOperation(const string& db, lsn_t lsn, const string& key, const string& value)
-		: db(db), lsn(lsn), key(key), value(value) {}
-	StringSetOperation(const string& db, lsn_t lsn, const string& key)
-		: db(db), lsn(lsn), key(key) {}
+	StringSetOperation(const string& db, const string& key, const string& value)
+		: db(db), key(key), value(value) {}
+	StringSetOperation(const string& db, const string& key)
+		: db(db), key(key) {}
 
-	virtual void applyTo(Database& target) const {
-		Buffer key_copy = Buffer::createFrom((void*)key.c_str(),key.size());
+	virtual void ApplyTo(Database& target, lsn_t lsn) const {
 		if(value.empty())
-			target.Remove(db, lsn, key_copy);
+			target.Remove(db, lsn, DataHolder(key));
 		else
-			target.Add(db, lsn, key_copy, Buffer::createFrom((void*)value.c_str(),value.size()));
+			target.Add(db, lsn, DataHolder(key), DataHolder(value));
 	}
+
+  size_t GetSize() const {
+    return 2 + db.size() + 1 + key.size() + 1 + value.size() + 1;
+  }
 
 	/* serialize to the log */
-	virtual Buffer serialize(Buffer data) const {
+	virtual void Serialize(const Buffer& data) const {
 		string out = string("s ") + db + ":" + key + "=" + value;
-		memcpy((char*)data.data,out.c_str(),out.size()+1);
-
-		return Buffer(data.data,strlen((char*)data.data)+1);
+		memcpy((char*)data.data, out.c_str(), out.size()+1);
 	}
 
-	virtual bool isMarked() const { return false; }
-
 	/* deserialize from the log */
-	void deserialize(Buffer data) {
+	void Deserialize(Buffer data) {
 		string op = (char*)data.data;
 		size_t del1 = op.find_first_of(":");
 		size_t del2 = op.find_first_of("=");
@@ -71,9 +71,7 @@ public:
 		value = op.substr(del2+1);
 	}
 
-private:
 	string db, key, value;
-  lsn_t lsn;
 };
 
 };

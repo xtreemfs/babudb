@@ -6,7 +6,7 @@
 //
 // Author: Felix Hupfeld (felix@storagebox.org)
 
-#include "babudb/Database.h"
+#include "babudb/database.h"
 #include <vector>
 #include <utility>
 

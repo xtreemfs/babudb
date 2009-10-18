@@ -6,12 +6,12 @@
 //
 // Author: Felix Hupfeld (felix@storagebox.org)
 
-#include "babudb/Database.h"
+#include "babudb/database.h"
 #include "babudb/lookup_iterator.h"
 #include "babudb/log/log_iterator.h"
 
 #include "babudb/log/log.h"
-#include "log_index.h"
+#include "log_index.h" 
 #include "merged_index.h"
 #include "index/merger.h"
 #include "babudb/test.h"
@@ -54,6 +54,12 @@ IndexMerger* Database::GetMerger(const string& index) {
   return new IndexMerger(name + "-" + index,
                          indices[index]->getOrder(),
                          indices[index]->GetBase());
+}
+
+void Database::Cleanup(const string& obsolete_prefix) {
+  for(map<string,MergedIndex*>::iterator i = indices.begin(); i != indices.end(); ++i) {
+    i->second->Cleanup(obsolete_prefix);
+  }
 }
 
 lsn_t Database::GetCurrentLSN() {

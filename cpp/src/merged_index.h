@@ -29,7 +29,6 @@ class KeyOrder;
 class LookupIterator;
 class Log;
 
-// TODO: rename to IndexOverlay
 class MergedIndex {
 public:
 	explicit MergedIndex(const std::string& name, const KeyOrder& order);
@@ -37,7 +36,8 @@ public:
 
   lsn_t GetLastPersistentLSN();
 
-	void cleanup(lsn_t from_lsn, const string& to);
+  // Rename obsolete immutable indices
+	void Cleanup(const string& to);
 
 	typedef map<Buffer,Buffer,SimpleMapCompare> ResultMap;
 	Buffer Lookup(const Buffer& key);
@@ -47,6 +47,7 @@ public:
   void Remove(const Buffer&);
 
 	const KeyOrder& getOrder() { return order; }
+  ImmutableIndex* GetBase()  { return immutable_index; }
 
 private:
 	LogIndex*				    tail;

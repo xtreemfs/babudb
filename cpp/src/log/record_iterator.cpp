@@ -15,8 +15,8 @@
 using namespace YIELD;
 using namespace babudb;
 
-#define ASSERT_VALID_POS(x)			ASSERT_TRUE((char*)x >= (char*)region_start && (char*)x < ((char*)region_start + region_size))
-#define REGION_END					((char*)region_start + region_size)
+#define ASSERT_VALID_POS(x)			  ASSERT_TRUE((char*)x >= (char*)region_start && (char*)x < ((char*)region_start + region_size))
+#define REGION_END					      ((char*)region_start + region_size)
 #define ASSERT_COMPATIBILITY(a,b)	ASSERT_TRUE((a).region_start == (b).region_start && (a).region_size == (b).region_size && (a).is_forward_iterator == (b).is_forward_iterator)
 
 void* RecordIterator::operator * ()	const {

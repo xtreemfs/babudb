@@ -23,7 +23,7 @@ class LogIndex;
 
 class LogIndex {
 public:
-	LogIndex(const KeyOrder& order, lsn_t first) : order(order), latest_value(MapCompare(order)), first_lsn(first), last_lsn(0) {}
+	LogIndex(const KeyOrder& order, lsn_t first) : order(order), latest_value(MapCompare(order)), first_lsn(first) {}
 
 	Buffer lookup(const Buffer& key);
 //	vector<std::pair<Buffer,Buffer> > search(Buffer value); // needs value comp. operator
@@ -31,8 +31,6 @@ public:
 	bool Add(const Buffer&, const Buffer&);
 
 	lsn_t getFirstLSN()			{ return first_lsn; }
-	void setLastLSN(lsn_t l)	{ last_lsn = l; }
-	lsn_t getLastLSN()			{ return last_lsn; }	// only valid for closed LogIndices
 
 	typedef map<Buffer,Buffer,MapCompare> Tree;
 	typedef Tree::const_iterator iterator;
@@ -46,7 +44,7 @@ public:
 	}
 
 private:
-	lsn_t first_lsn, last_lsn;
+	lsn_t first_lsn;
 
 	Tree latest_value;
 	const KeyOrder& order;

@@ -58,43 +58,40 @@ static DiskSections scanAvailableLogSections(const string& name_prefix) {
 	}
 
 	std::sort(result.begin(),result.end(),LSNBefore());
-
 	return result;
 }
 
-void Log::cleanup(lsn_t from_lsn, const string& to) {
-	DiskSections disk_sections = scanAvailableLogSections(name_prefix);
+// Rename log sections with LSNs smaller than to_lsn 
+void Log::cleanup(lsn_t to_lsn, const string& obsolete_prefix) {
+	DiskSections disk_sections = scanAvailableLogSections(name_prefix);  // sorted by LSN
 
-	for(DiskSections::iterator i = disk_sections.begin(); i != disk_sections.end(); ++i) {
+  for (DiskSections::iterator i = disk_sections.begin(); i != disk_sections.end(); ++i) {
 		DiskSections::iterator next = i; next++;
 
-		if(next != disk_sections.end() && next->second <= from_lsn) {
+		if (next != disk_sections.end() && next->second <= to_lsn) {
 			pair<YIELD::Path,YIELD::Path> parts = i->first.split();
-			YIELD::DiskOperations::rename(i->first, YIELD::Path(to) + parts.second);
+			YIELD::DiskOperations::rename(i->first, obsolete_prefix + parts.second.getHostCharsetPath());
 		}
 	}
 }
 
-
-/** Loads all log sections with LSNs larger than min_lsn. Load them in order and check
-	for continuity.
-*/
-
+// Loads all log sections with LSNs larger than min_lsn. Load them in order and check
+// for continuity.
 void Log::loadRequiredLogSections(lsn_t min_lsn) {
-	ASSERT_TRUE(sections.size() == 0); // otherwise somebody called startup() twice
-	DiskSections disk_sections = scanAvailableLogSections(name_prefix);
+	ASSERT_TRUE(sections.size() == 0);  // otherwise somebody called startup() twice
+	DiskSections disk_sections = scanAvailableLogSections(name_prefix);  // sorted by LSN
 
 	for(DiskSections::iterator i = disk_sections.begin(); i != disk_sections.end(); ++i) {
 		DiskSections::iterator next = i; next++;
 
-		if(next == disk_sections.end() || next->second > min_lsn) {
+		if(next == disk_sections.end() || (min_lsn + 1) < next->second) {
 			auto_ptr<YIELD::MemoryMappedFile> file(new YIELD::MemoryMappedFile(i->first, 4, O_RDONLY));
 
 			LogSection* section = new LogSection(file, i->second); // repairs if not graceful
 
-			if(section->getFirstLSN() <= section->getLastLSN()) // check if there is a LSN in this section
+      if(section->getFirstLSN() <= section->getLastLSN()) { // check if there is a LSN in this section
 				sections.push_back(section);
-			else {
+      } else {
 				ASSERT_TRUE(section->empty());
 				delete section;
 			}
@@ -102,35 +99,14 @@ void Log::loadRequiredLogSections(lsn_t min_lsn) {
 	}
 
 	// Check that the sequence of LSNs is without gaps
-	lsn_t prev_last_lsn = min_lsn;
-	for(vector<LogSection*>::iterator sec = sections.begin(); sec != sections.end(); ++sec ) {
-		ASSERT_TRUE((*sec)->getFirstLSN() == prev_last_lsn + 1);
-		prev_last_lsn = (*sec)->getLastLSN();
-	}
+  if (sections.size() > 0) {
+  	lsn_t prev_last_lsn = (*sections.begin())->getFirstLSN() - 1;
+  	for(vector<LogSection*>::iterator sec = sections.begin(); sec != sections.end(); ++sec ) {
+  		ASSERT_TRUE((*sec)->getFirstLSN() == prev_last_lsn + 1);
+  		prev_last_lsn = (*sec)->getLastLSN();
+  	}
+  }
 }
-
-/** Replay the log to the LogIndices.
-*/
-/* This function should be part of the application. We could provide 
-void Log::replayToLogIndices(MergedIndexOperationTarget& indices, const OperationFactory& factory, lsn_t min_lsn) {
-	// now replay to indices
-	lsn_t last_lsn = 0;
-	for(vector<LogSection*>::iterator sec = sections.begin(); sec != sections.end(); ++sec ) {
-		for(SequentialFile::iterator rec = (*sec)->begin();	rec != (*sec)->end(); ++rec) {
-			if(rec.isType(0)) { // is lsn marker
-				last_lsn = *(lsn_t*)*rec;
-			}
-			else {
-				ASSERT_TRUE(last_lsn != 0);
-				Buffer data(rec.getRecord()->getPayload(),rec.getRecord()->getPayloadSize());
-				Operation* o = factory.createOperation(data,rec.getRecord()->getType());
-				o->applyTo(indices);
-				delete o;
-			}
-		}
-	}
-}
-*/
 
 lsn_t Log::getLastLSN() {
 	if(sections.empty())
