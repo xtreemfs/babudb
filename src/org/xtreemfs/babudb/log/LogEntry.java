@@ -40,6 +40,8 @@ public class LogEntry {
     
     public static final byte    PAYLOAD_TYPE_DELETE = 4;
     
+    public static final byte    PAYLOAD_TYPE_SNAP_DELETE = 5;
+    
     /**
      * view ID of the log entry. The view ID is an epoch number which creates a
      * total order on the log entries (viewId.logSequenceNo).

@@ -108,6 +108,17 @@ final class SharedLogic {
                 }
             }
             break;
+            
+        case PAYLOAD_TYPE_SNAP_DELETE:
+
+            byte[] payload = entry.getPayload().array();
+            int offs = payload[0];
+            dbName = new String(payload, 1, offs);
+            String snapName = new String(payload, offs + 1, payload.length - offs - 1);
+            
+            ((SnapshotManagerImpl) dbs.getSnapshotManager())
+                    .deletePersistentSnapshot(dbName, snapName, false);
+            break;
                 
         default: new BabuDBException(ErrorCode.INTERNAL_ERROR,
                 "unknown payload-type");

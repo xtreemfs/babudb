@@ -17,11 +17,13 @@ import java.util.Map.Entry;
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
 import org.xtreemfs.babudb.lsmdb.Database;
 import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
 import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
 import org.xtreemfs.babudb.lsmdb.DatabaseRO;
+import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.util.FSUtils;
 
 public class SnapshotManagerImpl implements SnapshotManager {
@@ -152,6 +154,11 @@ public class SnapshotManagerImpl implements SnapshotManager {
     
     @Override
     public void deletePersistentSnapshot(String dbName, String snapshotName) throws BabuDBException {
+        deletePersistentSnapshot(dbName, snapshotName, true);
+    }
+    
+    public void deletePersistentSnapshot(String dbName, String snapshotName, boolean createLogEntry)
+        throws BabuDBException {
         
         final Map<String, Snapshot> snapMap = snapshotDBs.get(dbName);
         final Snapshot snap = snapMap.get(snapshotName);
@@ -171,7 +178,21 @@ public class SnapshotManagerImpl implements SnapshotManager {
         // delete the snapshot subdirectory on disk if available
         FSUtils.delTree(new File(getSnapshotDir(dbName, snapshotName)));
         
-        // TODO: add deletion request to log
+        // if required, add deletion request to log
+        if (createLogEntry) {
+            
+            byte[] data = new byte[1 + dbName.length() + snapshotName.length()];
+            byte[] dbNameBytes = dbName.getBytes();
+            byte[] snapNameBytes = snapshotName.getBytes();
+            
+            assert (dbName.length() <= Byte.MAX_VALUE);
+            data[0] = (byte) dbName.length();
+            System.arraycopy(dbNameBytes, 0, data, 1, dbNameBytes.length);
+            System.arraycopy(snapNameBytes, 0, data, 1 + dbNameBytes.length, snapNameBytes.length);
+            
+            ReusableBuffer buf = ReusableBuffer.wrap(data);
+            DatabaseManagerImpl.metaInsert(LogEntry.PAYLOAD_TYPE_SNAP_DELETE, buf, dbs.getLogger());
+        }
     }
     
     @Override
@@ -209,7 +230,8 @@ public class SnapshotManagerImpl implements SnapshotManager {
         }
         FSUtils.delTree(new File(getSnapshotDir(dbName, null)));
         
-        // TODO: add deletion requests to log
+        // no delete log entries for the snapshots are needed here, since the
+        // method will only be invoked when the database itself is deleted
     }
     
     public String getSnapshotDir(String dbName, String snapshotName) {

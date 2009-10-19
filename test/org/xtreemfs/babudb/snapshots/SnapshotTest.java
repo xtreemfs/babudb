@@ -319,6 +319,11 @@ public class SnapshotTest extends TestCase {
         ir.addInsert(0, "test".getBytes(), "ggg".getBytes());
         db.directInsert(ir);
         
+        // restart the database w/o checkpointing
+        database.shutdown();
+        database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
+            SyncMode.SYNC_WRITE, 0, 0, compression));
+                
         // checkpoint and restart the database
         database.getCheckpointer().checkpoint();
         database.shutdown();
