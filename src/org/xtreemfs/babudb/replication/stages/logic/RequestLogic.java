@@ -138,15 +138,7 @@ public class RequestLogic extends Logic {
             // the insert failed due an DB error
             Logging.logError(Logging.LEVEL_WARN, this, be);
             stage.setLogic(LOAD, be.getMessage());
-        } catch (InterruptedException i) {
-            // finally will not be executed, if the thread was interrupted ... -.-
-            if (rp!=null) rp.freeBuffers();
-            if (logEntries!=null) 
-                for (org.xtreemfs.babudb.interfaces.LogEntry le : logEntries) 
-                    if (le.getPayload()!=null) BufferPool.free(le.getPayload());
-            throw i;
         } finally {
-            // finally will not be executed, if the thread was interrupted ... -.-
             if (rp!=null) rp.freeBuffers();
             if (logEntries!=null) 
                 for (org.xtreemfs.babudb.interfaces.LogEntry le : logEntries) 
