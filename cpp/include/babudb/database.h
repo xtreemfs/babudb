@@ -46,7 +46,7 @@ class IndexCreator;
 class LookupIterator;
 class IndexMerger;
 
-typedef std::pair<string, KeyOrder*> IndexDescriptor;
+typedef std::pair<string, const KeyOrder*> IndexDescriptor;
 
 class Database {
  public:

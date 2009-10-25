@@ -25,6 +25,8 @@ class Serializable {
 public:
   virtual size_t GetSize() const = 0;
   virtual void Serialize(const Buffer& buffer) const = 0;
+  virtual int GetType() const { return 0; }
+  virtual ~Serializable() {}
 };
 
 class LogSection : public SequentialFile {

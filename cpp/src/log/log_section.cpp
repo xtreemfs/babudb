@@ -56,7 +56,7 @@ lsn_t LogSection::Append(const Serializable& entry) {
 
 	void* write_location = getFreeSpace(RECORD_MAX_SIZE);
   entry.Serialize(Buffer(write_location, RECORD_MAX_SIZE));
-  frameData(write_location, (unsigned int)entry.GetSize(), USER_RECORD_TYPE);
+  frameData(write_location, (unsigned int)entry.GetSize(), USER_RECORD_TYPE + entry.GetType());
 
 	return next_lsn - 1;
 }
