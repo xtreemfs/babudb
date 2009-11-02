@@ -19,6 +19,9 @@ using std::string;
 
 namespace YIELD { class MemoryMappedFile; }
 
+#define LSN_RECORD_TYPE 0
+#define USER_RECORD_TYPE 1
+
 namespace babudb {
 
 class Serializable {

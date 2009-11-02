@@ -50,7 +50,7 @@ LogIterator<T>::LogIterator(const T& b,
 	: sections_begin(b), sections_end(e), current_section(c_s), current_record(c),
     current_record_data(Buffer::Empty()) {
 
-  if(current_section != sections_end && current_record.isType(0)) {
+  if(current_section != sections_end && current_record.isType(LSN_RECORD_TYPE)) {
     lsn = *(lsn_t*)*current_record;
 		this->operator ++();
   }
@@ -94,12 +94,12 @@ void LogIterator<T>::operator -- () {
 
 	--current_record;
 
-  if (current_record.isType(0)) {
+  if (current_record.isType(LSN_RECORD_TYPE)) {
     lsn = *(lsn_t*)*current_record;
   }
 
 	// skip LSN records
-	if(current_record.isType(0)) {
+	if(current_record.isType(LSN_RECORD_TYPE)) {
   	if(current_section != sections_begin || current_record != section_begin(current_section))
 			this->operator --();
 	}
@@ -117,7 +117,7 @@ bool LogIterator<T>::operator == (const LogIterator& other) const {
 
 template <class T>
 Buffer& LogIterator<T>::operator * () const {
-	ASSERT_TRUE(getType() != 0);
+	ASSERT_TRUE(getType() != LSN_RECORD_TYPE);
   current_record_data.data = *current_record;
   current_record_data.size = current_record.getSize();
 	return current_record_data;
@@ -125,7 +125,7 @@ Buffer& LogIterator<T>::operator * () const {
 
 template <class T>
 Buffer* LogIterator<T>::operator -> () const {
-	ASSERT_TRUE(getType() != 0);
+	ASSERT_TRUE(getType() != LSN_RECORD_TYPE);
   current_record_data.data = *current_record;
   current_record_data.size = current_record.getSize();
 	return &current_record_data;
@@ -133,11 +133,11 @@ Buffer* LogIterator<T>::operator -> () const {
 
 template <class T>
 Buffer LogIterator<T>::getOperationWithFrame() const {
-	ASSERT_TRUE(getType() != 0);
+	ASSERT_TRUE(getType() != LSN_RECORD_TYPE);
 	return Buffer(current_record.getRecord(), current_record.getRecord()->getRecordSize());
 }
 
 template <class T>
 record_type_t LogIterator<T>::getType() const {
-	return current_record.getType();
+  return current_record.getType() - USER_RECORD_TYPE;
 }

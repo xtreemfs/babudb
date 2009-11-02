@@ -16,9 +16,6 @@
 using namespace YIELD;
 using namespace babudb;
 
-#define LSN_RECORD_TYPE 0
-#define USER_RECORD_TYPE 1
-
 LogSection::LogSection(auto_ptr<MemoryMappedFile> mmfile, lsn_t first)
 : SequentialFile(mmfile, new LogStats()), in_transaction(false), first_lsn(first), next_lsn(0) {
 	// set or retrieve last LSN
