@@ -71,14 +71,15 @@ lsn_t Database::GetMinimalPersistentLSN() {
 }
 
 void Database::Add(const string& index_name, lsn_t change_lsn, const Buffer& key, const Buffer& value) {
-  EXPECT_EQUAL(change_lsn, latest_lsn + 1);
+  // Operations can affect multiple indices, plus we can have LSNs that do not affect indices at all.
+  EXPECT_TRUE(change_lsn >= latest_lsn);
   MergedIndex* index = indices[index_name];
   index->Add(key, value);
   latest_lsn = change_lsn;
 }
 
 void Database::Remove(const string& index_name, lsn_t change_lsn, const Buffer& key) {
-  EXPECT_EQUAL(change_lsn, latest_lsn + 1);
+  EXPECT_TRUE(change_lsn >= latest_lsn);
   MergedIndex* index = indices[index_name];
   index->Remove(key);
   latest_lsn = change_lsn;
