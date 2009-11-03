@@ -31,8 +31,14 @@ public:
 	}
 };
 
-#define EXPECT_EQUAL(stat_a,stat_b) \
-	{ if ( !( (stat_a) == (stat_b) ) ) throw YIELD::AssertionException( __FILE__, __LINE__, #stat_a" != "#stat_b ); }
+#include <ostream>
+
+#define EXPECT_EQUAL(stat_a, stat_b) \
+  { if ( !( (stat_a) == (stat_b) ) ) { \
+    std::cout << "EXPECT_EQUAL failed. "#stat_a" should be "#stat_b", got " << stat_a;  \
+    throw YIELD::AssertionException( __FILE__, __LINE__, #stat_a" != "#stat_b ); \
+  } }
+
 #define EXPECT_TRUE(stat) \
 	{ if ( !( (stat) == true ) ) throw YIELD::AssertionException( __FILE__, __LINE__, #stat" != true" ); }
 #define EXPECT_FALSE(stat) \
