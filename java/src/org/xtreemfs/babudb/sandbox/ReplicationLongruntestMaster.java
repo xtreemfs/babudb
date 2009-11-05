@@ -84,7 +84,7 @@ public class ReplicationLongruntestMaster {
         ReplicationConfig config = new ReplicationConfig(PATH, PATH, NUM_WKS, 
                 MAX_LOG_FILE_SIZE, CHECK_INTERVAL, SyncMode.ASYNC, 0, 0, 
                 participants, 50, null, 
-                0,BACKUP_DIR,false);
+                0,BACKUP_DIR,false,false);
         
         DBS = (BabuDB) BabuDBFactory.createReplicatedBabuDB(config);
         

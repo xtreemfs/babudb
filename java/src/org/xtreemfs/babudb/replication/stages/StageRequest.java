@@ -50,8 +50,9 @@ public class StageRequest implements Comparable<StageRequest>{
      */
     @Override
     public int compareTo(StageRequest o) {
-        assert(lsn != null && o.lsn != null); 
-        return lsn.compareTo(o.lsn);
+        if (lsn != null && o.lsn != null) 
+            return lsn.compareTo(o.lsn);
+        else return 1;
     }
     
     /**

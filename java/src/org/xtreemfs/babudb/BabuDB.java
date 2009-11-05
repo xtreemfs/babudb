@@ -24,6 +24,7 @@ import org.xtreemfs.babudb.log.DiskLogFile;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
+import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.Checkpointer;
 import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
 import org.xtreemfs.babudb.lsmdb.DBConfig;
@@ -61,7 +62,7 @@ public class BabuDB {
     /**
      * Version (name)
      */
-    public static final String           BABUDB_VERSION           = "0.2.5";
+    public static final String           BABUDB_VERSION           = "0.2.6";
     
     /**
      * Version of the DB on-disk format (to detect incompatibilities).
@@ -111,6 +112,12 @@ public class BabuDB {
      * Flag that determines if the slaveCheck should be enabled, or not.
      */
     private volatile boolean             slaveCheck               = true;
+    
+    /**
+     * SyncListener to use if you don't care about your request being
+     * inserted properly.
+     */
+    private final SyncListener           globalSyncListener;
     
     /**
      * Starts the BabuDB database. If conf is instance of MasterConfig it comes
@@ -174,6 +181,8 @@ public class BabuDB {
         } catch (Exception e) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
         }
+        this.globalSyncListener = new GlobalSyncListener(
+                this.replicationManager, this);
         
         // set up and start the disk logger
         try {
@@ -277,9 +286,7 @@ public class BabuDB {
         
         Logging.logMessage(Logging.LEVEL_INFO, this, "starting log replay");
         LSN nextLSN = replayLogs(dbLsn);
-        if (dbLsn.compareTo(nextLSN) > 0) {
-            nextLSN = dbLsn;
-        }
+        if (dbLsn.compareTo(nextLSN) > 0) nextLSN = dbLsn;
         Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done, using LSN: " + nextLSN);
         
         try {
@@ -528,6 +535,10 @@ public class BabuDB {
             throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
         }
         return db.getIndex(indexId).lookup(key);
+    }
+    
+    public SyncListener getGlobalSyncListener() {
+        return globalSyncListener;
     }
     
     public SnapshotManager getSnapshotManager() {

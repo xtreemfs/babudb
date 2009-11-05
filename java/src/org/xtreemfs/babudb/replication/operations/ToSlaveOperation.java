@@ -15,6 +15,7 @@ import org.xtreemfs.babudb.replication.ReplicationManagerImpl;
 import org.xtreemfs.babudb.replication.Request;
 import org.xtreemfs.babudb.replication.RequestDispatcher;
 import org.xtreemfs.babudb.replication.SlaveRequestDispatcher;
+import org.xtreemfs.babudb.replication.RequestDispatcher.IState;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
@@ -73,7 +74,7 @@ public class ToSlaveOperation extends Operation {
     public void startRequest(final Request rq) {
         toSlaveRequest request = (toSlaveRequest) rq.getRequestMessage();
         
-        if (!dispatcher.stopped) rq.sendReplicationException(ErrNo.
+        if (!dispatcher.isPaused()) rq.sendReplicationException(ErrNo.
                 SERVICE_UNAVAILABLE, "Replication is running at the moment!");
         else {
             InetSocketAddress masterAddress = new InetSocketAddress(request.
@@ -83,12 +84,12 @@ public class ToSlaveOperation extends Operation {
                 Logging.logMessage(Logging.LEVEL_INFO, this, "Remote-operation: " +
                 		"toSlave for '%s'", masterAddress.toString());
                 
-                SlaveRequestDispatcher newDispatcher = new SlaveRequestDispatcher(
-                        dispatcher);
+                SlaveRequestDispatcher newDispatcher = 
+                    new SlaveRequestDispatcher(dispatcher);
                 
-                ((ReplicationManagerImpl) dispatcher.dbs.getReplicationManager()).
-                            renewDispatcher(newDispatcher);
                 newDispatcher.coin(masterAddress);
+                ((ReplicationManagerImpl) dispatcher.dbs.getReplicationManager()).
+                            renewDispatcher(newDispatcher,IState.SLAVE);
                 rq.sendSuccess(request.createDefaultResponse());
             } else
                 rq.sendReplicationException(ErrNo.SECURITY, 

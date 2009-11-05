@@ -21,6 +21,7 @@ import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.MasterRequestDispatcher;
 import org.xtreemfs.babudb.replication.Request;
+import org.xtreemfs.include.common.logging.Logging;
 
 /**
  * {@link Operation} to request {@link LogEntry}s from the master.
@@ -81,6 +82,9 @@ public class ReplicaOperation extends Operation {
         LSN start = new LSN(req.getRange().getViewId(),req.getRange().getSequenceStart());
         int numOfLEs = (int) (req.getRange().getSequenceEnd()-req.getRange().getSequenceStart());
         LogEntries result = new LogEntries();
+        
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "REQUEST received " +
+        	"(start: %s, numOfLEs: %d)", start.toString(), numOfLEs);
         
         int i = 0;
         LogEntry le = null;

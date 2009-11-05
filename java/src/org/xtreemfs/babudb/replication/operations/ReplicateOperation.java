@@ -7,6 +7,7 @@
  */
 package org.xtreemfs.babudb.replication.operations;
 
+import java.net.InetSocketAddress;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
@@ -59,6 +60,18 @@ public class ReplicateOperation extends Operation {
     @Override
     public Serializable parseRPCMessage(Request rq) {
         replicateRequest rpcrq = new replicateRequest();
+        
+        // check if requesting client is a master
+        if (!(rq.getRPCRequest().getClientIdentity() instanceof InetSocketAddress) ||
+            !((InetSocketAddress) rq.getRPCRequest().getClientIdentity())
+            .getAddress().equals(dispatcher.master
+            .getDefaultServerAddress().getAddress())) {
+            Logging.logMessage(Logging.LEVEL_WARN, this, "The master (%s) was" +
+            		" deprecated, expected was (%s)!", rq.getRPCRequest()
+            		.getClientIdentity().toString(), dispatcher.master
+            		.getDefaultServerAddress().toString());
+            return rpcrq;
+        }
         rq.deserializeMessage(rpcrq);
         
         ReusableBuffer data = rpcrq.getLogEntry().getPayload();

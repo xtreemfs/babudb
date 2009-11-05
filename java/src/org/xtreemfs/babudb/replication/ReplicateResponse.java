@@ -21,8 +21,8 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 
 public final class ReplicateResponse extends LatestLSNUpdateListener {  
 
-    private boolean finished = false;
-    private int     permittedFailures;
+    private boolean        finished = false;
+    private int            permittedFailures;
     private final LogEntry logEntry;
     
     /**
@@ -50,6 +50,13 @@ public final class ReplicateResponse extends LatestLSNUpdateListener {
         }
         permittedFailures--;
     }
+    
+    /**
+     * @return the original logEntry.
+     */
+    public LogEntry getLogEntry() {
+        return this.logEntry;
+    }
         
     /*
      * (non-Javadoc)
@@ -60,6 +67,19 @@ public final class ReplicateResponse extends LatestLSNUpdateListener {
         if (!finished) {
             finished = true;
             logEntry.getListener().synced(logEntry);
+        }
+    }
+
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.LatestLSNUpdateListener#failed()
+     */
+    @Override
+    public synchronized void failed() {
+        if (!finished) {
+            finished = true;
+            logEntry.getListener().failed(logEntry, new Exception("Replication"+
+                    " of LogEntry ("+logEntry.getLSN().toString()+") failed!"));
         }
     }
 }

@@ -11,7 +11,6 @@ package org.xtreemfs.babudb.lsmdb;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBRequestListener;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
-import org.xtreemfs.babudb.log.SyncListener;
 
 public interface Database extends DatabaseRO {
     
@@ -85,19 +84,4 @@ public interface Database extends DatabaseRO {
      * @throws BabuDBException
      */
     public void directInsert(BabuDBInsertGroup ig) throws BabuDBException;
-    
-    /**
-     * Insert an group of inserts in the context of the invoking thread.
-     * 
-     * @param ig
-     *            the group of inserts
-     * @param listener
-     *            a customized {@link SyncListener} 
-     * @param optimistic
-     *            set true, if the insert should be established in memory, which
-     *            can verursachen inconsistencies, or false if not.
-     * @throws BabuDBException
-     */
-    public void directInsert(BabuDBInsertGroup ig, SyncListener listener, 
-            boolean optimistic) throws BabuDBException;
 }

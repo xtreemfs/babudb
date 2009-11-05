@@ -29,6 +29,7 @@ import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
 public class DatabaseImpl implements Database {
@@ -56,6 +57,12 @@ public class DatabaseImpl implements Database {
     private LSMDatabase lsmDB;
     
     /**
+     * set true, if the insert should be established in memory, which
+     * can cause inconsistencies, or false if not.
+     */
+    private final boolean optimistic;
+    
+    /**
      * Creates a new Database.
      * 
      * @param lsmDB
@@ -64,6 +71,10 @@ public class DatabaseImpl implements Database {
     public DatabaseImpl(BabuDB master, LSMDatabase lsmDB) {
         this.dbs = master;
         this.lsmDB = lsmDB;
+        if (dbs.getConfig() instanceof ReplicationConfig)
+            this.optimistic = ((ReplicationConfig) dbs.getConfig()).isOptimistic();
+        else
+            this.optimistic = false;
     }
     
     @Override
@@ -188,8 +199,23 @@ public class DatabaseImpl implements Database {
         }
     }
     
+    
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.lsmdb.Database#directInsert(org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup, org.xtreemfs.babudb.log.SyncListener)
+     */
     @Override
     public void directInsert(BabuDBInsertGroup irg) throws BabuDBException {
+        dbs.slaveCheck();
+        
+        if (!optimistic) {
+            syncDirectInsert(irg);
+        } else {
+            directInsert(irg, this.dbs.getGlobalSyncListener(), optimistic);
+        }
+    }
+    
+    public void syncDirectInsert(BabuDBInsertGroup irg) throws BabuDBException {
         final AsyncResult result = new AsyncResult();
         
         directInsert(irg, new SyncListener() {
@@ -241,11 +267,8 @@ public class DatabaseImpl implements Database {
         }
     }
     
-    @Override
-    public void directInsert(BabuDBInsertGroup irg, SyncListener listener, 
+    private void directInsert(BabuDBInsertGroup irg, SyncListener listener, 
             boolean optimistic) throws BabuDBException {
-        
-        dbs.slaveCheck();
         
         final int numIndices = lsmDB.getIndexCount();
         
@@ -803,5 +826,19 @@ public class DatabaseImpl implements Database {
         } catch (IOException ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot clean up: " + ex, ex);
         }
+    }
+
+    /**
+     * <p>
+     * Replaces the currently used {@link LSMDatabase} with the given one.
+     * <br>
+     * Be really careful with this operation. 
+     * {@link LSMDBRequest}s might get lost.
+     * </p> 
+     * 
+     * @param lsmDatabase
+     */
+    public void reset(LSMDatabase lsmDatabase) {
+        this.lsmDB = lsmDatabase;
     }
 }

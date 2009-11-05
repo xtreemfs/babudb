@@ -79,40 +79,35 @@ public class LoadOperation extends Operation {
         DBFileMetaDataSet result = new DBFileMetaDataSet();
         loadRequest request = (loadRequest) rq.getRequestMessage();
         
-        Logging.logMessage(Logging.LEVEL_INFO, dispatcher, "LOAD from %s.", request.getLsn().toString());
+        Logging.logMessage(Logging.LEVEL_DEBUG, dispatcher, "LOAD from %s, by %s", 
+                request.getLsn().toString(), rq.getRPCRequest()
+                .getClientIdentity().toString());
         
         if (dispatcher.lastOnView != null && 
                 new LSN(request.getLsn().getViewId(),request.getLsn().getSequenceNo())
                 .equals(dispatcher.lastOnView))
             rq.sendSuccess(new loadResponse());
         else {
-            try {
-                synchronized (((DatabaseManagerImpl) dispatcher.dbs.
-                        getDatabaseManager()).getDBModificationLock()) {
-                    synchronized (((CheckpointerImpl) dispatcher.dbs.
-                            getCheckpointer()).getCheckpointerLock()) {
-                        ((CheckpointerImpl) dispatcher.dbs.getCheckpointer()).
-                            waitForCheckpoint();
-                        // add the DB-structure-file metadata
-                        int chunkSize = dispatcher.chunkSize;
-                        String path = dispatcher.dbs.getDBConfigPath();
-                        assert (path!=null) : "No checkpoint available!";
-                        long length = new File(path).length();
-                        result.add(new DBFileMetaData(path,length,chunkSize));
-                        
-                        // add the latest snapshot files for every DB,
-                        // if available
-                        for (Database db : ((DatabaseManagerImpl) dispatcher.
-                                dbs.getDatabaseManager()).getDatabaseList())
-                            result.addAll(((DatabaseImpl) db).getLSMDB().
-                                    getLastestSnapshotFiles(chunkSize));  
-                    }
+            synchronized (((DatabaseManagerImpl) dispatcher.dbs.
+                    getDatabaseManager()).getDBModificationLock()) {
+                synchronized (((CheckpointerImpl) dispatcher.dbs.
+                        getCheckpointer()).getCheckpointerLock()) {
+                    // add the DB-structure-file metadata
+                    int chunkSize = dispatcher.chunkSize;
+                    String path = dispatcher.dbs.getDBConfigPath();
+                    assert (path!=null) : "No checkpoint available!";
+                    long length = new File(path).length();
+                    result.add(new DBFileMetaData(path,length,chunkSize));
+                    
+                    // add the latest snapshot files for every DB,
+                    // if available
+                    for (Database db : ((DatabaseManagerImpl) dispatcher.
+                            dbs.getDatabaseManager()).getDatabaseList())
+                        result.addAll(((DatabaseImpl) db).getLSMDB().
+                                getLastestSnapshotFiles(chunkSize));  
                 }
-                rq.sendSuccess(new loadResponse(result));
-            } catch (InterruptedException e) {
-                rq.sendReplicationException(ErrNo.INTERNAL_ERROR, 
-                        "Load Operation: "+e.getMessage());
             }
+            rq.sendSuccess(new loadResponse(result));
         }
     }
 

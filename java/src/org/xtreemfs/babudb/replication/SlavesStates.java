@@ -10,14 +10,17 @@ package org.xtreemfs.babudb.replication;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.PriorityBlockingQueue;
 
 import org.xtreemfs.babudb.clients.SlaveClient;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.stages.HeartbeatThread;
 import org.xtreemfs.include.common.TimeSync;
+import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.foundation.oncrpc.client.RPCNIOSocketClient;
 
 /**
@@ -31,27 +34,50 @@ import org.xtreemfs.include.foundation.oncrpc.client.RPCNIOSocketClient;
 
 public class SlavesStates {
     
+    /**
+     * State of a registered slave.
+     * 
+     * @since 05/03/2009
+     * @author flangner
+     */
+    private class State {
+        long lastUpdate = 0L;
+        boolean dead = false;
+        LSN lastAcknowledged = new LSN(0,0L);
+        int openRequests = 0;
+        final SlaveClient client;
+        
+        /**
+         * initial state
+         * 
+         * @param client
+         */
+        State(SlaveClient client) {
+            this.client = client;
+        }
+    }
+    
     // if a slave does not send a heartBeat in twice of the maximum delay 
     // between two heartBeats, than it is definitively to slow and must be dead, 
     // or will be dead soon.
     public final static long DELAY_TILL_DEAD = 2 * HeartbeatThread.MAX_DELAY_BETWEEN_HEARTBEATS;
     public final static int MAX_OPEN_REQUESTS_PER_SLAVE = 20;
     
-    private HashMap<InetAddress, State> stateTable = 
+    private final HashMap<InetAddress, State> stateTable = 
         new HashMap<InetAddress, State>(); 
 
     private volatile LSN latestCommon;
     
-    private final int syncN;
+    private final int    syncN;
     
-    private final int slavesCount;
+    private final int    slavesCount;
     
     private final PriorityBlockingQueue<LatestLSNUpdateListener> listeners = 
         new PriorityBlockingQueue<LatestLSNUpdateListener>();
     
-    private int availableSlaves;
+    private int          availableSlaves;
     
-    private int deadSlaves;
+    private int          deadSlaves;
     /**
      * Sets the stateTable up. 
      * 
@@ -84,6 +110,9 @@ public class SlavesStates {
     public LSN update(InetAddress slave, LSN acknowledgedLSN, long receiveTime) 
             throws UnknownParticipantException{
         
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "slave %s acknowledged %s", 
+                slave.toString(), acknowledgedLSN.toString());
+        
         synchronized (stateTable) {
             // the latest common LSN is >= the acknowledged one, just update the slave
             State old;
@@ -107,7 +136,7 @@ public class SlavesStates {
                                 .compareTo(acknowledgedLSN) >= 0) {
                             
                             count++;
-                            if (count>=syncN) {
+                            if (count >= syncN) {
                                 this.latestCommon = acknowledgedLSN;
                                 notifyListeners();
                                 break;
@@ -194,6 +223,12 @@ public class SlavesStates {
             listener.upToDate();
         // N-sync-mode
         } else {
+            synchronized (stateTable) {
+                if (latestCommon.compareTo(listener.lsn)>=0) {
+                    listener.upToDate();
+                    return;
+                }
+            }
             listeners.add(listener);
         }
     }
@@ -234,6 +269,22 @@ public class SlavesStates {
     }
     
     /**
+     * Removes all available listeners from the queue.
+     * Necessary due master fail-over.
+     */
+    public void clearListeners(){
+        Set<LatestLSNUpdateListener> lSet = 
+            new HashSet<LatestLSNUpdateListener>();
+        
+        listeners.drainTo(lSet);
+        for (LatestLSNUpdateListener l : lSet) l.upToDate();
+    }
+    
+/*
+ * Private methods
+ */
+    
+    /**
      * Notifies all registered listeners about the new latest common LSN.
      */
     private void notifyListeners(){
@@ -262,29 +313,6 @@ public class SlavesStates {
         
         public NotEnoughAvailableSlavesException(String string) {
             super(string);
-        }
-    }
-    
-    /**
-     * State of a registered slave.
-     * 
-     * @since 05/03/2009
-     * @author flangner
-     */
-    private class State {
-        long lastUpdate = 0L;
-        boolean dead = false;
-        LSN lastAcknowledged = new LSN(0,0L);
-        int openRequests = 0;
-        final SlaveClient client;
-        
-        /**
-         * initial state
-         * 
-         * @param client
-         */
-        State(SlaveClient client) {
-            this.client = client;
         }
     }
 }
