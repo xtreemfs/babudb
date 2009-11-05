@@ -79,16 +79,12 @@ public class DatabaseManagerImpl implements DatabaseManager {
     }
     
     public void reset() throws BabuDBException {
-        
-        dbsByName.clear();
-        dbsById.clear();
-        
         nextDbId = 1;
         
         compInstances.clear();
         compInstances.put(DefaultByteRangeComparator.class.getName(), new DefaultByteRangeComparator());
         
-        dbs.getDBConfigFile().load();
+        dbs.getDBConfigFile().reset();
     }
     
     @Override
@@ -381,9 +377,10 @@ public class DatabaseManagerImpl implements DatabaseManager {
         
         for (InsertRecord ir : ins.getInserts()) {
             LSMTree tree = db.getIndex(ir.getIndexId());
-            Logging.logMessage(Logging.LEVEL_DEBUG, this, "insert " + new String(ir.getKey()) + "="
-                + (ir.getValue() == null ? null : new String(ir.getValue())) + " into "
-                + db.getDatabaseName() + " " + ir.getIndexId());
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                    "insert %s=%s into %s  %d", new String(ir.getKey()), 
+                (ir.getValue() == null ? "null" : new String(ir.getValue())), 
+                db.getDatabaseName(), ir.getIndexId());
             tree.insert(ir.getKey(), ir.getValue());
         }
         

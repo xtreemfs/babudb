@@ -76,7 +76,7 @@ public class BabuDBConfig extends Config {
      * increase performance and emulate PostgreSQL behavior.
      */
     protected int       pseudoSyncWait;
-    
+       
     /**
      * Indicates if compression is enabled or not.
      */

@@ -20,6 +20,7 @@ import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.ReplicationManagerImpl;
 import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherState;
+import org.xtreemfs.babudb.replication.RequestDispatcher.IState;
 import org.xtreemfs.babudb.sandbox.ContinuesRandomGenerator.LookupGroup;
 import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
@@ -90,7 +91,7 @@ public class ReplicationLongruntestSlave {
         
         CONFIGURATION = new ReplicationConfig(PATH, PATH, NUM_WKS, 1, 0,
                 SyncMode.ASYNC, 0, 0, participants, 50, null, 
-                0,BACKUP_DIR, false);
+                0,BACKUP_DIR, false, false);
         
         DBS = (BabuDB) BabuDBFactory.createReplicatedBabuDB(CONFIGURATION);
         generator = new ContinuesRandomGenerator(seed, ReplicationLongrunTestConfig.MAX_SEQUENCENO);
@@ -125,7 +126,7 @@ public class ReplicationLongruntestSlave {
      * @throws BabuDBException
      */
     private static void performCleanAndRestart(Random random) throws IOException, InterruptedException, BabuDBException{
-        DispatcherState state = ((ReplicationManagerImpl) DBS.getReplicationManager()).stop();
+        ((ReplicationManagerImpl) DBS.getReplicationManager()).stop();
         
         int downTime = random.nextInt(MAX_DOWN_TIME-MIN_DOWN_TIME)+MIN_DOWN_TIME;
         System.out.println("Slave is down for "+downTime/60000.0+" minutes.");
@@ -135,7 +136,7 @@ public class ReplicationLongruntestSlave {
         Process p = Runtime.getRuntime().exec("rm -rf "+PATH);
         p.waitFor();
     
-        ((ReplicationManagerImpl) DBS.getReplicationManager()).restart(state);
+        ((ReplicationManagerImpl) DBS.getReplicationManager()).restart(IState.SLAVE);
     }
     
     /**
@@ -181,7 +182,7 @@ public class ReplicationLongruntestSlave {
             }
         }
         
-        ((ReplicationManagerImpl) DBS.getReplicationManager()).restart(state);
+        ((ReplicationManagerImpl) DBS.getReplicationManager()).restart(IState.SLAVE);
     } 
     
     /**

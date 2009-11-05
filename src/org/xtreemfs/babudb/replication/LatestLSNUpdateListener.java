@@ -24,10 +24,15 @@ abstract class LatestLSNUpdateListener implements Comparable<LatestLSNUpdateList
     }
     
     /**
-     * Function to call, if the latest LSN has been changed.
+     * Function to call, if the latest {@link LSN} has been changed.
      * 
      */
     abstract void upToDate();
+    
+    /**
+     * Function to call, if the listener is outdated before its {@link LSN} was reached.
+     */
+    abstract void failed();
     
     /*
      * (non-Javadoc)

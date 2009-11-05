@@ -122,7 +122,10 @@ public class DiskLogger extends Thread {
     private final int 	                 pseudoSyncWait;
     
     private final ReplicationManagerImpl replMan;
-
+    
+    private QueueEmptyListener           listener;
+    private final AtomicInteger          qLength = new AtomicInteger(0);
+    
     /**
      * Max number of LogEntries to write before sync.
      */
@@ -212,7 +215,8 @@ public class DiskLogger extends Thread {
      */
     public void append(LogEntry entry) throws InterruptedException {
         assert (entry != null);
-        //entries.add(entry);
+        
+        qLength.incrementAndGet();
         entries.put(entry);
     }
 
@@ -277,7 +281,7 @@ public class DiskLogger extends Thread {
         down.set(false);
         while (!quit) {
             try {
-                //wait for an entry
+                // wait for an entry
                 tmpE.add(entries.take());
                 sync.lockInterruptibly();
                 try {
@@ -328,12 +332,20 @@ public class DiskLogger extends Thread {
                     if (responses.size() != 0) {
                         for (ReplicateResponse rp : responses) {
                             replMan.subscribeListener(rp);
+                            qLength.decrementAndGet();
                         }
-                    } else {
-                        for (LogEntry le : tmpE) { 
-                            le.getListener().synced(le); 
-                        }    
+                        
+                        if (responses.size() != tmpE.size())
+                            for (ReplicateResponse rp : responses)
+                                tmpE.remove(rp.getLogEntry());
+                        else 
+                            tmpE.clear();
                     }
+                    
+                    for (LogEntry le : tmpE) { 
+                        le.getListener().synced(le); 
+                        qLength.decrementAndGet();
+                    }  
                     responses.clear();
                     tmpE.clear();
                     
@@ -346,14 +358,28 @@ public class DiskLogger extends Thread {
                 
             } catch (IOException ex) {
                 Logging.logError(Logging.LEVEL_ERROR, this, ex);
+                for (ReplicateResponse re : responses) {
+                    tmpE.remove(re.getLogEntry());
+                    re.failed();
+                    qLength.decrementAndGet();
+                }  
+                responses.clear();
+                
                 for (LogEntry le : tmpE) {
                     le.getListener().failed(le, ex);
+                    qLength.decrementAndGet();
                 }
                 tmpE.clear();
             } catch (InterruptedException ex) {
                 /* ignored */
             }
 
+            synchronized (qLength) {
+                if (qLength.get() == 0 && listener != null) {
+                    listener.queueEmpty();
+                    listener = null;
+                } 
+            }
         }
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "shutdown %s","complete");
         synchronized (down) {
@@ -417,5 +443,27 @@ public class DiskLogger extends Thread {
      */
     public String getLatestLogFileName(){
         return currentLogFileName;
+    }
+    
+    public void registerListener(QueueEmptyListener listener) {
+        synchronized (qLength) {
+            if (qLength.get() == 0)
+                listener.queueEmpty();
+            else {
+                assert (this.listener == null) : "DiskLogger: Only one " +
+                		"listener can be established at once.";
+                this.listener = listener; 
+            }
+        }  
+    }
+    
+    /**
+     * <p>Interface a listener waiting on for the queue running out of requests.</p>
+     * 
+     * @author flangner
+     * @since 10/21/2009
+     */
+    public abstract static class QueueEmptyListener {
+        public abstract void queueEmpty();
     }
 }

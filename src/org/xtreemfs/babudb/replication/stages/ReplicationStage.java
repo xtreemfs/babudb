@@ -116,11 +116,12 @@ public class ReplicationStage extends LifeCycleThread {
      */
     public void shutdown() {
         if (quit!=true) {
-            this.quit = true;
-            this.interrupt();
+            quit = true;
+            interrupt();
         }
         missing = null;
         logicID = BASIC;
+        clearQueue();
     }
 
     /*
@@ -171,7 +172,7 @@ public class ReplicationStage extends LifeCycleThread {
      * @param reason - for the logic change, needed for logging purpose.
      */
     public void setLogic(LogicID lgc, String reason) {
-        Logging.logMessage(Logging.LEVEL_INFO, this, "Replication logic changed: %s, because: %s", lgc.toString(), reason);
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "Replication logic changed: %s, because: %s", lgc.toString(), reason);
         this.logicID = lgc;
         if (listener != null && lgc.equals(BASIC)){
             listener.finished(null);
@@ -180,14 +181,29 @@ public class ReplicationStage extends LifeCycleThread {
     }
     
     /**
-     * Method to trigger a Load manually.
+     * Method to trigger a {@link LOAD} manually.
      * 
      * @param listener
+     * 
+     * @return true, if it was a request synchronization, false if it was a load.
      */
-    public void manualLoad(SimplifiedBabuDBRequestListener listener) {
+    public boolean manualLoad(SimplifiedBabuDBRequestListener listener, LSN from, 
+            LSN to) {
+        boolean result = false;
+        
         this.listener = listener;
-        setLogic(LOAD, "manually synchronization");
-        q.add(new StageRequest(null));
+        
+        if (from.getViewId() == to.getViewId()) {
+            missing = new LSNRange(from.getViewId(),from.getSequenceNo()+1L, 
+                    to.getSequenceNo()+1L);
+            setLogic(REQUEST, "manually synchronization");
+            result = true;
+        } else 
+            setLogic(LOAD, "manually synchronization");
+        
+        if (q.isEmpty()) q.add(new StageRequest(null));
+        
+        return result;
     }
     
     /**
@@ -216,9 +232,12 @@ public class ReplicationStage extends LifeCycleThread {
     /**
      * Takes the requests from the queue and frees there buffers.
      */
-    public void clearQueue() {
-        for (StageRequest rq : q) 
+    private void clearQueue() {
+        StageRequest rq = q.poll();
+        while (rq != null) {
             finalizeRequest(rq);
+            rq = q.poll();
+        }
     }
 
     /**

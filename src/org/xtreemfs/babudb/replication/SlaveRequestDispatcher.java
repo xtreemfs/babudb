@@ -56,7 +56,6 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
         throws IOException {
         
         super("Slave", dbs);
-        this.isMaster = false;
         
         // --------------------------
         // initialize internal stages
@@ -75,14 +74,17 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
      */
     public SlaveRequestDispatcher(RequestDispatcher oldDispatcher) {
         super("Slave", oldDispatcher);
-        LSN latest = oldDispatcher.getState().latest;
+        assert(oldDispatcher.isPaused());
+        
+        DispatcherState state = oldDispatcher.getState();
+        LSN latest = state.latest;
         
         // --------------------------
         // initialize internal stages
         // --------------------------
         
         this.replication = new ReplicationStage(this, ((ReplicationConfig) dbs.
-                getConfig()).getMaxQueueLength(), null, latest);   
+                getConfig()).getMaxQueueLength(), state.requestQueue, latest);   
         this.heartbeat = new HeartbeatThread(this, latest);
     }
     
@@ -97,28 +99,6 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
         // register the master client
         // --------------------------
         this.master = new MasterClient(rpcClient, master);
-        try {
-            replication.start();
-            heartbeat.start();
-            
-            replication.waitForStartup();
-            heartbeat.waitForStartup();
-        } catch (Exception ex) {
-            Logging.logMessage(Logging.LEVEL_ERROR, this, "startup failed");
-            Logging.logMessage(Logging.LEVEL_ERROR, this, ex.getMessage());
-            System.exit(1);
-        }
-        this.stopped = false;
-    }
-    
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.RequestDispatcher#start()
-     */
-    @Override
-    public void start() {
-        super.start();
-        this.stopped = true;
     }
     
     /*
@@ -127,15 +107,13 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
      */
     @Override
     public void shutdown() {
-        if (!stopped) {
+        if (!isPaused()) {
             try {
                 replication.shutdown();
                 heartbeat.shutdown();          
                 
                 replication.waitForShutdown();
                 heartbeat.waitForShutdown();  
-                
-                replication.clearQueue();
             } catch (Exception e) {
                 Logging.logMessage(Logging.LEVEL_ERROR, this, "shutdown failed");
             }
@@ -149,8 +127,10 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
      */
     @Override
     public void asyncShutdown() {
-        replication.shutdown();
-        heartbeat.shutdown();
+        if (!isPaused()) {
+            replication.shutdown();
+            heartbeat.shutdown();
+        }
         super.asyncShutdown();
     }
     
@@ -181,14 +161,19 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
      * 
      * @param from
      * @param to
-     * @throws BabuDBException 
      * @throws InterruptedException 
+     * 
+     * @return false, if no additional snapshot has to be taken, true otherwise.
      */
-    public void synchronize(LSN from, LSN to) throws BabuDBException, InterruptedException{
-        assert(!stopped) : "The Replication may not be stopped before!";
+    public boolean synchronize(LSN from, LSN to) throws InterruptedException{
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "Starting synchronization " +
+        		"from '%s' to '%s'.", from.toString(), to.toString());
+        
+        assert(!isPaused()) : "The Replication may not be stopped before!";
+        boolean result;
         
         final AtomicBoolean ready = new AtomicBoolean(false);
-        replication.manualLoad(new SimplifiedBabuDBRequestListener() {
+        result = replication.manualLoad(new SimplifiedBabuDBRequestListener() {
         
             @Override
             public void finished(BabuDBException error) {
@@ -197,7 +182,7 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
                     ready.notify();
                 }
             }
-        });
+        }, from, to);
         
         synchronized (ready) {
             if (!ready.get())
@@ -224,6 +209,8 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
         
         assert(to.equals(getState().latest)) : "Synchronization failed: "
             +to.toString()+" != "+getState().latest;
+        
+        return result;
     }
     
     /*
@@ -241,13 +228,15 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
      */
     @Override
     public void pauses(SimplifiedBabuDBRequestListener listener) {
-        if (!stopped) {
+        if (!isPaused()) {
             try {
                 replication.shutdown();
                 heartbeat.shutdown();          
                 
-                replication.waitForShutdown();
-                heartbeat.waitForShutdown();  
+                if (listener != null) {
+                    replication.waitForShutdown();
+                    heartbeat.waitForShutdown();
+                }
             } catch (Exception e) {
                 Logging.logMessage(Logging.LEVEL_ERROR, this, "could not stop the dispatcher");
             }
@@ -260,14 +249,11 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
      * @see org.xtreemfs.babudb.replication.RequestDispatcher#continues(org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherState)
      */
     @Override
-    public void continues(DispatcherState state) throws BabuDBException {
+    public void continues(IState state) {
         if (this.master == null) throw new UnsupportedOperationException(
                 "Cannot continue the replication, while it was not coined." +
                 "Use coin() instead!");
-        
-        this.replication = new ReplicationStage(this,configuration
-                .getMaxQueueLength(),state.requestQueue,state.latest);
-        this.heartbeat = new HeartbeatThread(this,state.latest);
+  
         try {
             replication.start();
             heartbeat.start();

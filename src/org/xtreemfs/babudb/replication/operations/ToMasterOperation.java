@@ -9,7 +9,6 @@ package org.xtreemfs.babudb.replication.operations;
 
 import java.io.IOException;
 
-import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.toMasterRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.toMasterResponse;
 import org.xtreemfs.babudb.interfaces.utils.Serializable;
@@ -17,6 +16,7 @@ import org.xtreemfs.babudb.replication.MasterRequestDispatcher;
 import org.xtreemfs.babudb.replication.ReplicationManagerImpl;
 import org.xtreemfs.babudb.replication.Request;
 import org.xtreemfs.babudb.replication.RequestDispatcher;
+import org.xtreemfs.babudb.replication.RequestDispatcher.IState;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
@@ -74,7 +74,7 @@ public class ToMasterOperation extends Operation {
     @Override
     public void startRequest(final Request rq) {
 
-        if (!dispatcher.stopped) rq.sendReplicationException(ErrNo.
+        if (!dispatcher.isPaused()) rq.sendReplicationException(ErrNo.
                 SERVICE_UNAVAILABLE, "Replication is running at the moment!");
         else {
             Logging.logMessage(Logging.LEVEL_INFO, this, "Remote-operation: %s",
@@ -85,20 +85,13 @@ public class ToMasterOperation extends Operation {
                             configuration.getInetSocketAddress());
                 
                 ((ReplicationManagerImpl) dispatcher.dbs.getReplicationManager()
-                        ).renewDispatcher(newDispatcher);
-                
-                newDispatcher.continues(dispatcher.getState());
+                        ).renewDispatcher(newDispatcher,IState.OTHER);
                 
                 rq.sendSuccess(new toMasterResponse());
             } catch (IOException e) {
                 Logging.logError(Logging.LEVEL_ERROR, this, e);
                 rq.sendReplicationException(ErrNo.INTERNAL_ERROR,e.getMessage());
-            } catch (BabuDBException e) {
-                Logging.logError(Logging.LEVEL_ERROR, this, e);
-                rq.sendReplicationException(ErrNo.INTERNAL_ERROR,
-                        "Replication could not be restarted, because: " +
-                        e.getMessage());
-            }
+            } 
         }
     }
     

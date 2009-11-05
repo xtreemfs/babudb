@@ -15,9 +15,11 @@ import org.xtreemfs.babudb.interfaces.LSN;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.remoteStopRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.remoteStopResponse;
 import org.xtreemfs.babudb.interfaces.utils.Serializable;
+import org.xtreemfs.babudb.log.DiskLogger.QueueEmptyListener;
 import org.xtreemfs.babudb.replication.Request;
 import org.xtreemfs.babudb.replication.RequestDispatcher;
 import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherState;
+import org.xtreemfs.babudb.replication.stages.StageRequest;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
@@ -74,10 +76,13 @@ public class RemoteStopOperation extends Operation {
      */
     @Override
     public void startRequest(Request rq) {
-        Logging.logMessage(Logging.LEVEL_INFO, this, "Remote-operation: ", "stop");
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "Stopped by: %s", 
+                rq.getRPCRequest().getClientIdentity().toString());
+        
         // stop the replication
         final AtomicBoolean ready = new AtomicBoolean(false);
         
+        // wait for the request-queue to run empty
         dispatcher.pauses(new SimplifiedBabuDBRequestListener() {
         
             @Override
@@ -94,15 +99,54 @@ public class RemoteStopOperation extends Operation {
                 if (!ready.get())
                     ready.wait();
             } catch (InterruptedException ie) {
-                rq.sendReplicationException(ErrNo.INTERNAL_ERROR, ie.getMessage());
+                Logging.logError(Logging.LEVEL_WARN, this, ie);
+                rq.sendReplicationException(ErrNo.INTERNAL_ERROR, 
+                        ie.getMessage());
                 return;
             }
         }
         
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "Replication: %s", "stopped.");
+        
+        // wait for the DiskLogger to finish the requests
+        ready.set(false);
+        dispatcher.dbs.getLogger().registerListener(new QueueEmptyListener() {
+            
+            @Override
+            public void queueEmpty() {
+                synchronized (ready) {
+                    ready.set(true);
+                    ready.notify();
+                }
+            }
+        });
+        
+        synchronized (ready) {
+            try {
+                if (!ready.get())
+                    ready.wait();
+            } catch (InterruptedException ie) {
+                Logging.logError(Logging.LEVEL_WARN, this, ie);
+                rq.sendReplicationException(ErrNo.INTERNAL_ERROR, 
+                        ie.getMessage());
+                return;
+            }
+        }
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "Logger: %s", "stopped.");
+        
         // stop the babuDB
         DispatcherState state = dispatcher.getState();
-        LSN result = new LSN(state.latest.getViewId(),state.latest.getSequenceNo());
-        rq.sendSuccess(new remoteStopResponse(result));
+        Logging.logMessage(Logging.LEVEL_INFO, this, 
+                "Remotely stopped at state: %s", state.toString());
+        
+        // send the answer
+        rq.sendSuccess(new remoteStopResponse(new LSN(state.latest.getViewId(), 
+                state.latest.getSequenceNo())));
+        
+        // discard the remaining requests 
+        if (state.requestQueue != null)
+            for (StageRequest request : state.requestQueue)
+                request.free();
     }
 
     /*

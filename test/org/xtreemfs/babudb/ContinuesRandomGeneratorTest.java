@@ -47,7 +47,6 @@ public class ContinuesRandomGeneratorTest {
         ContinuesRandomGenerator testGen1 = new ContinuesRandomGenerator(testSeed, seqNo);
         ContinuesRandomGenerator testGen2 = new ContinuesRandomGenerator(testSeed, seqNo);
 		
-		assert (ContinuesRandomGenerator.MAX_SEQUENCENO<((long) Integer.MAX_VALUE)) : "This test cannot handle such a big MAX_SEQUENCENO.";
 		long sequenceNO = random.nextInt((int) (ContinuesRandomGenerator.MAX_SEQUENCENO-1L))+1L;
 		
 		for (int i=0;i<NO_TESTS_PER_CASE;i++){
@@ -64,7 +63,6 @@ public class ContinuesRandomGeneratorTest {
         ContinuesRandomGenerator testGen1 = new ContinuesRandomGenerator(testSeed, seqNo);
         ContinuesRandomGenerator testGen2 = new ContinuesRandomGenerator(testSeed, seqNo);
 	
-		assert (ContinuesRandomGenerator.MAX_SEQUENCENO<((long) Integer.MAX_VALUE)) : "This test cannot handle such a big MAX_SEQUENCENO.";		
 		for (int i=0;i<NO_TESTS_PER_CASE;i++){
 			long sequenceNO = random.nextInt((int) (ContinuesRandomGenerator.MAX_SEQUENCENO-1L))+1L;
 			assertEquals(testGen1.getLookupGroup(sequenceNO).toString(), testGen2.getLookupGroup(sequenceNO).toString());

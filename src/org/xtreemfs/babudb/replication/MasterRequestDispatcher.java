@@ -14,6 +14,7 @@ import java.net.SocketAddress;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.xtreemfs.babudb.SimplifiedBabuDBRequestListener;
 import org.xtreemfs.babudb.clients.SlaveClient;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
@@ -25,6 +26,7 @@ import org.xtreemfs.babudb.replication.operations.LoadOperation;
 import org.xtreemfs.babudb.replication.operations.Operation;
 import org.xtreemfs.babudb.replication.operations.ReplicaOperation;
 import org.xtreemfs.babudb.replication.operations.StateOperation;
+import org.xtreemfs.babudb.replication.stages.StageRequest;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
@@ -61,6 +63,13 @@ public class MasterRequestDispatcher extends RequestDispatcher {
             InetSocketAddress own) throws IOException {
         
         super("Master", oldDispatcher);
+        assert(oldDispatcher.isPaused());
+        
+        DispatcherState oldState = oldDispatcher.getState();
+        if (oldState.requestQueue != null)
+            for (StageRequest rq : oldState.requestQueue)
+                rq.free();
+        
         this.chunkSize = oldDispatcher.configuration.getChunkSize();
         this.syncN = oldDispatcher.configuration.getSyncN();
         
@@ -73,8 +82,6 @@ public class MasterRequestDispatcher extends RequestDispatcher {
         // the sequence number of the initial LSN before incrementing the viewID cannot be 0 
         LSN initial = oldDispatcher.getState().latest;
         this.lastOnView = (initial.getSequenceNo() == 0L) ? new LSN(0,0L) : initial;
-        
-        this.isMaster = true;
     }
 
     /*
@@ -143,7 +150,9 @@ public class MasterRequestDispatcher extends RequestDispatcher {
      * @param receiveTime
      * @throws UnknownParticipantException
      */
-    public void heartbeat(SocketAddress slave, LSN lsn, long receiveTime) throws UnknownParticipantException {
+    public void heartbeat(SocketAddress slave, LSN lsn, long receiveTime) 
+        throws UnknownParticipantException {
+        
         assert (slave instanceof InetSocketAddress);
         states.update(((InetSocketAddress) slave).getAddress(), lsn, receiveTime);
     }
@@ -215,5 +224,15 @@ public class MasterRequestDispatcher extends RequestDispatcher {
     @Override
     public DispatcherState getState() {
         return new DispatcherState(dbs.getLogger().getLatestLSN());
+    }
+    
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#pauses(org.xtreemfs.babudb.SimplifiedBabuDBRequestListener)
+     */
+    @Override
+    public void pauses(SimplifiedBabuDBRequestListener listener) {
+        super.pauses(listener);
+        states.clearListeners();
     }
 }

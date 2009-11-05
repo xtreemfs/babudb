@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
@@ -48,6 +49,8 @@ import org.xtreemfs.include.foundation.oncrpc.client.RPCNIOSocketClient;
 import org.xtreemfs.include.foundation.oncrpc.server.RPCNIOSocketServer;
 import org.xtreemfs.include.foundation.oncrpc.server.RPCServerRequestListener;
 
+import static org.xtreemfs.babudb.replication.RequestDispatcher.IState.*;
+
 /**
  * <p>Starts necessary replication services and dispatches incoming requests.</p>
  * 
@@ -57,6 +60,8 @@ import org.xtreemfs.include.foundation.oncrpc.server.RPCServerRequestListener;
 
 public abstract class RequestDispatcher implements RPCServerRequestListener, LifeCycleListener {
 
+    public static enum IState { STOPPED, MASTER, SLAVE, OTHER }
+    
     public final static String              VERSION = "1.0.0 (v1.0 RC1)";
     public final String                     name;
     
@@ -64,7 +69,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
     protected final Map<Integer, Operation> operations;
         
     /** outgoing requests */
-    public final RPCNIOSocketClient         rpcClient;
+    protected final RPCNIOSocketClient      rpcClient;
 
     /** incoming operations */
     private final RPCNIOSocketServer        rpcServer;
@@ -75,15 +80,13 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
     /** interface for babuDB core-components */
     public final BabuDB                     dbs;
     
-    /** determines if the replication is running in master mode */
-    protected boolean                       isMaster;
-    
+    /** determines in which state the dispatcher actually is */
+    private final AtomicReference<IState>   state;
+        
     /** counter for eventually running requests */
-    private final AtomicInteger             activeRequests = new AtomicInteger(0);
-    /** flag that determines if the replication is out of service at the moment */
-    public volatile boolean                 stopped = true;
+    private final AtomicInteger             pendingRequests;
     
-    private SimplifiedBabuDBRequestListener listener = null;
+    private SimplifiedBabuDBRequestListener listener;
     
     public final ReplicationConfig          configuration;
 /*
@@ -98,10 +101,13 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
      * @throws IOException
      */
     public RequestDispatcher(String name, BabuDB dbs) throws IOException {
+        this.state = new AtomicReference<IState>(STOPPED);
         this.name = name;
         this.dbs = dbs;
         this.permittedClients = new LinkedList<InetAddress>();
         this.configuration = (ReplicationConfig) dbs.getConfig();
+        this.pendingRequests = new AtomicInteger(0);
+        this.listener = null;
         
         // ---------------------
         // initialize operations
@@ -152,6 +158,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
      * @param oldDispatcher
      */
     public RequestDispatcher(String name, RequestDispatcher oldDispatcher) {
+        this.state = oldDispatcher.state;
         this.rpcServer = oldDispatcher.rpcServer;
         this.rpcServer.updateRequestDispatcher(this);
         this.rpcServer.setLifeCycleListener(this);
@@ -161,6 +168,8 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
         this.name = name;
         this.dbs = oldDispatcher.dbs;
         this.configuration = oldDispatcher.configuration;
+        this.listener = oldDispatcher.listener;
+        this.pendingRequests = oldDispatcher.pendingRequests;
         
         // ---------------------
         // initialize operations
@@ -221,11 +230,13 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
         throws NotEnoughAvailableSlavesException, InterruptedException, 
         BabuDBException {
         
-        if (!isMaster) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
+        IState state = this.state.get();
+        if (!state.equals(STOPPED) && !state.equals(MASTER)) 
+            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
             "This BabuDB is not running in master-mode! " +
             "The operation is not available.");
         
-        else if (!startRequest()) 
+        else if (!startRequest(true)) 
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
                     "Replication is disabled at the moment!");
         
@@ -243,8 +254,8 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
      */
     protected abstract void initializeOperations();
         
-    public void start() {   
-        this.stopped = false;
+    protected final void start() {
+        this.state.set(STOPPED);
         try {  
             rpcServer.start();
             rpcClient.start();
@@ -259,7 +270,6 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
     }
     
     public void asyncShutdown() {
-        this.stopped = true;
         try {
             rpcServer.shutdown();
             rpcClient.shutdown();
@@ -267,6 +277,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
             Logging.logMessage(Logging.LEVEL_ERROR, this, "shutdown failed");
             Logging.logError(Logging.LEVEL_ERROR, this, ex);
         }
+        this.state.set(STOPPED);
     }
     
     public void shutdown() {
@@ -280,7 +291,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
             Logging.logMessage(Logging.LEVEL_ERROR, this, "shutdown failed");
             Logging.logError(Logging.LEVEL_ERROR, this, ex);
         }
-        this.stopped = true;
+        this.state.set(STOPPED);
     }
 
     /*
@@ -288,7 +299,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
      * @see org.xtreemfs.include.foundation.oncrpc.server.RPCServerRequestListener#receiveRecord(org.xtreemfs.include.foundation.oncrpc.server.ONCRPCRequest)
      */
     @Override
-    public void receiveRecord(ONCRPCRequest rq){       
+    public void receiveRecord(ONCRPCRequest rq){    
         if (!checkIdentity(rq.getClientIdentity())){
             rq.sendException(new ProtocolException(ONCRPCResponseHeader.ACCEPT_STAT_PROC_UNAVAIL,
                     ErrNo.EACCES,"you "+rq.getClientIdentity().toString()+" have no access rights to execute the requested operation on this "+name));
@@ -310,7 +321,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
             return;
         } 
         
-        if (op.canBeDisabled() && !startRequest()){
+        if (!startRequest(op.canBeDisabled())){
             rq.sendException(new errnoException(
                     org.xtreemfs.babudb.replication.operations.ErrNo.SERVICE_UNAVAILABLE,
                     "Replication is paused!",null));
@@ -335,20 +346,25 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
             finishRequest(op.canBeDisabled());
             return;
         }
+        
         finishRequest(op.canBeDisabled());
     }
     
     /**
      * Increment an internal counter, if the request can be proceed.
      * 
+     * @param canBeDisabled - if the operation of the request to finish can be disabled.
      * @return true, if the request can be proceed, or false if the replication was stopped before.
      */
-    private boolean startRequest() {
-        synchronized (activeRequests) {
-            if (stopped) return false;
-            else activeRequests.incrementAndGet();
-            return true;
+    private boolean startRequest(boolean canBeDisabled) {
+        if (canBeDisabled) {
+            synchronized (pendingRequests) {
+                if (state.get().equals(STOPPED)) return false;
+                pendingRequests.incrementAndGet();
+            }
         }
+        
+        return true;
     }
     
     /**
@@ -358,8 +374,9 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
      */
     private void finishRequest(boolean canBeDisabled) {
         if (canBeDisabled) {
-            synchronized (activeRequests) {
-                if (activeRequests.decrementAndGet() == 0 && listener != null) {
+            synchronized (pendingRequests) {
+                int stillAct = pendingRequests.decrementAndGet();
+                if (stillAct == 0 && listener != null) {
                     listener.finished(null);
                     listener = null;
                 }
@@ -436,29 +453,58 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
     public abstract DispatcherState getState();
     
     /**
+     * @return true if the {@link RequestDispatcher} was paused before, false otherwise.
+     */
+    public boolean isPaused() {
+        return this.state.get().equals(STOPPED);
+    }
+    
+    /**
+     * @return true if the {@link RequestDispatcher} is running in master-mode,
+     *         false otherwise.
+     */
+    public boolean isMaster() {
+        return this.state.get().equals(MASTER);
+    }
+    
+    /**
+     * @return true if the {@link RequestDispatcher} is running in slave-mode,
+     *         false otherwise.
+     */
+    public boolean isSlave() {
+        return this.state.get().equals(SLAVE);
+    }
+    
+    /**
      * Stops the dispatcher, by disabling all its replication features.
      * @param listener - can be null.
      */
     public void pauses(SimplifiedBabuDBRequestListener listener) {
-        this.stopped = true;
-        this.isMaster = false;
-        if (listener!=null) {
-            synchronized (activeRequests) {
-                if (activeRequests.get() == 0) listener.finished(null);
-                else this.listener = listener;
+        synchronized (pendingRequests) {
+            this.state.set(STOPPED);
+            if (listener != null) {
+                int actRqs = pendingRequests.get();
+                if (actRqs == 0) listener.finished(null);
+                else {
+                    assert (this.listener == null) : "RequestDispatcher: Only" +
+                    		" one listener can be established at once.";
+                    this.listener = listener;
+                }            
             }
         }
     }
     
     /**
-     * Starts the dispatcher, by resetting all its replication features.
+     * Continues the Execution.
      * 
      * @param state
-     * @throws BabuDBException 
      */
-    public void continues(DispatcherState state) throws BabuDBException {
-        if (!this.stopped) throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "The replication has to be stopped, before it can be continued!");
-        this.stopped = false;
+    public void continues(IState state) {
+        assert (!state.equals(STOPPED)) : "Use pauses() instead!";
+        
+        this.state.set(state);
+        Logging.logMessage(Logging.LEVEL_INFO, this, "Replication (%s) " +
+        		"continued in mode %s.", this.name, state.name());
     }
     
     /**
@@ -469,7 +515,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
      */
     public static class DispatcherState {
         
-        public final LSN latest;
+        public LSN latest;
         public BlockingQueue<StageRequest> requestQueue;
         
         DispatcherState(LSN latest, BlockingQueue<StageRequest> backupQueue) {
@@ -480,6 +526,17 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
         DispatcherState(LSN latest) {
             this.latest = latest;
             this.requestQueue = null;
+        }
+        
+        /*
+         * (non-Javadoc)
+         * @see java.lang.Object#toString()
+         */
+        @Override
+        public String toString() {
+            return "LSN ("+latest.toString()+")" + (
+                (requestQueue!=null) ? ", Queue-length: '" + requestQueue.size()
+                        + "'" : "");
         }
     }
 }

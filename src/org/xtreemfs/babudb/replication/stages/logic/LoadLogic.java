@@ -114,13 +114,20 @@ public class LoadLogic extends Logic {
         
         // backup the old dbs and stop the heartBeat
         stage.dispatcher.heartbeat.infarction();
-        
+        stage.dispatcher.dbs.stop();
         try {
-            stage.dispatcher.dbs.stop();
             backupFiles(stage.dispatcher.configuration);
         } catch (IOException e) {
             // file backup failed --> retry
             Logging.logError(Logging.LEVEL_WARN, this, e);
+            
+            if (stage.isInterrupted()) {
+                try {
+                    stage.dispatcher.dbs.restart();
+                } catch (BabuDBException e1) {
+                    Logging.logError(Logging.LEVEL_ERROR, this, e1);
+                }
+            }
             return;
         }
         
