@@ -58,7 +58,7 @@ import org.xtreemfs.include.foundation.oncrpc.server.RPCServerRequestListener;
 
 public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         
-    private static final int viewID = 1;
+    private final static int viewID = 2;
     
     private RPCNIOSocketServer  rpcServer;
     private static ReplicationConfig conf;
@@ -183,7 +183,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         
         long seqToRequest = 2L;
         
-        RPCResponse<LogEntries> result = client.getReplica(new LSNRange(1,seqToRequest,seqToRequest));
+        RPCResponse<LogEntries> result = client.getReplica(new LSNRange(viewID,seqToRequest,seqToRequest));
         LogEntries les = result.get();
         assertNotNull(les);
         assertEquals(1, les.size());
@@ -208,7 +208,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         
         long seqToRequest = 1L;
         
-        RPCResponse<LogEntries> result = client.getReplica(new LSNRange(1,seqToRequest,seqToRequest));
+        RPCResponse<LogEntries> result = client.getReplica(new LSNRange(viewID,seqToRequest,seqToRequest));
         try {
             result.get();
         } catch (ONCRPCError e) {
