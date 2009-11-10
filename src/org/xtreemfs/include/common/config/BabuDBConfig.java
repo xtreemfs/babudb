@@ -117,31 +117,31 @@ public class BabuDBConfig extends Config {
     
     public void read() throws IOException {
         
-        this.debugLevel = this.readOptionalInt("debug.level", Logging.LEVEL_WARN);
+        this.debugLevel = this.readOptionalInt("babudb.debug.level", Logging.LEVEL_WARN);
         
-        this.debugCategory = this.readOptionalString("debug.category", "all");
+        this.debugCategory = this.readOptionalString("babudb.debug.category", "all");
         
-        this.dbCfgFile = this.readOptionalString("db.cfgFile", "config.db");
+        this.dbCfgFile = this.readOptionalString("babudb.cfgFile", "config.db");
         
-        String baseDir = this.readRequiredString("db.baseDir");
+        String baseDir = this.readRequiredString("babudb.baseDir");
         this.baseDir = (baseDir.endsWith(File.separator)) ? baseDir : baseDir+File.separator;
         
-        String dbLogDir = this.readRequiredString("db.logDir");
+        String dbLogDir = this.readRequiredString("babudb.logDir");
         this.dbLogDir = (dbLogDir.endsWith(File.separator)) ? dbLogDir : dbLogDir+File.separator;
 
-        this.syncMode = SyncMode.valueOf(this.readRequiredString("db.sync"));
+        this.syncMode = SyncMode.valueOf(this.readRequiredString("babudb.sync"));
         
-        this.numThreads = this.readOptionalInt("worker.numThreads", 1);
+        this.numThreads = this.readOptionalInt("babudb.worker.numThreads", 1);
         
-        this.maxQueueLength = this.readOptionalInt("worker.maxQueueLength",0);
+        this.maxQueueLength = this.readOptionalInt("babudb.worker.maxQueueLength",0);
         
-        this.maxLogfileSize = this.readOptionalInt("db.maxLogfileSize", 1);
+        this.maxLogfileSize = this.readOptionalInt("babudb.maxLogfileSize", 1);
         
-        this.checkInterval = this.readOptionalInt("db.checkInterval", 0);
+        this.checkInterval = this.readOptionalInt("babudb.checkInterval", 0);
         
-        this.pseudoSyncWait = this.readOptionalInt("db.pseudoSyncWait", 0);
+        this.pseudoSyncWait = this.readOptionalInt("babudb.pseudoSyncWait", 0);
         
-        this.compression = this.readOptionalBoolean("db.compression", false);
+        this.compression = this.readOptionalBoolean("babudb.compression", false);
     }
     
     public int getDebugLevel() {

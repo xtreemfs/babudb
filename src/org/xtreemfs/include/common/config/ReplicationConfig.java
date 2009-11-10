@@ -113,22 +113,22 @@ public class ReplicationConfig extends BabuDBConfig {
     public void read() throws IOException {
         super.read();
                
-        this.optimistic = this.readOptionalBoolean("optimistic", false);
+        this.optimistic = this.readOptionalBoolean("babudb.repl.optimistic", false);
         
-        this.localTimeRenew = this.readOptionalInt("localTimeRenew", 3000);
+        this.localTimeRenew = this.readOptionalInt("babudb.localTimeRenew", 3000);
         
-        if (this.readRequiredBoolean("ssl.enabled")) {
+        if (this.readRequiredBoolean("babudb.ssl.enabled")) {
             this.sslOptions = new SSLOptions(
                     new FileInputStream(
-                            this.readRequiredString("ssl.service_creds")),
-                    this.readRequiredString("ssl.service_creds.pw"), 
-                    this.readRequiredString("ssl.service_creds.container"),
+                            this.readRequiredString("babudb.ssl.service_creds")),
+                    this.readRequiredString("babudb.ssl.service_creds.pw"), 
+                    this.readRequiredString("babudb.ssl.service_creds.container"),
                     new FileInputStream(
-                            this.readRequiredString("ssl.trusted_certs")),
-                    this.readRequiredString("ssl.trusted_certs.pw"),
-                    this.readRequiredString("ssl.trusted_certs.container"),
+                            this.readRequiredString("babudb.ssl.trusted_certs")),
+                    this.readRequiredString("babudb.ssl.trusted_certs.pw"),
+                    this.readRequiredString("babudb.ssl.trusted_certs.container"),
                     this.readRequiredBoolean(
-                            "ssl.authenticationWithoutEncryption"));
+                            "babudb.ssl.authenticationWithoutEncryption"));
         }
         
         // read the participants
@@ -137,12 +137,14 @@ public class ReplicationConfig extends BabuDBConfig {
         int number = 0;
         Socket s;
         InetSocketAddress addrs;
-        while ((addrs = this.readOptionalInetSocketAddr("participant."+number, 
-                "participant."+number+".port",null))!=null){
+        while ((addrs = this.readOptionalInetSocketAddr(
+                "babudb.repl.participant."+number, 
+                "babudb.repl.participant."+number+".port",null))!=null){
             s = new Socket();
             try {
                 s.bind(addrs);
-                if (this.address != null && !this.address.equals(addrs)) throw new BindException();
+                if (this.address != null && !this.address.equals(addrs)) 
+                    throw new BindException();
                 this.address = addrs;
             } catch (BindException e) {
                 this.participants.add(addrs);
@@ -156,12 +158,12 @@ public class ReplicationConfig extends BabuDBConfig {
         assert (this.address != null) : "No one of the given participants " +
                                         "described the localhost!";
         
-        this.chunkSize = this.readOptionalInt("chunkSize", 
+        this.chunkSize = this.readOptionalInt("babudb.repl.chunkSize", 
                 DEFAULT_MAX_CHUNK_SIZE);
         
-        this.syncN = this.readOptionalInt("sync.n", 0);
+        this.syncN = this.readOptionalInt("babudb.repl.sync.n", 0);
         
-        String backupDir = this.readRequiredString("db.backupDir");
+        String backupDir = this.readRequiredString("babudb.repl.backupDir");
         if (backupDir.equals(baseDir) || backupDir.equals(dbLogDir)) 
             throw new IOException("backup directory has to be different to " +
             		"the dbLog directory and the base directory");   
