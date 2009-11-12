@@ -21,18 +21,26 @@ public class BabuDBException extends Exception {
          * The requested database does not exist
          */
         NO_SUCH_DB,
+        
         /**
          * A database with this name already exists
          */
         DB_EXISTS,
+        
         /**
          * The requested index does not exist in the database
          */
         NO_SUCH_INDEX,
+        
         /**
          * Data could not be written/read.
          */
         IO_ERROR,
+        
+        /**
+         * An operation was interrupted while running.
+         */
+        INTERRUPTED, 
         
         /**
          * If the replication fails.

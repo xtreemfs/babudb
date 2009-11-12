@@ -38,6 +38,8 @@ package org.xtreemfs.babudb;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.xtreemfs.babudb.BabuDBException.ErrorCode;
+
 /**
  * Default return value for BabuDB requests.
  * 
@@ -49,13 +51,13 @@ public class BabuDBRequest<T> implements BabuDBRequestResult<T>{
     
     private BabuDBRequestListener<T>  listener; 
 
-    private T                   result;
+    private T                         result;
     
-    private BabuDBException     error; 
+    private BabuDBException           error; 
     
-    private final AtomicBoolean finished = new AtomicBoolean(false);
+    private final AtomicBoolean       finished = new AtomicBoolean(false);
     
-    private final Object        context;
+    private final Object              context;
     
 /*
  * constructors
@@ -187,12 +189,16 @@ public class BabuDBRequest<T> implements BabuDBRequestResult<T>{
      * (non-Javadoc)
      * @see org.xtreemfs.babudb.BabuDBRequestResult#get()
      */
-    public T get() throws BabuDBException, InterruptedException {
-        synchronized (finished) {
-            if (!finished.get()) 
-                finished.wait();            
+    public T get() throws BabuDBException {
+        try {
+            synchronized (finished) {
+                if (!finished.get()) 
+                    finished.wait();            
+            }
+        } catch (InterruptedException e) {
+            throw new BabuDBException(ErrorCode.INTERRUPTED, 
+                    "Thread was interrupted while waiting for the response.");
         }
-        
         if (error != null) throw error;
         return result;
     }
