@@ -57,8 +57,6 @@ public interface BabuDBRequestResult<T> {
      * @return the request result.
      * @throws BabuDBException
      *                  if the request ends with an error.
-     * @throws InterruptedException
-     *                  if waiting was interrupted.
      */
-    public T get() throws BabuDBException, InterruptedException;
+    public T get() throws BabuDBException;
 }
