@@ -25,6 +25,8 @@ import org.xtreemfs.include.common.logging.Logging;
  */
 public class CopyDatabaseTest extends TestCase {
     
+    public final static boolean WIN = System.getProperty("os.name").toLowerCase().contains("win");
+    
     public static final String baseDir = "/tmp/lsmdb-test/";
     
     public static final boolean compression = false;
@@ -32,13 +34,18 @@ public class CopyDatabaseTest extends TestCase {
     private BabuDB             database;
     
     public CopyDatabaseTest() {
+        Logging.start(Logging.LEVEL_DEBUG);
     }
     
     @Before
     public void setUp() throws Exception {
-        Logging.start(Logging.LEVEL_DEBUG);
-        Process p = Runtime.getRuntime().exec("rm -rf " + baseDir);
-        p.waitFor();
+        Process p;
+        if (WIN) {
+            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + baseDir + "\"");
+        } else {
+            p = Runtime.getRuntime().exec("rm -rf " + baseDir);
+        }
+        assertEquals(0, p.waitFor());
     }
     
     @After
@@ -62,7 +69,7 @@ public class CopyDatabaseTest extends TestCase {
                 int randnum = (int) (Math.random() * Integer.MAX_VALUE);
                 final String key = String.valueOf(randnum);
                 final String value = "VALUE_" + randnum;
-                db.syncSingleInsert(i, key.getBytes(), value.getBytes());
+                db.singleInsert(i, key.getBytes(), value.getBytes(),null).get();
             }
         }
         
@@ -74,11 +81,11 @@ public class CopyDatabaseTest extends TestCase {
         // check entries
         for (int i = 0; i < NUMIDX; i++) {
             System.out.println("checking index " + i);
-            Iterator<Entry<byte[], byte[]>> values = db.syncPrefixLookup(i, "1".getBytes());
+            Iterator<Entry<byte[], byte[]>> values = db.prefixLookup(i, "1".getBytes(),null).get();
             
             while (values.hasNext()) {
                 Entry<byte[], byte[]> e = values.next();
-                byte[] v = database.getDatabaseManager().getDatabase("copyDB").syncLookup(i, e.getKey());
+                byte[] v = database.getDatabaseManager().getDatabase("copyDB").lookup(i, e.getKey(),null).get();
                 assertNotNull(v);
                 assertEquals(v.length, e.getValue().length);
                 for (int p = 0; p < v.length; p++)

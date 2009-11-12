@@ -7,15 +7,11 @@
  */
 package org.xtreemfs.babudb.replication.operations;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.SimplifiedBabuDBRequestListener;
+import org.xtreemfs.babudb.BabuDBRequest;
 import org.xtreemfs.babudb.interfaces.LSN;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.remoteStopRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.remoteStopResponse;
 import org.xtreemfs.babudb.interfaces.utils.Serializable;
-import org.xtreemfs.babudb.log.DiskLogger.QueueEmptyListener;
 import org.xtreemfs.babudb.replication.Request;
 import org.xtreemfs.babudb.replication.RequestDispatcher;
 import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherState;
@@ -80,57 +76,31 @@ public class RemoteStopOperation extends Operation {
                 rq.getRPCRequest().getClientIdentity().toString());
         
         // stop the replication
-        final AtomicBoolean ready = new AtomicBoolean(false);
+        BabuDBRequest<Object> ready = new BabuDBRequest<Object>();
         
         // wait for the request-queue to run empty
-        dispatcher.pauses(new SimplifiedBabuDBRequestListener() {
+        dispatcher.pauses(ready);
         
-            @Override
-            public void finished(BabuDBException error) {
-                synchronized (ready) {
-                    ready.set(true);
-                    ready.notify();
-                }
-            }
-        });
-        
-        synchronized (ready) {
-            try {
-                if (!ready.get())
-                    ready.wait();
-            } catch (InterruptedException ie) {
-                Logging.logError(Logging.LEVEL_WARN, this, ie);
-                rq.sendReplicationException(ErrNo.INTERNAL_ERROR, 
-                        ie.getMessage());
-                return;
-            }
+        try {
+            ready.get();
+        } catch (Exception e) {
+            Logging.logError(Logging.LEVEL_WARN, this, e);
+            rq.sendReplicationException(ErrNo.INTERNAL_ERROR, e.getMessage());
+            return;
         }
         
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "Replication: %s", "stopped.");
         
         // wait for the DiskLogger to finish the requests
-        ready.set(false);
-        dispatcher.dbs.getLogger().registerListener(new QueueEmptyListener() {
-            
-            @Override
-            public void queueEmpty() {
-                synchronized (ready) {
-                    ready.set(true);
-                    ready.notify();
-                }
-            }
-        });
+        ready.recycle();
+        dispatcher.dbs.getLogger().registerListener(ready);
         
-        synchronized (ready) {
-            try {
-                if (!ready.get())
-                    ready.wait();
-            } catch (InterruptedException ie) {
-                Logging.logError(Logging.LEVEL_WARN, this, ie);
-                rq.sendReplicationException(ErrNo.INTERNAL_ERROR, 
-                        ie.getMessage());
-                return;
-            }
+        try {
+            ready.get();
+        } catch (Exception e) {
+            Logging.logError(Logging.LEVEL_WARN, this, e);
+            rq.sendReplicationException(ErrNo.INTERNAL_ERROR, e.getMessage());
+            return;
         }
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "Logger: %s", "stopped.");
         

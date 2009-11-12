@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.SimplifiedBabuDBRequestListener;
+import org.xtreemfs.babudb.BabuDBRequest;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.ProtocolException;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.ReplicationInterface;
@@ -86,7 +86,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
     /** counter for eventually running requests */
     private final AtomicInteger             pendingRequests;
     
-    private SimplifiedBabuDBRequestListener listener;
+    private BabuDBRequest<Object>           listener;
     
     public final ReplicationConfig          configuration;
 /*
@@ -377,7 +377,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
             synchronized (pendingRequests) {
                 int stillAct = pendingRequests.decrementAndGet();
                 if (stillAct == 0 && listener != null) {
-                    listener.finished(null);
+                    listener.finished();
                     listener = null;
                 }
             }
@@ -479,12 +479,12 @@ public abstract class RequestDispatcher implements RPCServerRequestListener, Lif
      * Stops the dispatcher, by disabling all its replication features.
      * @param listener - can be null.
      */
-    public void pauses(SimplifiedBabuDBRequestListener listener) {
+    public void pauses(BabuDBRequest<Object> listener) {
         synchronized (pendingRequests) {
             this.state.set(STOPPED);
             if (listener != null) {
                 int actRqs = pendingRequests.get();
-                if (actRqs == 0) listener.finished(null);
+                if (actRqs == 0) listener.finished();
                 else {
                     assert (this.listener == null) : "RequestDispatcher: Only" +
                     		" one listener can be established at once.";

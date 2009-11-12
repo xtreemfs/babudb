@@ -21,6 +21,7 @@ import java.util.Map;
 
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.BabuDBRequest;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
@@ -28,7 +29,6 @@ import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
-import org.xtreemfs.babudb.lsmdb.DatabaseImpl.AsyncResult;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
@@ -315,45 +315,28 @@ public class DatabaseManagerImpl implements DatabaseManager {
     public static void metaInsert(byte type, ReusableBuffer parameters, 
             DiskLogger logger) throws BabuDBException {
         
-        final AsyncResult result = new AsyncResult();
+        final BabuDBRequest<Object> result = new BabuDBRequest<Object>();
         
         // make the entry
         LogEntry entry = new LogEntry(parameters, new SyncListener() {
             
             @Override
             public void synced(LogEntry entry) {
-                synchronized (result) {
-                    result.done = true;
-                    result.notify();
-                }
+                result.finished();
             }
             
             @Override
             public void failed(LogEntry entry, Exception ex) {
-                synchronized (result) {
-                    result.done = true;
-                    if (ex != null && ex instanceof BabuDBException)
-                        result.error = (BabuDBException) ex;
-                    else
-                        result.error = new BabuDBException(
-                                ErrorCode.INTERNAL_ERROR, ex.getMessage());
-                    
-                    result.notify();
-                }
+                result.failed((ex != null && ex instanceof BabuDBException) ? 
+                        (BabuDBException) ex : new BabuDBException(
+                                ErrorCode.INTERNAL_ERROR, ex.getMessage()));
             }
         }, type);
         
         // append it to the DiskLogger
         try {
             logger.append(entry);
-            
-            synchronized (result) {
-                if (!result.done)
-                    result.wait();
-                
-                if (result.error != null)
-                    throw result.error;
-            }
+            result.get();
         } catch (InterruptedException ie) {
             throw new BabuDBException(ErrorCode.INTERNAL_ERROR, ie.getMessage());
         } finally {

@@ -8,11 +8,15 @@
 
 package org.xtreemfs.babudb.lsmdb;
 
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.BabuDBRequest;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
 import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.log.DiskLogger;
@@ -37,7 +41,7 @@ public class LSMDBWorker extends Thread implements SyncListener {
         USER_DEFINED_LOOKUP
     };
     
-    private final BlockingQueue<LSMDBRequest> requests;
+    private final BlockingQueue<LSMDBRequest<?>> requests;
     
     private transient boolean quit;
     
@@ -52,14 +56,14 @@ public class LSMDBWorker extends Thread implements SyncListener {
         super("LSMDBWrkr#"+id);  
         this.down = new AtomicBoolean(false);       
         if (maxQ > 0)
-            requests = new LinkedBlockingQueue<LSMDBRequest>(maxQ);
+            requests = new LinkedBlockingQueue<LSMDBRequest<?>>(maxQ);
         else
-            requests = new LinkedBlockingQueue<LSMDBRequest>();       
+            requests = new LinkedBlockingQueue<LSMDBRequest<?>>();       
         this.logger = logger;
         this.pseudoSync = pseudoSync;
     }
     
-    public void addRequest(LSMDBRequest request) throws InterruptedException {
+    public void addRequest(LSMDBRequest<?> request) throws InterruptedException {
         requests.put(request);
     }
     
@@ -100,17 +104,18 @@ public class LSMDBWorker extends Thread implements SyncListener {
      * (non-Javadoc)
      * @see java.lang.Thread#run()
      */
+    @SuppressWarnings("unchecked")
     @Override
     public void run() {       
         while (!quit) {
             try {
-                final LSMDBRequest r = requests.take();
+                final LSMDBRequest<?> r = requests.take();
                 
                 switch (r.getOperation()) {
                     case INSERT : doInsert(r); break;
-                    case LOOKUP : doLookup(r); break;
-                    case PREFIX_LOOKUP : doPrefixLookup(r); break;
-                    case USER_DEFINED_LOOKUP : doUserLookup(r); break;
+                    case LOOKUP : doLookup((LSMDBRequest<byte[]>) r); break;
+                    case PREFIX_LOOKUP : doPrefixLookup((LSMDBRequest<Iterator<Entry<byte[], byte[]>>>) r); break;
+                    case USER_DEFINED_LOOKUP : doUserLookup((LSMDBRequest<Object>) r); break;
                     default : {
                         Logging.logMessage(Logging.LEVEL_ERROR, this,"UNKNOWN OPERATION REQUESTED! PROGRAMMATIC ERROR!!!! PANIC!");
                         System.exit(1);
@@ -127,18 +132,18 @@ public class LSMDBWorker extends Thread implements SyncListener {
         }
     }
 
-    private void doUserLookup(final LSMDBRequest r) {
+    private void doUserLookup(final LSMDBRequest<Object> r) {
         final UserDefinedLookup l = r.getUserDefinedLookup();
         final LSMLookupInterface lif = new LSMLookupInterface(r.getDatabase());
         try {
             Object result = l.execute(lif);
-            r.getListener().userDefinedLookupFinished(r.getContext(), result);
+            r.getListener().finished(result);
         } catch (BabuDBException ex) {
-            r.getListener().requestFailed(r.getContext(), ex);
+            r.getListener().failed(ex);
         }
     }
     
-    private void doInsert(final LSMDBRequest r) throws InterruptedException {
+    private void doInsert(final LSMDBRequest<?> r) throws InterruptedException {
         final InsertRecordGroup irec = r.getInsertData();
         int size = irec.getSize();
         ReusableBuffer buf = BufferPool.allocate(size);
@@ -154,31 +159,34 @@ public class LSMDBWorker extends Thread implements SyncListener {
         }
     }
     
-    private void doLookup(final LSMDBRequest r) {
+    private void doLookup(final LSMDBRequest<byte[]> r) {
         final LSMDatabase db = r.getDatabase();
         final int numIndices = db.getIndexCount();
         
         if ((r.getIndexId() >= numIndices) || (r.getIndexId() < 0))
-            r.getListener().requestFailed(r.getContext(),new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index "+r.getIndexId()+" does not exist"));
-                    
-        
-        r.getListener().lookupFinished(r.getContext(),db.getIndex(r.getIndexId()).lookup(r.getLookupKey()));
+            r.getListener().failed(new BabuDBException(ErrorCode.NO_SUCH_INDEX, 
+                    "index "+r.getIndexId()+" does not exist"));                 
+        else
+            r.getListener().finished(db.getIndex(r.getIndexId()).lookup(
+                r.getLookupKey()));
     }
     
-    private void doPrefixLookup(final LSMDBRequest r) {
+    private void doPrefixLookup(final LSMDBRequest<Iterator<Map.Entry<byte[],byte[]>>> r) {
         final LSMDatabase db = r.getDatabase();
         final int numIndices = db.getIndexCount();
         
         if ((r.getIndexId() >= numIndices) || (r.getIndexId() < 0))
-            r.getListener().requestFailed(r.getContext(), new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index "+r.getIndexId()+" does not exist"));
-        
-        r.getListener().prefixLookupFinished(r.getContext(), db.getIndex(r.getIndexId()).prefixLookup(r.getLookupKey()));
+            r.getListener().failed(new BabuDBException(ErrorCode.NO_SUCH_INDEX, 
+                    "index "+r.getIndexId()+" does not exist"));
+        else
+            r.getListener().finished(db.getIndex(r.getIndexId()).prefixLookup(
+                    r.getLookupKey()));
     }
 
     public void synced(LogEntry entry) {       
         
         if (!pseudoSync) {
-            final LSMDBRequest r = entry.getAttachment();
+            final LSMDBRequest<?> r = entry.getAttachment();
             insertIntoIndex(r);
             finish(entry);
         }
@@ -186,14 +194,16 @@ public class LSMDBWorker extends Thread implements SyncListener {
         entry.free();
     }
 
-    private void insertIntoIndex(final LSMDBRequest r) {
+    private void insertIntoIndex(final LSMDBRequest<?> r) {
         final InsertRecordGroup irg = r.getInsertData();
         final LSMDatabase db = r.getDatabase();
         final int numIndices = db.getIndexCount();
         try {
             for (InsertRecord ir : irg.getInserts()) {
                 if ((ir.getIndexId() >= numIndices) || (ir.getIndexId() < 0))
-                    r.getListener().requestFailed(r.getContext(),new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index "+r.getIndexId()+" does not exist"));
+                    r.getListener().failed(new BabuDBException(
+                            ErrorCode.NO_SUCH_INDEX, "index "+r.getIndexId()+
+                            " does not exist"));
                 final LSMTree index = db.getIndex(ir.getIndexId());
                 if (ir.getValue() != null)
                     index.insert(ir.getKey(), ir.getValue());
@@ -201,16 +211,19 @@ public class LSMDBWorker extends Thread implements SyncListener {
                     index.delete(ir.getKey());
             }
         } catch (Exception ex) {
-            r.getListener().requestFailed(r.getContext(), new BabuDBException(ErrorCode.NO_SUCH_INDEX, "cannot insert because of unexpected error",ex));
+            r.getListener().failed(new BabuDBException(ErrorCode.NO_SUCH_INDEX, 
+                    "cannot insert, because of unexpected error",ex));
         }
     }
     
     private void finish(LogEntry le){
-        final LSMDBRequest r = le.getAttachment();
-        r.getListener().insertFinished(r.getContext());     
+        final LSMDBRequest<?> r = le.getAttachment();
+        r.getListener().finished();     
     }
 
     public void failed(LogEntry entry, Exception ex) {
-        entry.getAttachment().getListener().requestFailed(entry.getAttachment().getContext(), new BabuDBException(ErrorCode.IO_ERROR, "could not execute insert because of IO problem",ex));
+        ((BabuDBRequest<?>)entry.getAttachment().getListener()).failed( 
+                new BabuDBException(ErrorCode.IO_ERROR, "could not execute " +
+                		"insert because of IO problem",ex));
     }   
 }

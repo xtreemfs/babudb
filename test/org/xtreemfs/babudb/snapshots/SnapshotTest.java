@@ -32,6 +32,8 @@ import org.xtreemfs.include.common.logging.Logging;
  */
 public class SnapshotTest extends TestCase {
     
+    public final static boolean WIN = System.getProperty("os.name").toLowerCase().contains("win");
+    
     public static final String  baseDir     = "/tmp/lsmdb-test/";
     
     public static final boolean compression = false;
@@ -44,9 +46,13 @@ public class SnapshotTest extends TestCase {
     
     @Before
     public void setUp() throws Exception {
-        Process p = Runtime.getRuntime().exec("rm -rf " + baseDir);
-        p.waitFor();
-        
+        Process p;
+        if (WIN) {
+            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + baseDir + "\"");
+        } else {
+            p = Runtime.getRuntime().exec("rm -rf " + baseDir);
+        }
+        assertEquals(0, p.waitFor());
     }
     
     @After
@@ -57,7 +63,7 @@ public class SnapshotTest extends TestCase {
     
     public void testSimpleSnapshot() throws Exception {
         
-        database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
+        database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0,
             SyncMode.SYNC_WRITE, 0, 0, compression));
         Database db = database.getDatabaseManager().createDatabase("test", 3);
         
@@ -66,7 +72,7 @@ public class SnapshotTest extends TestCase {
         ir.addInsert(0, "Key1".getBytes(), "Value1".getBytes());
         ir.addInsert(0, "Key2".getBytes(), "Value2".getBytes());
         ir.addInsert(0, "Key3".getBytes(), "Value3".getBytes());
-        db.directInsert(ir);
+        db.insert(ir,null).get();
         
         // create a snapshot (in memory)
         database.getSnapshotManager().createPersistentSnapshot("test",
@@ -79,20 +85,20 @@ public class SnapshotTest extends TestCase {
         ir.addInsert(0, "Key2".getBytes(), "x".getBytes());
         ir.addInsert(0, "Key3".getBytes(), "x".getBytes());
         ir.addInsert(1, "bla".getBytes(), "blub".getBytes());
-        db.directInsert(ir);
+        db.insert(ir,null).get();
         
         // check if the snapshot still contains the old values
         for (int i = 1; i < 4; i++)
-            assertEquals("Value" + i, new String(snap1.directLookup(0, ("Key" + i).getBytes())));
+            assertEquals("Value" + i, new String(snap1.lookup(0, ("Key" + i).getBytes(),null).get()));
         
-        Iterator<Entry<byte[], byte[]>> it = snap1.directPrefixLookup(0, "Key".getBytes());
+        Iterator<Entry<byte[], byte[]>> it = snap1.prefixLookup(0, "Key".getBytes(),null).get();
         for (int i = 1; i < 4; i++) {
             Entry<byte[], byte[]> next = it.next();
             assertEquals("Key" + i, new String(next.getKey()));
             assertEquals("Value" + i, new String(next.getValue()));
         }
         
-        assertNull(snap1.directLookup(1, "bla".getBytes()));
+        assertNull(snap1.lookup(1, "bla".getBytes(),null).get());
         
         // create a checkpoint
         database.getCheckpointer().checkpoint();
@@ -105,28 +111,28 @@ public class SnapshotTest extends TestCase {
         // check whether both the first snapshot and the second snapshot contain
         // the correct values
         for (int i = 1; i < 4; i++)
-            assertEquals("Value" + i, new String(snap1.directLookup(0, ("Key" + i).getBytes())));
+            assertEquals("Value" + i, new String(snap1.lookup(0, ("Key" + i).getBytes(),null).get()));
         
         for (int i = 1; i < 4; i++)
-            assertEquals("x", new String(snap2.directLookup(0, ("Key" + i).getBytes())));
+            assertEquals("x", new String(snap2.lookup(0, ("Key" + i).getBytes(),null).get()));
         
-        it = snap1.directPrefixLookup(0, "Key".getBytes());
+        it = snap1.prefixLookup(0, "Key".getBytes(),null).get();
         for (int i = 1; i < 4; i++) {
             Entry<byte[], byte[]> next = it.next();
             assertEquals("Key" + i, new String(next.getKey()));
             assertEquals("Value" + i, new String(next.getValue()));
         }
         
-        assertNull(snap1.directLookup(1, "bla".getBytes()));
+        assertNull(snap1.lookup(1, "bla".getBytes(),null).get());
         
-        it = snap2.directPrefixLookup(0, "Key".getBytes());
+        it = snap2.prefixLookup(0, "Key".getBytes(),null).get();
         for (int i = 1; i < 4; i++) {
             Entry<byte[], byte[]> next = it.next();
             assertEquals("Key" + i, new String(next.getKey()));
             assertEquals("x", new String(next.getValue()));
         }
         
-        assertEquals("blub", new String(snap2.directLookup(1, "bla".getBytes())));
+        assertEquals("blub", new String(snap2.lookup(1, "bla".getBytes(),null).get()));
         
     }
     
@@ -144,7 +150,7 @@ public class SnapshotTest extends TestCase {
         ir.addInsert(0, "yagga".getBytes(), "bla".getBytes());
         ir.addInsert(3, "foo".getBytes(), "v1".getBytes());
         ir.addInsert(3, "bar".getBytes(), "v2".getBytes());
-        db.directInsert(ir);
+        db.insert(ir,null).get();
         
         // create a snapshot (in memory)
         database.getSnapshotManager().createPersistentSnapshot(
@@ -162,19 +168,19 @@ public class SnapshotTest extends TestCase {
         ir.addInsert(0, "yagga".getBytes(), "x".getBytes());
         ir.addInsert(3, "foo".getBytes(), "x".getBytes());
         ir.addInsert(3, "bar".getBytes(), "x".getBytes());
-        db.directInsert(ir);
+        db.insert(ir,null).get();
         
         // check whether the snapshot contains exactly the specified key-value
         // pairs
-        assertEquals("v1", new String(snap1.directLookup(0, "testxyz".getBytes())));
-        assertEquals("v2", new String(snap1.directLookup(0, "test".getBytes())));
-        assertNull(snap1.directLookup(0, "testabc".getBytes()));
-        assertNull(snap1.directLookup(0, "yagga".getBytes()));
-        assertEquals("v1", new String(snap1.directLookup(3, "foo".getBytes())));
-        assertEquals("v2", new String(snap1.directLookup(3, "bar".getBytes())));
-        assertNull(snap1.directLookup(0, "test2".getBytes()));
+        assertEquals("v1", new String(snap1.lookup(0, "testxyz".getBytes(),null).get()));
+        assertEquals("v2", new String(snap1.lookup(0, "test".getBytes(),null).get()));
+        assertNull(snap1.lookup(0, "testabc".getBytes(),null).get());
+        assertNull(snap1.lookup(0, "yagga".getBytes(),null).get());
+        assertEquals("v1", new String(snap1.lookup(3, "foo".getBytes(),null).get()));
+        assertEquals("v2", new String(snap1.lookup(3, "bar".getBytes(),null).get()));
+        assertNull(snap1.lookup(0, "test2".getBytes(),null).get());
         
-        Iterator<Entry<byte[], byte[]>> it = snap1.directPrefixLookup(0, null);
+        Iterator<Entry<byte[], byte[]>> it = snap1.prefixLookup(0, null,null).get();
         Entry<byte[], byte[]> next = it.next();
         assertEquals("test", new String(next.getKey()));
         assertEquals("v2", new String(next.getValue()));
@@ -188,15 +194,15 @@ public class SnapshotTest extends TestCase {
         
         // check whether the snapshot contains exactly the specified key-value
         // pairs
-        assertEquals("v1", new String(snap1.directLookup(0, "testxyz".getBytes())));
-        assertEquals("v2", new String(snap1.directLookup(0, "test".getBytes())));
-        assertNull(snap1.directLookup(0, "testabc".getBytes()));
-        assertNull(snap1.directLookup(0, "yagga".getBytes()));
-        assertEquals("v1", new String(snap1.directLookup(3, "foo".getBytes())));
-        assertEquals("v2", new String(snap1.directLookup(3, "bar".getBytes())));
-        assertNull(snap1.directLookup(0, "test2".getBytes()));
+        assertEquals("v1", new String(snap1.lookup(0, "testxyz".getBytes(),null).get()));
+        assertEquals("v2", new String(snap1.lookup(0, "test".getBytes(),null).get()));
+        assertNull(snap1.lookup(0, "testabc".getBytes(),null).get());
+        assertNull(snap1.lookup(0, "yagga".getBytes(),null).get());
+        assertEquals("v1", new String(snap1.lookup(3, "foo".getBytes(),null).get()));
+        assertEquals("v2", new String(snap1.lookup(3, "bar".getBytes(),null).get()));
+        assertNull(snap1.lookup(0, "test2".getBytes(),null).get());
         
-        it = snap1.directPrefixLookup(0, null);
+        it = snap1.prefixLookup(0, null,null).get();
         next = it.next();
         assertEquals("test", new String(next.getKey()));
         assertEquals("v2", new String(next.getValue()));
@@ -208,7 +214,6 @@ public class SnapshotTest extends TestCase {
     }
     
     public void testShutdownRestart() throws Exception {
-        
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
             SyncMode.SYNC_WRITE, 0, 0, compression));
         Database db = database.getDatabaseManager().createDatabase("test", 4);
@@ -220,7 +225,7 @@ public class SnapshotTest extends TestCase {
         ir.addInsert(0, "yagga".getBytes(), "bla".getBytes());
         ir.addInsert(3, "foo".getBytes(), "v1".getBytes());
         ir.addInsert(3, "bar".getBytes(), "v2".getBytes());
-        db.directInsert(ir);
+        db.insert(ir,null).get();
         
         // create a snapshot (in memory)
         database.getSnapshotManager().createPersistentSnapshot("test",
@@ -233,7 +238,7 @@ public class SnapshotTest extends TestCase {
         ir.addInsert(0, "test".getBytes(), "x".getBytes());
         ir.addInsert(3, "foo".getBytes(), "x".getBytes());
         ir.addInsert(3, "bar".getBytes(), "x".getBytes());
-        db.directInsert(ir);
+        db.insert(ir,null).get();
         
         // restart the database
         database.shutdown();
@@ -243,10 +248,10 @@ public class SnapshotTest extends TestCase {
         snap1 = database.getSnapshotManager().getSnapshotDB("test", "snap1");
         
         // check whether the snapshot exists and contains the correct value
-        assertEquals("v1", new String(snap1.directLookup(0, "testxyz".getBytes())));
-        assertEquals("v2", new String(snap1.directLookup(0, "test".getBytes())));
-        assertEquals("v1", new String(snap1.directLookup(3, "foo".getBytes())));
-        assertEquals("v2", new String(snap1.directLookup(3, "bar".getBytes())));
+        assertEquals("v1", new String(snap1.lookup(0, "testxyz".getBytes(),null).get()));
+        assertEquals("v2", new String(snap1.lookup(0, "test".getBytes(),null).get()));
+        assertEquals("v1", new String(snap1.lookup(3, "foo".getBytes(),null).get()));
+        assertEquals("v2", new String(snap1.lookup(3, "bar".getBytes(),null).get()));
         
         // create a checkpoint and restart the database again
         database.getCheckpointer().checkpoint();
@@ -257,15 +262,15 @@ public class SnapshotTest extends TestCase {
         snap1 = database.getSnapshotManager().getSnapshotDB("test", "snap1");
         
         // check whether the snapshot exists and contains the correct value
-        assertEquals("v1", new String(snap1.directLookup(0, "testxyz".getBytes())));
-        assertEquals("v2", new String(snap1.directLookup(0, "test".getBytes())));
-        assertEquals("v1", new String(snap1.directLookup(3, "foo".getBytes())));
-        assertEquals("v2", new String(snap1.directLookup(3, "bar".getBytes())));
+        assertEquals("v1", new String(snap1.lookup(0, "testxyz".getBytes(),null).get()));
+        assertEquals("v2", new String(snap1.lookup(0, "test".getBytes(),null).get()));
+        assertEquals("v1", new String(snap1.lookup(3, "foo".getBytes(),null).get()));
+        assertEquals("v2", new String(snap1.lookup(3, "bar".getBytes(),null).get()));
         
         ir = db.createInsertGroup();
         ir.addInsert(0, "te".getBytes(), "x".getBytes());
         ir.addInsert(0, "key".getBytes(), "x".getBytes());
-        db.directInsert(ir);
+        db.insert(ir,null).get();
         
         // create a partial user-defined snapshot
         database.getSnapshotManager().createPersistentSnapshot("test", new TestSnapshotConfig());
@@ -279,15 +284,14 @@ public class SnapshotTest extends TestCase {
         DatabaseRO snap2 = database.getSnapshotManager().getSnapshotDB("test", "snap2");
         
         // check whether only the records covered by the prefixes are contained
-        assertEquals("x", new String(snap2.directLookup(0, "test".getBytes())));
-        assertNull(snap2.directLookup(0, "testxyz".getBytes()));
-        assertNull(snap2.directLookup(0, "te".getBytes()));
-        assertNull(snap2.directLookup(0, "key".getBytes()));
+        assertEquals("x", new String(snap2.lookup(0, "test".getBytes(),null).get()));
+        assertNull(snap2.lookup(0, "testxyz".getBytes(),null).get());
+        assertNull(snap2.lookup(0, "te".getBytes(),null).get());
+        assertNull(snap2.lookup(0, "key".getBytes(),null).get());
         
     }
     
     public void testDelete() throws Exception {
-        
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
             SyncMode.SYNC_WRITE, 0, 0, compression));
         Database db = database.getDatabaseManager().createDatabase("test", 4);
@@ -299,7 +303,7 @@ public class SnapshotTest extends TestCase {
         ir.addInsert(0, "yagga".getBytes(), "bla".getBytes());
         ir.addInsert(1, "foo".getBytes(), "v1".getBytes());
         ir.addInsert(1, "bar".getBytes(), "v2".getBytes());
-        db.directInsert(ir);
+        db.insert(ir,null).get();
         
         // create a snapshot
         database.getSnapshotManager().createPersistentSnapshot("test",
@@ -317,7 +321,7 @@ public class SnapshotTest extends TestCase {
         ir = db.createInsertGroup();
         ir.addInsert(0, "testxyz".getBytes(), "ggg".getBytes());
         ir.addInsert(0, "test".getBytes(), "ggg".getBytes());
-        db.directInsert(ir);
+        db.insert(ir,null).get();
         
         // restart the database w/o checkpointing
         database.shutdown();

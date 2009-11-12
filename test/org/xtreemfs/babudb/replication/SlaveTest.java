@@ -54,7 +54,9 @@ import org.xtreemfs.include.foundation.oncrpc.server.RPCServerRequestListener;
 import static org.xtreemfs.babudb.replication.TestData.*;
 
 public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
-
+    
+    public final static boolean WIN = System.getProperty("os.name").toLowerCase().contains("win");
+    
     public final static int viewID = 1;
     public final static int MAX_MESSAGES_PRO_TEST = 10;
     
@@ -82,15 +84,25 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
 
     @Before
     public void setUp() throws Exception {
-        Process p = Runtime.getRuntime().exec("rm -rf " + conf.getBaseDir());
+        Process p;
+        if (WIN) {
+            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getBaseDir() + "\"");
+        } else 
+            p = Runtime.getRuntime().exec("rm -rf " + conf.getBaseDir());
         assertEquals(0, p.waitFor());
         
-        p = Runtime.getRuntime().exec("rm -rf " + conf.getDbLogDir());
-        assertEquals(0, p.waitFor());
-
-        p = Runtime.getRuntime().exec("rm -rf " + conf.getBackupDir());
+        if (WIN) {
+            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getDbLogDir() + "\"");
+        } else 
+            p = Runtime.getRuntime().exec("rm -rf " + conf.getDbLogDir());
         assertEquals(0, p.waitFor());
         
+        if (WIN) {
+            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getBackupDir() + "\"");
+        } else 
+            p = Runtime.getRuntime().exec("rm -rf " + conf.getBackupDir());
+        assertEquals(0, p.waitFor());
+                
         current = new LSN(0,0L);
         mailbox = new ArrayBlockingQueue<Integer>(MAX_MESSAGES_PRO_TEST);
         try {

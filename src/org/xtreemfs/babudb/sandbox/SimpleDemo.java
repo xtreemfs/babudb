@@ -34,10 +34,10 @@ public class SimpleDemo {
             group.addInsert(1, "Key2".getBytes(), "Value2".getBytes());
 
             //and execute group insert
-            db.syncInsert(group);
+            db.insert(group,null).get();
 
             //now do a lookup
-            byte[] result = db.syncLookup(0, "Key1".getBytes());
+            byte[] result = db.lookup(0, "Key1".getBytes(),null).get();
 
             //create a checkpoint for faster start-ups
             database.getCheckpointer().checkpoint();

@@ -13,7 +13,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.xtreemfs.babudb.SimplifiedBabuDBRequestListener;
+import org.xtreemfs.babudb.BabuDBRequest;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
@@ -69,7 +69,7 @@ public class ReplicationStage extends LifeCycleThread {
     /** Counter for the number of tries needed to perform an operation */
     private int                                 tries = 0;
     
-    private SimplifiedBabuDBRequestListener     listener = null;
+    private BabuDBRequest<Object>               listener = null;
     
     /**
      * 
@@ -175,7 +175,7 @@ public class ReplicationStage extends LifeCycleThread {
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "Replication logic changed: %s, because: %s", lgc.toString(), reason);
         this.logicID = lgc;
         if (listener != null && lgc.equals(BASIC)){
-            listener.finished(null);
+            listener.finished();
             listener = null;
         }
     }
@@ -187,7 +187,7 @@ public class ReplicationStage extends LifeCycleThread {
      * 
      * @return true, if it was a request synchronization, false if it was a load.
      */
-    public boolean manualLoad(SimplifiedBabuDBRequestListener listener, LSN from, 
+    public boolean manualLoad(BabuDBRequest<Object> listener, LSN from, 
             LSN to) {
         boolean result = false;
         

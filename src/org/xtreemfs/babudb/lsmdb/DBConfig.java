@@ -93,7 +93,7 @@ public class DBConfig {
                     
                     // reset existing DBs
                     if (db != null) {
-                        db.reset(
+                        db.setLSMDB(
                                 new LSMDatabase(dbName, dbId, this.dbs.getConfig()
                                 .getBaseDir() + dbName + File.separatorChar, 
                                 numIndex, true, comps, this.dbs.getConfig()

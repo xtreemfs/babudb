@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBRequestListener;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCException;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.SlavesStates.NotEnoughAvailableSlavesException;

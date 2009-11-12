@@ -13,9 +13,7 @@ import static org.xtreemfs.babudb.log.LogEntry.*;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
@@ -29,6 +27,7 @@ import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.BabuDBRequestListener;
+import org.xtreemfs.babudb.BabuDBRequestResult;
 import org.xtreemfs.babudb.clients.MasterClient;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.interfaces.LogEntries;
@@ -58,6 +57,8 @@ import org.xtreemfs.include.foundation.oncrpc.server.RPCServerRequestListener;
 
 public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         
+    public final static boolean WIN = System.getProperty("os.name").toLowerCase().contains("win");
+    
     private final static int viewID = 2;
     
     private RPCNIOSocketServer  rpcServer;
@@ -75,10 +76,17 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
     
     @Before
     public void setUp() throws Exception { 
-        Process p = Runtime.getRuntime().exec("rm -rf " + conf.getBaseDir());
+        Process p;
+        if (WIN) {
+            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getBaseDir() + "\"");
+        } else 
+            p = Runtime.getRuntime().exec("rm -rf " + conf.getBaseDir());
         assertEquals(0, p.waitFor());
         
-        p = Runtime.getRuntime().exec("rm -rf " + conf.getDbLogDir());
+        if (WIN) {
+            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getDbLogDir() + "\"");
+        } else 
+            p = Runtime.getRuntime().exec("rm -rf " + conf.getDbLogDir());
         assertEquals(0, p.waitFor());
         
         try {
@@ -396,34 +404,19 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         testInsert.addInsert(0, testKey3.getBytes(), testValue.getBytes());
            
         synchronized (response) {
-            dbase.asyncInsert(testInsert, new BabuDBRequestListener() {
-            
+            BabuDBRequestResult<Object> rp = dbase.insert(testInsert, null);
+            rp.registerListener(new BabuDBRequestListener<Object>() {
+                
                 @Override
-                public void userDefinedLookupFinished(Object context, Object result) {
-                    fail();
-                }
-            
-                @Override
-                public void requestFailed(Object context, BabuDBException error) {
-                    fail();
-                }
-            
-                @Override
-                public void prefixLookupFinished(Object context,
-                        Iterator<Entry<byte[], byte[]>> iterator) {
-                    fail();
-                }
-            
-                @Override
-                public void lookupFinished(Object context, byte[] value) {
-                    fail();
-                }
-            
-                @Override
-                public void insertFinished(Object context) {
+                public void finished(Object result, Object context) {
                     assertTrue(true);
                 }
-            }, null);
+                
+                @Override
+                public void failed(BabuDBException error, Object context) {
+                    fail(error.getMessage());
+                }
+            });
             
             while (response.get()!=PAYLOAD_TYPE_INSERT)
                 response.wait();

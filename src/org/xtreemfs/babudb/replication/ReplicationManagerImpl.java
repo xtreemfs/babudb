@@ -15,17 +15,15 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDB;
-import org.xtreemfs.babudb.SimplifiedBabuDBRequestListener;
+import org.xtreemfs.babudb.BabuDBRequest;
 import org.xtreemfs.babudb.clients.StateClient;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCException;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
-import org.xtreemfs.babudb.log.DiskLogger.QueueEmptyListener;
 import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherState;
@@ -357,37 +355,21 @@ public class ReplicationManagerImpl implements ReplicationManager {
      * @throws InterruptedException 
      */
     public DispatcherState stop() throws InterruptedException {
-        final AtomicBoolean ready = new AtomicBoolean(false);
-        dispatcher.pauses(new SimplifiedBabuDBRequestListener() {
-        
-            @Override
-            public void finished(BabuDBException error) {
-                synchronized (ready) {
-                    ready.set(true);
-                    ready.notify();
-                }
-            }
-        });
-        synchronized (ready) {
-            if (!ready.get())
-                ready.wait();
+        BabuDBRequest<Object> ready = new BabuDBRequest<Object>();
+        dispatcher.pauses(ready);
+        try {
+            ready.get();
+        } catch (BabuDBException e) {
+            throw new InterruptedException(e.getMessage());
         }
         
         // wait for the DiskLogger to finish the requests
-        ready.set(false);
-        dispatcher.dbs.getLogger().registerListener(new QueueEmptyListener() {
-            
-            @Override
-            public void queueEmpty() {
-                synchronized (ready) {
-                    ready.set(true);
-                    ready.notify();
-                }
-            }
-        });
-        synchronized (ready) {
-            if (!ready.get())
-                ready.wait();
+        ready.recycle();
+        dispatcher.dbs.getLogger().registerListener(ready);
+        try {
+            ready.get();
+        } catch (BabuDBException e) {
+            throw new InterruptedException(e.getMessage());
         }
         
         DispatcherState state = dispatcher.getState();

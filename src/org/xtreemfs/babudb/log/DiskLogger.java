@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.zip.CRC32;
 
+import org.xtreemfs.babudb.BabuDBRequest;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.ReplicateResponse;
 import org.xtreemfs.babudb.replication.ReplicationManagerImpl;
@@ -123,7 +124,7 @@ public class DiskLogger extends Thread {
     
     private final ReplicationManagerImpl replMan;
     
-    private QueueEmptyListener           listener;
+    private BabuDBRequest<Object>        listener;
     private final AtomicInteger          qLength = new AtomicInteger(0);
     
     /**
@@ -376,7 +377,7 @@ public class DiskLogger extends Thread {
 
             synchronized (qLength) {
                 if (qLength.get() == 0 && listener != null) {
-                    listener.queueEmpty();
+                    listener.finished();
                     listener = null;
                 } 
             }
@@ -445,25 +446,15 @@ public class DiskLogger extends Thread {
         return currentLogFileName;
     }
     
-    public void registerListener(QueueEmptyListener listener) {
+    public void registerListener(BabuDBRequest<Object> listener) {
         synchronized (qLength) {
             if (qLength.get() == 0)
-                listener.queueEmpty();
+                listener.finished();
             else {
                 assert (this.listener == null) : "DiskLogger: Only one " +
                 		"listener can be established at once.";
                 this.listener = listener; 
             }
         }  
-    }
-    
-    /**
-     * <p>Interface a listener waiting on for the queue running out of requests.</p>
-     * 
-     * @author flangner
-     * @since 10/21/2009
-     */
-    public abstract static class QueueEmptyListener {
-        public abstract void queueEmpty();
     }
 }
