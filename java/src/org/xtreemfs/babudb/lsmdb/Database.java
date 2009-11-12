@@ -9,7 +9,7 @@
 package org.xtreemfs.babudb.lsmdb;
 
 import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBRequestListener;
+import org.xtreemfs.babudb.BabuDBRequestResult;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
 
 public interface Database extends DatabaseRO {
@@ -39,7 +39,7 @@ public interface Database extends DatabaseRO {
     public ByteRangeComparator[] getComparators();
     
     /**
-     * Inserts a single key value pair (synchronously)
+     * Inserts a single key value pair.
      * 
      * @param indexId
      *            index id (0..NumIndices-1)
@@ -47,41 +47,22 @@ public interface Database extends DatabaseRO {
      *            the key
      * @param value
      *            the value
-     * @throws BabuDBException
-     *             if the operation failed
+     * @param context
+     *            arbitrary context which is passed to the listener
+     * @return a future as proxy for the request result.
      */
-    public void syncSingleInsert(int indexId, byte[] key, byte[] value) throws BabuDBException;
+    public BabuDBRequestResult<Object> singleInsert(int indexId, byte[] key, 
+            byte[] value, Object context);
     
     /**
-     * Inserts a group of key value pair (synchronously)
+     * Inserts a group of key value pair.
      * 
      * @param irg
      *            the insert record group to execute
-     * @throws BabuDBException
-     *             if the operation failed
-     */
-    public void syncInsert(BabuDBInsertGroup irg) throws BabuDBException;
-    
-    /**
-     * Insert an group of inserts asynchronously.
-     * 
-     * @param ig
-     *            the group of inserts
-     * @param listener
-     *            a callback for the result
      * @param context
-     *            optional context object which is passed to the listener
-     * @throws BabuDBException
+     *            arbitrary context which is passed to the listener
+     * @return a future as proxy for the request result.
      */
-    public void asyncInsert(BabuDBInsertGroup ig, BabuDBRequestListener listener, Object context)
-        throws BabuDBException;
-    
-    /**
-     * Insert an group of inserts in the context of the invoking thread.
-     * 
-     * @param ig
-     *            the group of inserts
-     * @throws BabuDBException
-     */
-    public void directInsert(BabuDBInsertGroup ig) throws BabuDBException;
+    public BabuDBRequestResult<Object> insert(BabuDBInsertGroup irg, 
+            Object context);
 }

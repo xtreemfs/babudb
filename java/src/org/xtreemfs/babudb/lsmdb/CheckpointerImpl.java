@@ -128,7 +128,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
         this.checkInterval = 1000l * checkInterval;
         this.maxLogLength = maxLogLength;
     }
-    
+       
     /**
      * Triggers the creation of a new checkpoint. This causes the checkpointer
      * to run its checkpointing mechanism, which causes all outstanding snapshot
@@ -163,6 +163,10 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
         }
     }
     
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.lsmdb.Checkpointer#checkpoint()
+     */
     @Override
     public void checkpoint() throws BabuDBException, InterruptedException {
         dbs.slaveCheck();
@@ -249,11 +253,9 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
         }
     }
     
-    public void shutdown() {
+    public synchronized void shutdown() {
         quit = true;
-        synchronized (this) {
-            this.interrupt();
-        }
+        this.interrupt();
     }
     
     public boolean isDown() {
@@ -267,21 +269,31 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
         }
     }
     
-    public void run() {
-        
+    /*
+     * (non-Javadoc)
+     * @see java.lang.Thread#start()
+     */
+    @Override
+    public synchronized void start() {
         quit = false;
         down.set(false);
+        super.start();
+    }
+    
+    public void run() {
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "operational");
         
         boolean manualCheckpoint = false;
         while (!quit) {
             synchronized (this) {
-                try {
-                    this.wait(checkInterval);
-                } catch (InterruptedException ex) {
-                    if (quit)
-                        break;
-                }
+                if (!forceCheckpoint) { 
+                    try {
+                        this.wait(checkInterval);
+                    } catch (InterruptedException ex) {
+                        if (quit)
+                            break;
+                    }
+                } 
                 manualCheckpoint = forceCheckpoint;
                 forceCheckpoint = false;
             }

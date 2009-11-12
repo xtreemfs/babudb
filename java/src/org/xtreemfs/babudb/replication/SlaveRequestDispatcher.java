@@ -9,11 +9,10 @@ package org.xtreemfs.babudb.replication;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.SimplifiedBabuDBRequestListener;
+import org.xtreemfs.babudb.BabuDBRequest;
 import org.xtreemfs.babudb.clients.MasterClient;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
@@ -172,39 +171,21 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
         assert(!isPaused()) : "The Replication may not be stopped before!";
         boolean result;
         
-        final AtomicBoolean ready = new AtomicBoolean(false);
-        result = replication.manualLoad(new SimplifiedBabuDBRequestListener() {
-        
-            @Override
-            public void finished(BabuDBException error) {
-                synchronized (ready) {
-                    ready.set(true);
-                    ready.notify();
-                }
-            }
-        }, from, to);
-        
-        synchronized (ready) {
-            if (!ready.get())
-                ready.wait();
-            
-            ready.set(false);
+        BabuDBRequest<Object> ready = new BabuDBRequest<Object>();
+        result = replication.manualLoad(ready, from, to);
+        try {
+            ready.get();
+        } catch (BabuDBException e) {
+            throw new InterruptedException(e.getMessage());
         }
         
-        pauses(new SimplifiedBabuDBRequestListener() {
+        ready.recycle();
         
-            @Override
-            public void finished(BabuDBException error) {
-                synchronized (ready) {
-                    ready.set(true);
-                    ready.notify();
-                }
-            }
-        });
-        
-        synchronized (ready) {
-            if (!ready.get())
-                ready.wait();
+        pauses(ready);
+        try {
+            ready.get();
+        } catch (BabuDBException e) {
+            throw new InterruptedException(e.getMessage());
         }
         
         assert(to.equals(getState().latest)) : "Synchronization failed: "
@@ -222,12 +203,13 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
         return new DispatcherState(dbs.getLogger().getLatestLSN(), 
                 replication.backupQueue());
     }
+    
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.RequestDispatcher#pauses(org.xtreemfs.babudb.SimplifiedBabuDBRequestListener)
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#pauses(org.xtreemfs.babudb.BabuDBRequest)
      */
     @Override
-    public void pauses(SimplifiedBabuDBRequestListener listener) {
+    public void pauses(BabuDBRequest<Object> listener) {
         if (!isPaused()) {
             try {
                 replication.shutdown();

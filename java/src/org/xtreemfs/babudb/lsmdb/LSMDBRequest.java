@@ -8,29 +8,28 @@
 
 package org.xtreemfs.babudb.lsmdb;
 
-import org.xtreemfs.babudb.BabuDBRequestListener;
+import org.xtreemfs.babudb.BabuDBRequest;
 import org.xtreemfs.babudb.UserDefinedLookup;
 import org.xtreemfs.babudb.lsmdb.LSMDBWorker.RequestOperation;
 
 /**
  *
  * @author bjko
+ * @param <T>
  */
-public class LSMDBRequest {
+public class LSMDBRequest<T> {
     
-    private final BabuDBRequestListener listener;
+    private final BabuDBRequest<T>     listener;
     private final LSMDatabase       database;
     private final int               indexId;
     private final RequestOperation  operation;
     private final InsertRecordGroup insertData;
     private final byte[]            lookupKey;
-    private final Object            context;
     private final UserDefinedLookup udLookup;
 
-    public LSMDBRequest(BabuDBRequestListener listener, Object context) {
+    public LSMDBRequest(BabuDBRequest<T> listener) {
         this.operation = RequestOperation.INSERT;
         this.listener = listener;
-        this.context = context;
         this.udLookup = null;
         this.lookupKey = null;
         this.insertData = null;
@@ -38,38 +37,35 @@ public class LSMDBRequest {
         this.database = null;
     }
     
-    public LSMDBRequest(LSMDatabase database, BabuDBRequestListener listener,
-            InsertRecordGroup insert, Object context) {
+    public LSMDBRequest(LSMDatabase database, BabuDBRequest<T> listener,
+            InsertRecordGroup insert) {
         this.operation = RequestOperation.INSERT;
         this.database = database;
         this.indexId = 0;
         this.insertData = insert;
         this.lookupKey = null;
         this.listener = listener;
-        this.context = context;
         this.udLookup = null;
     }
 
-    public LSMDBRequest(LSMDatabase database, int indexId, BabuDBRequestListener listener,
-            byte[] key, boolean prefix, Object context) {
+    public LSMDBRequest(LSMDatabase database, int indexId, BabuDBRequest<T> listener,
+            byte[] key, boolean prefix) {
         this.operation = prefix ? RequestOperation.PREFIX_LOOKUP : RequestOperation.LOOKUP;
         this.database = database;
         this.indexId = indexId;
         this.lookupKey = key;
         this.insertData = null;
         this.listener = listener;
-        this.context = context;
         this.udLookup = null;
     }
     
-    public LSMDBRequest(LSMDatabase database, BabuDBRequestListener listener, UserDefinedLookup udLookup, Object context) {
+    public LSMDBRequest(LSMDatabase database, BabuDBRequest<T> listener, UserDefinedLookup udLookup) {
         this.operation = RequestOperation.USER_DEFINED_LOOKUP;
         this.database = database;
         this.indexId = 0;
         this.lookupKey = null;
         this.insertData = null;
         this.listener = listener;
-        this.context = context;
         this.udLookup = udLookup;
     }
 
@@ -93,14 +89,10 @@ public class LSMDBRequest {
         return lookupKey;
     }
 
-    public BabuDBRequestListener getListener() {
+    public BabuDBRequest<T> getListener() {
         return listener;
     }
-
-    public Object getContext() {
-        return context;
-    }
-    
+   
     public UserDefinedLookup getUserDefinedLookup() {
         return this.udLookup;
     }

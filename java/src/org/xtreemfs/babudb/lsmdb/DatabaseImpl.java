@@ -17,7 +17,8 @@ import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBRequestListener;
+import org.xtreemfs.babudb.BabuDBRequest;
+import org.xtreemfs.babudb.BabuDBRequestResult;
 import org.xtreemfs.babudb.UserDefinedLookup;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
@@ -29,38 +30,17 @@ import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
-import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
 public class DatabaseImpl implements Database {
-    
-    /**
-     * @author bjko
-     * 
-     */
-    public static class AsyncResult {
-        
-        public boolean                         done = false;
-        
-        public byte[]                          value;
-        
-        public Object                          udlresult;
-        
-        public Iterator<Entry<byte[], byte[]>> iterator;
-        
-        public BabuDBException                 error;
-        
-    }
-    
+
     private BabuDB      dbs;
     
     private LSMDatabase lsmDB;
-    
-    /**
-     * set true, if the insert should be established in memory, which
-     * can cause inconsistencies, or false if not.
-     */
-    private final boolean optimistic;
+        
+/*
+ * constructors/destructors
+ */
     
     /**
      * Creates a new Database.
@@ -71,495 +51,12 @@ public class DatabaseImpl implements Database {
     public DatabaseImpl(BabuDB master, LSMDatabase lsmDB) {
         this.dbs = master;
         this.lsmDB = lsmDB;
-        if (dbs.getConfig() instanceof ReplicationConfig)
-            this.optimistic = ((ReplicationConfig) dbs.getConfig()).isOptimistic();
-        else
-            this.optimistic = false;
     }
-    
-    @Override
-    public BabuDBInsertGroup createInsertGroup() throws BabuDBException {
-        dbs.slaveCheck();
-        
-        return new BabuDBInsertGroup(lsmDB);
-    }
-    
-    @Override
-    public void syncSingleInsert(int indexId, byte[] key, byte[] value) throws BabuDBException {
-        dbs.slaveCheck();
-        
-        BabuDBInsertGroup irec = new BabuDBInsertGroup(lsmDB);
-        irec.addInsert(indexId, key, value);
-        
-        final AsyncResult result = new AsyncResult();
-        
-        asyncInsert(irec, new BabuDBRequestListener() {
-            
-            public void insertFinished(Object context) {
-                synchronized (result) {
-                    result.done = true;
-                    result.notify();
-                }
-            }
-            
-            public void lookupFinished(Object context, byte[] value) {
-            }
-            
-            public void prefixLookupFinished(Object context, Iterator<Entry<byte[], byte[]>> iterator) {
-            }
-            
-            public void requestFailed(Object context, BabuDBException error) {
-                synchronized (result) {
-                    result.done = true;
-                    result.error = error;
-                    result.notify();
-                }
-            }
-            
-            public void userDefinedLookupFinished(Object context, Object result) {
-            }
-        }, null);
-        
-        synchronized (result) {
-            try {
-                if (!result.done) {
-                    result.wait();
-                }
-            } catch (InterruptedException ex) {
-            }
-        }
-        if (result.error != null) {
-            throw result.error;
-        }
-    }
-    
-    @Override
-    public void syncInsert(BabuDBInsertGroup irg) throws BabuDBException {
-        dbs.slaveCheck();
-        
-        final AsyncResult result = new AsyncResult();
-        
-        asyncInsert(irg, new BabuDBRequestListener() {
-            
-            public void insertFinished(Object context) {
-                synchronized (result) {
-                    result.done = true;
-                    result.notify();
-                }
-            }
-            
-            public void lookupFinished(Object context, byte[] value) {
-            }
-            
-            public void prefixLookupFinished(Object context, Iterator<Entry<byte[], byte[]>> iterator) {
-            }
-            
-            public void requestFailed(Object context, BabuDBException error) {
-                synchronized (result) {
-                    result.done = true;
-                    result.error = error;
-                    result.notify();
-                }
-            }
-            
-            public void userDefinedLookupFinished(Object context, Object result) {
-            }
-        }, null);
-        synchronized (result) {
-            try {
-                if (!result.done) {
-                    result.wait();
-                }
-            } catch (InterruptedException ex) {
-            }
-        }
-        if (result.error != null) {
-            throw result.error;
-        }
-    }
-    
-    @Override
-    public void asyncInsert(BabuDBInsertGroup ig, BabuDBRequestListener listener, Object context)
-        throws BabuDBException {
-        dbs.slaveCheck();
-        
-        final InsertRecordGroup ins = ig.getRecord();
-        final int dbId = ins.getDatabaseId();
-        
-        LSMDBWorker w = dbs.getWorker(dbId);
-        if (Logging.isNotice()) {
-            Logging.logMessage(Logging.LEVEL_NOTICE, this, "insert request is sent to worker #" + dbId
-                % dbs.getWorkerCount());
-        }
-        
-        try {
-            w.addRequest(new LSMDBRequest(lsmDB, listener, ins, context));
-        } catch (InterruptedException ex) {
-            throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "operation was interrupted", ex);
-        }
-    }
-    
     
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.lsmdb.Database#directInsert(org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup, org.xtreemfs.babudb.log.SyncListener)
+     * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#shutdown()
      */
-    @Override
-    public void directInsert(BabuDBInsertGroup irg) throws BabuDBException {
-        dbs.slaveCheck();
-        
-        if (!optimistic) {
-            syncDirectInsert(irg);
-        } else {
-            directInsert(irg, this.dbs.getGlobalSyncListener(), optimistic);
-        }
-    }
-    
-    public void syncDirectInsert(BabuDBInsertGroup irg) throws BabuDBException {
-        final AsyncResult result = new AsyncResult();
-        
-        directInsert(irg, new SyncListener() {
-            
-            public void synced(LogEntry entry) {
-                entry.free();
-                
-                synchronized (result) {
-                    result.done = true;
-                    result.notifyAll();
-                }
-            }
-            
-            public void failed(LogEntry entry, Exception ex) {
-                entry.free();
-                
-                synchronized (result) {
-                    result.done = true;
-                    result.error = new BabuDBException(ErrorCode.IO_ERROR,
-                        "could not execute insert because of IO problem", ex);
-                    result.notifyAll();
-                }
-            }
-        }, false);
-        
-        
-        synchronized (result) {
-            if (!result.done) {
-                try {
-                    result.wait();
-                } catch (InterruptedException ex) {
-                    throw new BabuDBException(ErrorCode.INTERNAL_ERROR, 
-                            "cannot write update to disk log", ex);
-                }
-            }
-        }
-        
-        if (result.error != null) {
-            throw result.error;
-        }
-        
-        for (InsertRecord ir : irg.getRecord().getInserts()) {
-            final LSMTree index = lsmDB.getIndex(ir.getIndexId());
-            if (ir.getValue() != null) {
-                index.insert(ir.getKey(), ir.getValue());
-            } else {
-                index.delete(ir.getKey());
-            }
-        }
-    }
-    
-    private void directInsert(BabuDBInsertGroup irg, SyncListener listener, 
-            boolean optimistic) throws BabuDBException {
-        
-        final int numIndices = lsmDB.getIndexCount();
-        
-        for (InsertRecord ir : irg.getRecord().getInserts()) {
-            if ((ir.getIndexId() >= numIndices) || (ir.getIndexId() < 0)) {
-                throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + 
-                        ir.getIndexId() + " does not exist");
-            }
-        }
-        
-        int size = irg.getRecord().getSize();
-        ReusableBuffer buf = BufferPool.allocate(size);
-        irg.getRecord().serialize(buf);
-        buf.flip();
-        
-        LogEntry e = new LogEntry(buf, listener, LogEntry.PAYLOAD_TYPE_INSERT);
-        
-        try {
-            dbs.getLogger().append(e);
-        } catch (InterruptedException ex) {
-            throw new BabuDBException(ErrorCode.INTERNAL_ERROR, 
-                    "cannot write update to disk log", ex);
-        }
-        
-        if (optimistic) {
-            for (InsertRecord ir : irg.getRecord().getInserts()) {
-                final LSMTree index = lsmDB.getIndex(ir.getIndexId());
-                if (ir.getValue() != null) {
-                    index.insert(ir.getKey(), ir.getValue());
-                } else {
-                    index.delete(ir.getKey());
-                }
-            }
-        }
-    }
-    
-    @Override
-    public byte[] syncLookup(int indexId, byte[] key) throws BabuDBException {
-        dbs.slaveCheck();
-        
-        final AsyncResult result = new AsyncResult();
-        
-        asyncLookup(indexId, key, new BabuDBRequestListener() {
-            
-            public void insertFinished(Object context) {
-            }
-            
-            public void lookupFinished(Object context, byte[] value) {
-                synchronized (result) {
-                    result.done = true;
-                    result.value = value;
-                    result.notify();
-                }
-            }
-            
-            public void prefixLookupFinished(Object context, Iterator<Entry<byte[], byte[]>> iterator) {
-            }
-            
-            public void requestFailed(Object context, BabuDBException error) {
-                synchronized (result) {
-                    result.done = true;
-                    result.error = error;
-                    result.notify();
-                }
-            }
-            
-            public void userDefinedLookupFinished(Object context, Object result) {
-            }
-        }, null);
-        
-        synchronized (result) {
-            try {
-                if (!result.done) {
-                    result.wait();
-                }
-            } catch (InterruptedException ex) {
-            }
-        }
-        if (result.error != null) {
-            throw result.error;
-        }
-        return result.value;
-    }
-    
-    @Override
-    public Object syncUserDefinedLookup(UserDefinedLookup udl) throws BabuDBException {
-        dbs.slaveCheck();
-        
-        final AsyncResult result = new AsyncResult();
-        
-        asyncUserDefinedLookup(new BabuDBRequestListener() {
-            
-            public void insertFinished(Object context) {
-            }
-            
-            public void lookupFinished(Object context, byte[] value) {
-            }
-            
-            public void prefixLookupFinished(Object context, Iterator<Entry<byte[], byte[]>> iterator) {
-            }
-            
-            public void requestFailed(Object context, BabuDBException error) {
-                synchronized (result) {
-                    result.done = true;
-                    result.error = error;
-                    result.notify();
-                }
-            }
-            
-            public void userDefinedLookupFinished(Object context, Object result2) {
-                synchronized (result) {
-                    result.done = true;
-                    result.udlresult = result2;
-                    result.notify();
-                }
-            }
-        }, udl, null);
-        
-        synchronized (result) {
-            try {
-                if (!result.done) {
-                    result.wait();
-                }
-            } catch (InterruptedException ex) {
-            }
-        }
-        if (result.error != null) {
-            throw result.error;
-        }
-        return result.udlresult;
-    }
-    
-    @Override
-    public Iterator<Entry<byte[], byte[]>> syncPrefixLookup(int indexId, byte[] key) throws BabuDBException {
-        dbs.slaveCheck();
-        
-        final AsyncResult result = new AsyncResult();
-        
-        asyncPrefixLookup(indexId, key, new BabuDBRequestListener() {
-            
-            public void insertFinished(Object context) {
-            }
-            
-            public void lookupFinished(Object context, byte[] value) {
-            }
-            
-            public void prefixLookupFinished(Object context, Iterator<Entry<byte[], byte[]>> iterator) {
-                synchronized (result) {
-                    result.done = true;
-                    result.iterator = iterator;
-                    result.notify();
-                }
-            }
-            
-            public void requestFailed(Object context, BabuDBException error) {
-                synchronized (result) {
-                    result.done = true;
-                    result.error = error;
-                    result.notify();
-                }
-            }
-            
-            public void userDefinedLookupFinished(Object context, Object result) {
-            }
-        }, null);
-        
-        synchronized (result) {
-            try {
-                if (!result.done) {
-                    result.wait();
-                }
-            } catch (InterruptedException ex) {
-            }
-        }
-        if (result.error != null) {
-            throw result.error;
-        }
-        return result.iterator;
-    }
-    
-    @Override
-    public void asyncUserDefinedLookup(BabuDBRequestListener listener, UserDefinedLookup udl, Object context)
-        throws BabuDBException {
-        dbs.slaveCheck();
-        
-        LSMDBWorker w = dbs.getWorker(lsmDB.getDatabaseId());
-        if (Logging.isNotice()) {
-            Logging.logMessage(Logging.LEVEL_NOTICE, this, "udl request is sent to worker #"
-                + lsmDB.getDatabaseId() % dbs.getWorkerCount());
-        }
-        
-        try {
-            w.addRequest(new LSMDBRequest(lsmDB, listener, udl, context));
-        } catch (InterruptedException ex) {
-            throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "operation was interrupted", ex);
-        }
-    }
-    
-    @Override
-    public void asyncLookup(int indexId, byte[] key, BabuDBRequestListener listener, Object context)
-        throws BabuDBException {
-        dbs.slaveCheck();
-        
-        LSMDBWorker w = dbs.getWorker(lsmDB.getDatabaseId());
-        if (Logging.isNotice()) {
-            Logging.logMessage(Logging.LEVEL_NOTICE, this, "lookup request is sent to worker #"
-                + lsmDB.getDatabaseId() % dbs.getWorkerCount());
-        }
-        
-        try {
-            w.addRequest(new LSMDBRequest(lsmDB, indexId, listener, key, false, context));
-        } catch (InterruptedException ex) {
-            throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "operation was interrupted", ex);
-        }
-    }
-    
-    @Override
-    public void asyncPrefixLookup(int indexId, byte[] key, BabuDBRequestListener listener, Object context)
-        throws BabuDBException {
-        dbs.slaveCheck();
-        
-        LSMDBWorker w = dbs.getWorker(lsmDB.getDatabaseId());
-        if (Logging.isNotice()) {
-            Logging.logMessage(Logging.LEVEL_NOTICE, this, "lookup request is sent to worker #"
-                + lsmDB.getDatabaseId() % dbs.getWorkerCount());
-        }
-        
-        try {
-            w.addRequest(new LSMDBRequest(lsmDB, indexId, listener, key, true, context));
-        } catch (InterruptedException ex) {
-            throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "operation was interrupted", ex);
-        }
-    }
-    
-    @Override
-    public byte[] directLookup(int indexId, byte[] key) throws BabuDBException {
-        
-        if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
-            throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
-        }
-        return lsmDB.getIndex(indexId).lookup(key);
-    }
-    
-    public byte[] directLookup(int indexId, int snapId, byte[] key) throws BabuDBException {
-        dbs.slaveCheck();
-        
-        if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
-            throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
-        }
-        return lsmDB.getIndex(indexId).lookup(key, snapId);
-    }
-    
-    @Override
-    public Iterator<Entry<byte[], byte[]>> directPrefixLookup(int indexId, byte[] key) throws BabuDBException {
-        
-        if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
-            throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
-        }
-        return lsmDB.getIndex(indexId).prefixLookup(key);
-    }
-    
-    @Override
-    public Iterator<Entry<byte[], byte[]>> directReversePrefixLookup(int indexId, byte[] key)
-        throws BabuDBException {
-        dbs.slaveCheck();
-        
-        if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
-            throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
-        }
-        return lsmDB.getIndex(indexId).prefixLookup(key, false);
-    }
-    
-    public Iterator<Entry<byte[], byte[]>> directPrefixLookup(int indexId, int snapId, byte[] key,
-        boolean ascending) throws BabuDBException {
-        dbs.slaveCheck();
-        
-        if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
-            throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
-        }
-        return lsmDB.getIndex(indexId).prefixLookup(key, snapId, ascending);
-    }
-    
-    /**
-     * Returns the underlying LSM database implementation.
-     * 
-     * @return the LSM database
-     */
-    public LSMDatabase getLSMDB() {
-        return lsmDB;
-    }
-    
     @Override
     public void shutdown() throws BabuDBException {
         
@@ -571,14 +68,368 @@ public class DatabaseImpl implements Database {
         }
     }
     
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.lsmdb.Database#createInsertGroup()
+     */
     @Override
-    public ByteRangeComparator[] getComparators() {
-        return lsmDB.getComparators();
+    public BabuDBInsertGroup createInsertGroup() throws BabuDBException {
+        dbs.slaveCheck();
+        
+        return new BabuDBInsertGroup(lsmDB);
+    }
+
+/*
+ * DB modification operations 
+ */
+    
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.lsmdb.Database#singleInsert(int, byte[], byte[], java.lang.Object)
+     */
+    @Override
+    public BabuDBRequestResult<Object> singleInsert(int indexId, byte[] key, 
+            byte[] value, Object context) {
+
+        BabuDBInsertGroup irg = new BabuDBInsertGroup(lsmDB);
+        irg.addInsert(indexId, key, value);
+        
+        return insert(irg, context);
     }
     
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.lsmdb.Database#insert(org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup, java.lang.Object)
+     */
     @Override
-    public String getName() {
-        return lsmDB.getDatabaseName();
+    public BabuDBRequestResult<Object> insert(BabuDBInsertGroup irg, Object context) {
+        BabuDBRequest<Object> result = new BabuDBRequest<Object>(context);
+        try {
+            dbs.slaveCheck();
+        } catch (BabuDBException e) {
+            result.failed(e);
+            return result;
+        }
+        
+        InsertRecordGroup ins = irg.getRecord();
+        int dbId = ins.getDatabaseId();
+        
+        LSMDBWorker w = dbs.getWorker(dbId);
+        if (w != null) {
+            if (Logging.isNotice()) {
+                Logging.logMessage(Logging.LEVEL_NOTICE, this, "insert request" +
+                        " is sent to worker #" + dbId % dbs.getWorkerCount());
+            }
+        
+            try {
+                w.addRequest(new LSMDBRequest<Object>(lsmDB, result, ins));
+            } catch (InterruptedException ex) {
+                result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, 
+                        "operation was interrupted", ex));
+            }
+        } else 
+            directInsert(irg, result);
+        
+        return result;
+    }
+    
+    /**
+     * Insert an group of inserts in the context of the invoking thread.
+     * 
+     * @param irg
+     *            the group of inserts.
+     * @param listener 
+     *            to notify after insert.
+     */ 
+    private void directInsert(final BabuDBInsertGroup irg, final 
+            BabuDBRequest<Object> listener) {
+        
+        int numIndices = lsmDB.getIndexCount();
+        
+        try {
+            for (InsertRecord ir : irg.getRecord().getInserts()) 
+                if ((ir.getIndexId() >= numIndices) || (ir.getIndexId() < 0)) 
+                    throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + 
+                            ir.getIndexId() + " does not exist");
+        } catch (BabuDBException e) {
+            listener.failed(e);
+            return;
+        }
+        
+        int size = irg.getRecord().getSize();
+        ReusableBuffer buf = BufferPool.allocate(size);
+        irg.getRecord().serialize(buf);
+        buf.flip();
+        
+        LogEntry e = new LogEntry(buf, new SyncListener() {
+            
+            public void synced(LogEntry entry) {
+                entry.free();
+                
+                // insert into the in-memory-tree
+                for (InsertRecord ir : irg.getRecord().getInserts()) {
+                    LSMTree index = lsmDB.getIndex(ir.getIndexId());
+                    if (ir.getValue() != null) {
+                        index.insert(ir.getKey(), ir.getValue());
+                    } else {
+                        index.delete(ir.getKey());
+                    }
+                }
+                
+                listener.finished();
+            }
+            
+            public void failed(LogEntry entry, Exception ex) {
+                entry.free();
+                
+                listener.failed((ex != null && ex instanceof BabuDBException) 
+                        ? (BabuDBException) ex : new BabuDBException(
+                                ErrorCode.IO_ERROR, "could not execute insert "+
+                                "because of IO problem", ex));
+            }
+        }, LogEntry.PAYLOAD_TYPE_INSERT);
+        
+        try {
+            dbs.getLogger().append(e);
+        } catch (InterruptedException ex) {
+            listener.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, 
+                    "cannot write update to disk log", ex));
+        }       
+    }
+    
+/*
+ * DB lookup operations    
+ */
+    
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#lookup(int, byte[], java.lang.Object)
+     */
+    @Override
+    public BabuDBRequestResult<byte[]> lookup(int indexId, byte[] key, 
+            Object context) {
+        BabuDBRequest<byte[]> result = new BabuDBRequest<byte[]>(context);
+        
+        try {
+            dbs.slaveCheck();
+        } catch (BabuDBException e) {
+            result.failed(e);
+            return result;
+        }
+        
+        LSMDBWorker w = dbs.getWorker(lsmDB.getDatabaseId());
+        if (w != null) {
+            if (Logging.isNotice()) {
+                Logging.logMessage(Logging.LEVEL_NOTICE, this, "lookup request is sent to worker #"
+                    + lsmDB.getDatabaseId() % dbs.getWorkerCount());
+            }
+            
+            try {
+                w.addRequest(new LSMDBRequest<byte[]>(lsmDB, indexId, result, key, false));
+            } catch (InterruptedException ex) {
+                result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, 
+                        "operation was interrupted", ex));
+            }
+        } else
+            directLookup(indexId, key, result);
+        
+        return result;
+    }
+    
+    /**
+     * Looks up a key in the database, without using a worker thread. 
+     * 
+     * @param indexId
+     * @param key
+     * @param listener 
+     *                  the result listener.
+     */
+    private void directLookup(int indexId, byte[] key, 
+            BabuDBRequest<byte[]> listener) {
+        
+        if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
+            listener.failed(new BabuDBException(ErrorCode.NO_SUCH_INDEX, 
+                    "index does not exist"));
+        } else
+            listener.finished(lsmDB.getIndex(indexId).lookup(key));
+    }
+
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#prefixLookup(int, byte[], java.lang.Object)
+     */
+    @Override
+    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> prefixLookup(
+            int indexId, byte[] key, Object context) {
+        
+        BabuDBRequest<Iterator<Entry<byte[], byte[]>>> result = 
+            new BabuDBRequest<Iterator<Entry<byte[],byte[]>>>(context);
+        
+        try {
+            dbs.slaveCheck();
+        } catch (BabuDBException e) {
+            result.failed(e);
+            return result;
+        }
+        
+        LSMDBWorker w = dbs.getWorker(lsmDB.getDatabaseId());
+        if (w != null) {
+            if (Logging.isNotice() && w != null) {
+                Logging.logMessage(Logging.LEVEL_NOTICE, this, "lookup request" +
+                		" is sent to worker #" + lsmDB.getDatabaseId() 
+                		% dbs.getWorkerCount());
+            }
+            
+            try {
+                w.addRequest(new LSMDBRequest<Iterator<Entry<byte[], byte[]>>>(
+                        lsmDB, indexId, result, key, true));
+            } catch (InterruptedException ex) {
+                result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, 
+                        "operation was interrupted", ex));
+            }
+        } else
+            directPrefixLookup(indexId, key, result);
+        
+        return result;
+    }
+    
+    /**
+     * Executes a prefix lookup, without using a worker thread.
+     * 
+     * @param indexId
+     *            index id (0..NumIndices-1)
+     * @param key
+     *            the key to start the iterator at
+     * @param listener 
+     *            the result listener.
+     */
+    private void directPrefixLookup(int indexId, byte[] key, 
+            BabuDBRequest<Iterator<Entry<byte[], byte[]>>> listener) {
+        
+        if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) 
+            listener.failed(new BabuDBException(ErrorCode.NO_SUCH_INDEX, 
+                    "index does not exist"));
+        else
+            listener.finished(lsmDB.getIndex(indexId).prefixLookup(key));
+    }
+    
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#reversePrefixLookup(int, byte[], java.lang.Object)
+     */
+    @Override
+    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> reversePrefixLookup(
+            int indexId, byte[] key, Object context) {
+        
+        BabuDBRequest<Iterator<Entry<byte[], byte[]>>> result = 
+            new BabuDBRequest<Iterator<Entry<byte[],byte[]>>>(context);
+        
+        try {
+            dbs.slaveCheck();
+        } catch (BabuDBException e) {
+            result.failed(e);
+            return result;
+        }
+        
+        directReversePrefixLookup(indexId, key, result);
+        
+        return result;
+    }
+    
+    /**
+     * Executes a prefix lookup, without using a worker thread.
+     * 
+     * @param indexId
+     *            index id (0..NumIndices-1)
+     * @param key
+     *            the key to start the iterator at
+     * @param listener 
+     *            the result listener.
+     */
+    private void directReversePrefixLookup(
+            int indexId, byte[] key, BabuDBRequest<Iterator<Entry<byte[], byte[]>>> listener)  {
+        
+        if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) 
+            listener.failed(new BabuDBException(ErrorCode.NO_SUCH_INDEX, 
+                    "index does not exist"));
+        else
+            listener.finished(lsmDB.getIndex(indexId).prefixLookup(key, false));
+    }
+    
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#userDefinedLookup(org.xtreemfs.babudb.UserDefinedLookup, java.lang.Object)
+     */
+    @Override
+    public BabuDBRequestResult<Object> userDefinedLookup(UserDefinedLookup udl, 
+            Object context) {
+        BabuDBRequest<Object> result = new BabuDBRequest<Object>(context);
+        
+        try {
+            dbs.slaveCheck();
+        } catch (BabuDBException e) {
+            result.failed(e);
+            return result;
+        }
+        
+        LSMDBWorker w = dbs.getWorker(lsmDB.getDatabaseId());
+        if (w != null) {
+            if (Logging.isNotice()) {
+                Logging.logMessage(Logging.LEVEL_NOTICE, this, "udl request is" +
+                                " sent to worker #" + lsmDB.getDatabaseId() 
+                                % dbs.getWorkerCount());
+            }
+            
+            try {
+                w.addRequest(new LSMDBRequest<Object>(lsmDB, result, udl));
+            } catch (InterruptedException ex) {
+                result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, 
+                        "operation was interrupted", ex));
+            }
+        } else
+            directUserDefinedLookup(udl, result);
+        
+        return result;
+    }
+    
+    /**
+     * Performs a user-defined lookup, without using a worker thread.
+     * 
+     * @param udl
+     * @param listener
+     */
+    private void directUserDefinedLookup(UserDefinedLookup udl, 
+            BabuDBRequest<Object> listener) {
+        final LSMLookupInterface lif = new LSMLookupInterface(lsmDB);
+        try {
+            Object result = udl.execute(lif);
+            listener.finished(result);
+        } catch (BabuDBException e) {
+            listener.failed(e);
+        }
+    }
+    
+/*
+ * snapshot specific operations    
+ */
+    
+    public byte[] directLookup(int indexId, int snapId, byte[] key) throws BabuDBException {
+        dbs.slaveCheck();
+        
+        if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
+            throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
+        }
+        return lsmDB.getIndex(indexId).lookup(key, snapId);
+    }
+    
+    public Iterator<Entry<byte[], byte[]>> directPrefixLookup(int indexId, int snapId, byte[] key,
+            boolean ascending) throws BabuDBException {
+            dbs.slaveCheck();
+            
+            if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
+                throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
+            }
+            return lsmDB.getIndex(indexId).prefixLookup(key, snapId, ascending);
     }
     
     /**
@@ -828,6 +679,10 @@ public class DatabaseImpl implements Database {
         }
     }
 
+/*
+ * getter/setter
+ */
+    
     /**
      * <p>
      * Replaces the currently used {@link LSMDatabase} with the given one.
@@ -838,7 +693,34 @@ public class DatabaseImpl implements Database {
      * 
      * @param lsmDatabase
      */
-    public void reset(LSMDatabase lsmDatabase) {
+    public void setLSMDB(LSMDatabase lsmDatabase) {
         this.lsmDB = lsmDatabase;
+    }
+    
+    /**
+     * Returns the underlying LSM database implementation.
+     * 
+     * @return the LSM database
+     */
+    public LSMDatabase getLSMDB() {
+        return lsmDB;
+    }
+    
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.lsmdb.Database#getComparators()
+     */
+    @Override
+    public ByteRangeComparator[] getComparators() {
+        return lsmDB.getComparators();
+    }
+    
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.lsmdb.Database#getName()
+     */
+    @Override
+    public String getName() {
+        return lsmDB.getDatabaseName();
     }
 }

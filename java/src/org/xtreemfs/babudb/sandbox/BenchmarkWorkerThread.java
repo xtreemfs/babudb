@@ -106,12 +106,12 @@ public class BenchmarkWorkerThread extends Thread {
         }
     }
 
-    public void performInserts() throws BabuDBException {
+    public void performInserts() throws BabuDBException, InterruptedException {
         long tStart = System.currentTimeMillis();
         byte[] key = null;
         for (int i = 0; i < numKeys; i++) {
             key = createRandomKey();
-            database.getDatabaseManager().getDatabase(dbName).syncSingleInsert(0, key, payload);
+            database.getDatabaseManager().getDatabase(dbName).singleInsert(0, key, payload, null).get();
         }
         long tEnd = System.currentTimeMillis();
         double dur = (tEnd-tStart);
@@ -125,9 +125,9 @@ public class BenchmarkWorkerThread extends Thread {
         System.out.print(output);
     }
 
-    public void countKeys() throws BabuDBException {
+    public void countKeys() throws BabuDBException, InterruptedException {
         long tStart = System.currentTimeMillis();
-        Iterator<Entry<byte[],byte[]>> iter = database.getDatabaseManager().getDatabase(dbName).syncPrefixLookup(0, new byte[]{});
+        Iterator<Entry<byte[],byte[]>> iter = database.getDatabaseManager().getDatabase(dbName).prefixLookup(0, new byte[]{}, null).get();
         int count = 0;
         while (iter.hasNext()) {
             Entry<byte[],byte[]> e = iter.next();
@@ -142,13 +142,13 @@ public class BenchmarkWorkerThread extends Thread {
         System.out.print(output);
     }
 
-    public void performLookups() throws BabuDBException {
+    public void performLookups() throws BabuDBException, InterruptedException {
         long tStart = System.currentTimeMillis();
         byte[] key = null;
         int hits = 0;
         for (int i = 0; i < numKeys; i++) {
             key = createRandomKey();
-            byte[] value = database.getDatabaseManager().getDatabase(dbName).syncLookup(0, key);
+            byte[] value = database.getDatabaseManager().getDatabase(dbName).lookup(0, key, null).get();
             if (value != null)
                 hits++;
         }
@@ -165,13 +165,13 @@ public class BenchmarkWorkerThread extends Thread {
         System.out.print(output);
     }
 
-    public void performDirectLookups() throws BabuDBException {
+    public void performDirectLookups() throws BabuDBException, InterruptedException {
         long tStart = System.currentTimeMillis();
         byte[] key = null;
         int hits = 0;
         for (int i = 0; i < numKeys; i++) {
             key = createRandomKey();
-            byte[] value = database.getDatabaseManager().getDatabase(dbName).directLookup(0, key);
+            byte[] value = database.getDatabaseManager().getDatabase(dbName).lookup(0, key, null).get();
             if (value != null)
                 hits++;
         }
@@ -188,12 +188,12 @@ public class BenchmarkWorkerThread extends Thread {
         System.out.print(output);
     }
 
-    public void performUserDefinedLookups() throws BabuDBException {
+    public void performUserDefinedLookups() throws BabuDBException, InterruptedException {
         long tStart = System.currentTimeMillis();
         int hits = 0;
         for (int i = 0; i < numKeys; i++) {
             final byte[] key = createRandomKey();
-            byte[] value = (byte[]) database.getDatabaseManager().getDatabase(dbName).syncUserDefinedLookup(new UserDefinedLookup() {
+            byte[] value = (byte[]) database.getDatabaseManager().getDatabase(dbName).userDefinedLookup(new UserDefinedLookup() {
 
                 public Object execute(LSMLookupInterface database) throws BabuDBException {
                     byte[] result = null;
@@ -201,7 +201,7 @@ public class BenchmarkWorkerThread extends Thread {
                         result = database.lookup(0, key);
                     return result;
                 }
-            });
+            },null).get();
             if (value != null)
                 hits++;
         }

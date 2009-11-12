@@ -11,7 +11,8 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBRequestListener;
+import org.xtreemfs.babudb.BabuDBRequest;
+import org.xtreemfs.babudb.BabuDBRequestResult;
 import org.xtreemfs.babudb.UserDefinedLookup;
 import org.xtreemfs.babudb.lsmdb.DatabaseRO;
 
@@ -31,59 +32,75 @@ public class Snapshot implements DatabaseRO {
         this.view = view;
     }
     
-    @Override
-    public void asyncLookup(int indexId, byte[] key, BabuDBRequestListener listener, Object context)
-        throws BabuDBException {
-        throw new UnsupportedOperationException();
-    }
-    
-    @Override
-    public void asyncPrefixLookup(int indexId, byte[] key, BabuDBRequestListener listener, Object context)
-        throws BabuDBException {
-        throw new UnsupportedOperationException();
-    }
-    
-    @Override
-    public void asyncUserDefinedLookup(BabuDBRequestListener listener, UserDefinedLookup udl, Object context)
-        throws BabuDBException {
-        throw new UnsupportedOperationException();
-    }
-    
-    @Override
-    public byte[] directLookup(int indexId, byte[] key) throws BabuDBException {
-        return view.directLookup(indexId, key);
-    }
-    
-    @Override
-    public Iterator<Entry<byte[], byte[]>> directPrefixLookup(int indexId, byte[] key) throws BabuDBException {
-        return view.directPrefixLookup(indexId, key, true);
-    }
-    
-    @Override
-    public Iterator<Entry<byte[], byte[]>> directReversePrefixLookup(int indexId, byte[] key)
-        throws BabuDBException {
-        return view.directPrefixLookup(indexId, key, false);
-    }
-    
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#shutdown()
+     */
     @Override
     public void shutdown() throws BabuDBException {
         view.shutdown();
     }
-    
+
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#lookup(int, byte[], java.lang.Object)
+     */
     @Override
-    public byte[] syncLookup(int indexId, byte[] key) throws BabuDBException {
-        throw new UnsupportedOperationException();
+    public BabuDBRequestResult<byte[]> lookup(int indexId, byte[] key, Object context) {
+        BabuDBRequest<byte[]> result = new BabuDBRequest<byte[]>(context);
+        byte[] r;
+        try {
+            r = view.directLookup(indexId, key);
+            result.finished(r);
+        } catch (BabuDBException e) {
+            result.failed(e);
+        }
+        
+        return result;
+    }
+
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#prefixLookup(int, byte[], java.lang.Object)
+     */
+    @Override
+    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> prefixLookup(int indexId, byte[] key,
+            Object context) {
+        BabuDBRequest<Iterator<Entry<byte[], byte[]>>> result = 
+            new BabuDBRequest<Iterator<Entry<byte[], byte[]>>>(context);
+        Iterator<Entry<byte[], byte[]>> r;
+        try {
+            r = view.directPrefixLookup(indexId, key, true);
+            result.finished(r);
+        } catch (BabuDBException e) {
+            result.failed(e);
+        }
+        
+        return result;
+    }
+
+    @Override
+    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> reversePrefixLookup(int indexId, byte[] key,
+            Object context) {
+        BabuDBRequest<Iterator<Entry<byte[], byte[]>>> result = 
+            new BabuDBRequest<Iterator<Entry<byte[], byte[]>>>(context);
+        Iterator<Entry<byte[], byte[]>> r;
+        try {
+            r = view.directPrefixLookup(indexId, key, false);
+            result.finished(r);
+        } catch (BabuDBException e) {
+            result.failed(e);
+        }
+        
+        return result;
     }
     
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#userDefinedLookup(org.xtreemfs.babudb.UserDefinedLookup, java.lang.Object)
+     */
     @Override
-    public Iterator<Entry<byte[], byte[]>> syncPrefixLookup(int indexId, byte[] key)
-        throws BabuDBException {
+    public BabuDBRequestResult<Object> userDefinedLookup(UserDefinedLookup udl, Object context) {
         throw new UnsupportedOperationException();
     }
-    
-    @Override
-    public Object syncUserDefinedLookup(UserDefinedLookup udl) throws BabuDBException {
-        throw new UnsupportedOperationException();
-    }
-    
 }

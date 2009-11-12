@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -24,7 +25,6 @@ import org.xtreemfs.babudb.log.DiskLogFile;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
-import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.Checkpointer;
 import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
 import org.xtreemfs.babudb.lsmdb.DBConfig;
@@ -62,7 +62,7 @@ public class BabuDB {
     /**
      * Version (name)
      */
-    public static final String           BABUDB_VERSION           = "0.2.6";
+    public static final String           BABUDB_VERSION           = "0.2.7";
     
     /**
      * Version of the DB on-disk format (to detect incompatibilities).
@@ -106,19 +106,13 @@ public class BabuDB {
     /**
      * Flag that shows the replication if babuDB is running at the moment.
      */
-    private volatile boolean             stopped;
+    private final AtomicBoolean          stopped;
     
     /**
      * Flag that determines if the slaveCheck should be enabled, or not.
      */
     private volatile boolean             slaveCheck               = true;
-    
-    /**
-     * SyncListener to use if you don't care about your request being
-     * inserted properly.
-     */
-    private final SyncListener           globalSyncListener;
-    
+        
     /**
      * Starts the BabuDB database. If conf is instance of MasterConfig it comes
      * with replication in master-mode. If conf is instance of SlaveConfig it
@@ -181,8 +175,6 @@ public class BabuDB {
         } catch (Exception e) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
         }
-        this.globalSyncListener = new GlobalSyncListener(
-                this.replicationManager, this);
         
         // set up and start the disk logger
         try {
@@ -194,10 +186,17 @@ public class BabuDB {
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot start database operations logger", ex);
         }
         
-        worker = new LSMDBWorker[conf.getNumThreads()];
-        for (int i = 0; i < conf.getNumThreads(); i++) {
-            worker[i] = new LSMDBWorker(logger, i, (conf.getPseudoSyncWait() > 0), conf.getMaxQueueLength());
-            worker[i].start();
+        if (conf.getNumThreads() > 0) {
+            worker = new LSMDBWorker[conf.getNumThreads()];
+            for (int i = 0; i < conf.getNumThreads(); i++) {
+                worker[i] = new LSMDBWorker(logger, i, (conf.getPseudoSyncWait() > 0), conf.getMaxQueueLength());
+                worker[i].start();
+            }
+        } else {
+            // number of workers is 0 => requests will be responded directly.
+            assert (conf.getNumThreads() == 0);
+            
+            worker = null;
         }
         
         // initialize and start the checkpointer; this has to be separated from
@@ -208,7 +207,7 @@ public class BabuDB {
         
         // start the replication service after all other components of babuDB
         // have been started successfully
-        this.stopped = false;
+        this.stopped = new AtomicBoolean(false);
         if (this.replicationManager != null)
             this.replicationManager.initialize();
         
@@ -222,28 +221,27 @@ public class BabuDB {
      * a {@link LoadLogic} run.
      */
     public void stop() {
-        if (this.stopped)
-            return;
-        
-        for (LSMDBWorker w : worker) {
-            w.shutdown();
-        }
-        logger.shutdown();
-        if (dbCheckptr != null) {
+        synchronized (stopped) {
+            if (stopped.get()) return;
+            
+            if (worker != null)
+                for (LSMDBWorker w : worker) 
+                    w.shutdown();
+            
+            logger.shutdown();
             dbCheckptr.shutdown();
-        }
-        try {
-            logger.waitForShutdown();
-            for (LSMDBWorker w : worker) {
-                w.waitForShutdown();
-            }
-            if (dbCheckptr != null) {
+            try {
+                logger.waitForShutdown();
+                if (worker != null)
+                    for (LSMDBWorker w : worker) 
+                        w.waitForShutdown();
+                        
                 dbCheckptr.waitForShutdown();
-            }
-        } catch (InterruptedException ex) {
+            } catch (InterruptedException ex) { /* ignored */ }
+            this.stopped.set(true);
+            Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB has been stopped by the Replication.");
+
         }
-        this.stopped = true;
-        Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB has been stopped by the Replication.");
     }
     
     /**
@@ -256,63 +254,72 @@ public class BabuDB {
      * @return the next LSN.
      */
     public LSN restart() throws BabuDBException {
-        if (!this.stopped)
-            throw new BabuDBException(ErrorCode.IO_ERROR, "BabuDB has to be stopped before!");
-        
-        databaseManager.reset();
-        
-        dbCheckptr = new CheckpointerImpl(this);
-        
-        LSN dbLsn = null;
-        LSN zero = new LSN(0, 0L);
-        for (Database dbRaw : databaseManager.getDatabaseList()) {
-            DatabaseImpl db = (DatabaseImpl) dbRaw;
-            LSN onDisk = db.getLSMDB().getOndiskLSN();
-            if (dbLsn == null && !onDisk.equals(zero))
-                dbLsn = onDisk;
-            else if (dbLsn != null) {
-                if (!onDisk.equals(zero) && !dbLsn.equals(onDisk))
-                    throw new RuntimeException("databases have different LSNs! " + dbLsn.toString() + " != "
-                        + db.getLSMDB().getOndiskLSN().toString());
+        synchronized (stopped) {
+            if (!stopped.get())
+                throw new BabuDBException(ErrorCode.IO_ERROR, "BabuDB has to be stopped before!");
+            
+            databaseManager.reset();
+            
+            dbCheckptr = new CheckpointerImpl(this);
+            
+            LSN dbLsn = null;
+            LSN zero = new LSN(0, 0L);
+            for (Database dbRaw : databaseManager.getDatabaseList()) {
+                DatabaseImpl db = (DatabaseImpl) dbRaw;
+                LSN onDisk = db.getLSMDB().getOndiskLSN();
+                if (dbLsn == null && !onDisk.equals(zero))
+                    dbLsn = onDisk;
+                else if (dbLsn != null) {
+                    if (!onDisk.equals(zero) && !dbLsn.equals(onDisk))
+                        throw new RuntimeException("databases have different LSNs! " + dbLsn.toString() + " != "
+                            + db.getLSMDB().getOndiskLSN().toString());
+                }
             }
+            if (dbLsn == null) {
+                // empty babudb
+                dbLsn = new LSN(0, 0);
+            } else {
+                // need next LSN which is onDisk + 1
+                dbLsn = new LSN(dbLsn.getViewId(), dbLsn.getSequenceNo() + 1);
+            }
+            
+            Logging.logMessage(Logging.LEVEL_INFO, this, "starting log replay");
+            LSN nextLSN = replayLogs(dbLsn);
+            if (dbLsn.compareTo(nextLSN) > 0) nextLSN = dbLsn;
+            Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done, using LSN: " + nextLSN);
+            
+            try {
+                logger = new DiskLogger(configuration.getDbLogDir(), nextLSN.getViewId(),
+                    nextLSN.getSequenceNo(), configuration.getSyncMode(), configuration.getPseudoSyncWait(),
+                    configuration.getMaxQueueLength() * configuration.getNumThreads(), replicationManager);
+                logger.start();
+            } catch (IOException ex) {
+                throw new BabuDBException(ErrorCode.IO_ERROR, "cannot start database operations logger", ex);
+            }
+            
+            if (configuration.getNumThreads() > 0) {
+                worker = new LSMDBWorker[configuration.getNumThreads()];
+                for (int i = 0; i < configuration.getNumThreads(); i++) {
+                    worker[i] = new LSMDBWorker(logger, i, (configuration.getPseudoSyncWait() > 0), configuration
+                            .getMaxQueueLength());
+                    worker[i].start();
+                }
+            } else {
+                // number of workers is 0 => requests will be responded directly.
+                assert (configuration.getNumThreads() == 0);
+                
+                worker = null;
+            }
+            
+            dbCheckptr.init(logger, configuration.getCheckInterval(), configuration.getMaxLogfileSize());
+            dbCheckptr.start();
+            
+            Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is " + "running (version "
+                + BABUDB_VERSION + ")");
+            
+            this.stopped.set(false);
+            return new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo() - 1L);
         }
-        if (dbLsn == null) {
-            // empty babudb
-            dbLsn = new LSN(0, 0);
-        } else {
-            // need next LSN which is onDisk + 1
-            dbLsn = new LSN(dbLsn.getViewId(), dbLsn.getSequenceNo() + 1);
-        }
-        
-        Logging.logMessage(Logging.LEVEL_INFO, this, "starting log replay");
-        LSN nextLSN = replayLogs(dbLsn);
-        if (dbLsn.compareTo(nextLSN) > 0) nextLSN = dbLsn;
-        Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done, using LSN: " + nextLSN);
-        
-        try {
-            logger = new DiskLogger(configuration.getDbLogDir(), nextLSN.getViewId(),
-                nextLSN.getSequenceNo(), configuration.getSyncMode(), configuration.getPseudoSyncWait(),
-                configuration.getMaxQueueLength() * configuration.getNumThreads(), replicationManager);
-            logger.start();
-        } catch (IOException ex) {
-            throw new BabuDBException(ErrorCode.IO_ERROR, "cannot start database operations logger", ex);
-        }
-        
-        worker = new LSMDBWorker[configuration.getNumThreads()];
-        for (int i = 0; i < configuration.getNumThreads(); i++) {
-            worker[i] = new LSMDBWorker(logger, i, (configuration.getPseudoSyncWait() > 0), configuration
-                    .getMaxQueueLength());
-            worker[i].start();
-        }
-        
-        dbCheckptr.init(logger, configuration.getCheckInterval(), configuration.getMaxLogfileSize());
-        dbCheckptr.start();
-        
-        Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is " + "running (version "
-            + BABUDB_VERSION + ")");
-        
-        this.stopped = false;
-        return new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo() - 1L);
     }
     
     /*
@@ -321,9 +328,9 @@ public class BabuDB {
      * @see org.xtreemfs.babudb.BabuDBInterface#shutdown()
      */
     public void shutdown() throws BabuDBException {
-        for (LSMDBWorker w : worker) {
-            w.shutdown();
-        }
+        if (worker != null)
+            for (LSMDBWorker w : worker) 
+                w.shutdown();
         
         // stop the replication
         if (replicationManager != null) {
@@ -337,9 +344,10 @@ public class BabuDB {
         
         try {
             logger.waitForShutdown();
-            for (LSMDBWorker w : worker) {
-                w.waitForShutdown();
-            }
+            if (worker != null)
+                for (LSMDBWorker w : worker)
+                    w.waitForShutdown();
+                    
             dbCheckptr.waitForShutdown();
         } catch (InterruptedException ex) {
         }
@@ -353,9 +361,10 @@ public class BabuDB {
     public void __test_killDB_dangerous() {
         try {
             logger.stop();
-            for (LSMDBWorker w : worker) {
-                w.stop();
-            }
+            if (worker != null)
+                for (LSMDBWorker w : worker) 
+                    w.stop();
+                    
         } catch (IllegalMonitorStateException ex) {
             // we will probably get that when we kill a thread because we do
             // evil stuff here ;-)
@@ -536,11 +545,7 @@ public class BabuDB {
         }
         return db.getIndex(indexId).lookup(key);
     }
-    
-    public SyncListener getGlobalSyncListener() {
-        return globalSyncListener;
-    }
-    
+        
     public SnapshotManager getSnapshotManager() {
         return snapshotManager;
     }
@@ -555,6 +560,7 @@ public class BabuDB {
      * @return the number of worker threads.
      */
     public int getWorkerCount() {
+        if (worker == null) return 0;
         return worker.length;
     }
     
@@ -564,6 +570,7 @@ public class BabuDB {
      * @return a worker Thread, responsible for the DB given by its ID.
      */
     public LSMDBWorker getWorker(int dbId) {
+        if (worker == null) return null;
         return worker[dbId % worker.length];
     }
     

@@ -14,7 +14,7 @@ import java.net.SocketAddress;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.xtreemfs.babudb.SimplifiedBabuDBRequestListener;
+import org.xtreemfs.babudb.BabuDBRequest;
 import org.xtreemfs.babudb.clients.SlaveClient;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
@@ -228,10 +228,10 @@ public class MasterRequestDispatcher extends RequestDispatcher {
     
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.RequestDispatcher#pauses(org.xtreemfs.babudb.SimplifiedBabuDBRequestListener)
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#pauses(org.xtreemfs.babudb.BabuDBRequest)
      */
     @Override
-    public void pauses(SimplifiedBabuDBRequestListener listener) {
+    public void pauses(BabuDBRequest<Object> listener) {
         super.pauses(listener);
         states.clearListeners();
     }

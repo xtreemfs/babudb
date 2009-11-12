@@ -30,6 +30,8 @@ import static org.xtreemfs.babudb.replication.DirectFileIO.*;
 
 public class DirectFileIOTest {
 
+    public final static boolean WIN = System.getProperty("os.name").toLowerCase().contains("win");
+    
     private static ReplicationConfig conf;
     
     // define the test data
@@ -50,14 +52,23 @@ public class DirectFileIOTest {
     
     @Before
     public void setUpBefore() throws Exception {       
-        
-        Process p = Runtime.getRuntime().exec("rm -rf " + conf.getBaseDir());
+        Process p;
+        if (WIN) {
+            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getBaseDir() + "\"");
+        } else 
+            p = Runtime.getRuntime().exec("rm -rf " + conf.getBaseDir());
         assertEquals(0, p.waitFor());
         
-        p = Runtime.getRuntime().exec("rm -rf " + conf.getDbLogDir());
+        if (WIN) {
+            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getDbLogDir() + "\"");
+        } else 
+            p = Runtime.getRuntime().exec("rm -rf " + conf.getDbLogDir());
         assertEquals(0, p.waitFor());
         
-        p = Runtime.getRuntime().exec("rm -rf " + conf.getBackupDir());
+        if (WIN) {
+            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getBackupDir() + "\"");
+        } else 
+            p = Runtime.getRuntime().exec("rm -rf " + conf.getBackupDir());
         assertEquals(0, p.waitFor());
     }
 

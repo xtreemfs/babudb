@@ -22,7 +22,9 @@ import org.xtreemfs.include.common.logging.Logging;
 import static org.xtreemfs.babudb.BabuDBException.ErrorCode.NO_ACCESS;
 
 public class SecurityTest {
-
+    
+    public final static boolean WIN = System.getProperty("os.name").toLowerCase().contains("win");
+    
     private final static String DB_NAME = "test";
     
     private BabuDB slave;
@@ -35,14 +37,24 @@ public class SecurityTest {
         try {
             conf = new ReplicationConfig("config/replication.properties");
             
-            Process p = Runtime.getRuntime().exec("rm -rf "+conf.getBaseDir());
-            p.waitFor();
+            Process p;
+            if (WIN) {
+                p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getBaseDir() + "\"");
+            } else 
+                p = Runtime.getRuntime().exec("rm -rf " + conf.getBaseDir());
+            assertEquals(0, p.waitFor());
             
-            p = Runtime.getRuntime().exec("rm -rf "+conf.getDbLogDir());
-            p.waitFor();
+            if (WIN) {
+                p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getDbLogDir() + "\"");
+            } else 
+                p = Runtime.getRuntime().exec("rm -rf " + conf.getDbLogDir());
+            assertEquals(0, p.waitFor());
             
-            p = Runtime.getRuntime().exec("rm -rf "+conf.getBackupDir());
-            p.waitFor();
+            if (WIN) {
+                p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getBackupDir() + "\"");
+            } else 
+                p = Runtime.getRuntime().exec("rm -rf " + conf.getBackupDir());
+            assertEquals(0, p.waitFor());
         
             // start the slave
             slave = BabuDBFactory.createReplicatedBabuDB(conf);
@@ -63,33 +75,6 @@ public class SecurityTest {
      */
     @Test
     public void slaveDBAccessSecurityTest() throws Exception {   
-        try{
-            slave.getDatabaseManager().getDatabase(DB_NAME).asyncInsert(null, null, null);
-        }catch (BabuDBException be){
-            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-            assertEquals(NO_ACCESS,be.getErrorCode());
-        }
-        
-        try{
-            slave.getDatabaseManager().getDatabase(DB_NAME).asyncLookup(0, null, null, null);
-        }catch (BabuDBException be){
-            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-            assertEquals(NO_ACCESS,be.getErrorCode());
-        }
-        
-        try{
-            slave.getDatabaseManager().getDatabase(DB_NAME).asyncPrefixLookup(0, null, null, null);
-        }catch (BabuDBException be){
-            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-            assertEquals(NO_ACCESS,be.getErrorCode());
-        }
-        
-        try{
-            slave.getDatabaseManager().getDatabase(DB_NAME).asyncUserDefinedLookup(null, null, null);
-        }catch (BabuDBException be){
-            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-            assertEquals(NO_ACCESS,be.getErrorCode());
-        }
         
         try{
             slave.getCheckpointer().checkpoint();
@@ -132,38 +117,30 @@ public class SecurityTest {
             Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
             assertEquals(NO_ACCESS,be.getErrorCode());
         }
-        
+                
         try{
-            slave.getDatabaseManager().getDatabase(DB_NAME).directInsert(null);
-        }catch (BabuDBException be){
-            Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
-            assertEquals(NO_ACCESS,be.getErrorCode());
-        }
-        
-        
-        try{
-            slave.getDatabaseManager().getDatabase(DB_NAME).syncInsert(null);
+            slave.getDatabaseManager().getDatabase(DB_NAME).insert(null,null).get();
         }catch (BabuDBException be){
             Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
             assertEquals(NO_ACCESS,be.getErrorCode());
         }
         
         try{
-            slave.getDatabaseManager().getDatabase(DB_NAME).syncPrefixLookup(0, null);
+            slave.getDatabaseManager().getDatabase(DB_NAME).prefixLookup(0, null,null).get();
         }catch (BabuDBException be){
             Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
             assertEquals(NO_ACCESS,be.getErrorCode());
         }
         
         try{
-            slave.getDatabaseManager().getDatabase(DB_NAME).syncSingleInsert(0, null, null);
+            slave.getDatabaseManager().getDatabase(DB_NAME).singleInsert(0, null, null,null).get();
         }catch (BabuDBException be){
             Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
             assertEquals(NO_ACCESS,be.getErrorCode());
         }
         
         try{
-            slave.getDatabaseManager().getDatabase(DB_NAME).syncUserDefinedLookup(null);
+            slave.getDatabaseManager().getDatabase(DB_NAME).userDefinedLookup(null,null).get();
         }catch (BabuDBException be){
             Logging.logMessage(Logging.LEVEL_INFO, slave, be.getMessage());
             assertEquals(NO_ACCESS,be.getErrorCode());

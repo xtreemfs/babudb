@@ -98,8 +98,8 @@ public class longruntest {
                         final String value = getRandomDictEntry();
                         
                         controlIndices[index].put(key, value);
-                        db.syncSingleInsert(index, key.getBytes(),
-                                value.getBytes());
+                        db.singleInsert(index, key.getBytes(),
+                                value.getBytes(),null).get();
                         
                         numIns++;
                         System.out.print("+");
@@ -119,7 +119,7 @@ public class longruntest {
                             ig.addInsert(index, key.getBytes(), value.getBytes());
                         }
                         
-                        db.syncInsert(ig);
+                        db.insert(ig,null).get();
                         
                         numInsGroup++;
                         System.out.print("x");
@@ -136,7 +136,7 @@ public class longruntest {
                             highKey = randKey;
                         }
                         final String controlResult = controlIndices[index].get(highKey);
-                        final byte[] result = db.syncLookup(index, highKey.getBytes());
+                        final byte[] result = db.lookup(index, highKey.getBytes(),null).get();
                         if (((controlResult == null) && (result != null)) ||
                                 ((controlResult != null) && (result == null))) {
                             printIndex(index);
@@ -163,7 +163,7 @@ public class longruntest {
                             final int index = getRandomIndex();
                             final String ftKey = controlIndices[index].firstKey();
                             controlIndices[index].remove(ftKey);
-                            db.syncSingleInsert(index, ftKey.getBytes(), null);
+                            db.singleInsert(index, ftKey.getBytes(), null,null).get();
                             
                             numRem++;
                             System.out.print("-");
@@ -184,7 +184,7 @@ public class longruntest {
     public void checkIntegrity() throws Exception {
         for (int index = 0; index < controlIndices.length; index++) {
             for (String key : controlIndices[index].keySet()) {
-                final byte[] babuResult = database.getDatabaseManager().getDatabase(dbname).syncLookup(index, key.getBytes());
+                final byte[] babuResult = database.getDatabaseManager().getDatabase(dbname).lookup(index, key.getBytes(),null).get();
                 String bValue = null;
                 if (babuResult != null) {
                     bValue = new String(babuResult);
@@ -265,7 +265,7 @@ public class longruntest {
             System.out.println("-------------------------------------------------------");
             System.out.println("TREE INDEX " + index);
             for (String key : controlIndices[index].keySet()) {
-                final byte[] babuResult = database.getDatabaseManager().getDatabase(dbname).syncLookup(index, key.getBytes());
+                final byte[] babuResult = database.getDatabaseManager().getDatabase(dbname).lookup(index, key.getBytes(),null).get();
                 String bValue = null;
                 if (babuResult != null) {
                     bValue = new String(babuResult);

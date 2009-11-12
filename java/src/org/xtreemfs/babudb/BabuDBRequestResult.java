@@ -30,36 +30,35 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
 LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
- */
+*/
 /*
  * AUTHORS: Felix Langner (ZIB)
  */
 package org.xtreemfs.babudb;
 
 /**
- * Generic interface for waiting asynchronously for a BabuDBRequest to be finished. 
+ * User interface for {@link BabuDBRequest} return values.
  * 
  * @author flangner
  * @since 11/11/2009
  * @param <T>
  */
-public interface BabuDBRequestListener<T> {
+public interface BabuDBRequestResult<T> {
     
     /**
-     * Operation to perform if the request finally fails.
-     * 
-     * @param error
-     *          cause for the failure.
-     * @param context
+     * Sets a listener to wait asynchronously for the result of the request.
+     * @param listener
      */
-    public void failed(BabuDBException error, Object context);
+    public void registerListener(BabuDBRequestListener<T> listener);
     
     /**
-     * Operation to perform if the request finishes correctly
+     * Waits synchronously for the request-result.
      * 
-     * @param result 
-     *          of the request.
-     * @param context
+     * @return the request result.
+     * @throws BabuDBException
+     *                  if the request ends with an error.
+     * @throws InterruptedException
+     *                  if waiting was interrupted.
      */
-    public void finished(T result, Object context);
+    public T get() throws BabuDBException, InterruptedException;
 }

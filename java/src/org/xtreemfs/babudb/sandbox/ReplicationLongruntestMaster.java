@@ -175,7 +175,7 @@ public class ReplicationLongruntestMaster {
             else
                 babuDBinsert.addDelete(isg.getIndex(i), isg.getKey(i));
         }
-        db.syncInsert(babuDBinsert);
+        db.insert(babuDBinsert,null).get();
     }
     
     /**
