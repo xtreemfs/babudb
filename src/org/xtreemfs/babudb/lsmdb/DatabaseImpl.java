@@ -208,19 +208,13 @@ public class DatabaseImpl implements Database {
     @Override
     public BabuDBRequestResult<byte[]> lookup(int indexId, byte[] key, 
             Object context) {
-        BabuDBRequest<byte[]> result = new BabuDBRequest<byte[]>(context);
         
-        try {
-            dbs.slaveCheck();
-        } catch (BabuDBException e) {
-            result.failed(e);
-            return result;
-        }
-        
+        BabuDBRequest<byte[]> result = new BabuDBRequest<byte[]>(context);        
         LSMDBWorker w = dbs.getWorker(lsmDB.getDatabaseId());
         if (w != null) {
             if (Logging.isNotice()) {
-                Logging.logMessage(Logging.LEVEL_NOTICE, this, "lookup request is sent to worker #"
+                Logging.logMessage(Logging.LEVEL_NOTICE, this, "lookup request" +
+                		" is sent to worker #"
                     + lsmDB.getDatabaseId() % dbs.getWorkerCount());
             }
             
