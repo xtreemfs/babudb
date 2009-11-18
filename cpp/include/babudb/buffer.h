@@ -90,6 +90,9 @@ public:
 		return *(int*)data;
 	}
 
+	unsigned long long getAsUInt64() {
+		return *(unsigned long long*)data;
+	}
 
 	// Represents a deleted data item in overlay indices.
 

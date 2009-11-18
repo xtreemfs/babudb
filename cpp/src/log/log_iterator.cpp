@@ -117,7 +117,7 @@ bool LogIterator<T>::operator == (const LogIterator& other) const {
 
 template <class T>
 Buffer& LogIterator<T>::operator * () const {
-	ASSERT_TRUE(getType() != LSN_RECORD_TYPE);
+	ASSERT_TRUE(current_record.getType() != LSN_RECORD_TYPE);
   current_record_data.data = *current_record;
   current_record_data.size = current_record.getSize();
 	return current_record_data;
@@ -125,7 +125,7 @@ Buffer& LogIterator<T>::operator * () const {
 
 template <class T>
 Buffer* LogIterator<T>::operator -> () const {
-	ASSERT_TRUE(getType() != LSN_RECORD_TYPE);
+	ASSERT_TRUE(current_record.getType() != LSN_RECORD_TYPE);
   current_record_data.data = *current_record;
   current_record_data.size = current_record.getSize();
 	return &current_record_data;
@@ -133,7 +133,7 @@ Buffer* LogIterator<T>::operator -> () const {
 
 template <class T>
 Buffer LogIterator<T>::getOperationWithFrame() const {
-	ASSERT_TRUE(getType() != LSN_RECORD_TYPE);
+	ASSERT_TRUE(current_record.getType() != LSN_RECORD_TYPE);
 	return Buffer(current_record.getRecord(), current_record.getRecord()->getRecordSize());
 }
 

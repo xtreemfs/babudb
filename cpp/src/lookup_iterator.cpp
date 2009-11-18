@@ -163,11 +163,11 @@ std::pair<Buffer,Buffer> LookupIterator::operator * () {
 	if(current_depth >= 0) {
 		ASSERT_TRUE(logi_it[current_depth] != logi[current_depth]->end());
 		ASSERT_FALSE(logi_it[current_depth]->second.isDeleted());
-		return make_pair(logi_it[current_depth]->first, logi_it[current_depth]->second);
+		return std::make_pair(logi_it[current_depth]->first, logi_it[current_depth]->second);
 	} else {
 		ASSERT_TRUE(*iidx_it != iidx->end());
 		ASSERT_FALSE((**iidx_it).second.isDeleted());
-		return make_pair((**iidx_it).first,(**iidx_it).second);
+		return std::make_pair((**iidx_it).first,(**iidx_it).second);
 	}
 }
 

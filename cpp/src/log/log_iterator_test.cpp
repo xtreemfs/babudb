@@ -47,25 +47,25 @@ TEST_TMPDIR(LogIterator,babudb)
 
 	i = log->begin();
 	EXPECT_TRUE(i != log->end());
-	EXPECT_TRUE(i.getType() != 0);
+	EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
 	EXPECT_TRUE(op.Deserialize(*i).value == 'A');
   EXPECT_TRUE(i.GetLSN() == 1);
 
   ++i;
 	EXPECT_TRUE(i != log->end());
-	EXPECT_TRUE(i.getType() != 0);
+	EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
 	EXPECT_TRUE(op.Deserialize(*i).value == 'B');
   EXPECT_TRUE(i.GetLSN() == 2);
 
 	++i;
 	EXPECT_TRUE(i != log->end());
-	EXPECT_TRUE(i.getType() != 0);
+	EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
 	EXPECT_TRUE(op.Deserialize(*i).value == 'C');
   EXPECT_TRUE(i.GetLSN() == 3);
 
 	++i;
 	EXPECT_TRUE(i != log->end());
-	EXPECT_TRUE(i.getType() != 0);
+	EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
 	EXPECT_TRUE(op.Deserialize(*i).value == 'D');
   EXPECT_TRUE(i.GetLSN() == 4);
 
@@ -100,22 +100,22 @@ TEST_TMPDIR(LogIterator,babudb)
 
 	r = log->rbegin();
 	EXPECT_TRUE(r != log->rend());
-	EXPECT_TRUE(r.getType() != 0);
+	EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
 	EXPECT_TRUE(op.Deserialize(*r).value == 'D');
 
 	++r;
 	EXPECT_TRUE(r != log->rend());
-	EXPECT_TRUE(r.getType() != 0);
+	EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
 	EXPECT_TRUE(op.Deserialize(*r).value == 'C');
 
 	++r;
 	EXPECT_TRUE(r != log->rend());
-	EXPECT_TRUE(r.getType() != 0);
+	EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
 	EXPECT_TRUE(op.Deserialize(*r).value == 'B');
 
 	++r;
 	EXPECT_TRUE(r != log->rend());
-	EXPECT_TRUE(r.getType() != 0);
+	EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
 	EXPECT_TRUE(op.Deserialize(*r).value == 'A');
 
 	++r;
@@ -125,22 +125,22 @@ TEST_TMPDIR(LogIterator,babudb)
 	
 	r = log->rend(); --r;
 	EXPECT_TRUE(r != log->rend());
-	EXPECT_TRUE(r.getType() != 0);
+	EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
 	EXPECT_TRUE(op.Deserialize(*r).value == 'A');
 
 	--r;
 	EXPECT_TRUE(r != log->rend());
-	EXPECT_TRUE(r.getType() != 0);
+	EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
 	EXPECT_TRUE(op.Deserialize(*r).value == 'B');
 
 	--r;
 	EXPECT_TRUE(r != log->rend());
-	EXPECT_TRUE(r.getType() != 0);
+	EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
 	EXPECT_TRUE(op.Deserialize(*r).value == 'C');
 
 	--r;
 	EXPECT_TRUE(r == log->rbegin());
-	EXPECT_TRUE(r.getType() != 0);
+	EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
 	EXPECT_TRUE(op.Deserialize(*r).value == 'D');
 
 	log->close();

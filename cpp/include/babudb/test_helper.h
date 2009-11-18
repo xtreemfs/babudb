@@ -10,6 +10,8 @@ using std::string;
 #include "babudb/buffer.h"
 #include "babudb/log/log_section.h"
 
+#define DUMMY_OPERATION_TYPE 5
+
 class DummyOperation : public babudb::Serializable {
 public:
 	DummyOperation(int i) : value(i) {}
@@ -21,6 +23,10 @@ public:
 	virtual size_t GetSize() const {
 		return sizeof(int);
 	}
+
+  virtual int GetType() const { 
+    return DUMMY_OPERATION_TYPE; 
+  }
 
 	DummyOperation& Deserialize(const babudb::Buffer& data) {
 		value = *((int*)data.data);

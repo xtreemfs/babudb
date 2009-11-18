@@ -35,6 +35,8 @@ public:
 	}
 };
 
+#define STRING_SET_OPERATION_TYPE 1
+
 class StringSetOperation : public Serializable {
 public:
 	StringSetOperation() {}
@@ -52,6 +54,10 @@ public:
 
   size_t GetSize() const {
     return 2 + db.size() + 1 + key.size() + 1 + value.size() + 1;
+  }
+
+  int GetType() const {
+    return STRING_SET_OPERATION_TYPE; 
   }
 
 	/* serialize to the log */
