@@ -91,7 +91,7 @@ public class ReplicationLongruntestSlave {
         
         CONFIGURATION = new ReplicationConfig(PATH, PATH, NUM_WKS, 1, 0,
                 SyncMode.ASYNC, 0, 0, participants, 50, null, 
-                0,BACKUP_DIR, false, false);
+                0,BACKUP_DIR, false);
         
         DBS = (BabuDB) BabuDBFactory.createReplicatedBabuDB(CONFIGURATION);
         generator = new ContinuesRandomGenerator(seed, ReplicationLongrunTestConfig.MAX_SEQUENCENO);
