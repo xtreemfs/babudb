@@ -45,12 +45,6 @@ public class ReplicationConfig extends BabuDBConfig {
     /** Chunk size, for initial load of file chunks. */
     protected int               chunkSize;
     
-    /**
-     * True if the replication should be optimistic, otherwise (false) 
-     * it is highly recommended that pseudoSyncWait is 0.
-     */
-    protected boolean           optimistic; 
-    
     public final static int     DEFAULT_MAX_CHUNK_SIZE = 5*1024*1024;
         
     // for slave usage only
@@ -80,13 +74,12 @@ public class ReplicationConfig extends BabuDBConfig {
             long maxLogFileSize, int checkInterval, SyncMode mode, 
             int pseudoSyncWait, int maxQ, Set<InetSocketAddress> participants, 
             int localTimeRenew, SSLOptions sslOptions, int syncN, 
-            String backupDir, boolean compression, boolean optimistic) {
+            String backupDir, boolean compression) {
         
         super(baseDir, logDir, numThreads, maxLogFileSize, checkInterval, mode, 
                 pseudoSyncWait, maxQ, compression);
         this.participants = new HashSet<InetSocketAddress>();
         this.localTimeRenew = localTimeRenew;
-        this.optimistic = optimistic;
         Socket s;
         for (InetSocketAddress participant : participants){
             s = new Socket();
@@ -113,8 +106,6 @@ public class ReplicationConfig extends BabuDBConfig {
     public void read() throws IOException {
         super.read();
                
-        this.optimistic = this.readOptionalBoolean("babudb.repl.optimistic", false);
-        
         this.localTimeRenew = this.readOptionalInt("babudb.localTimeRenew", 3000);
         
         if (this.readRequiredBoolean("babudb.ssl.enabled")) {
@@ -194,10 +185,6 @@ public class ReplicationConfig extends BabuDBConfig {
 
     public int getLocalTimeRenew() {
         return localTimeRenew;
-    }
-    
-    public boolean isOptimistic () {
-        return optimistic;
     }
     
     public int getSyncN(){
