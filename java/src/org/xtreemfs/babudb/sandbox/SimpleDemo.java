@@ -17,15 +17,17 @@ import org.xtreemfs.include.common.config.BabuDBConfig;
 public class SimpleDemo {
 
     public static void main(String[] args) throws InterruptedException {
-        try {
+        try {           
             //start the database
-            BabuDB database = BabuDBFactory.createBabuDB(new BabuDBConfig("myDatabase/", "myDatabase/", 2, 1024 * 1024 * 16, 5 * 60, SyncMode.SYNC_WRITE,0,0, false));
-            DatabaseManager dbm = database.getDatabaseManager();
+            BabuDB databaseSystem = BabuDBFactory.createBabuDB(new BabuDBConfig("myDatabase/", 
+                    "myDatabase/", 2, 1024 * 1024 * 16, 5 * 60, SyncMode.SYNC_WRITE,0,0, 
+                    false));
+            DatabaseManager dbm = databaseSystem.getDatabaseManager();
                         
             //create a new database called myDB
             dbm.createDatabase("myDB", 2);
             Database db = dbm.getDatabase("myDB");
-
+            
             //create an insert group for atomic inserts
             BabuDBInsertGroup group = db.createInsertGroup();
 
@@ -40,13 +42,12 @@ public class SimpleDemo {
             byte[] result = db.lookup(0, "Key1".getBytes(),null).get();
 
             //create a checkpoint for faster start-ups
-            database.getCheckpointer().checkpoint();
+            databaseSystem.getCheckpointer().checkpoint();
 
             //shutdown database
-            database.shutdown();
+            databaseSystem.shutdown();
         } catch (BabuDBException ex) {
             ex.printStackTrace();
         }
-        
     }  
 }
