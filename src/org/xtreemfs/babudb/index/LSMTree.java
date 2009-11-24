@@ -22,8 +22,12 @@ import org.xtreemfs.babudb.index.writer.DiskIndexWriter;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 
 public class LSMTree {
-    
+
+    // TODO: Entries per block should be configurable
     private static final int          MAX_ENTRIES_PER_BLOCK = 16;
+
+    // TODO: Max file size should be configurable, currently its 1GB
+    private static final int          MAX_BLOCK_FILE_SIZE = 1024*1024*1024;
     
     private static final byte[]       NULL_ELEMENT          = new byte[0];
     
@@ -201,7 +205,7 @@ public class LSMTree {
     }
     
     /**
-     * Performs a prefix lookup in a given snapshot. Key-value paris are
+     * Performs a prefix lookup in a given snapshot. Key-value pairs are
      * returned in an iterator in the given key order, where only such keys are
      * returned with a matching prefix according to the comparator.
      * 
@@ -276,7 +280,7 @@ public class LSMTree {
      *             if an I/O error occurs while writing the snapshot
      */
     public void materializeSnapshot(String targetFile, int snapId) throws IOException {
-        DiskIndexWriter writer = new DiskIndexWriter(targetFile, MAX_ENTRIES_PER_BLOCK, false);
+        DiskIndexWriter writer = new DiskIndexWriter(targetFile, MAX_ENTRIES_PER_BLOCK, false, MAX_BLOCK_FILE_SIZE);
         writer.writeIndex(prefixLookup(null, snapId, true));
     }
     
@@ -296,7 +300,7 @@ public class LSMTree {
      */
     public void materializeSnapshot(String targetFile, final int snapId, final int indexId,
         final SnapshotConfig snap) throws IOException {
-        DiskIndexWriter writer = new DiskIndexWriter(targetFile, MAX_ENTRIES_PER_BLOCK, false);
+        DiskIndexWriter writer = new DiskIndexWriter(targetFile, MAX_ENTRIES_PER_BLOCK, false, MAX_BLOCK_FILE_SIZE);
         writer.writeIndex(new Iterator<Entry<byte[], byte[]>>() {
             
             private Iterator<Entry<byte[], byte[]>>[] iterators;

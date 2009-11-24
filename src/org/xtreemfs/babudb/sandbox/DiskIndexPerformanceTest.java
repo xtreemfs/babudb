@@ -37,6 +37,7 @@ public class DiskIndexPerformanceTest {
         // hitrate in percent
         options.put("hitrate", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,10));
         options.put("keylength", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,8));
+        options.put("blockfilesize", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,1024*1024*1024));
         options.put("scans", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,1000));
         options.put("debug", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,Logging.LEVEL_EMERG));
         options.put("compression", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH, false));
@@ -63,6 +64,8 @@ public class DiskIndexPerformanceTest {
         final int maxStrLen = options.get("keylength").numValue.intValue();
         final char minChar = 48;
         final char maxChar = 122;
+
+        final int blockFileSize = options.get("blockfilesize").numValue.intValue();
         
         final int scans = options.get("scans").numValue.intValue();
         	
@@ -96,7 +99,7 @@ public class DiskIndexPerformanceTest {
             	System.out.println("creating new database with " + size + " random entries ...");
             
             // write the map to a disk index
-            DiskIndexWriter index = new DiskIndexWriter(path, entriesPerBlock.intValue(), compress);
+            DiskIndexWriter index = new DiskIndexWriter(path, entriesPerBlock.intValue(), compress, blockFileSize);
             
             if(!input.equals(DEFAULT_DATAGEN)) {
             	/* note that the iterator must return the items sorted */
