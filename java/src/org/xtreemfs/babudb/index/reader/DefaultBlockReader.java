@@ -40,17 +40,24 @@ public class DefaultBlockReader implements BlockReader {
         this.position = position;
         this.limit = limit;
         this.comp = comp;
-        
-        int keysOffset = position + KEYS_OFFSET;
-        int valsOffset = position + buf.getInt(position);
-        numEntries = buf.getInt(position + 4);
-        int keyEntrySize = buf.getInt(position + 8);
-        int valEntrySize = buf.getInt(position + 12);
-        
-        keys = keyEntrySize == -1 ? new VarLenMiniPage(numEntries, buf, keysOffset, valsOffset, comp)
-            : new FixedLenMiniPage(keyEntrySize, numEntries, buf, keysOffset, valsOffset, comp);
-        values = valEntrySize == -1 ? new VarLenMiniPage(numEntries, buf, valsOffset, limit, comp)
-            : new FixedLenMiniPage(valEntrySize, numEntries, buf, valsOffset, limit, comp);
+
+        // with limit <= 0 there are no entries in the buffer
+        if(limit > 0) {
+            int keysOffset = position + KEYS_OFFSET;
+            int valsOffset = position + buf.getInt(position);
+            numEntries = buf.getInt(position + 4);
+            int keyEntrySize = buf.getInt(position + 8);
+            int valEntrySize = buf.getInt(position + 12);
+            keys = keyEntrySize == -1 ? new VarLenMiniPage(numEntries, buf, keysOffset, valsOffset, comp)
+                : new FixedLenMiniPage(keyEntrySize, numEntries, buf, keysOffset, valsOffset, comp);
+            values = valEntrySize == -1 ? new VarLenMiniPage(numEntries, buf, valsOffset, limit, comp)
+                : new FixedLenMiniPage(valEntrySize, numEntries, buf, valsOffset, limit, comp);
+        } else {
+            numEntries = 0;
+            keys = new FixedLenMiniPage(0,0, null, 0, 0, comp);
+            values = new FixedLenMiniPage(0,0, null, 0, 0, comp);            
+        }
+
     }
     
     public BlockReader clone() {

@@ -28,11 +28,14 @@ import org.xtreemfs.include.common.logging.Logging;
 
 public class DiskIndexTest extends TestCase {
     
-    private static final String              PATH1             = "/tmp/index1.bin";
+    private static final String              PATH1             = "/tmp/index1";
     
-    private static final String              PATH2             = "/tmp/index2.bin";
+    private static final String              PATH2             = "/tmp/index2";
     
     private static final int                 MAX_BLOCK_ENTRIES = 16;
+
+    // set to >= 1024*8 otherwise number of open files get too large
+    private static final int                 MAX_BLOCK_FILE_SIZE = 1024*8;
     
     private static final int                 NUM_ENTRIES       = 50000;
     
@@ -52,26 +55,15 @@ public class DiskIndexTest extends TestCase {
     }
     
     public void tearDown() throws Exception {
-        new File(PATH1).delete();
-        new File(PATH2).delete();
+        //deleteDirectory(new File(PATH1));
+        //deleteDirectory(new File(PATH2));
     }
     
     public void testLookup() throws Exception {
-        // create a new disk index and look up each key
-        byte[][] entries = { new byte[] { '\0' }, "word".getBytes(), new byte[] { '#' } };
-        
-        populateDiskIndex(entries);
-        DiskIndex diskIndex = new DiskIndex(PATH2, DefaultByteRangeComparator.getInstance(), COMPRESSED);
-        
-        for (byte[] entry : entries)
-            assertEquals(0, COMP.compare(entry, diskIndex.lookup(entry)));
-        assertEquals(entries.length, diskIndex.numKeys());
-        diskIndex.destroy();
-        
         // create an empty disk index
-        entries = new byte[][] {};
+        byte[][] entries = new byte[][] {};
         populateDiskIndex(entries);
-        diskIndex = new DiskIndex(PATH2, new DefaultByteRangeComparator(), COMPRESSED);
+        DiskIndex diskIndex = new DiskIndex(PATH2, new DefaultByteRangeComparator(), COMPRESSED);
         
         assertEquals(entries.length, diskIndex.numKeys());
         diskIndex.destroy();
@@ -85,7 +77,18 @@ public class DiskIndexTest extends TestCase {
             assertEquals(0, COMP.compare(entry, diskIndex.lookup(entry)));
         assertEquals(entries.length, diskIndex.numKeys());
         diskIndex.destroy();
-        
+
+        // create a new disk index and look up each key
+        entries = new byte[][] { new byte[] { '\0' }, "word".getBytes(), new byte[] { '#' } };
+
+        populateDiskIndex(entries);
+        diskIndex = new DiskIndex(PATH2, DefaultByteRangeComparator.getInstance(), COMPRESSED);
+
+        for (byte[] entry : entries)
+            assertEquals(0, COMP.compare(entry, diskIndex.lookup(entry)));
+        assertEquals(entries.length, diskIndex.numKeys());
+        diskIndex.destroy();
+
         // create another disk index and look up each key
         entries = new byte[][] { "fdsaf".getBytes(), "blubberbla".getBytes(), "zzz".getBytes(),
             "aaa".getBytes(), "aab".getBytes() };
@@ -106,10 +109,10 @@ public class DiskIndexTest extends TestCase {
             map.put(createRandomString(1, 15).getBytes(), createRandomString(1, 15).getBytes());
         
         // delete old index file
-        new File(PATH1).delete();
+        TestUtils.deleteDirectory(new File(PATH1));
         
         // write the map to a disk index
-        DiskIndexWriter index = new DiskIndexWriter(PATH1, MAX_BLOCK_ENTRIES, COMPRESSED);
+        DiskIndexWriter index = new DiskIndexWriter(PATH1, MAX_BLOCK_ENTRIES, COMPRESSED, MAX_BLOCK_FILE_SIZE);
         index.writeIndex(map.entrySet().iterator());
         
         // read the disk index
@@ -144,8 +147,8 @@ public class DiskIndexTest extends TestCase {
             testMap.put(keys[i].getBytes(), vals[i].getBytes());
         
         // write the map to a disk index
-        new File(PATH2).delete();
-        DiskIndexWriter index = new DiskIndexWriter(PATH2, 4, COMPRESSED);
+        TestUtils.deleteDirectory(new File(PATH2));
+        DiskIndexWriter index = new DiskIndexWriter(PATH2, 4, COMPRESSED, MAX_BLOCK_FILE_SIZE);
         index.writeIndex(testMap.entrySet().iterator());
         
         // read the disk index
@@ -180,7 +183,8 @@ public class DiskIndexTest extends TestCase {
         assertFalse(it.hasNext());
         
         // create a disk index from an empty index file
-        index = new DiskIndexWriter(PATH1, 4, COMPRESSED);
+        TestUtils.deleteDirectory(new File(PATH1));
+        index = new DiskIndexWriter(PATH1, 4, COMPRESSED, MAX_BLOCK_FILE_SIZE);
         index.writeIndex(new HashMap().entrySet().iterator());
         
         diskIndex = new DiskIndex(PATH1, new DefaultByteRangeComparator(), COMPRESSED);
@@ -212,8 +216,8 @@ public class DiskIndexTest extends TestCase {
             testMap.put(keys[i].getBytes(), vals[i].getBytes());
         
         // write the map to a disk index
-        new File(PATH2).delete();
-        DiskIndexWriter index = new DiskIndexWriter(PATH2, 4, COMPRESSED);
+        TestUtils.deleteDirectory(new File(PATH2));
+        DiskIndexWriter index = new DiskIndexWriter(PATH2, 4, COMPRESSED, MAX_BLOCK_FILE_SIZE);
         index.writeIndex(testMap.entrySet().iterator());
         
         // read the disk index
@@ -248,7 +252,8 @@ public class DiskIndexTest extends TestCase {
         assertFalse(it.hasNext());
         
         // create a disk index from an empty index file
-        index = new DiskIndexWriter(PATH1, 4, COMPRESSED);
+        TestUtils.deleteDirectory(new File(PATH1));
+        index = new DiskIndexWriter(PATH1, 4, COMPRESSED, MAX_BLOCK_FILE_SIZE);
         index.writeIndex(new HashMap().entrySet().iterator());
         
         diskIndex = new DiskIndex(PATH1, new DefaultByteRangeComparator(), COMPRESSED);
@@ -278,10 +283,10 @@ public class DiskIndexTest extends TestCase {
             map.put(createRandomString(1, 15).getBytes(), createRandomString(1, 15).getBytes());
         
         // delete old index file
-        new File(PATH1).delete();
+        TestUtils.deleteDirectory(new File(PATH1));
         
         // write the map to a disk index
-        DiskIndexWriter index = new DiskIndexWriter(PATH1, MAX_BLOCK_ENTRIES, COMPRESSED);
+        DiskIndexWriter index = new DiskIndexWriter(PATH1, MAX_BLOCK_ENTRIES, COMPRESSED, MAX_BLOCK_FILE_SIZE);
         index.writeIndex(map.entrySet().iterator());
         
         // read the disk index
@@ -363,10 +368,10 @@ public class DiskIndexTest extends TestCase {
             map.put(createRandomString(1, 15).getBytes(), createRandomString(1, 15).getBytes());
         
         // delete old index file
-        new File(PATH1).delete();
+        TestUtils.deleteDirectory(new File(PATH1));
         
         // write the map to a disk index
-        DiskIndexWriter index = new DiskIndexWriter(PATH1, MAX_BLOCK_ENTRIES, COMPRESSED);
+        DiskIndexWriter index = new DiskIndexWriter(PATH1, MAX_BLOCK_ENTRIES, COMPRESSED, MAX_BLOCK_FILE_SIZE);
         index.writeIndex(map.entrySet().iterator());
         
         // read the disk index
@@ -458,11 +463,11 @@ public class DiskIndexTest extends TestCase {
             testMap.put(entries[i], entries[i]);
         
         // write the map to a disk index
-        new File(PATH2).delete();
-        DiskIndexWriter index = new DiskIndexWriter(PATH2, 2, COMPRESSED);
+        TestUtils.deleteDirectory(new File(PATH2));
+        DiskIndexWriter index = new DiskIndexWriter(PATH2, 2, COMPRESSED, MAX_BLOCK_FILE_SIZE);
         index.writeIndex(testMap.entrySet().iterator());
     }
-    
+
     public static void main(String[] args) {
         TestRunner.run(DiskIndexTest.class);
     }

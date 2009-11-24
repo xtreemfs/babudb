@@ -37,7 +37,10 @@ public class LSMTreePerformanceTest {
         final int size = Integer.parseInt(args[1]);
         final int inserts = Integer.parseInt(args[2]);
         final int lookups = Integer.parseInt(args[3]);
-        
+
+        // TODO: make configurable
+        final int blockFileSize = 1024*1024*1024;
+
         if (size != 0) {
             // delete old index file
             new File(path).delete();
@@ -45,7 +48,7 @@ public class LSMTreePerformanceTest {
             System.out.println("creating new database with " + size + " random entries ...");
             
             // write the map to a disk index
-            DiskIndexWriter index = new DiskIndexWriter(path, entriesPerBlock, false);
+            DiskIndexWriter index = new DiskIndexWriter(path, entriesPerBlock, false, blockFileSize);
             index.writeIndex(new Iterator<Entry<byte[], byte[]>>() {
                 
                 private int    count;

@@ -36,17 +36,17 @@ public class LSMTreeTest extends TestCase {
     
     public void setUp() {
         Logging.start(Logging.LEVEL_ERROR);
-        new File(SNAP_FILE).delete();
-        new File(SNAP_FILE2).delete();
-        new File(SNAP_FILE3).delete();
-        new File(SNAP_FILE4).delete();
+        TestUtils.deleteDirectory(new File(SNAP_FILE));
+        TestUtils.deleteDirectory(new File(SNAP_FILE2));
+        TestUtils.deleteDirectory(new File(SNAP_FILE3));
+        TestUtils.deleteDirectory(new File(SNAP_FILE4));
     }
     
     public void tearDown() throws Exception {
-        new File(SNAP_FILE).delete();
-        new File(SNAP_FILE2).delete();
-        new File(SNAP_FILE3).delete();
-        new File(SNAP_FILE4).delete();
+        TestUtils.deleteDirectory(new File(SNAP_FILE));
+        TestUtils.deleteDirectory(new File(SNAP_FILE2));
+        TestUtils.deleteDirectory(new File(SNAP_FILE3));
+        TestUtils.deleteDirectory(new File(SNAP_FILE4));
     }
     
     public void testSnapshots() throws Exception {
