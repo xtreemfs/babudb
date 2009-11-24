@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.Iterator;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
@@ -26,6 +27,7 @@ import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
+import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.include.common.buffer.BufferPool;
@@ -33,15 +35,15 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
 
 public class DatabaseImpl implements Database {
-
+    
     private BabuDB      dbs;
     
     private LSMDatabase lsmDB;
-        
-/*
- * constructors/destructors
- */
     
+    /*
+     * constructors/destructors
+     */
+
     /**
      * Creates a new Database.
      * 
@@ -55,6 +57,7 @@ public class DatabaseImpl implements Database {
     
     /*
      * (non-Javadoc)
+     * 
      * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#shutdown()
      */
     @Override
@@ -70,6 +73,7 @@ public class DatabaseImpl implements Database {
     
     /*
      * (non-Javadoc)
+     * 
      * @see org.xtreemfs.babudb.lsmdb.Database#createInsertGroup()
      */
     @Override
@@ -78,19 +82,20 @@ public class DatabaseImpl implements Database {
         
         return new BabuDBInsertGroup(lsmDB);
     }
-
-/*
- * DB modification operations 
- */
     
     /*
+     * DB modification operations
+     */
+
+    /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.lsmdb.Database#singleInsert(int, byte[], byte[], java.lang.Object)
+     * 
+     * @see org.xtreemfs.babudb.lsmdb.Database#singleInsert(int, byte[], byte[],
+     * java.lang.Object)
      */
     @Override
-    public BabuDBRequestResult<Object> singleInsert(int indexId, byte[] key, 
-            byte[] value, Object context) {
-
+    public BabuDBRequestResult<Object> singleInsert(int indexId, byte[] key, byte[] value, Object context) {
+        
         BabuDBInsertGroup irg = new BabuDBInsertGroup(lsmDB);
         irg.addInsert(indexId, key, value);
         
@@ -99,7 +104,9 @@ public class DatabaseImpl implements Database {
     
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.lsmdb.Database#insert(org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup, java.lang.Object)
+     * 
+     * @seeorg.xtreemfs.babudb.lsmdb.Database#insert(org.xtreemfs.babudb.lsmdb.
+     * BabuDBInsertGroup, java.lang.Object)
      */
     @Override
     public BabuDBRequestResult<Object> insert(BabuDBInsertGroup irg, Object context) {
@@ -117,17 +124,16 @@ public class DatabaseImpl implements Database {
         LSMDBWorker w = dbs.getWorker(dbId);
         if (w != null) {
             if (Logging.isNotice()) {
-                Logging.logMessage(Logging.LEVEL_NOTICE, this, "insert request" +
-                        " is sent to worker #" + dbId % dbs.getWorkerCount());
+                Logging.logMessage(Logging.LEVEL_NOTICE, this, "insert request" + " is sent to worker #"
+                    + dbId % dbs.getWorkerCount());
             }
-        
+            
             try {
                 w.addRequest(new LSMDBRequest<Object>(lsmDB, result, ins));
             } catch (InterruptedException ex) {
-                result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, 
-                        "operation was interrupted", ex));
+                result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, "operation was interrupted", ex));
             }
-        } else 
+        } else
             directInsert(irg, result);
         
         return result;
@@ -138,91 +144,118 @@ public class DatabaseImpl implements Database {
      * 
      * @param irg
      *            the group of inserts.
-     * @param listener 
+     * @param listener
      *            to notify after insert.
-     */ 
-    private void directInsert(final BabuDBInsertGroup irg, final 
-            BabuDBRequest<Object> listener) {
+     */
+    private void directInsert(final BabuDBInsertGroup irg, final BabuDBRequest<Object> listener) {
         
         int numIndices = lsmDB.getIndexCount();
         
         try {
-            for (InsertRecord ir : irg.getRecord().getInserts()) 
-                if ((ir.getIndexId() >= numIndices) || (ir.getIndexId() < 0)) 
-                    throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + 
-                            ir.getIndexId() + " does not exist");
+            for (InsertRecord ir : irg.getRecord().getInserts())
+                if ((ir.getIndexId() >= numIndices) || (ir.getIndexId() < 0))
+                    throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + ir.getIndexId()
+                        + " does not exist");
         } catch (BabuDBException e) {
             listener.failed(e);
             return;
         }
+        
+        final AtomicBoolean done = new AtomicBoolean();
+        final Exception[] exc = new Exception[1];
         
         int size = irg.getRecord().getSize();
         ReusableBuffer buf = BufferPool.allocate(size);
         irg.getRecord().serialize(buf);
         buf.flip();
         
+        // create a new log entry
         LogEntry e = new LogEntry(buf, new SyncListener() {
             
             public void synced(LogEntry entry) {
                 entry.free();
                 
-                // insert into the in-memory-tree
-                for (InsertRecord ir : irg.getRecord().getInserts()) {
-                    LSMTree index = lsmDB.getIndex(ir.getIndexId());
-                    if (ir.getValue() != null) {
-                        index.insert(ir.getKey(), ir.getValue());
-                    } else {
-                        index.delete(ir.getKey());
-                    }
+                synchronized (done) {
+                    done.set(true);
+                    done.notify();
                 }
-                
-                listener.finished();
             }
             
             public void failed(LogEntry entry, Exception ex) {
                 entry.free();
-                
-                listener.failed((ex != null && ex instanceof BabuDBException) 
-                        ? (BabuDBException) ex : new BabuDBException(
-                                ErrorCode.IO_ERROR, "could not execute insert "+
-                                "because of IO problem", ex));
+                exc[0] = ex;
             }
+            
         }, LogEntry.PAYLOAD_TYPE_INSERT);
         
+        // append the new log entry to the persistent log
         try {
             dbs.getLogger().append(e);
         } catch (InterruptedException ex) {
-            listener.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, 
-                    "cannot write update to disk log", ex));
-        }       
+            listener.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, "cannot write update to disk log",
+                ex));
+        }
+        
+        // in case of synchronous inserts, wait until the disk logger returns
+        if (dbs.getConfig().getSyncMode() != SyncMode.ASYNC) {
+            
+            synchronized (done) {
+                try {
+                    while (!done.get())
+                        done.wait();
+                } catch (InterruptedException e1) {
+                    Logging.logError(Logging.LEVEL_ERROR, this, e1);
+                }
+            }
+            
+            // if an exception occurred while writing the log, respond with an error message
+            if (exc[0] != null) {
+                listener.failed((exc[0] != null && exc[0] instanceof BabuDBException) ? (BabuDBException) exc[0]
+                    : new BabuDBException(ErrorCode.IO_ERROR, "could not execute insert "
+                        + "because of IO problem", exc[0]));
+                return;
+            }
+        }
+        
+        // insert into the in-memory-tree
+        for (InsertRecord ir : irg.getRecord().getInserts()) {
+            LSMTree index = lsmDB.getIndex(ir.getIndexId());
+            if (ir.getValue() != null) {
+                index.insert(ir.getKey(), ir.getValue());
+            } else {
+                index.delete(ir.getKey());
+            }
+        }
+        
+        listener.finished();
+        
     }
     
-/*
- * DB lookup operations    
- */
-    
+    /*
+     * DB lookup operations
+     */
+
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#lookup(int, byte[], java.lang.Object)
+     * 
+     * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#lookup(int, byte[],
+     * java.lang.Object)
      */
     @Override
-    public BabuDBRequestResult<byte[]> lookup(int indexId, byte[] key, 
-            Object context) {
+    public BabuDBRequestResult<byte[]> lookup(int indexId, byte[] key, Object context) {
         
-        BabuDBRequest<byte[]> result = new BabuDBRequest<byte[]>(context);        
+        BabuDBRequest<byte[]> result = new BabuDBRequest<byte[]>(context);
         LSMDBWorker w = dbs.getWorker(lsmDB.getDatabaseId());
         if (w != null) {
             if (Logging.isNotice()) {
-                Logging.logMessage(Logging.LEVEL_NOTICE, this, "lookup request" +
-                		" is sent to worker #"
+                Logging.logMessage(Logging.LEVEL_NOTICE, this, "lookup request" + " is sent to worker #"
                     + lsmDB.getDatabaseId() % dbs.getWorkerCount());
             }
             
             try {
                 w.addRequest(new LSMDBRequest<byte[]>(lsmDB, indexId, result, key, false));
             } catch (InterruptedException ex) {
-                result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, 
-                        "operation was interrupted", ex));
+                result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, "operation was interrupted", ex));
             }
         } else
             directLookup(indexId, key, result);
@@ -231,33 +264,33 @@ public class DatabaseImpl implements Database {
     }
     
     /**
-     * Looks up a key in the database, without using a worker thread. 
+     * Looks up a key in the database, without using a worker thread.
      * 
      * @param indexId
      * @param key
-     * @param listener 
-     *                  the result listener.
+     * @param listener
+     *            the result listener.
      */
-    private void directLookup(int indexId, byte[] key, 
-            BabuDBRequest<byte[]> listener) {
+    private void directLookup(int indexId, byte[] key, BabuDBRequest<byte[]> listener) {
         
         if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
-            listener.failed(new BabuDBException(ErrorCode.NO_SUCH_INDEX, 
-                    "index does not exist"));
+            listener.failed(new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist"));
         } else
             listener.finished(lsmDB.getIndex(indexId).lookup(key));
     }
-
+    
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#prefixLookup(int, byte[], java.lang.Object)
+     * 
+     * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#prefixLookup(int, byte[],
+     * java.lang.Object)
      */
     @Override
-    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> prefixLookup(
-            int indexId, byte[] key, Object context) {
+    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> prefixLookup(int indexId, byte[] key,
+        Object context) {
         
-        BabuDBRequest<Iterator<Entry<byte[], byte[]>>> result = 
-            new BabuDBRequest<Iterator<Entry<byte[],byte[]>>>(context);
+        BabuDBRequest<Iterator<Entry<byte[], byte[]>>> result = new BabuDBRequest<Iterator<Entry<byte[], byte[]>>>(
+            context);
         
         try {
             dbs.slaveCheck();
@@ -269,17 +302,15 @@ public class DatabaseImpl implements Database {
         LSMDBWorker w = dbs.getWorker(lsmDB.getDatabaseId());
         if (w != null) {
             if (Logging.isNotice() && w != null) {
-                Logging.logMessage(Logging.LEVEL_NOTICE, this, "lookup request" +
-                		" is sent to worker #" + lsmDB.getDatabaseId() 
-                		% dbs.getWorkerCount());
+                Logging.logMessage(Logging.LEVEL_NOTICE, this, "lookup request" + " is sent to worker #"
+                    + lsmDB.getDatabaseId() % dbs.getWorkerCount());
             }
             
             try {
-                w.addRequest(new LSMDBRequest<Iterator<Entry<byte[], byte[]>>>(
-                        lsmDB, indexId, result, key, true));
+                w.addRequest(new LSMDBRequest<Iterator<Entry<byte[], byte[]>>>(lsmDB, indexId, result, key,
+                    true));
             } catch (InterruptedException ex) {
-                result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, 
-                        "operation was interrupted", ex));
+                result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, "operation was interrupted", ex));
             }
         } else
             directPrefixLookup(indexId, key, result);
@@ -294,29 +325,30 @@ public class DatabaseImpl implements Database {
      *            index id (0..NumIndices-1)
      * @param key
      *            the key to start the iterator at
-     * @param listener 
+     * @param listener
      *            the result listener.
      */
-    private void directPrefixLookup(int indexId, byte[] key, 
-            BabuDBRequest<Iterator<Entry<byte[], byte[]>>> listener) {
+    private void directPrefixLookup(int indexId, byte[] key,
+        BabuDBRequest<Iterator<Entry<byte[], byte[]>>> listener) {
         
-        if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) 
-            listener.failed(new BabuDBException(ErrorCode.NO_SUCH_INDEX, 
-                    "index does not exist"));
+        if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0))
+            listener.failed(new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist"));
         else
             listener.finished(lsmDB.getIndex(indexId).prefixLookup(key));
     }
     
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#reversePrefixLookup(int, byte[], java.lang.Object)
+     * 
+     * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#reversePrefixLookup(int,
+     * byte[], java.lang.Object)
      */
     @Override
-    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> reversePrefixLookup(
-            int indexId, byte[] key, Object context) {
+    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> reversePrefixLookup(int indexId, byte[] key,
+        Object context) {
         
-        BabuDBRequest<Iterator<Entry<byte[], byte[]>>> result = 
-            new BabuDBRequest<Iterator<Entry<byte[],byte[]>>>(context);
+        BabuDBRequest<Iterator<Entry<byte[], byte[]>>> result = new BabuDBRequest<Iterator<Entry<byte[], byte[]>>>(
+            context);
         
         try {
             dbs.slaveCheck();
@@ -337,26 +369,27 @@ public class DatabaseImpl implements Database {
      *            index id (0..NumIndices-1)
      * @param key
      *            the key to start the iterator at
-     * @param listener 
+     * @param listener
      *            the result listener.
      */
-    private void directReversePrefixLookup(
-            int indexId, byte[] key, BabuDBRequest<Iterator<Entry<byte[], byte[]>>> listener)  {
+    private void directReversePrefixLookup(int indexId, byte[] key,
+        BabuDBRequest<Iterator<Entry<byte[], byte[]>>> listener) {
         
-        if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) 
-            listener.failed(new BabuDBException(ErrorCode.NO_SUCH_INDEX, 
-                    "index does not exist"));
+        if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0))
+            listener.failed(new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist"));
         else
             listener.finished(lsmDB.getIndex(indexId).prefixLookup(key, false));
     }
     
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#userDefinedLookup(org.xtreemfs.babudb.UserDefinedLookup, java.lang.Object)
+     * 
+     * @see
+     * org.xtreemfs.babudb.lsmdb.DatabaseRO#userDefinedLookup(org.xtreemfs.babudb
+     * .UserDefinedLookup, java.lang.Object)
      */
     @Override
-    public BabuDBRequestResult<Object> userDefinedLookup(UserDefinedLookup udl, 
-            Object context) {
+    public BabuDBRequestResult<Object> userDefinedLookup(UserDefinedLookup udl, Object context) {
         BabuDBRequest<Object> result = new BabuDBRequest<Object>(context);
         
         try {
@@ -369,16 +402,14 @@ public class DatabaseImpl implements Database {
         LSMDBWorker w = dbs.getWorker(lsmDB.getDatabaseId());
         if (w != null) {
             if (Logging.isNotice()) {
-                Logging.logMessage(Logging.LEVEL_NOTICE, this, "udl request is" +
-                                " sent to worker #" + lsmDB.getDatabaseId() 
-                                % dbs.getWorkerCount());
+                Logging.logMessage(Logging.LEVEL_NOTICE, this, "udl request is" + " sent to worker #"
+                    + lsmDB.getDatabaseId() % dbs.getWorkerCount());
             }
             
             try {
                 w.addRequest(new LSMDBRequest<Object>(lsmDB, result, udl));
             } catch (InterruptedException ex) {
-                result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, 
-                        "operation was interrupted", ex));
+                result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, "operation was interrupted", ex));
             }
         } else
             directUserDefinedLookup(udl, result);
@@ -392,8 +423,7 @@ public class DatabaseImpl implements Database {
      * @param udl
      * @param listener
      */
-    private void directUserDefinedLookup(UserDefinedLookup udl, 
-            BabuDBRequest<Object> listener) {
+    private void directUserDefinedLookup(UserDefinedLookup udl, BabuDBRequest<Object> listener) {
         final LSMLookupInterface lif = new LSMLookupInterface(lsmDB);
         try {
             Object result = udl.execute(lif);
@@ -403,10 +433,10 @@ public class DatabaseImpl implements Database {
         }
     }
     
-/*
- * snapshot specific operations    
- */
-    
+    /*
+     * snapshot specific operations
+     */
+
     public byte[] directLookup(int indexId, int snapId, byte[] key) throws BabuDBException {
         dbs.slaveCheck();
         
@@ -417,13 +447,13 @@ public class DatabaseImpl implements Database {
     }
     
     public Iterator<Entry<byte[], byte[]>> directPrefixLookup(int indexId, int snapId, byte[] key,
-            boolean ascending) throws BabuDBException {
-            dbs.slaveCheck();
-            
-            if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
-                throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
-            }
-            return lsmDB.getIndex(indexId).prefixLookup(key, snapId, ascending);
+        boolean ascending) throws BabuDBException {
+        dbs.slaveCheck();
+        
+        if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
+            throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
+        }
+        return lsmDB.getIndex(indexId).prefixLookup(key, snapId, ascending);
     }
     
     /**
@@ -457,8 +487,8 @@ public class DatabaseImpl implements Database {
         
         try {
             LSN lsn = lsmDB.getOndiskLSN();
-            lsmDB.writeSnapshot(dbs.getConfig().getBaseDir() + destDB + File.
-                    separatorChar, ids, lsn.getViewId(), lsn.getSequenceNo());
+            lsmDB.writeSnapshot(dbs.getConfig().getBaseDir() + destDB + File.separatorChar, ids, lsn
+                    .getViewId(), lsn.getSequenceNo());
         } catch (IOException ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot write snapshot: " + ex, ex);
         }
@@ -488,21 +518,20 @@ public class DatabaseImpl implements Database {
         }
         return result;
     }
-
+    
     /**
      * Creates an in-memory snapshot of all indices in a single database. The
-     * snapshot will be discarded when the system is restarted.
-     * This Operation comes without slave-protection.
-     * The {@link DiskLogger} has to be locked before executing this method. 
+     * snapshot will be discarded when the system is restarted. This Operation
+     * comes without slave-protection. The {@link DiskLogger} has to be locked
+     * before executing this method.
      * 
      * NOTE: this method should only be invoked by the framework
      * 
      * @return an array with the snapshot ID for each index in the database
      */
-    public int[] proceedCreateSnapshot() {       
+    public int[] proceedCreateSnapshot() {
         return lsmDB.createSnapshot();
     }
-
     
     /**
      * Creates an in-memory snapshot of a given set of indices in a single
@@ -531,13 +560,11 @@ public class DatabaseImpl implements Database {
                 buf = ReusableBuffer.wrap(bout.toByteArray());
                 oout.close();
             } catch (IOException exc) {
-                throw new BabuDBException(ErrorCode.IO_ERROR, 
-                        "could not serialize snapshot configuration: " + 
-                        snap.getClass(), exc);
+                throw new BabuDBException(ErrorCode.IO_ERROR, "could not serialize snapshot configuration: "
+                    + snap.getClass(), exc);
             }
             
-            DatabaseManagerImpl.metaInsert(LogEntry.PAYLOAD_TYPE_SNAP, buf, 
-                    dbs.getLogger());
+            DatabaseManagerImpl.metaInsert(LogEntry.PAYLOAD_TYPE_SNAP, buf, dbs.getLogger());
         }
         
         // critical block...
@@ -566,8 +593,8 @@ public class DatabaseImpl implements Database {
      * @param cfg
      *            the snapshot configuration
      * @throws BabuDBException
-     *             if the snapshot cannot be written,
-     *             or isSlave_check was positive
+     *             if the snapshot cannot be written, or isSlave_check was
+     *             positive
      */
     public void writeSnapshot(int[] snapIds, String directory, SnapshotConfig cfg) throws BabuDBException {
         dbs.slaveCheck();
@@ -589,7 +616,8 @@ public class DatabaseImpl implements Database {
      * @throws BabuDBException
      *             if the snapshot cannot be written
      */
-    public void proceedWriteSnapshot(int[] snapIds, String directory, SnapshotConfig cfg) throws BabuDBException {
+    public void proceedWriteSnapshot(int[] snapIds, String directory, SnapshotConfig cfg)
+        throws BabuDBException {
         try {
             lsmDB.writeSnapshot(directory, snapIds, cfg);
         } catch (IOException ex) {
@@ -607,8 +635,8 @@ public class DatabaseImpl implements Database {
      * @param snapIds
      *            the snapshot Ids (obtained via createSnapshot).
      * @throws BabuDBException
-     *             if a snapshot cannot be written,
-     *             or BabuDB is running in slave-mode.
+     *             if a snapshot cannot be written, or BabuDB is running in
+     *             slave-mode.
      */
     public void writeSnapshot(int viewId, long sequenceNo, int[] snapIds) throws BabuDBException {
         dbs.slaveCheck();
@@ -672,18 +700,17 @@ public class DatabaseImpl implements Database {
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot clean up: " + ex, ex);
         }
     }
-
-/*
- * getter/setter
- */
     
+    /*
+     * getter/setter
+     */
+
     /**
      * <p>
-     * Replaces the currently used {@link LSMDatabase} with the given one.
-     * <br>
-     * Be really careful with this operation. 
-     * {@link LSMDBRequest}s might get lost.
-     * </p> 
+     * Replaces the currently used {@link LSMDatabase} with the given one. <br>
+     * Be really careful with this operation. {@link LSMDBRequest}s might get
+     * lost.
+     * </p>
      * 
      * @param lsmDatabase
      */
@@ -702,6 +729,7 @@ public class DatabaseImpl implements Database {
     
     /*
      * (non-Javadoc)
+     * 
      * @see org.xtreemfs.babudb.lsmdb.Database#getComparators()
      */
     @Override
@@ -711,6 +739,7 @@ public class DatabaseImpl implements Database {
     
     /*
      * (non-Javadoc)
+     * 
      * @see org.xtreemfs.babudb.lsmdb.Database#getName()
      */
     @Override
