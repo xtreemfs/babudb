@@ -28,7 +28,6 @@ import org.xtreemfs.babudb.replication.operations.ReplicaOperation;
 import org.xtreemfs.babudb.replication.operations.StateOperation;
 import org.xtreemfs.babudb.replication.stages.StageRequest;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
-import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
 import org.xtreemfs.include.foundation.oncrpc.client.RPCResponseAvailableListener;
@@ -71,13 +70,17 @@ public class MasterRequestDispatcher extends RequestDispatcher {
                 rq.free();
         
         this.chunkSize = oldDispatcher.configuration.getChunkSize();
-        this.syncN = oldDispatcher.configuration.getSyncN();
+        
+        // Because the master is already synchronized and belongs to the set
+        // of N participants.
+        this.syncN = (oldDispatcher.configuration.getSyncN() > 0) ?
+                oldDispatcher.configuration.getSyncN()-1 : 
+                oldDispatcher.configuration.getSyncN();
         
         List<InetSocketAddress> slaves = new LinkedList<InetSocketAddress>(
                 oldDispatcher.configuration.getParticipants());
         
-        this.states = new SlavesStates(((ReplicationConfig) dbs.getConfig()).
-                getSyncN(),slaves,rpcClient);
+        this.states = new SlavesStates(this.syncN,slaves,rpcClient);
         
         // the sequence number of the initial LSN before incrementing the viewID cannot be 0 
         LSN initial = oldDispatcher.getState().latest;
@@ -136,13 +139,6 @@ public class MasterRequestDispatcher extends RequestDispatcher {
     }
     
     /**
-     * @return the sync-N for N-synchronization ... for real.
-     */
-    public int getSyncN() {
-        return syncN;
-    }
-    
-    /**
      * Update the state of the given slave with its newest heartBeat message.
      * 
      * @param slave
@@ -177,7 +173,7 @@ public class MasterRequestDispatcher extends RequestDispatcher {
         
         List<SlaveClient> slaves = getSlavesForBroadCast(); 
         final ReplicateResponse result = new ReplicateResponse(le,
-                slaves.size() - getSyncN());
+                slaves.size() - this.syncN);
         
         // make the replicate call at the clients
         if (slaves.size() == 0) { 

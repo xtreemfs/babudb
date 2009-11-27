@@ -57,11 +57,24 @@ public class SlavesStates {
         }
     }
     
-    // if a slave does not send a heartBeat in twice of the maximum delay 
-    // between two heartBeats, than it is definitively to slow and must be dead, 
-    // or will be dead soon.
+    /** 
+     * If a slave does not send a heartBeat in twice of the maximum delay 
+     * between two heartBeats, than it is definitively to slow and must be dead, 
+     * or will be dead soon.
+     */ 
     public final static long DELAY_TILL_DEAD = 2 * HeartbeatThread.MAX_DELAY_BETWEEN_HEARTBEATS;
+    
+    /** 
+     * The number of request a master can send to one slave is limited by this
+     * field to prevent it from killing the slave by a DoS.
+     */
     public final static int MAX_OPEN_REQUESTS_PER_SLAVE = 20;
+    
+    /**
+     * Determines how long the master should wait for busy slaves to become
+     * available again, before it refuses a replication request.  
+     */
+    public final static long WAIT_TILL_REFUSE = HeartbeatThread.MAX_DELAY_BETWEEN_HEARTBEATS;
     
     private final HashMap<InetAddress, State> stateTable = 
         new HashMap<InetAddress, State>(); 
@@ -177,7 +190,7 @@ public class SlavesStates {
         synchronized (stateTable) {
             // wait until enough slaves are available, if they are ...
             while (availableSlaves<syncN && !((slavesCount-deadSlaves)<syncN))
-                stateTable.wait();
+                stateTable.wait(WAIT_TILL_REFUSE);
             
             long time = TimeSync.getLocalSystemTime();
             // get all available slaves, if they are enough ...
@@ -200,12 +213,22 @@ public class SlavesStates {
                     }
                 }   
             }
+            
+            // throw an exception, if they are not.
+            if (result.size() < syncN) {
+                // recycle the slaves from the result, before throwing an exception
+                for (SlaveClient c : result) {
+                    State s = stateTable.get(c.getDefaultServerAddress().getAddress());
+                    if (s.openRequests == MAX_OPEN_REQUESTS_PER_SLAVE) 
+                        availableSlaves++;
+                    s.openRequests--;
+                }
+                
+                throw new NotEnoughAvailableSlavesException(        
+                    "With only '"+result.size()+"' are there not enough slaves " +
+                    "to perform the request.");
+            }
         }
-        // throw an exception, if they are not.
-        if (result.size()<syncN) throw new NotEnoughAvailableSlavesException(
-                "With only '"+result.size()+"' are there not enough slaves " +
-                "to perform the request.");
-        
         return result;
     }
 

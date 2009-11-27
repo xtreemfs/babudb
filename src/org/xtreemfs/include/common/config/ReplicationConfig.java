@@ -146,18 +146,28 @@ public class ReplicationConfig extends BabuDBConfig {
             }
             number++;
         }
-        assert (this.address != null) : "No one of the given participants " +
-                                        "described the localhost!";
+        if (this.address == null) throw new IOException("None of the given " +
+        		"participants described the localhost!");
         
         this.chunkSize = this.readOptionalInt("babudb.repl.chunkSize", 
                 DEFAULT_MAX_CHUNK_SIZE);
         
         this.syncN = this.readOptionalInt("babudb.repl.sync.n", 0);
         
+        if (this.syncN < 0 || this.syncN > this.participants.size()) throw new
+            IOException("Wrong Sync-N! It has to be at least 0 and #of "+
+                        "participants at the maximum!");
+        
+        if (this.syncN != 0 && this.syncN <= participants.size()/2)
+            throw new IOException("The requested N-sync-mode (N="+this.syncN+")" +
+            		" may cause inconsistent behavior, because there are '" +
+            		this.participants.size()+"' participants. The sync-N " +
+            		"has to be at least '"+(this.participants.size()/2)+1+"'!");
+        
         String backupDir = this.readRequiredString("babudb.repl.backupDir");
         if (backupDir.equals(baseDir) || backupDir.equals(dbLogDir)) 
-            throw new IOException("backup directory has to be different to " +
-            		"the dbLog directory and the base directory");   
+            throw new IOException("The backup-directory has to be different to " +
+            		"the dbLog-directory and the base-directory!");   
         
         this.backupDir = (backupDir.endsWith(File.separator)) ? backupDir : 
             backupDir+File.separator;
