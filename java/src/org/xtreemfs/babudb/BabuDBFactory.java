@@ -8,8 +8,8 @@
 
 package org.xtreemfs.babudb;
 
-import org.xtreemfs.include.common.config.BabuDBConfig;
-import org.xtreemfs.include.common.config.ReplicationConfig;
+import org.xtreemfs.babudb.config.BabuDBConfig;
+import org.xtreemfs.babudb.config.ReplicationConfig;
 
 /**
  * A factory for the creation of BabuDB instances.

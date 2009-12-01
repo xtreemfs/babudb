@@ -16,13 +16,13 @@ import java.util.Set;
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
+import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.ReplicationManagerImpl;
 import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherState;
 import org.xtreemfs.babudb.replication.RequestDispatcher.IState;
 import org.xtreemfs.babudb.sandbox.ContinuesRandomGenerator.LookupGroup;
-import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
@@ -91,7 +91,7 @@ public class ReplicationLongruntestSlave {
         
         CONFIGURATION = new ReplicationConfig(PATH, PATH, NUM_WKS, 1, 0,
                 SyncMode.ASYNC, 0, 0, participants, 50, null, 
-                0,BACKUP_DIR, false);
+                0,BACKUP_DIR, false, 16, 1024*1024*512);
         
         DBS = (BabuDB) BabuDBFactory.createReplicatedBabuDB(CONFIGURATION);
         generator = new ContinuesRandomGenerator(seed, ReplicationLongrunTestConfig.MAX_SEQUENCENO);

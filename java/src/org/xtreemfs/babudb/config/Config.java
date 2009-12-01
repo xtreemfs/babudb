@@ -22,7 +22,7 @@
  * AUTHORS: Christian Lorenz (ZIB), Björn Kolbeck (ZIB), Jan Stender (ZIB)
  */
 
-package org.xtreemfs.include.common.config;
+package org.xtreemfs.babudb.config;
 
 import java.io.FileInputStream;
 import java.io.IOException;

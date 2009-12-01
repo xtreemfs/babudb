@@ -28,16 +28,18 @@ import org.xtreemfs.include.common.util.FSUtils;
 
 public class SnapshotManagerImpl implements SnapshotManager {
     
-    public static final String                 SNAP_DIR = "snapshots";
+    public static final String                       SNAP_DIR = "snapshots";
     
-    private BabuDB                             dbs;
+    private final BabuDB                             dbs;
     
-    private Map<String, Map<String, Snapshot>> snapshotDBs;
+    private final Map<String, Map<String, Snapshot>> snapshotDBs;
     
-    public SnapshotManagerImpl(BabuDB dbs) throws BabuDBException {
-        
+    public SnapshotManagerImpl(BabuDB dbs) {
         this.dbs = dbs;
         this.snapshotDBs = Collections.synchronizedMap(new HashMap<String, Map<String, Snapshot>>());
+    }
+    
+    public void init() throws BabuDBException {
         
         // load persisted snapshots from disk
         for (Entry<String, Database> entry : ((DatabaseManagerImpl) dbs.getDatabaseManager()).getDatabases()

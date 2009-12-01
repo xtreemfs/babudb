@@ -17,13 +17,13 @@ import java.util.Set;
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
+import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
 import org.xtreemfs.babudb.lsmdb.Database;
 import org.xtreemfs.babudb.lsmdb.DatabaseManager;
 import org.xtreemfs.babudb.sandbox.ContinuesRandomGenerator.Operation;
 import org.xtreemfs.babudb.sandbox.ContinuesRandomGenerator.InsertGroup;
-import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
@@ -84,7 +84,7 @@ public class ReplicationLongruntestMaster {
         ReplicationConfig config = new ReplicationConfig(PATH, PATH, NUM_WKS, 
                 MAX_LOG_FILE_SIZE, CHECK_INTERVAL, SyncMode.ASYNC, 0, 0, 
                 participants, 50, null, 
-                0,BACKUP_DIR,false);
+                0,BACKUP_DIR,false,16,1024*1024*512);
         
         DBS = (BabuDB) BabuDBFactory.createReplicatedBabuDB(config);
         

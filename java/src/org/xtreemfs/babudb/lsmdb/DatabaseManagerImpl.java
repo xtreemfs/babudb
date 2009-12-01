@@ -37,33 +37,33 @@ import org.xtreemfs.include.common.util.FSUtils;
 
 public class DatabaseManagerImpl implements DatabaseManager {
     
-    private BabuDB                          dbs;
+    private BabuDB                         dbs;
     
     /**
      * Mapping from database name to database id
      */
-    final Map<String, Database>             dbsByName;
+    final Map<String, Database>            dbsByName;
     
     /**
      * Mapping from dbId to database
      */
-    final Map<Integer, Database>            dbsById;
+    final Map<Integer, Database>           dbsById;
     
     /**
      * a map containing all comparators sorted by their class names
      */
-    final Map<String, ByteRangeComparator>  compInstances;
+    final Map<String, ByteRangeComparator> compInstances;
     
     /**
      * ID to assign to next database create
      */
-    int                                     nextDbId;
+    int                                    nextDbId;
     
     /**
      * object used for synchronizing modifications of the database lists.
      */
-    private final Object                    dbModificationLock;
-        
+    private final Object                   dbModificationLock;
+    
     public DatabaseManagerImpl(BabuDB dbs) throws BabuDBException {
         
         this.dbs = dbs;
@@ -165,22 +165,24 @@ public class DatabaseManagerImpl implements DatabaseManager {
             }
             final int dbId = nextDbId++;
             db = new DatabaseImpl(dbs, new LSMDatabase(databaseName, dbId, dbs.getConfig().getBaseDir()
-                + databaseName + File.separatorChar, numIndices, false, comparators, dbs.getConfig().getCompression()));
+                + databaseName + File.separatorChar, numIndices, false, comparators, dbs.getConfig()
+                    .getCompression(), dbs.getConfig().getMaxNumRecordsPerBlock(), dbs.getConfig()
+                    .getMaxBlockFileSize()));
             dbsById.put(dbId, db);
             dbsByName.put(databaseName, db);
             dbs.getDBConfigFile().save();
         }
         
         // append the data to the diskLogger
-        ReusableBuffer buf = ReusableBuffer.wrap(new byte[
-              databaseName.getBytes().length + (Integer.SIZE*3/8)]);
+        ReusableBuffer buf = ReusableBuffer.wrap(new byte[databaseName.getBytes().length
+            + (Integer.SIZE * 3 / 8)]);
         buf.putInt(db.getLSMDB().getDatabaseId());
         buf.putString(databaseName);
         buf.putInt(numIndices);
         buf.flip();
         
         metaInsert(PAYLOAD_TYPE_CREATE, buf, dbs.getLogger());
-
+        
         return db;
     }
     
@@ -197,9 +199,9 @@ public class DatabaseManagerImpl implements DatabaseManager {
      * @param databaseName
      * @throws BabuDBException
      */
-    public void proceedDelete(String databaseName) throws BabuDBException { 
+    public void proceedDelete(String databaseName) throws BabuDBException {
         int dbId = -1;
-        synchronized (dbModificationLock) {           
+        synchronized (dbModificationLock) {
             synchronized (((CheckpointerImpl) dbs.getCheckpointer()).getCheckpointerLock()) {
                 if (!dbsByName.containsKey(databaseName)) {
                     throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '" + databaseName
@@ -220,8 +222,8 @@ public class DatabaseManagerImpl implements DatabaseManager {
         }
         
         // append the data to the diskLogger
-        ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE / 2)
-                                    + databaseName.getBytes().length]);
+        ReusableBuffer buf = ReusableBuffer
+                .wrap(new byte[(Integer.SIZE / 2) + databaseName.getBytes().length]);
         buf.putInt(dbId);
         buf.putString(databaseName);
         buf.flip();
@@ -273,7 +275,9 @@ public class DatabaseManagerImpl implements DatabaseManager {
         
         // create new DB and load from snapshot
         Database newDB = new DatabaseImpl(dbs, new LSMDatabase(destDB, dbId, dbs.getConfig().getBaseDir()
-            + destDB + File.separatorChar, sDB.getLSMDB().getIndexCount(), true, sDB.getComparators(), dbs.getConfig().getCompression()));
+            + destDB + File.separatorChar, sDB.getLSMDB().getIndexCount(), true, sDB.getComparators(), dbs
+                .getConfig().getCompression(), dbs.getConfig().getMaxNumRecordsPerBlock(), dbs.getConfig()
+                .getMaxBlockFileSize()));
         
         // insert real database
         synchronized (dbModificationLock) {
@@ -281,16 +285,16 @@ public class DatabaseManagerImpl implements DatabaseManager {
             dbsByName.put(destDB, newDB);
             dbs.getDBConfigFile().save();
         }
-     
+        
         // append the data to the diskLogger
-        ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE / 2) + 
-                    sourceDB.getBytes().length + destDB.getBytes().length]);
+        ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE / 2) + sourceDB.getBytes().length
+            + destDB.getBytes().length]);
         buf.putInt(sDB.getLSMDB().getDatabaseId());
         buf.putInt(dbId);
         buf.putString(sourceDB);
         buf.putString(destDB);
         buf.flip();
-          
+        
         metaInsert(PAYLOAD_TYPE_COPY, buf, dbs.getLogger());
     }
     
@@ -302,7 +306,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
     /**
      * <p>
      * Performs a logEntry-insert at the {@link DiskLogger} that will make
-     * metaCall replay-able. It also will be replicated if replication is 
+     * metaCall replay-able. It also will be replicated if replication is
      * enabled and running in master-mode.
      * </p>
      * 
@@ -312,8 +316,8 @@ public class DatabaseManagerImpl implements DatabaseManager {
      * @throws BabuDBException
      *             if {@link LogEntry} could not be appended to the DiskLogger.
      */
-    public static void metaInsert(byte type, ReusableBuffer parameters, 
-            DiskLogger logger) throws BabuDBException {
+    public static void metaInsert(byte type, ReusableBuffer parameters, DiskLogger logger)
+        throws BabuDBException {
         
         final BabuDBRequest<Object> result = new BabuDBRequest<Object>();
         
@@ -327,9 +331,8 @@ public class DatabaseManagerImpl implements DatabaseManager {
             
             @Override
             public void failed(LogEntry entry, Exception ex) {
-                result.failed((ex != null && ex instanceof BabuDBException) ? 
-                        (BabuDBException) ex : new BabuDBException(
-                                ErrorCode.INTERNAL_ERROR, ex.getMessage()));
+                result.failed((ex != null && ex instanceof BabuDBException) ? (BabuDBException) ex
+                    : new BabuDBException(ErrorCode.INTERNAL_ERROR, ex.getMessage()));
             }
         }, type);
         
@@ -360,10 +363,9 @@ public class DatabaseManagerImpl implements DatabaseManager {
         
         for (InsertRecord ir : ins.getInserts()) {
             LSMTree tree = db.getIndex(ir.getIndexId());
-            Logging.logMessage(Logging.LEVEL_DEBUG, this, 
-                    "insert %s=%s into %s  %d", new String(ir.getKey()), 
-                (ir.getValue() == null ? "null" : new String(ir.getValue())), 
-                db.getDatabaseName(), ir.getIndexId());
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "insert %s=%s into %s  %d",
+                new String(ir.getKey()), (ir.getValue() == null ? "null" : new String(ir.getValue())), db
+                        .getDatabaseName(), ir.getIndexId());
             tree.insert(ir.getKey(), ir.getValue());
         }
         
