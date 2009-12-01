@@ -37,8 +37,12 @@ public class DBConfig {
     
     private final BabuDB dbs;
     
-    private final File configFile;
-
+    private final File   configFile;
+    
+    private boolean      conversionRequired;
+    
+    private int          dbFormatVer;
+    
     public DBConfig(BabuDB dbs) throws BabuDBException {
         this.dbs = dbs;
         this.configFile = new File(this.dbs.getConfig().getBaseDir() + this.dbs.getConfig().getDbCfgFile());
@@ -46,8 +50,8 @@ public class DBConfig {
     }
     
     /**
-     * Loads the configuration and each database from disk and replaces the
-     * data of the existing DBs, while removing outdated one's.
+     * Loads the configuration and each database from disk and replaces the data
+     * of the existing DBs, while removing outdated one's.
      * 
      * @throws BabuDBException
      */
@@ -93,29 +97,28 @@ public class DBConfig {
                     
                     // reset existing DBs
                     if (db != null) {
-                        db.setLSMDB(
-                                new LSMDatabase(dbName, dbId, this.dbs.getConfig()
-                                .getBaseDir() + dbName + File.separatorChar, 
-                                numIndex, true, comps, this.dbs.getConfig()
-                                .getCompression()));
+                        db.setLSMDB(new LSMDatabase(dbName, dbId, this.dbs.getConfig().getBaseDir() + dbName
+                            + File.separatorChar, numIndex, true, comps, this.dbs.getConfig()
+                                .getCompression(), this.dbs.getConfig().getMaxNumRecordsPerBlock(), this.dbs
+                                .getConfig().getMaxBlockFileSize()));
                     } else {
-                        db = new DatabaseImpl(this.dbs, new LSMDatabase(
-                                dbName, dbId, this.dbs.getConfig().getBaseDir() 
-                                + dbName + File.separatorChar, numIndex, true, 
-                                comps, this.dbs.getConfig().getCompression()));
+                        db = new DatabaseImpl(this.dbs, new LSMDatabase(dbName, dbId, this.dbs.getConfig()
+                                .getBaseDir()
+                            + dbName + File.separatorChar, numIndex, true, comps, this.dbs.getConfig()
+                                .getCompression(), this.dbs.getConfig().getMaxNumRecordsPerBlock(), this.dbs
+                                .getConfig().getMaxBlockFileSize()));
                         dbman.dbsById.put(dbId, db);
                         dbman.dbsByName.put(dbName, db);
                     }
-                    Logging.logMessage(Logging.LEVEL_INFO, this, "loaded DB %s" +
-                    		" successfully. [LSN %s]", dbName, 
-                    		db.getLSMDB().getOndiskLSN());
+                    Logging.logMessage(Logging.LEVEL_INFO, this, "loaded DB %s" + " successfully. [LSN %s]",
+                        dbName, db.getLSMDB().getOndiskLSN());
                 }
             }
             
             // delete remaining outdated DBs
             Set<Integer> outdatedIds = new HashSet<Integer>(dbman.dbsById.keySet());
             outdatedIds.removeAll(ids);
-            if (outdatedIds.size()>0) {
+            if (outdatedIds.size() > 0) {
                 for (int id : outdatedIds) {
                     Database outdated = dbman.dbsById.remove(id);
                     dbman.dbsByName.remove(outdated.getName());
@@ -157,12 +160,9 @@ public class DBConfig {
         try {
             if (configFile.exists()) {
                 ois = new ObjectInputStream(new FileInputStream(configFile));
-                final int dbFormatVer = ois.readInt();
-                if (dbFormatVer != BabuDB.BABUDB_DB_FORMAT_VERSION) {
-                    throw new BabuDBException(ErrorCode.IO_ERROR, "on-disk format (version " + dbFormatVer
-                        + ") is incompatible with this BabuDB release " + "(uses on-disk format version "
-                        + BabuDB.BABUDB_DB_FORMAT_VERSION + ")");
-                }
+                dbFormatVer = ois.readInt();
+                if (dbFormatVer != BabuDB.BABUDB_DB_FORMAT_VERSION)
+                    conversionRequired = true;
                 final int numDB = ois.readInt();
                 dbman.nextDbId = ois.readInt();
                 for (int i = 0; i < numDB; i++) {
@@ -184,14 +184,17 @@ public class DBConfig {
                         comps[idx] = comp;
                     }
                     
-                    Database db = new DatabaseImpl(this.dbs, 
-                            new LSMDatabase(dbName, dbId, this.dbs.getConfig()
-                            .getBaseDir()
-                        + dbName + File.separatorChar, numIndex, true, comps, this.dbs.getConfig().getCompression()));
-                    dbman.dbsById.put(dbId, db);
-                    dbman.dbsByName.put(dbName, db);
-                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "loaded DB " + 
-                            dbName + " successfully.");
+                    if (!conversionRequired) {
+                        Database db = new DatabaseImpl(this.dbs, new LSMDatabase(dbName, dbId, this.dbs
+                                .getConfig().getBaseDir()
+                            + dbName + File.separatorChar, numIndex, true, comps, this.dbs.getConfig()
+                                .getCompression(), this.dbs.getConfig().getMaxNumRecordsPerBlock(), this.dbs
+                                .getConfig().getMaxBlockFileSize()));
+                        dbman.dbsById.put(dbId, db);
+                        dbman.dbsByName.put(dbName, db);
+                        Logging.logMessage(Logging.LEVEL_DEBUG, this, "loaded DB " + dbName
+                            + " successfully.");
+                    }
                 }
             }
             
@@ -225,7 +228,7 @@ public class DBConfig {
      */
     public void save() throws BabuDBException {
         DatabaseManagerImpl dbman = (DatabaseManagerImpl) dbs.getDatabaseManager();
-
+        
         synchronized (dbman.getDBModificationLock()) {
             try {
                 FileOutputStream fos = new FileOutputStream(dbs.getConfig().getBaseDir()
@@ -257,5 +260,13 @@ public class DBConfig {
             }
             
         }
+    }
+    
+    public boolean isConversionRequired() {
+        return conversionRequired;
+    }
+    
+    public int getDBFormatVersion() {
+        return dbFormatVer;
     }
 }

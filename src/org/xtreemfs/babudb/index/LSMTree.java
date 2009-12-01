@@ -10,7 +10,6 @@ package org.xtreemfs.babudb.index;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -22,14 +21,8 @@ import org.xtreemfs.babudb.index.writer.DiskIndexWriter;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 
 public class LSMTree {
-
-    // TODO: Entries per block should be configurable
-    private static final int          MAX_ENTRIES_PER_BLOCK = 16;
-
-    // TODO: Max file size should be configurable, currently its 1GB
-    private static final int          MAX_BLOCK_FILE_SIZE = 1024*1024*1024;
     
-    private static final byte[]       NULL_ELEMENT          = new byte[0];
+    private static final byte[]       NULL_ELEMENT       = new byte[0];
     
     private MultiOverlayBufferTree    overlay;
     
@@ -41,6 +34,10 @@ public class LSMTree {
     
     private boolean                   compressed;
     
+    private final int                 maxEntriesPerBlock;
+    
+    private final int                 maxBlockFileSize;
+                                                                               
     /**
      * Creates a new LSM tree.
      * 
@@ -53,10 +50,13 @@ public class LSMTree {
      * @throws IOException
      *             if an I/O error occurs when accessing the on-disk index file
      */
-    public LSMTree(String indexFile, ByteRangeComparator comp, boolean compressed) throws IOException {
+    public LSMTree(String indexFile, ByteRangeComparator comp, boolean compressed, int maxEntriesPerBlock,
+        int maxBlockFileSize) throws IOException {
         
         this.comp = comp;
         this.compressed = compressed;
+        this.maxEntriesPerBlock = maxEntriesPerBlock;
+        this.maxBlockFileSize = maxBlockFileSize;
         
         overlay = new MultiOverlayBufferTree(NULL_ELEMENT, comp);
         index = indexFile == null ? null : new DiskIndex(indexFile, comp, compressed);
@@ -280,7 +280,8 @@ public class LSMTree {
      *             if an I/O error occurs while writing the snapshot
      */
     public void materializeSnapshot(String targetFile, int snapId) throws IOException {
-        DiskIndexWriter writer = new DiskIndexWriter(targetFile, MAX_ENTRIES_PER_BLOCK, false, MAX_BLOCK_FILE_SIZE);
+        DiskIndexWriter writer = new DiskIndexWriter(targetFile, maxEntriesPerBlock, compressed,
+            maxBlockFileSize);
         writer.writeIndex(prefixLookup(null, snapId, true));
     }
     
@@ -300,7 +301,8 @@ public class LSMTree {
      */
     public void materializeSnapshot(String targetFile, final int snapId, final int indexId,
         final SnapshotConfig snap) throws IOException {
-        DiskIndexWriter writer = new DiskIndexWriter(targetFile, MAX_ENTRIES_PER_BLOCK, false, MAX_BLOCK_FILE_SIZE);
+        DiskIndexWriter writer = new DiskIndexWriter(targetFile, maxEntriesPerBlock, compressed,
+            maxBlockFileSize);
         writer.writeIndex(new Iterator<Entry<byte[], byte[]>>() {
             
             private Iterator<Entry<byte[], byte[]>>[] iterators;
@@ -362,7 +364,8 @@ public class LSMTree {
                         return;
                     }
                     
-                    // otherwise, next is the next element from the current iterator
+                    // otherwise, next is the next element from the current
+                    // iterator
                     next = iterators[currentIt].next();
                     
                     // if this element is explicitly excluded, skip it

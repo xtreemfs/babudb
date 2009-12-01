@@ -14,6 +14,7 @@ import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBRequest;
 import org.xtreemfs.babudb.clients.MasterClient;
+import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.SlavesStates.NotEnoughAvailableSlavesException;
@@ -23,7 +24,6 @@ import org.xtreemfs.babudb.replication.operations.StateOperation;
 import org.xtreemfs.babudb.replication.stages.HeartbeatThread;
 import org.xtreemfs.babudb.replication.stages.ReplicationStage;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
-import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**

@@ -13,7 +13,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 
-import org.xtreemfs.include.common.config.ReplicationConfig;
+import org.xtreemfs.babudb.config.ReplicationConfig;
 
 /**
  * <p>Methods to perform direct file Operations.<br><br>

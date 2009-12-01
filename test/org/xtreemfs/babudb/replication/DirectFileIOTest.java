@@ -18,7 +18,7 @@ import java.io.IOException;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.xtreemfs.include.common.config.ReplicationConfig;
+import org.xtreemfs.babudb.config.ReplicationConfig;
 
 import static org.xtreemfs.babudb.replication.DirectFileIO.*;
 

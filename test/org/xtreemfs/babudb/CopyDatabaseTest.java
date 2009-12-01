@@ -14,9 +14,9 @@ import junit.textui.TestRunner;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.Database;
-import org.xtreemfs.include.common.config.BabuDBConfig;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
@@ -30,6 +30,10 @@ public class CopyDatabaseTest extends TestCase {
     public static final String baseDir = "/tmp/lsmdb-test/";
     
     public static final boolean compression = false;
+    
+    private static final int maxNumRecs = 16;
+    
+    private static final int maxBlockFileSize = 1024 * 1024 * 512;
     
     private BabuDB             database;
     
@@ -59,7 +63,7 @@ public class CopyDatabaseTest extends TestCase {
         final int NUMIDX = 5;
         
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0, SyncMode.ASYNC, 0,
-            0, compression));
+            0, compression, maxNumRecs, maxBlockFileSize));
         
         Database db = database.getDatabaseManager().createDatabase("testDB", NUMIDX);
         

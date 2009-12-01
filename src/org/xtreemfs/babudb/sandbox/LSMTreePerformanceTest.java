@@ -4,7 +4,7 @@
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
-*/
+ */
 
 package org.xtreemfs.babudb.sandbox;
 
@@ -37,10 +37,10 @@ public class LSMTreePerformanceTest {
         final int size = Integer.parseInt(args[1]);
         final int inserts = Integer.parseInt(args[2]);
         final int lookups = Integer.parseInt(args[3]);
-
+        
         // TODO: make configurable
-        final int blockFileSize = 1024*1024*1024;
-
+        final int blockFileSize = 1024 * 1024 * 1024;
+        
         if (size != 0) {
             // delete old index file
             new File(path).delete();
@@ -97,7 +97,7 @@ public class LSMTreePerformanceTest {
         }
         
         // read the LSM tree
-        LSMTree tree = new LSMTree(path, new DefaultByteRangeComparator(), false);
+        LSMTree tree = new LSMTree(path, new DefaultByteRangeComparator(), false, 16, 1024 * 1024 * 512);
         
         System.out.println("inserting " + inserts + " random elements ...");
         for (int i = 0; i < inserts; i++) {
@@ -133,8 +133,7 @@ public class LSMTreePerformanceTest {
         System.out.println("hits: " + hits + " / " + lookups);
     }
     
-    private static String createNextString(String st, int minStrLen, int maxStrLen, char minChar,
-        char maxChar) {
+    private static String createNextString(String st, int minStrLen, int maxStrLen, char minChar, char maxChar) {
         
         char[] chars = st.toCharArray();
         
@@ -175,8 +174,7 @@ public class LSMTreePerformanceTest {
         }
     }
     
-    private static String createRandomString(char minChar, char maxChar, int minLength,
-        int maxLength) {
+    private static String createRandomString(char minChar, char maxChar, int minLength, int maxLength) {
         
         char[] chars = new char[(int) (Math.random() * (maxLength + 1)) + minLength];
         for (int i = 0; i < chars.length; i++)

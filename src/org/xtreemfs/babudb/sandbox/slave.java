@@ -1,7 +1,7 @@
 package org.xtreemfs.babudb.sandbox;
 
 import org.xtreemfs.babudb.BabuDBFactory;
-import org.xtreemfs.include.common.config.ReplicationConfig;
+import org.xtreemfs.babudb.config.ReplicationConfig;
 
 public class slave {
     public static void main(String[] args) throws Exception {

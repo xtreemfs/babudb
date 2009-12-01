@@ -23,6 +23,7 @@ import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.interfaces.DBFileMetaData;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.include.common.util.FSUtils;
 
 /**
  * A LSMDatabase contains up to MAX_INDICES LSMTrees.
@@ -35,6 +36,8 @@ public class LSMDatabase {
      * Maximum number of indices per database.
      */
     public static final int             MAX_INDICES              = 2 << 8;
+    
+    public static final LSN             NO_DB_LSN                = new LSN(0, 0);
     
     private static final String         SNAPSHOT_FILENAME_REGEXP = "IX(\\d+)V(\\d+)SEQ(\\d+)\\.idx";
     
@@ -71,9 +74,19 @@ public class LSMDatabase {
     private final ByteRangeComparator[] comparators;
     
     /**
-     * enables compression of the on-disk index 
+     * enables compression of the on-disk index
      */
-    private final boolean				compression;
+    private final boolean               compression;
+    
+    /**
+     * the maximum number of entries per block in an index
+     */
+    private final int                   maxEntriesPerBlock;
+    
+    /**
+     * the maximum size of an on-disk index file
+     */
+    private final int                   maxBlockFileSize;
     
     /**
      * Creates a new database and loads data from disk if requested.
@@ -86,12 +99,13 @@ public class LSMDatabase {
      *            number of indices (cannot be changed)
      * @param readFromDisk
      *            true if data should be read from disk
-     * @throws java.io.IOException
+     * @throws BabuDBException
      *             if on-disk data cannot be read or DB directory cannot be
      *             created
      */
     public LSMDatabase(String databaseName, int databaseId, String databaseDir, int numIndices,
-        boolean readFromDisk, ByteRangeComparator[] comparators, boolean compression) throws BabuDBException {
+        boolean readFromDisk, ByteRangeComparator[] comparators, boolean compression, int maxEntriesPerBlock,
+        int maxBlockFileSize) throws BabuDBException {
         
         this.numIndices = numIndices;
         this.databaseId = databaseId;
@@ -103,6 +117,8 @@ public class LSMDatabase {
         this.trees = new ArrayList<LSMTree>(numIndices);
         this.comparators = comparators;
         this.compression = compression;
+        this.maxEntriesPerBlock = maxEntriesPerBlock;
+        this.maxBlockFileSize = maxBlockFileSize;
         
         if (readFromDisk) {
             loadFromDisk(numIndices);
@@ -110,9 +126,10 @@ public class LSMDatabase {
             try {
                 for (int i = 0; i < numIndices; i++) {
                     assert (comparators[i] != null);
-                    trees.add(new LSMTree(null, comparators[i], this.compression));
+                    trees.add(new LSMTree(null, comparators[i], this.compression, maxEntriesPerBlock,
+                        maxBlockFileSize));
                 }
-                ondiskLSN = new LSN(0, 0);
+                ondiskLSN = NO_DB_LSN;
             } catch (IOException ex) {
                 throw new BabuDBException(ErrorCode.IO_ERROR, "cannot create new index", ex);
             }
@@ -179,15 +196,19 @@ public class LSMDatabase {
                         + " from latest snapshot:" + databaseDir + "IX" + index + "V" + maxView + "SEQ"
                         + maxSeq);
                     assert (comparators[index] != null);
-                    trees.set(index, new LSMTree(databaseDir + getSnapshotFilename(index, maxView, maxSeq),
-                        comparators[index], this.compression));
+                    trees
+                            .set(index, new LSMTree(
+                                databaseDir + getSnapshotFilename(index, maxView, maxSeq),
+                                comparators[index], this.compression, this.maxEntriesPerBlock,
+                                this.maxBlockFileSize));
                     ondiskLSN = new LSN(maxView, maxSeq);
                 } else {
-                    ondiskLSN = new LSN(0, 0);
+                    ondiskLSN = NO_DB_LSN;
                     Logging.logMessage(Logging.LEVEL_DEBUG, this, "no snapshot for database "
                         + this.databaseName);
                     assert (comparators[index] != null);
-                    trees.set(index, new LSMTree(null, comparators[index], this.compression));
+                    trees.set(index, new LSMTree(null, comparators[index], this.compression,
+                        this.maxEntriesPerBlock, this.maxBlockFileSize));
                 }
             } catch (IOException ex) {
                 throw new BabuDBException(ErrorCode.IO_ERROR, "cannot load index from disk", ex);
@@ -289,7 +310,8 @@ public class LSMDatabase {
         Logging.logMessage(Logging.LEVEL_INFO, this, "snapshot written, database = " + databaseName);
     }
     
-    public void writeSnapshot(String directory, int[] snapIds, int viewId, long sequenceNumber) throws IOException {
+    public void writeSnapshot(String directory, int[] snapIds, int viewId, long sequenceNumber)
+        throws IOException {
         
         for (int index = 0; index < trees.size(); index++) {
             final LSMTree tree = trees.get(index);
@@ -308,7 +330,7 @@ public class LSMDatabase {
             final String newFileName = directory + "/" + getSnapshotFilename(index, 0, 0);
             
             File dir = new File(directory);
-            if(!dir.exists() && !dir.mkdirs())
+            if (!dir.exists() && !dir.mkdirs())
                 throw new IOException("could not create directory '" + directory + "'");
             
             tree.materializeSnapshot(newFileName, snapIds[i], index, cfg);
@@ -350,7 +372,10 @@ public class LSMDatabase {
                     // than current
                     if ((fView < viewId) || ((fView == viewId) && (fSeq < sequenceNo))) {
                         File snap = new File(databaseDir + fname);
-                        snap.delete();
+                        if (snap.isDirectory())
+                            FSUtils.delTree(snap);
+                        else
+                            snap.delete();
                     }
                     
                 }
@@ -367,7 +392,7 @@ public class LSMDatabase {
         return databaseName;
     }
     
-    private static String getSnapshotFilename(int indexId, int viewId, long sequenceNo) {
+    public static String getSnapshotFilename(int indexId, int viewId, long sequenceNo) {
         return "IX" + indexId + "V" + viewId + "SEQ" + sequenceNo + ".idx";
     }
     

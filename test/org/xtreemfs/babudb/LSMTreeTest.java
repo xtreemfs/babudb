@@ -56,7 +56,8 @@ public class LSMTreeTest extends TestCase {
         byte[][] vals = new byte[][] { "1".getBytes(), "2".getBytes(), "3".getBytes(), "4".getBytes(),
             "5".getBytes() };
         
-        LSMTree tree = new LSMTree(null, DefaultByteRangeComparator.getInstance(), false);
+        LSMTree tree = new LSMTree(null, DefaultByteRangeComparator.getInstance(), false, 16,
+            1024 * 1024 * 512);
         TreeMap<byte[], byte[]> map = new TreeMap<byte[], byte[]>(new DefaultByteRangeComparator());
         
         // insert some key-value pairs
@@ -174,7 +175,7 @@ public class LSMTreeTest extends TestCase {
         final int numElements = 200;
         final DefaultByteRangeComparator comp = DefaultByteRangeComparator.getInstance();
         
-        LSMTree tree = new LSMTree(null, comp, false);
+        LSMTree tree = new LSMTree(null, comp, false, 16, 1024 * 1024 * 512);
         
         final TreeMap<byte[], byte[]> map1 = new TreeMap<byte[], byte[]>(comp);
         for (int i = 0x10; i < numElements; i++) {
@@ -312,13 +313,13 @@ public class LSMTreeTest extends TestCase {
         final byte[] value = "value".getBytes();
         final String[] keys = { "a", "v", "blub", "blubber", "ertz", "yagga", "zwum", "x" };
         
-        LSMTree tree = new LSMTree(null, comp, false);
+        LSMTree tree = new LSMTree(null, comp, false, 16, 1024 * 1024 * 512);
         for (String k : keys)
             tree.insert(k.getBytes(), value);
         
         int snapId = tree.createSnapshot();
-        tree.materializeSnapshot(SNAP_FILE, snapId, 0, new DefaultSnapshotConfig("blub", new int[]{0}, new byte[][][] {{ "a".getBytes(), "bl".getBytes(),
-            "zwum".getBytes() }}, null));
+        tree.materializeSnapshot(SNAP_FILE, snapId, 0, new DefaultSnapshotConfig("blub", new int[] { 0 },
+            new byte[][][] { { "a".getBytes(), "bl".getBytes(), "zwum".getBytes() } }, null));
         tree.linkToSnapshot(SNAP_FILE);
         
         assertEquals(value, tree.lookup("a".getBytes()));
@@ -332,7 +333,7 @@ public class LSMTreeTest extends TestCase {
         
         Iterator<Entry<byte[], byte[]>> it = tree.prefixLookup(new byte[0]);
         int i = 0;
-        for(; it.hasNext(); i++)
+        for (; it.hasNext(); i++)
             it.next();
         
         assertEquals(4, i);

@@ -13,6 +13,12 @@ import org.xtreemfs.babudb.lsmdb.DatabaseRO;
 public interface SnapshotManager {
     
     /**
+     * Initializes the snapshot manager. This method ought to be invoked before
+     * accessing the snapshot manager the first time.
+     */
+    public void init() throws BabuDBException;
+    
+    /**
      * Returns a read-only database backed by the snapshot with the given unique
      * name.
      * 
@@ -57,7 +63,8 @@ public interface SnapshotManager {
      * 
      * @param dbName
      *            the database name
-     * @return an array of snapshot names (may be empty if no snapshots are available)
+     * @return an array of snapshot names (may be empty if no snapshots are
+     *         available)
      */
     public String[] getAllSnapshots(String dbName);
     

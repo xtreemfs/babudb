@@ -4,7 +4,7 @@
  * All rights reserved.
  */
 
-package org.xtreemfs.include.common.config;
+package org.xtreemfs.babudb.config;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,56 +18,58 @@ import org.xtreemfs.include.common.logging.Logging;
  * 
  * @since 06/05/2009
  * @author flangner
- *
+ * 
  */
 
 public class BabuDBConfig extends Config {
     
     /** Log Level. */
-    protected int        debugLevel;
-    protected String     debugCategory;
+    protected int      debugLevel;
+    
+    protected String   debugCategory;
     
     /**
-     * The database configuration file.
-     * Contains the names and number of indices for the databases.
+     * The database configuration file. Contains the names and number of indices
+     * for the databases.
      */
-    protected String    dbCfgFile;    
+    protected String   dbCfgFile;
     
     /**
      * Base directory to store database index snapshots in.
      */
-    protected String    baseDir;
+    protected String   baseDir;
     
     /**
      * Directory in which the database logs are stored.
      */
-    protected String    dbLogDir;
+    protected String   dbLogDir;
     
     /**
      * SyncMode the synchronization mode to use for the logFile.
      */
-    protected SyncMode  syncMode;
+    protected SyncMode syncMode;
     
     /**
      * Max queue length: if > 0, the queue for each worker is limited to maxQ.
      * The replication remote-request-queue will also be limited to maxQ.
      */
-    protected int       maxQueueLength;
+    protected int      maxQueueLength;
     
     /**
      * NumThreads number of worker threads to use.
      */
-    protected int       numThreads;
+    protected int      numThreads;
     
     /**
      * MaxLogfileSize a checkpoint is generated ,if maxLogfileSize is exceeded.
      */
-    protected long      maxLogfileSize;
+    protected long     maxLogfileSize;
     
     /**
-     * CheckInterval interval between two checks in seconds, 0 disables auto checkPointing.
+     * CheckInterval interval between two checks in seconds, 0 disables auto
+     * checkPointing.
      */
-    protected int       checkInterval;
+    protected int      checkInterval;
     
     /**
      * If set to a value > 0, operations are acknowledges immediately before
@@ -75,23 +77,34 @@ public class BabuDBConfig extends Config {
      * and call fSync... every pseudoSyncWait seconds. This can be used to
      * increase performance and emulate PostgreSQL behavior.
      */
-    protected int       pseudoSyncWait;
-       
+    protected int      pseudoSyncWait;
+    
     /**
      * Indicates if compression is enabled or not.
      */
-    protected boolean	compression;
+    protected boolean  compression;
     
-    public BabuDBConfig(String baseDir, String dbLogDir, int numThreads, 
-            long maxLogFileSize, int checkInterval,SyncMode syncMode,  
-            int pseudoSyncWait, int maxQ, boolean compression) {
+    /**
+     * Defines the maximum number of records per block of an index.
+     */
+    protected int      maxNumRecordsPerBlock;
+    
+    /**
+     * Defines the maximum size of the block file. If the size is exceeded by an
+     * index, another block file will be created.
+     */
+    protected int      maxBlockFileSize;
+    
+    public BabuDBConfig(String baseDir, String dbLogDir, int numThreads, long maxLogFileSize,
+        int checkInterval, SyncMode syncMode, int pseudoSyncWait, int maxQ, boolean compression,
+        int maxNumRecordsPerBlock, int maxBlockFileSize) {
         
         super();
         this.debugLevel = Logging.LEVEL_WARN;
         this.debugCategory = "all";
-        this.baseDir = (baseDir.endsWith(File.separator)) ? baseDir : baseDir+File.separator;
+        this.baseDir = (baseDir.endsWith(File.separator)) ? baseDir : baseDir + File.separator;
         this.dbCfgFile = "config.db";
-        this.dbLogDir = (dbLogDir.endsWith(File.separator)) ? dbLogDir : dbLogDir+File.separator;
+        this.dbLogDir = (dbLogDir.endsWith(File.separator)) ? dbLogDir : dbLogDir + File.separator;
         this.syncMode = syncMode;
         this.maxQueueLength = maxQ;
         this.numThreads = numThreads;
@@ -99,6 +112,8 @@ public class BabuDBConfig extends Config {
         this.pseudoSyncWait = pseudoSyncWait;
         this.maxLogfileSize = maxLogFileSize;
         this.compression = compression;
+        this.maxNumRecordsPerBlock = maxNumRecordsPerBlock;
+        this.maxBlockFileSize = maxBlockFileSize;
     }
     
     public BabuDBConfig() {
@@ -124,16 +139,16 @@ public class BabuDBConfig extends Config {
         this.dbCfgFile = this.readOptionalString("babudb.cfgFile", "config.db");
         
         String baseDir = this.readRequiredString("babudb.baseDir");
-        this.baseDir = (baseDir.endsWith(File.separator)) ? baseDir : baseDir+File.separator;
+        this.baseDir = (baseDir.endsWith(File.separator)) ? baseDir : baseDir + File.separator;
         
         String dbLogDir = this.readRequiredString("babudb.logDir");
-        this.dbLogDir = (dbLogDir.endsWith(File.separator)) ? dbLogDir : dbLogDir+File.separator;
-
+        this.dbLogDir = (dbLogDir.endsWith(File.separator)) ? dbLogDir : dbLogDir + File.separator;
+        
         this.syncMode = SyncMode.valueOf(this.readRequiredString("babudb.sync"));
         
         this.numThreads = this.readOptionalInt("babudb.worker.numThreads", 1);
         
-        this.maxQueueLength = this.readOptionalInt("babudb.worker.maxQueueLength",0);
+        this.maxQueueLength = this.readOptionalInt("babudb.worker.maxQueueLength", 0);
         
         this.maxLogfileSize = this.readOptionalInt("babudb.maxLogfileSize", 1);
         
@@ -142,6 +157,10 @@ public class BabuDBConfig extends Config {
         this.pseudoSyncWait = this.readOptionalInt("babudb.pseudoSyncWait", 0);
         
         this.compression = this.readOptionalBoolean("babudb.compression", false);
+        
+        this.maxNumRecordsPerBlock = this.readOptionalInt("babudb.maxNumRecordsPerBlock", 16);
+        
+        this.maxBlockFileSize = this.readOptionalInt("babudb.maxBlockFileSize", 1024 * 1024 * 512);
     }
     
     protected int readDebugLevel() {
@@ -190,44 +209,52 @@ public class BabuDBConfig extends Config {
     public String getDebugCategory() {
         return this.debugCategory;
     }
-
+    
     public String getDbCfgFile() {
         return dbCfgFile;
     }
-
+    
     public String getBaseDir() {
         return baseDir;
     }
-
+    
     public String getDbLogDir() {
         return dbLogDir;
     }
-
+    
     public SyncMode getSyncMode() {
         return syncMode;
     }
-
+    
     public int getMaxQueueLength() {
         return maxQueueLength;
     }
-
+    
     public int getNumThreads() {
         return numThreads;
     }
-
+    
     public long getMaxLogfileSize() {
         return maxLogfileSize;
     }
-
+    
     public int getCheckInterval() {
         return checkInterval;
     }
-
+    
     public int getPseudoSyncWait() {
         return pseudoSyncWait;
     }
     
     public boolean getCompression() {
-    	return compression;
+        return compression;
+    }
+    
+    public int getMaxNumRecordsPerBlock() {
+        return maxNumRecordsPerBlock;
+    }
+    
+    public int getMaxBlockFileSize() {
+        return maxBlockFileSize;
     }
 }

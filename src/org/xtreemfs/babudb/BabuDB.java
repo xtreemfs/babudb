@@ -7,21 +7,20 @@
  */
 package org.xtreemfs.babudb;
 
-import static org.xtreemfs.include.common.config.ReplicationConfig.slaveProtection;
+import static org.xtreemfs.babudb.config.ReplicationConfig.slaveProtection;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.util.SortedSet;
-import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
-import org.xtreemfs.babudb.log.DiskLogFile;
+import org.xtreemfs.babudb.config.BabuDBConfig;
+import org.xtreemfs.babudb.config.ReplicationConfig;
+import org.xtreemfs.babudb.conversion.AutoConverter;
+import org.xtreemfs.babudb.log.DiskLogIterator;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
@@ -43,9 +42,8 @@ import org.xtreemfs.babudb.replication.stages.logic.LoadLogic;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManager;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
-import org.xtreemfs.include.common.config.BabuDBConfig;
-import org.xtreemfs.include.common.config.ReplicationConfig;
 import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.include.common.logging.Logging.Category;
 
 /**
  * <p>
@@ -62,7 +60,7 @@ public class BabuDB {
     /**
      * Version (name)
      */
-    public static final String           BABUDB_VERSION           = "0.2.8";
+    public static final String           BABUDB_VERSION           = "0.3.0";
     
     /**
      * Version of the DB on-disk format (to detect incompatibilities).
@@ -112,7 +110,7 @@ public class BabuDB {
      * Flag that determines if the slaveCheck should be enabled, or not.
      */
     private volatile boolean             slaveCheck               = true;
-        
+    
     /**
      * Starts the BabuDB database. If conf is instance of MasterConfig it comes
      * with replication in master-mode. If conf is instance of SlaveConfig it
@@ -133,6 +131,18 @@ public class BabuDB {
         this.snapshotManager = new SnapshotManagerImpl(this);
         this.dbCheckptr = new CheckpointerImpl(this);
         
+        if (dbConfigFile.isConversionRequired()) {
+            
+            Logging
+                    .logMessage(
+                        Logging.LEVEL_WARN,
+                        Category.db,
+                        this,
+                        "The database version is outdated. The database will be automatically converted to the latest version if possible. This may take some time, depending on the size.");
+            
+            AutoConverter.initiateConversion(dbConfigFile.getDBFormatVersion(), conf);
+        }
+        
         try {
             if (conf instanceof ReplicationConfig)
                 DirectFileIO.replayBackupFiles((ReplicationConfig) conf);
@@ -146,7 +156,8 @@ public class BabuDB {
             if (dbLsn == null)
                 dbLsn = ((DatabaseImpl) db).getLSMDB().getOndiskLSN();
             else {
-                if (!dbLsn.equals(((DatabaseImpl) db).getLSMDB().getOndiskLSN()))
+                LSN onDiskLSN = ((DatabaseImpl) db).getLSMDB().getOndiskLSN();
+                if (!LSMDatabase.NO_DB_LSN.equals(onDiskLSN) && !dbLsn.equals(onDiskLSN))
                     throw new RuntimeException("databases have different LSNs!");
             }
         }
@@ -189,7 +200,8 @@ public class BabuDB {
         if (conf.getNumThreads() > 0) {
             worker = new LSMDBWorker[conf.getNumThreads()];
             for (int i = 0; i < conf.getNumThreads(); i++) {
-                worker[i] = new LSMDBWorker(logger, i, (conf.getPseudoSyncWait() > 0), conf.getMaxQueueLength());
+                worker[i] = new LSMDBWorker(logger, i, (conf.getPseudoSyncWait() > 0), conf
+                        .getMaxQueueLength());
                 worker[i].start();
             }
         } else {
@@ -198,6 +210,11 @@ public class BabuDB {
             
             worker = null;
         }
+        
+        if (dbConfigFile.isConversionRequired())
+            AutoConverter.completeConversion(this);
+        
+        snapshotManager.init();
         
         // initialize and start the checkpointer; this has to be separated from
         // the instantiation because the instance has to be there when the log
@@ -222,10 +239,11 @@ public class BabuDB {
      */
     public void stop() {
         synchronized (stopped) {
-            if (stopped.get()) return;
+            if (stopped.get())
+                return;
             
             if (worker != null)
-                for (LSMDBWorker w : worker) 
+                for (LSMDBWorker w : worker)
                     w.shutdown();
             
             logger.shutdown();
@@ -233,14 +251,15 @@ public class BabuDB {
             try {
                 logger.waitForShutdown();
                 if (worker != null)
-                    for (LSMDBWorker w : worker) 
+                    for (LSMDBWorker w : worker)
                         w.waitForShutdown();
-                        
+                
                 dbCheckptr.waitForShutdown();
-            } catch (InterruptedException ex) { /* ignored */ }
+            } catch (InterruptedException ex) { /* ignored */
+            }
             this.stopped.set(true);
             Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB has been stopped by the Replication.");
-
+            
         }
     }
     
@@ -271,8 +290,8 @@ public class BabuDB {
                     dbLsn = onDisk;
                 else if (dbLsn != null) {
                     if (!onDisk.equals(zero) && !dbLsn.equals(onDisk))
-                        throw new RuntimeException("databases have different LSNs! " + dbLsn.toString() + " != "
-                            + db.getLSMDB().getOndiskLSN().toString());
+                        throw new RuntimeException("databases have different LSNs! " + dbLsn.toString()
+                            + " != " + db.getLSMDB().getOndiskLSN().toString());
                 }
             }
             if (dbLsn == null) {
@@ -285,12 +304,13 @@ public class BabuDB {
             
             Logging.logMessage(Logging.LEVEL_INFO, this, "starting log replay");
             LSN nextLSN = replayLogs(dbLsn);
-            if (dbLsn.compareTo(nextLSN) > 0) nextLSN = dbLsn;
+            if (dbLsn.compareTo(nextLSN) > 0)
+                nextLSN = dbLsn;
             Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done, using LSN: " + nextLSN);
             
             try {
-                logger = new DiskLogger(configuration.getDbLogDir(), nextLSN.getViewId(),
-                    nextLSN.getSequenceNo(), configuration.getSyncMode(), configuration.getPseudoSyncWait(),
+                logger = new DiskLogger(configuration.getDbLogDir(), nextLSN.getViewId(), nextLSN
+                        .getSequenceNo(), configuration.getSyncMode(), configuration.getPseudoSyncWait(),
                     configuration.getMaxQueueLength() * configuration.getNumThreads(), replicationManager);
                 logger.start();
             } catch (IOException ex) {
@@ -300,12 +320,13 @@ public class BabuDB {
             if (configuration.getNumThreads() > 0) {
                 worker = new LSMDBWorker[configuration.getNumThreads()];
                 for (int i = 0; i < configuration.getNumThreads(); i++) {
-                    worker[i] = new LSMDBWorker(logger, i, (configuration.getPseudoSyncWait() > 0), configuration
-                            .getMaxQueueLength());
+                    worker[i] = new LSMDBWorker(logger, i, (configuration.getPseudoSyncWait() > 0),
+                        configuration.getMaxQueueLength());
                     worker[i].start();
                 }
             } else {
-                // number of workers is 0 => requests will be responded directly.
+                // number of workers is 0 => requests will be responded
+                // directly.
                 assert (configuration.getNumThreads() == 0);
                 
                 worker = null;
@@ -329,7 +350,7 @@ public class BabuDB {
      */
     public void shutdown() throws BabuDBException {
         if (worker != null)
-            for (LSMDBWorker w : worker) 
+            for (LSMDBWorker w : worker)
                 w.shutdown();
         
         // stop the replication
@@ -347,7 +368,7 @@ public class BabuDB {
             if (worker != null)
                 for (LSMDBWorker w : worker)
                     w.waitForShutdown();
-                    
+            
             dbCheckptr.waitForShutdown();
         } catch (InterruptedException ex) {
         }
@@ -362,9 +383,9 @@ public class BabuDB {
         try {
             logger.stop();
             if (worker != null)
-                for (LSMDBWorker w : worker) 
+                for (LSMDBWorker w : worker)
                     w.stop();
-                    
+            
         } catch (IllegalMonitorStateException ex) {
             // we will probably get that when we kill a thread because we do
             // evil stuff here ;-)
@@ -414,99 +435,65 @@ public class BabuDB {
     private LSN replayLogs(LSN from) throws BabuDBException {
         try {
             File f = new File(configuration.getDbLogDir());
-            String[] logs = f.list(new FilenameFilter() {
-                
+            File[] logFiles = f.listFiles(new FilenameFilter() {
                 public boolean accept(File dir, String name) {
                     return name.endsWith(".dbl");
                 }
             });
+            
+            DiskLogIterator it = new DiskLogIterator(logFiles, from);
             LSN nextLSN = null;
-            if (logs != null) {
-                // read list of logs and create a list ordered from min LSN to
-                // max LSN
-                int count = -1;
-                SortedSet<LSN> orderedLogList = new TreeSet<LSN>();
-                Pattern p = Pattern.compile("(\\d+)\\.(\\d+)\\.dbl");
-                for (String log : logs) {
-                    Matcher m = p.matcher(log);
-                    m.matches();
-                    String tmp = m.group(1);
-                    int viewId = Integer.valueOf(tmp);
-                    tmp = m.group(2);
-                    int seqNo = Integer.valueOf(tmp);
-                    orderedLogList.add(new LSN(viewId, seqNo));
-                    count++;
-                }
-                LSN[] copy = orderedLogList.toArray(new LSN[orderedLogList.size()]);
-                LSN last = null;
-                for (LSN lsn : copy) {
-                    if (last == null)
-                        last = lsn;
-                    else {
-                        if (lsn.compareTo(from) <= 0) {
-                            orderedLogList.remove(last);
-                            last = lsn;
-                        } else
-                            break;
-                    }
-                }
-                // apply log entries to databases...
-                for (LSN logLSN : orderedLogList) {
-                    DiskLogFile dlf = new DiskLogFile(configuration.getDbLogDir(), logLSN);
-                    LogEntry le = null;
-                    while (dlf.hasNext()) {
-                        le = dlf.next();
-                        // do something
-                        if (le.getLSN().compareTo(from) >= 0) {
-                            // ignored
-                            switch (le.getPayloadType()) {
-                            
-                            case LogEntry.PAYLOAD_TYPE_INSERT:
-                                InsertRecordGroup ai = InsertRecordGroup.deserialize(le.getPayload());
-                                databaseManager.insert(ai);
-                                break;
-                                
-                            case LogEntry.PAYLOAD_TYPE_SNAP:
-                                ObjectInputStream oin = null;
-                                try {
-                                    oin = new ObjectInputStream(new ByteArrayInputStream(le.getPayload()
-                                            .array()));
-                                    // deserialize the snapshot configuration
-                                    int dbId = oin.readInt();
-                                    SnapshotConfig snap = (SnapshotConfig) oin.readObject();
-                                    snapshotManager.createPersistentSnapshot(databaseManager
-                                            .getDatabase(dbId).getName(), snap, false);
-                                } catch (Exception e) {
-                                    if (le != null)
-                                        le.free();
-                                    throw new BabuDBException(ErrorCode.IO_ERROR,
-                                        "Snapshot could not be recovered because: " + e.getMessage(), e);
-                                } finally {
-                                    if (oin != null)
-                                        oin.close();
-                                }
-                                break;
-                                
-                            case LogEntry.PAYLOAD_TYPE_SNAP_DELETE:
-                                
-                                byte[] payload = le.getPayload().array();
-                                int offs = payload[0];
-                                String dbName = new String(payload, 1, offs);
-                                String snapName = new String(payload, offs + 1, payload.length - offs - 1);
-                                
-                                snapshotManager.deletePersistentSnapshot(dbName, snapName, false);
-                                break;
-                            }
-                            
-                            // set lsn'
-                            if (le != null)
-                                nextLSN = new LSN(le.getViewId(), le.getLogSequenceNo() + 1L);
-                        }
+            
+            // apply log entries to databases ...
+            while (it.hasNext()) {
+                
+                LogEntry le = it.next();
+                
+                // ignored
+                switch (le.getPayloadType()) {
+                
+                case LogEntry.PAYLOAD_TYPE_INSERT:
+                    InsertRecordGroup ai = InsertRecordGroup.deserialize(le.getPayload());
+                    databaseManager.insert(ai);
+                    break;
+                
+                case LogEntry.PAYLOAD_TYPE_SNAP:
+                    ObjectInputStream oin = null;
+                    try {
+                        oin = new ObjectInputStream(new ByteArrayInputStream(le.getPayload().array()));
+                        // deserialize the snapshot configuration
+                        int dbId = oin.readInt();
+                        SnapshotConfig snap = (SnapshotConfig) oin.readObject();
+                        snapshotManager.createPersistentSnapshot(databaseManager.getDatabase(dbId).getName(),
+                            snap, false);
+                    } catch (Exception e) {
                         if (le != null)
                             le.free();
+                        throw new BabuDBException(ErrorCode.IO_ERROR,
+                            "Snapshot could not be recovered because: " + e.getMessage(), e);
+                    } finally {
+                        if (oin != null)
+                            oin.close();
                     }
+                    break;
+                
+                case LogEntry.PAYLOAD_TYPE_SNAP_DELETE:
+
+                    byte[] payload = le.getPayload().array();
+                    int offs = payload[0];
+                    String dbName = new String(payload, 1, offs);
+                    String snapName = new String(payload, offs + 1, payload.length - offs - 1);
+                    
+                    snapshotManager.deletePersistentSnapshot(dbName, snapName, false);
+                    break;
                 }
+                
+                // set LSN
+                nextLSN = new LSN(le.getViewId(), le.getLogSequenceNo() + 1L);
+                le.free();
+                
             }
+            
             if (nextLSN != null) {
                 return nextLSN;
             } else {
@@ -516,9 +503,13 @@ public class BabuDB {
         } catch (IOException ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR,
                 "cannot load database operations log, file might be corrupted", ex);
-        } catch (LogEntryException ex) {
-            throw new BabuDBException(ErrorCode.IO_ERROR,
-                "corrupted/incomplete log entry in database operations log", ex);
+        } catch (Exception ex) {
+            if (ex.getCause() instanceof LogEntryException) {
+                throw new BabuDBException(ErrorCode.IO_ERROR,
+                    "corrupted/incomplete log entry in database operations log", ex.getCause());
+            } else
+                throw new BabuDBException(ErrorCode.IO_ERROR,
+                    "corrupted/incomplete log entry in database operations log", ex);
         }
     }
     
@@ -545,7 +536,7 @@ public class BabuDB {
         }
         return db.getIndex(indexId).lookup(key);
     }
-        
+    
     public SnapshotManager getSnapshotManager() {
         return snapshotManager;
     }
@@ -560,7 +551,8 @@ public class BabuDB {
      * @return the number of worker threads.
      */
     public int getWorkerCount() {
-        if (worker == null) return 0;
+        if (worker == null)
+            return 0;
         return worker.length;
     }
     
@@ -570,7 +562,8 @@ public class BabuDB {
      * @return a worker Thread, responsible for the DB given by its ID.
      */
     public LSMDBWorker getWorker(int dbId) {
-        if (worker == null) return null;
+        if (worker == null)
+            return null;
         return worker[dbId % worker.length];
     }
     
