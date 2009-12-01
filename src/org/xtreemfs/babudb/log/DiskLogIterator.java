@@ -44,7 +44,7 @@ public class DiskLogIterator implements Iterator<LogEntry> {
         
         try {
             
-            if (logFiles != null) {
+            if (logFiles != null && logFiles.length > 0) {
                 
                 dbLogDir = logFiles[0].getParent() + "/";
                 
