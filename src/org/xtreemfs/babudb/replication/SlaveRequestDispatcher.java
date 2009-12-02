@@ -93,7 +93,8 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
      * @param master
      */
     public void coin(InetSocketAddress master) {
-        
+        assert (checkIdentity(master)) : master+" is not a valid participant" +
+        		" of this replication setup.";
         // --------------------------
         // register the master client
         // --------------------------
