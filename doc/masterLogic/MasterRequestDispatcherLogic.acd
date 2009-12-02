@@ -40,7 +40,7 @@
             </constraint>
             <sourceConnections>
               <net.java.amateras.uml.activitydiagram.model.FlowModel>
-                <condition>any operation</condition>
+                <condition>replicate</condition>
                 <source class="net.java.amateras.uml.activitydiagram.model.InitialStateModel" reference="../../.."/>
                 <target class="net.java.amateras.uml.activitydiagram.model.ActionModel">
                   <actionName>send replicate</actionName>
@@ -52,19 +52,19 @@
                   </constraint>
                   <sourceConnections>
                     <net.java.amateras.uml.activitydiagram.model.FlowModel>
-                      <condition></condition>
+                      <condition>succeeded</condition>
                       <source class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../.."/>
                       <target class="net.java.amateras.uml.activitydiagram.model.InitialStateModel" reference="../../../../../.."/>
                       <bendpoints>
                         <net.java.amateras.uml.editpart.ConnectionBendpoint>
                           <weight>0.5</weight>
                           <d1>
-                            <width>-267</width>
-                            <height>0</height>
+                            <width>-1</width>
+                            <height>43</height>
                           </d1>
                           <d2>
-                            <width>-1</width>
-                            <height>-59</height>
+                            <width>265</width>
+                            <height>-16</height>
                           </d2>
                         </net.java.amateras.uml.editpart.ConnectionBendpoint>
                       </bendpoints>
@@ -83,10 +83,10 @@
                       <source class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../.."/>
                       <target class="net.java.amateras.uml.model.NoteModel">
                         <content>BASIC</content>
-                        <old>PLAIN</old>
+                        <old></old>
                         <constraint>
-                          <x>659</x>
-                          <y>176</y>
+                          <x>657</x>
+                          <y>188</y>
                           <width>100</width>
                           <height>30</height>
                         </constraint>
@@ -134,7 +134,7 @@
                       <source class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../.."/>
                       <target class="net.java.amateras.uml.activitydiagram.model.ObjectModel">
                         <stereoType></stereoType>
-                        <objectName>slaves state</objectName>
+                        <objectName>slavesState</objectName>
                         <objectState></objectState>
                         <constraint>
                           <x>581</x>
@@ -271,23 +271,12 @@
                                     <net.java.amateras.uml.editpart.ConnectionBendpoint>
                                       <weight>0.5</weight>
                                       <d1>
-                                        <width>-1</width>
-                                        <height>-27</height>
+                                        <width>-190</width>
+                                        <height>0</height>
                                       </d1>
                                       <d2>
-                                        <width>253</width>
-                                        <height>-193</height>
-                                      </d2>
-                                    </net.java.amateras.uml.editpart.ConnectionBendpoint>
-                                    <net.java.amateras.uml.editpart.ConnectionBendpoint>
-                                      <weight>0.5</weight>
-                                      <d1>
-                                        <width>-255</width>
-                                        <height>-27</height>
-                                      </d1>
-                                      <d2>
-                                        <width>-1</width>
-                                        <height>-193</height>
+                                        <width>64</width>
+                                        <height>-166</height>
                                       </d2>
                                     </net.java.amateras.uml.editpart.ConnectionBendpoint>
                                   </bendpoints>
@@ -373,12 +362,12 @@
                         <net.java.amateras.uml.editpart.ConnectionBendpoint>
                           <weight>0.5</weight>
                           <d1>
-                            <width>140</width>
-                            <height>-37</height>
+                            <width>161</width>
+                            <height>-53</height>
                           </d1>
                           <d2>
-                            <width>-110</width>
-                            <height>70</height>
+                            <width>-89</width>
+                            <height>54</height>
                           </d2>
                         </net.java.amateras.uml.editpart.ConnectionBendpoint>
                       </bendpoints>
@@ -393,6 +382,92 @@
                         </java.beans.PropertyChangeSupport>
                       </listeners>
                     </net.java.amateras.uml.model.AnchorModel>
+                    <net.java.amateras.uml.activitydiagram.model.FlowModel>
+                      <condition>failed</condition>
+                      <source class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../.."/>
+                      <target class="net.java.amateras.uml.activitydiagram.model.FinalStateModel">
+                        <constraint>
+                          <x>611</x>
+                          <y>136</y>
+                          <width>20</width>
+                          <height>20</height>
+                        </constraint>
+                        <sourceConnections>
+                          <net.java.amateras.uml.model.AnchorModel>
+                            <source class="net.java.amateras.uml.activitydiagram.model.FinalStateModel" reference="../../.."/>
+                            <target class="net.java.amateras.uml.model.NoteModel">
+                              <content>idle-mode</content>
+                              <old>idle</old>
+                              <constraint>
+                                <x>656</x>
+                                <y>132</y>
+                                <width>100</width>
+                                <height>30</height>
+                              </constraint>
+                              <sourceConnections/>
+                              <targetConnections>
+                                <net.java.amateras.uml.model.AnchorModel reference="../../.."/>
+                              </targetConnections>
+                              <children/>
+                              <filterProperty/>
+                              <backgroundColor reference="../../../../../../net.java.amateras.uml.model.AnchorModel/target/backgroundColor"/>
+                              <foregroundColor reference="../../../../../../net.java.amateras.uml.model.AnchorModel/target/foregroundColor"/>
+                              <showIcon>true</showIcon>
+                              <parent class="net.java.amateras.uml.activitydiagram.model.ActivityModel" reference="../../../../../../../../../../../../../../.."/>
+                              <listeners serialization="custom">
+                                <java.beans.PropertyChangeSupport>
+                                  <default>
+                                    <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
+                                    <source class="net.java.amateras.uml.model.NoteModel" reference="../../../.."/>
+                                  </default>
+                                  <null/>
+                                </java.beans.PropertyChangeSupport>
+                              </listeners>
+                            </target>
+                            <bendpoints/>
+                            <showIcon>true</showIcon>
+                            <listeners serialization="custom">
+                              <java.beans.PropertyChangeSupport>
+                                <default>
+                                  <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
+                                  <source class="net.java.amateras.uml.model.AnchorModel" reference="../../../.."/>
+                                </default>
+                                <null/>
+                              </java.beans.PropertyChangeSupport>
+                            </listeners>
+                          </net.java.amateras.uml.model.AnchorModel>
+                        </sourceConnections>
+                        <targetConnections>
+                          <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../../.."/>
+                        </targetConnections>
+                        <children/>
+                        <filterProperty/>
+                        <backgroundColor reference="../../../net.java.amateras.uml.model.AnchorModel/target/backgroundColor"/>
+                        <foregroundColor reference="../../../net.java.amateras.uml.model.AnchorModel/target/foregroundColor"/>
+                        <showIcon>true</showIcon>
+                        <parent class="net.java.amateras.uml.activitydiagram.model.ActivityModel" reference="../../../../../../../../../../../.."/>
+                        <listeners serialization="custom">
+                          <java.beans.PropertyChangeSupport>
+                            <default>
+                              <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
+                              <source class="net.java.amateras.uml.activitydiagram.model.FinalStateModel" reference="../../../.."/>
+                            </default>
+                            <null/>
+                          </java.beans.PropertyChangeSupport>
+                        </listeners>
+                      </target>
+                      <bendpoints/>
+                      <showIcon>true</showIcon>
+                      <listeners serialization="custom">
+                        <java.beans.PropertyChangeSupport>
+                          <default>
+                            <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
+                            <source class="net.java.amateras.uml.activitydiagram.model.FlowModel" reference="../../../.."/>
+                          </default>
+                          <null/>
+                        </java.beans.PropertyChangeSupport>
+                      </listeners>
+                    </net.java.amateras.uml.activitydiagram.model.FlowModel>
                   </sourceConnections>
                   <targetConnections>
                     <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../../.."/>
@@ -427,164 +502,118 @@
               </net.java.amateras.uml.activitydiagram.model.FlowModel>
               <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel[2]/target/targetConnections/net.java.amateras.uml.model.AnchorModel/source/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel"/>
               <net.java.amateras.uml.activitydiagram.model.FlowModel>
-                <condition>LSNRange</condition>
+                <condition>request</condition>
                 <source class="net.java.amateras.uml.activitydiagram.model.InitialStateModel" reference="../../.."/>
                 <target class="net.java.amateras.uml.activitydiagram.model.ActionModel">
-                  <actionName>retrieve LogEntries</actionName>
+                  <actionName>retrieve log entries</actionName>
                   <constraint>
-                    <x>496</x>
-                    <y>275</y>
-                    <width>143</width>
-                    <height>37</height>
+                    <x>509</x>
+                    <y>313</y>
+                    <width>117</width>
+                    <height>35</height>
                   </constraint>
                   <sourceConnections>
                     <net.java.amateras.uml.activitydiagram.model.FlowModel>
-                      <condition>failed</condition>
+                      <condition>succeeded</condition>
                       <source class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../.."/>
                       <target class="net.java.amateras.uml.activitydiagram.model.ActionModel">
-                        <actionName>send failed</actionName>
+                        <actionName>send log entries</actionName>
                         <constraint>
-                          <x>521</x>
-                          <y>409</y>
-                          <width>92</width>
-                          <height>37</height>
+                          <x>516</x>
+                          <y>244</y>
+                          <width>103</width>
+                          <height>35</height>
                         </constraint>
                         <sourceConnections>
-                          <net.java.amateras.uml.activitydiagram.model.FlowModel>
-                            <condition></condition>
+                          <net.java.amateras.uml.model.AnchorModel>
                             <source class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../.."/>
-                            <target class="net.java.amateras.uml.activitydiagram.model.InitialStateModel" reference="../../../../../../../../.."/>
-                            <bendpoints>
-                              <net.java.amateras.uml.editpart.ConnectionBendpoint>
-                                <weight>0.5</weight>
-                                <d1>
-                                  <width>-1</width>
-                                  <height>68</height>
-                                </d1>
-                                <d2>
-                                  <width>452</width>
-                                  <height>234</height>
-                                </d2>
-                              </net.java.amateras.uml.editpart.ConnectionBendpoint>
-                              <net.java.amateras.uml.editpart.ConnectionBendpoint>
-                                <weight>0.5</weight>
-                                <d1>
-                                  <width>-454</width>
-                                  <height>68</height>
-                                </d1>
-                                <d2>
-                                  <width>-1</width>
-                                  <height>234</height>
-                                </d2>
-                              </net.java.amateras.uml.editpart.ConnectionBendpoint>
-                            </bendpoints>
-                            <showIcon>true</showIcon>
-                            <listeners serialization="custom">
-                              <java.beans.PropertyChangeSupport>
-                                <default>
-                                  <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
-                                  <source class="net.java.amateras.uml.activitydiagram.model.FlowModel" reference="../../../.."/>
-                                </default>
-                                <null/>
-                              </java.beans.PropertyChangeSupport>
-                            </listeners>
-                          </net.java.amateras.uml.activitydiagram.model.FlowModel>
-                        </sourceConnections>
-                        <targetConnections>
-                          <net.java.amateras.uml.activitydiagram.model.FlowModel>
-                            <condition>failed</condition>
-                            <source class="net.java.amateras.uml.activitydiagram.model.ActionModel">
-                              <actionName>send chunk</actionName>
+                            <target class="net.java.amateras.uml.model.NoteModel">
+                              <content>REQUEST</content>
+                              <old></old>
                               <constraint>
-                                <x>321</x>
-                                <y>409</y>
-                                <width>94</width>
-                                <height>37</height>
+                                <x>657</x>
+                                <y>246</y>
+                                <width>100</width>
+                                <height>30</height>
                               </constraint>
                               <sourceConnections>
-                                <net.java.amateras.uml.activitydiagram.model.FlowModel>
-                                  <condition></condition>
-                                  <source class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../.."/>
-                                  <target class="net.java.amateras.uml.activitydiagram.model.InitialStateModel" reference="../../../../../../../../../../../.."/>
-                                  <bendpoints>
-                                    <net.java.amateras.uml.editpart.ConnectionBendpoint>
-                                      <weight>0.5</weight>
-                                      <d1>
-                                        <width>-255</width>
-                                        <height>0</height>
-                                      </d1>
-                                      <d2>
-                                        <width>-1</width>
-                                        <height>166</height>
-                                      </d2>
-                                    </net.java.amateras.uml.editpart.ConnectionBendpoint>
-                                  </bendpoints>
-                                  <showIcon>true</showIcon>
-                                  <listeners serialization="custom">
-                                    <java.beans.PropertyChangeSupport>
-                                      <default>
-                                        <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
-                                        <source class="net.java.amateras.uml.activitydiagram.model.FlowModel" reference="../../../.."/>
-                                      </default>
-                                      <null/>
-                                    </java.beans.PropertyChangeSupport>
-                                  </listeners>
-                                </net.java.amateras.uml.activitydiagram.model.FlowModel>
-                                <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../../.."/>
-                              </sourceConnections>
-                              <targetConnections>
-                                <net.java.amateras.uml.activitydiagram.model.FlowModel>
-                                  <condition>chunk</condition>
-                                  <source class="net.java.amateras.uml.activitydiagram.model.InitialStateModel" reference="../../../../../../../../../../../.."/>
-                                  <target class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../.."/>
-                                  <bendpoints/>
-                                  <showIcon>true</showIcon>
-                                  <listeners serialization="custom">
-                                    <java.beans.PropertyChangeSupport>
-                                      <default>
-                                        <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
-                                        <source class="net.java.amateras.uml.activitydiagram.model.FlowModel" reference="../../../.."/>
-                                      </default>
-                                      <null/>
-                                    </java.beans.PropertyChangeSupport>
-                                  </listeners>
-                                </net.java.amateras.uml.activitydiagram.model.FlowModel>
                                 <net.java.amateras.uml.model.AnchorModel>
-                                  <source class="net.java.amateras.uml.model.NoteModel">
-                                    <content>LOAD</content>
-                                    <old></old>
+                                  <source class="net.java.amateras.uml.model.NoteModel" reference="../../.."/>
+                                  <target class="net.java.amateras.uml.activitydiagram.model.ActionModel">
+                                    <actionName>send failed</actionName>
                                     <constraint>
-                                      <x>656</x>
-                                      <y>354</y>
-                                      <width>100</width>
-                                      <height>30</height>
+                                      <x>521</x>
+                                      <y>409</y>
+                                      <width>92</width>
+                                      <height>37</height>
                                     </constraint>
                                     <sourceConnections>
-                                      <net.java.amateras.uml.model.AnchorModel>
-                                        <source class="net.java.amateras.uml.model.NoteModel" reference="../../.."/>
-                                        <target class="net.java.amateras.uml.activitydiagram.model.ActionModel">
-                                          <actionName>send DBFilesMetaData</actionName>
+                                      <net.java.amateras.uml.activitydiagram.model.FlowModel>
+                                        <condition></condition>
+                                        <source class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../.."/>
+                                        <target class="net.java.amateras.uml.activitydiagram.model.InitialStateModel" reference="../../../../../../../../../../../../../../.."/>
+                                        <bendpoints>
+                                          <net.java.amateras.uml.editpart.ConnectionBendpoint>
+                                            <weight>0.5</weight>
+                                            <d1>
+                                              <width>-1</width>
+                                              <height>68</height>
+                                            </d1>
+                                            <d2>
+                                              <width>452</width>
+                                              <height>234</height>
+                                            </d2>
+                                          </net.java.amateras.uml.editpart.ConnectionBendpoint>
+                                          <net.java.amateras.uml.editpart.ConnectionBendpoint>
+                                            <weight>0.5</weight>
+                                            <d1>
+                                              <width>-454</width>
+                                              <height>68</height>
+                                            </d1>
+                                            <d2>
+                                              <width>-1</width>
+                                              <height>234</height>
+                                            </d2>
+                                          </net.java.amateras.uml.editpart.ConnectionBendpoint>
+                                        </bendpoints>
+                                        <showIcon>true</showIcon>
+                                        <listeners serialization="custom">
+                                          <java.beans.PropertyChangeSupport>
+                                            <default>
+                                              <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
+                                              <source class="net.java.amateras.uml.activitydiagram.model.FlowModel" reference="../../../.."/>
+                                            </default>
+                                            <null/>
+                                          </java.beans.PropertyChangeSupport>
+                                        </listeners>
+                                      </net.java.amateras.uml.activitydiagram.model.FlowModel>
+                                    </sourceConnections>
+                                    <targetConnections>
+                                      <net.java.amateras.uml.activitydiagram.model.FlowModel>
+                                        <condition>failed</condition>
+                                        <source class="net.java.amateras.uml.activitydiagram.model.ActionModel">
+                                          <actionName>send chunk</actionName>
                                           <constraint>
                                             <x>321</x>
-                                            <y>350</y>
-                                            <width>168</width>
+                                            <y>409</y>
+                                            <width>94</width>
                                             <height>37</height>
                                           </constraint>
                                           <sourceConnections>
                                             <net.java.amateras.uml.activitydiagram.model.FlowModel>
-                                              <condition></condition>
+                                              <condition>succeeded</condition>
                                               <source class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../.."/>
                                               <target class="net.java.amateras.uml.activitydiagram.model.InitialStateModel" reference="../../../../../../../../../../../../../../../../../.."/>
                                               <bendpoints>
                                                 <net.java.amateras.uml.editpart.ConnectionBendpoint>
                                                   <weight>0.5</weight>
                                                   <d1>
-                                                    <width>-292</width>
+                                                    <width>-210</width>
                                                     <height>0</height>
                                                   </d1>
                                                   <d2>
-                                                    <width>-1</width>
-                                                    <height>107</height>
+                                                    <width>44</width>
+                                                    <height>166</height>
                                                   </d2>
                                                 </net.java.amateras.uml.editpart.ConnectionBendpoint>
                                               </bendpoints>
@@ -599,10 +628,11 @@
                                                 </java.beans.PropertyChangeSupport>
                                               </listeners>
                                             </net.java.amateras.uml.activitydiagram.model.FlowModel>
+                                            <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../../.."/>
                                           </sourceConnections>
                                           <targetConnections>
                                             <net.java.amateras.uml.activitydiagram.model.FlowModel>
-                                              <condition>load</condition>
+                                              <condition>chunk</condition>
                                               <source class="net.java.amateras.uml.activitydiagram.model.InitialStateModel" reference="../../../../../../../../../../../../../../../../../.."/>
                                               <target class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../.."/>
                                               <bendpoints/>
@@ -617,14 +647,333 @@
                                                 </java.beans.PropertyChangeSupport>
                                               </listeners>
                                             </net.java.amateras.uml.activitydiagram.model.FlowModel>
-                                            <net.java.amateras.uml.model.AnchorModel reference="../../.."/>
+                                            <net.java.amateras.uml.model.AnchorModel>
+                                              <source class="net.java.amateras.uml.model.NoteModel">
+                                                <content>LOAD</content>
+                                                <old></old>
+                                                <constraint>
+                                                  <x>656</x>
+                                                  <y>354</y>
+                                                  <width>100</width>
+                                                  <height>30</height>
+                                                </constraint>
+                                                <sourceConnections>
+                                                  <net.java.amateras.uml.model.AnchorModel>
+                                                    <source class="net.java.amateras.uml.model.NoteModel" reference="../../.."/>
+                                                    <target class="net.java.amateras.uml.activitydiagram.model.ActionModel">
+                                                      <actionName>send DB files metadata</actionName>
+                                                      <constraint>
+                                                        <x>321</x>
+                                                        <y>350</y>
+                                                        <width>168</width>
+                                                        <height>37</height>
+                                                      </constraint>
+                                                      <sourceConnections>
+                                                        <net.java.amateras.uml.activitydiagram.model.FlowModel>
+                                                          <condition>succeeded</condition>
+                                                          <source class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../.."/>
+                                                          <target class="net.java.amateras.uml.activitydiagram.model.InitialStateModel" reference="../../../../../../../../../../../../../../../../../../../../../../../.."/>
+                                                          <bendpoints>
+                                                            <net.java.amateras.uml.editpart.ConnectionBendpoint>
+                                                              <weight>0.5</weight>
+                                                              <d1>
+                                                                <width>-215</width>
+                                                                <height>0</height>
+                                                              </d1>
+                                                              <d2>
+                                                                <width>76</width>
+                                                                <height>107</height>
+                                                              </d2>
+                                                            </net.java.amateras.uml.editpart.ConnectionBendpoint>
+                                                          </bendpoints>
+                                                          <showIcon>true</showIcon>
+                                                          <listeners serialization="custom">
+                                                            <java.beans.PropertyChangeSupport>
+                                                              <default>
+                                                                <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
+                                                                <source class="net.java.amateras.uml.activitydiagram.model.FlowModel" reference="../../../.."/>
+                                                              </default>
+                                                              <null/>
+                                                            </java.beans.PropertyChangeSupport>
+                                                          </listeners>
+                                                        </net.java.amateras.uml.activitydiagram.model.FlowModel>
+                                                        <net.java.amateras.uml.activitydiagram.model.FlowModel>
+                                                          <condition>failed</condition>
+                                                          <source class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../.."/>
+                                                          <target class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../../../../../../../../../../.."/>
+                                                          <bendpoints/>
+                                                          <showIcon>true</showIcon>
+                                                          <listeners serialization="custom">
+                                                            <java.beans.PropertyChangeSupport>
+                                                              <default>
+                                                                <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
+                                                                <source class="net.java.amateras.uml.activitydiagram.model.FlowModel" reference="../../../.."/>
+                                                              </default>
+                                                              <null/>
+                                                            </java.beans.PropertyChangeSupport>
+                                                          </listeners>
+                                                        </net.java.amateras.uml.activitydiagram.model.FlowModel>
+                                                      </sourceConnections>
+                                                      <targetConnections>
+                                                        <net.java.amateras.uml.activitydiagram.model.FlowModel>
+                                                          <condition>load</condition>
+                                                          <source class="net.java.amateras.uml.activitydiagram.model.InitialStateModel" reference="../../../../../../../../../../../../../../../../../../../../../../../.."/>
+                                                          <target class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../.."/>
+                                                          <bendpoints/>
+                                                          <showIcon>true</showIcon>
+                                                          <listeners serialization="custom">
+                                                            <java.beans.PropertyChangeSupport>
+                                                              <default>
+                                                                <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
+                                                                <source class="net.java.amateras.uml.activitydiagram.model.FlowModel" reference="../../../.."/>
+                                                              </default>
+                                                              <null/>
+                                                            </java.beans.PropertyChangeSupport>
+                                                          </listeners>
+                                                        </net.java.amateras.uml.activitydiagram.model.FlowModel>
+                                                        <net.java.amateras.uml.model.AnchorModel reference="../../.."/>
+                                                      </targetConnections>
+                                                      <children/>
+                                                      <filterProperty/>
+                                                      <backgroundColor>
+                                                        <red>255</red>
+                                                        <green>255</green>
+                                                        <blue>206</blue>
+                                                      </backgroundColor>
+                                                      <foregroundColor>
+                                                        <red>0</red>
+                                                        <green>0</green>
+                                                        <blue>0</blue>
+                                                      </foregroundColor>
+                                                      <showIcon>true</showIcon>
+                                                      <parent class="net.java.amateras.uml.activitydiagram.model.ActivityModel">
+                                                        <sourceConnections/>
+                                                        <targetConnections/>
+                                                        <children>
+                                                          <net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel reference="../../../../../../../../../../../../../../../../../../../../../../../../../../.."/>
+                                                          <net.java.amateras.uml.activitydiagram.model.InitialStateModel reference="../../../../../../../../../../../../../../../../../../../../../../../.."/>
+                                                          <net.java.amateras.uml.activitydiagram.model.ActionModel reference="../../../../../../../../../../../../../../../../../../../../../../../net.java.amateras.uml.activitydiagram.model.FlowModel/target"/>
+                                                          <net.java.amateras.uml.model.NoteModel>
+                                                            <content>waiting for user/slave requests</content>
+                                                            <old></old>
+                                                            <constraint>
+                                                              <x>5</x>
+                                                              <y>15</y>
+                                                              <width>123</width>
+                                                              <height>41</height>
+                                                            </constraint>
+                                                            <sourceConnections>
+                                                              <net.java.amateras.uml.model.AnchorModel>
+                                                                <source class="net.java.amateras.uml.model.NoteModel" reference="../../.."/>
+                                                                <target class="net.java.amateras.uml.activitydiagram.model.InitialStateModel" reference="../../../../../../../../../../../../../../../../../../../../../../../../../../.."/>
+                                                                <bendpoints/>
+                                                                <showIcon>true</showIcon>
+                                                                <listeners serialization="custom">
+                                                                  <java.beans.PropertyChangeSupport>
+                                                                    <default>
+                                                                      <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
+                                                                      <source class="net.java.amateras.uml.model.AnchorModel" reference="../../../.."/>
+                                                                    </default>
+                                                                    <null/>
+                                                                  </java.beans.PropertyChangeSupport>
+                                                                </listeners>
+                                                              </net.java.amateras.uml.model.AnchorModel>
+                                                            </sourceConnections>
+                                                            <targetConnections/>
+                                                            <children/>
+                                                            <filterProperty/>
+                                                            <backgroundColor reference="../../../../../../../../../../../../../../../../../../../../../../../../../../../../backgroundColor"/>
+                                                            <foregroundColor reference="../../../../../../../../../../../../../../../../../../../../../../../../../../../../foregroundColor"/>
+                                                            <showIcon>true</showIcon>
+                                                            <parent class="net.java.amateras.uml.activitydiagram.model.ActivityModel" reference="../../../../../../../../../../../../../../../../../../../../../../../../../../.."/>
+                                                            <listeners serialization="custom">
+                                                              <java.beans.PropertyChangeSupport>
+                                                                <default>
+                                                                  <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
+                                                                  <source class="net.java.amateras.uml.model.NoteModel" reference="../../../.."/>
+                                                                </default>
+                                                                <null/>
+                                                              </java.beans.PropertyChangeSupport>
+                                                            </listeners>
+                                                          </net.java.amateras.uml.model.NoteModel>
+                                                          <net.java.amateras.uml.activitydiagram.model.ActionModel reference="../../../../../../../../../../../../../../../../../../../../../../../net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel[2]/target/targetConnections/net.java.amateras.uml.model.AnchorModel/source"/>
+                                                          <net.java.amateras.uml.activitydiagram.model.ActionModel reference="../../../../../../../../../../../../../../../../../../../../../../../net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel[2]/target/targetConnections/net.java.amateras.uml.model.AnchorModel[2]/source"/>
+                                                          <net.java.amateras.uml.activitydiagram.model.ObjectModel reference="../../../../../../../../../../../../../../../../../../../../../../../net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel[2]/target"/>
+                                                          <net.java.amateras.uml.activitydiagram.model.ActionModel reference="../../.."/>
+                                                          <net.java.amateras.uml.activitydiagram.model.ActionModel reference="../../../../../../../../.."/>
+                                                          <net.java.amateras.uml.activitydiagram.model.ActionModel reference="../../../../../../../../../../../.."/>
+                                                          <net.java.amateras.uml.model.NoteModel reference="../../../../../.."/>
+                                                          <net.java.amateras.uml.activitydiagram.model.ActionModel>
+                                                            <actionName>retrieve log entries</actionName>
+                                                            <constraint>
+                                                              <x>496</x>
+                                                              <y>275</y>
+                                                              <width>143</width>
+                                                              <height>37</height>
+                                                            </constraint>
+                                                            <sourceConnections/>
+                                                            <targetConnections/>
+                                                            <children/>
+                                                            <filterProperty/>
+                                                            <backgroundColor reference="../../../../backgroundColor"/>
+                                                            <foregroundColor reference="../../../../foregroundColor"/>
+                                                            <showIcon>true</showIcon>
+                                                            <parent class="net.java.amateras.uml.activitydiagram.model.ActivityModel" reference="../../../../../../../../../../../../../../../../../../../../../../../../../../../../../.."/>
+                                                            <listeners serialization="custom">
+                                                              <java.beans.PropertyChangeSupport>
+                                                                <default>
+                                                                  <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
+                                                                  <source class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../../.."/>
+                                                                </default>
+                                                                <null/>
+                                                              </java.beans.PropertyChangeSupport>
+                                                            </listeners>
+                                                          </net.java.amateras.uml.activitydiagram.model.ActionModel>
+                                                          <net.java.amateras.uml.model.NoteModel>
+                                                            <content>REQUEST</content>
+                                                            <old></old>
+                                                            <constraint>
+                                                              <x>659</x>
+                                                              <y>210</y>
+                                                              <width>100</width>
+                                                              <height>30</height>
+                                                            </constraint>
+                                                            <sourceConnections/>
+                                                            <targetConnections/>
+                                                            <children/>
+                                                            <filterProperty/>
+                                                            <backgroundColor reference="../../../../backgroundColor"/>
+                                                            <foregroundColor reference="../../../../foregroundColor"/>
+                                                            <showIcon>true</showIcon>
+                                                            <parent class="net.java.amateras.uml.activitydiagram.model.ActivityModel" reference="../../../../../../../../../../../../../../../../../../../../../../../../../../../../../.."/>
+                                                            <listeners serialization="custom">
+                                                              <java.beans.PropertyChangeSupport>
+                                                                <default>
+                                                                  <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
+                                                                  <source class="net.java.amateras.uml.model.NoteModel" reference="../../../.."/>
+                                                                </default>
+                                                                <null/>
+                                                              </java.beans.PropertyChangeSupport>
+                                                            </listeners>
+                                                          </net.java.amateras.uml.model.NoteModel>
+                                                          <net.java.amateras.uml.model.NoteModel>
+                                                            <content>BASIC</content>
+                                                            <old>PLAIN</old>
+                                                            <constraint>
+                                                              <x>659</x>
+                                                              <y>176</y>
+                                                              <width>100</width>
+                                                              <height>30</height>
+                                                            </constraint>
+                                                            <sourceConnections/>
+                                                            <targetConnections/>
+                                                            <children/>
+                                                            <filterProperty/>
+                                                            <backgroundColor reference="../../../../backgroundColor"/>
+                                                            <foregroundColor reference="../../../../foregroundColor"/>
+                                                            <showIcon>true</showIcon>
+                                                            <parent class="net.java.amateras.uml.activitydiagram.model.ActivityModel" reference="../../../../../../../../../../../../../../../../../../../../../../../../../../../../../.."/>
+                                                            <listeners serialization="custom">
+                                                              <java.beans.PropertyChangeSupport>
+                                                                <default>
+                                                                  <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
+                                                                  <source class="net.java.amateras.uml.model.NoteModel" reference="../../../.."/>
+                                                                </default>
+                                                                <null/>
+                                                              </java.beans.PropertyChangeSupport>
+                                                            </listeners>
+                                                          </net.java.amateras.uml.model.NoteModel>
+                                                        </children>
+                                                        <filterProperty/>
+                                                        <backgroundColor reference="../../backgroundColor"/>
+                                                        <foregroundColor reference="../../foregroundColor"/>
+                                                        <showIcon>true</showIcon>
+                                                        <listeners serialization="custom">
+                                                          <java.beans.PropertyChangeSupport>
+                                                            <default>
+                                                              <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
+                                                              <source class="net.java.amateras.uml.activitydiagram.model.ActivityModel" reference="../../../.."/>
+                                                            </default>
+                                                            <null/>
+                                                          </java.beans.PropertyChangeSupport>
+                                                        </listeners>
+                                                      </parent>
+                                                      <listeners serialization="custom">
+                                                        <java.beans.PropertyChangeSupport>
+                                                          <default>
+                                                            <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
+                                                            <source class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../../.."/>
+                                                          </default>
+                                                          <null/>
+                                                        </java.beans.PropertyChangeSupport>
+                                                      </listeners>
+                                                    </target>
+                                                    <bendpoints/>
+                                                    <showIcon>true</showIcon>
+                                                    <listeners serialization="custom">
+                                                      <java.beans.PropertyChangeSupport>
+                                                        <default>
+                                                          <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
+                                                          <source class="net.java.amateras.uml.model.AnchorModel" reference="../../../.."/>
+                                                        </default>
+                                                        <null/>
+                                                      </java.beans.PropertyChangeSupport>
+                                                    </listeners>
+                                                  </net.java.amateras.uml.model.AnchorModel>
+                                                  <net.java.amateras.uml.model.AnchorModel reference="../../.."/>
+                                                  <net.java.amateras.uml.model.AnchorModel>
+                                                    <source class="net.java.amateras.uml.model.NoteModel" reference="../../.."/>
+                                                    <target class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../../../../../../../.."/>
+                                                    <bendpoints/>
+                                                    <showIcon>true</showIcon>
+                                                    <listeners serialization="custom">
+                                                      <java.beans.PropertyChangeSupport>
+                                                        <default>
+                                                          <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
+                                                          <source class="net.java.amateras.uml.model.AnchorModel" reference="../../../.."/>
+                                                        </default>
+                                                        <null/>
+                                                      </java.beans.PropertyChangeSupport>
+                                                    </listeners>
+                                                  </net.java.amateras.uml.model.AnchorModel>
+                                                </sourceConnections>
+                                                <targetConnections/>
+                                                <children/>
+                                                <filterProperty/>
+                                                <backgroundColor reference="../sourceConnections/net.java.amateras.uml.model.AnchorModel/target/backgroundColor"/>
+                                                <foregroundColor reference="../sourceConnections/net.java.amateras.uml.model.AnchorModel/target/foregroundColor"/>
+                                                <showIcon>true</showIcon>
+                                                <parent class="net.java.amateras.uml.activitydiagram.model.ActivityModel" reference="../sourceConnections/net.java.amateras.uml.model.AnchorModel/target/parent"/>
+                                                <listeners serialization="custom">
+                                                  <java.beans.PropertyChangeSupport>
+                                                    <default>
+                                                      <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
+                                                      <source class="net.java.amateras.uml.model.NoteModel" reference="../../../.."/>
+                                                    </default>
+                                                    <null/>
+                                                  </java.beans.PropertyChangeSupport>
+                                                </listeners>
+                                              </source>
+                                              <target class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../.."/>
+                                              <bendpoints/>
+                                              <showIcon>true</showIcon>
+                                              <listeners serialization="custom">
+                                                <java.beans.PropertyChangeSupport>
+                                                  <default>
+                                                    <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
+                                                    <source class="net.java.amateras.uml.model.AnchorModel" reference="../../../.."/>
+                                                  </default>
+                                                  <null/>
+                                                </java.beans.PropertyChangeSupport>
+                                              </listeners>
+                                            </net.java.amateras.uml.model.AnchorModel>
                                           </targetConnections>
                                           <children/>
                                           <filterProperty/>
-                                          <backgroundColor reference="../../../../../../../../../../../../../../../net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/backgroundColor"/>
-                                          <foregroundColor reference="../../../../../../../../../../../../../../../net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/foregroundColor"/>
+                                          <backgroundColor reference="../targetConnections/net.java.amateras.uml.model.AnchorModel/source/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/backgroundColor"/>
+                                          <foregroundColor reference="../targetConnections/net.java.amateras.uml.model.AnchorModel/source/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/foregroundColor"/>
                                           <showIcon>true</showIcon>
-                                          <parent class="net.java.amateras.uml.activitydiagram.model.ActivityModel" reference="../../../../../../../../../../../../../../../../../../../../.."/>
+                                          <parent class="net.java.amateras.uml.activitydiagram.model.ActivityModel" reference="../targetConnections/net.java.amateras.uml.model.AnchorModel/source/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/parent"/>
                                           <listeners serialization="custom">
                                             <java.beans.PropertyChangeSupport>
                                               <default>
@@ -634,54 +983,56 @@
                                               <null/>
                                             </java.beans.PropertyChangeSupport>
                                           </listeners>
-                                        </target>
+                                        </source>
+                                        <target class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../.."/>
                                         <bendpoints/>
                                         <showIcon>true</showIcon>
                                         <listeners serialization="custom">
                                           <java.beans.PropertyChangeSupport>
                                             <default>
                                               <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
-                                              <source class="net.java.amateras.uml.model.AnchorModel" reference="../../../.."/>
+                                              <source class="net.java.amateras.uml.activitydiagram.model.FlowModel" reference="../../../.."/>
                                             </default>
                                             <null/>
                                           </java.beans.PropertyChangeSupport>
                                         </listeners>
-                                      </net.java.amateras.uml.model.AnchorModel>
+                                      </net.java.amateras.uml.activitydiagram.model.FlowModel>
+                                      <net.java.amateras.uml.activitydiagram.model.FlowModel>
+                                        <condition>failed</condition>
+                                        <source class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../../../../../../../../../../.."/>
+                                        <target class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../.."/>
+                                        <bendpoints/>
+                                        <showIcon>true</showIcon>
+                                        <listeners serialization="custom">
+                                          <java.beans.PropertyChangeSupport>
+                                            <default>
+                                              <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
+                                              <source class="net.java.amateras.uml.activitydiagram.model.FlowModel" reference="../../../.."/>
+                                            </default>
+                                            <null/>
+                                          </java.beans.PropertyChangeSupport>
+                                        </listeners>
+                                      </net.java.amateras.uml.activitydiagram.model.FlowModel>
                                       <net.java.amateras.uml.model.AnchorModel reference="../../.."/>
-                                      <net.java.amateras.uml.model.AnchorModel>
-                                        <source class="net.java.amateras.uml.model.NoteModel" reference="../../.."/>
-                                        <target class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../../../../../../../.."/>
-                                        <bendpoints/>
-                                        <showIcon>true</showIcon>
-                                        <listeners serialization="custom">
-                                          <java.beans.PropertyChangeSupport>
-                                            <default>
-                                              <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
-                                              <source class="net.java.amateras.uml.model.AnchorModel" reference="../../../.."/>
-                                            </default>
-                                            <null/>
-                                          </java.beans.PropertyChangeSupport>
-                                        </listeners>
-                                      </net.java.amateras.uml.model.AnchorModel>
-                                    </sourceConnections>
-                                    <targetConnections/>
+                                      <net.java.amateras.uml.model.AnchorModel reference="../net.java.amateras.uml.activitydiagram.model.FlowModel/source/targetConnections/net.java.amateras.uml.model.AnchorModel/source/sourceConnections/net.java.amateras.uml.model.AnchorModel[3]"/>
+                                      <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../net.java.amateras.uml.activitydiagram.model.FlowModel/source/targetConnections/net.java.amateras.uml.model.AnchorModel/source/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[2]"/>
+                                    </targetConnections>
                                     <children/>
                                     <filterProperty/>
-                                    <backgroundColor reference="../../../../../../../../../../../../net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/backgroundColor"/>
-                                    <foregroundColor reference="../../../../../../../../../../../../net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/foregroundColor"/>
+                                    <backgroundColor reference="../targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/source/targetConnections/net.java.amateras.uml.model.AnchorModel/source/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/backgroundColor"/>
+                                    <foregroundColor reference="../targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/source/targetConnections/net.java.amateras.uml.model.AnchorModel/source/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/foregroundColor"/>
                                     <showIcon>true</showIcon>
-                                    <parent class="net.java.amateras.uml.activitydiagram.model.ActivityModel" reference="../../../../../../../../../../../../../../../../../.."/>
+                                    <parent class="net.java.amateras.uml.activitydiagram.model.ActivityModel" reference="../targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/source/targetConnections/net.java.amateras.uml.model.AnchorModel/source/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/parent"/>
                                     <listeners serialization="custom">
                                       <java.beans.PropertyChangeSupport>
                                         <default>
                                           <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
-                                          <source class="net.java.amateras.uml.model.NoteModel" reference="../../../.."/>
+                                          <source class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../../.."/>
                                         </default>
                                         <null/>
                                       </java.beans.PropertyChangeSupport>
                                     </listeners>
-                                  </source>
-                                  <target class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../.."/>
+                                  </target>
                                   <bendpoints/>
                                   <showIcon>true</showIcon>
                                   <listeners serialization="custom">
@@ -694,48 +1045,6 @@
                                     </java.beans.PropertyChangeSupport>
                                   </listeners>
                                 </net.java.amateras.uml.model.AnchorModel>
-                              </targetConnections>
-                              <children/>
-                              <filterProperty/>
-                              <backgroundColor reference="../../../../../../../../../net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/backgroundColor"/>
-                              <foregroundColor reference="../../../../../../../../../net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/foregroundColor"/>
-                              <showIcon>true</showIcon>
-                              <parent class="net.java.amateras.uml.activitydiagram.model.ActivityModel" reference="../../../../../../../../../../../../../../.."/>
-                              <listeners serialization="custom">
-                                <java.beans.PropertyChangeSupport>
-                                  <default>
-                                    <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
-                                    <source class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../../.."/>
-                                  </default>
-                                  <null/>
-                                </java.beans.PropertyChangeSupport>
-                              </listeners>
-                            </source>
-                            <target class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../.."/>
-                            <bendpoints/>
-                            <showIcon>true</showIcon>
-                            <listeners serialization="custom">
-                              <java.beans.PropertyChangeSupport>
-                                <default>
-                                  <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
-                                  <source class="net.java.amateras.uml.activitydiagram.model.FlowModel" reference="../../../.."/>
-                                </default>
-                                <null/>
-                              </java.beans.PropertyChangeSupport>
-                            </listeners>
-                          </net.java.amateras.uml.activitydiagram.model.FlowModel>
-                          <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../../.."/>
-                          <net.java.amateras.uml.model.AnchorModel>
-                            <source class="net.java.amateras.uml.model.NoteModel">
-                              <content>REQUEST</content>
-                              <old></old>
-                              <constraint>
-                                <x>659</x>
-                                <y>210</y>
-                                <width>100</width>
-                                <height>30</height>
-                              </constraint>
-                              <sourceConnections>
                                 <net.java.amateras.uml.model.AnchorModel>
                                   <source class="net.java.amateras.uml.model.NoteModel" reference="../../.."/>
                                   <target class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../../../../../../../.."/>
@@ -751,84 +1060,9 @@
                                     </java.beans.PropertyChangeSupport>
                                   </listeners>
                                 </net.java.amateras.uml.model.AnchorModel>
-                                <net.java.amateras.uml.model.AnchorModel reference="../../.."/>
                               </sourceConnections>
                               <targetConnections>
-                                <net.java.amateras.uml.model.AnchorModel>
-                                  <source class="net.java.amateras.uml.activitydiagram.model.ActionModel">
-                                    <actionName>send LogEntries</actionName>
-                                    <constraint>
-                                      <x>505</x>
-                                      <y>206</y>
-                                      <width>123</width>
-                                      <height>37</height>
-                                    </constraint>
-                                    <sourceConnections>
-                                      <net.java.amateras.uml.activitydiagram.model.FlowModel>
-                                        <condition></condition>
-                                        <source class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../.."/>
-                                        <target class="net.java.amateras.uml.activitydiagram.model.InitialStateModel" reference="../../../../../../../../../../../../../../.."/>
-                                        <bendpoints/>
-                                        <showIcon>true</showIcon>
-                                        <listeners serialization="custom">
-                                          <java.beans.PropertyChangeSupport>
-                                            <default>
-                                              <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
-                                              <source class="net.java.amateras.uml.activitydiagram.model.FlowModel" reference="../../../.."/>
-                                            </default>
-                                            <null/>
-                                          </java.beans.PropertyChangeSupport>
-                                        </listeners>
-                                      </net.java.amateras.uml.activitydiagram.model.FlowModel>
-                                      <net.java.amateras.uml.model.AnchorModel reference="../../.."/>
-                                    </sourceConnections>
-                                    <targetConnections>
-                                      <net.java.amateras.uml.activitydiagram.model.FlowModel>
-                                        <condition>succeeded</condition>
-                                        <source class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../../../../../../../../../../.."/>
-                                        <target class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../.."/>
-                                        <bendpoints/>
-                                        <showIcon>true</showIcon>
-                                        <listeners serialization="custom">
-                                          <java.beans.PropertyChangeSupport>
-                                            <default>
-                                              <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
-                                              <source class="net.java.amateras.uml.activitydiagram.model.FlowModel" reference="../../../.."/>
-                                            </default>
-                                            <null/>
-                                          </java.beans.PropertyChangeSupport>
-                                        </listeners>
-                                      </net.java.amateras.uml.activitydiagram.model.FlowModel>
-                                    </targetConnections>
-                                    <children/>
-                                    <filterProperty/>
-                                    <backgroundColor reference="../../../../../../../../../../../../net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/backgroundColor"/>
-                                    <foregroundColor reference="../../../../../../../../../../../../net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/foregroundColor"/>
-                                    <showIcon>true</showIcon>
-                                    <parent class="net.java.amateras.uml.activitydiagram.model.ActivityModel" reference="../../../../../../../../../../../../../../../../../.."/>
-                                    <listeners serialization="custom">
-                                      <java.beans.PropertyChangeSupport>
-                                        <default>
-                                          <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
-                                          <source class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../../.."/>
-                                        </default>
-                                        <null/>
-                                      </java.beans.PropertyChangeSupport>
-                                    </listeners>
-                                  </source>
-                                  <target class="net.java.amateras.uml.model.NoteModel" reference="../../.."/>
-                                  <bendpoints/>
-                                  <showIcon>true</showIcon>
-                                  <listeners serialization="custom">
-                                    <java.beans.PropertyChangeSupport>
-                                      <default>
-                                        <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
-                                        <source class="net.java.amateras.uml.model.AnchorModel" reference="../../../.."/>
-                                      </default>
-                                      <null/>
-                                    </java.beans.PropertyChangeSupport>
-                                  </listeners>
-                                </net.java.amateras.uml.model.AnchorModel>
+                                <net.java.amateras.uml.model.AnchorModel reference="../../.."/>
                               </targetConnections>
                               <children/>
                               <filterProperty/>
@@ -845,8 +1079,7 @@
                                   <null/>
                                 </java.beans.PropertyChangeSupport>
                               </listeners>
-                            </source>
-                            <target class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../.."/>
+                            </target>
                             <bendpoints/>
                             <showIcon>true</showIcon>
                             <listeners serialization="custom">
@@ -859,7 +1092,25 @@
                               </java.beans.PropertyChangeSupport>
                             </listeners>
                           </net.java.amateras.uml.model.AnchorModel>
-                          <net.java.amateras.uml.model.AnchorModel reference="../net.java.amateras.uml.activitydiagram.model.FlowModel/source/targetConnections/net.java.amateras.uml.model.AnchorModel/source/sourceConnections/net.java.amateras.uml.model.AnchorModel[3]"/>
+                          <net.java.amateras.uml.activitydiagram.model.FlowModel>
+                            <condition></condition>
+                            <source class="net.java.amateras.uml.activitydiagram.model.ActionModel" reference="../../.."/>
+                            <target class="net.java.amateras.uml.activitydiagram.model.InitialStateModel" reference="../../../../../../../../.."/>
+                            <bendpoints/>
+                            <showIcon>true</showIcon>
+                            <listeners serialization="custom">
+                              <java.beans.PropertyChangeSupport>
+                                <default>
+                                  <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
+                                  <source class="net.java.amateras.uml.activitydiagram.model.FlowModel" reference="../../../.."/>
+                                </default>
+                                <null/>
+                              </java.beans.PropertyChangeSupport>
+                            </listeners>
+                          </net.java.amateras.uml.activitydiagram.model.FlowModel>
+                        </sourceConnections>
+                        <targetConnections>
+                          <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../../.."/>
                         </targetConnections>
                         <children/>
                         <filterProperty/>
@@ -889,11 +1140,11 @@
                         </java.beans.PropertyChangeSupport>
                       </listeners>
                     </net.java.amateras.uml.activitydiagram.model.FlowModel>
-                    <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../net.java.amateras.uml.activitydiagram.model.FlowModel/target/targetConnections/net.java.amateras.uml.model.AnchorModel/source/targetConnections/net.java.amateras.uml.model.AnchorModel/source/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel"/>
+                    <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[2]"/>
                   </sourceConnections>
                   <targetConnections>
                     <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../../.."/>
-                    <net.java.amateras.uml.model.AnchorModel reference="../../sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/targetConnections/net.java.amateras.uml.model.AnchorModel/source/sourceConnections/net.java.amateras.uml.model.AnchorModel"/>
+                    <net.java.amateras.uml.model.AnchorModel reference="../../sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel[2]"/>
                   </targetConnections>
                   <children/>
                   <filterProperty/>
@@ -923,61 +1174,19 @@
                   </java.beans.PropertyChangeSupport>
                 </listeners>
               </net.java.amateras.uml.activitydiagram.model.FlowModel>
-              <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/source/targetConnections/net.java.amateras.uml.model.AnchorModel/source/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel"/>
-              <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/source/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel"/>
+              <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/source/targetConnections/net.java.amateras.uml.model.AnchorModel/source/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel"/>
+              <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/source/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel"/>
               <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel[2]/target/targetConnections/net.java.amateras.uml.model.AnchorModel[2]/source/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel"/>
             </sourceConnections>
             <targetConnections>
-              <net.java.amateras.uml.model.AnchorModel>
-                <source class="net.java.amateras.uml.model.NoteModel">
-                  <content>waiting for user/slave requests</content>
-                  <old></old>
-                  <constraint>
-                    <x>5</x>
-                    <y>15</y>
-                    <width>123</width>
-                    <height>41</height>
-                  </constraint>
-                  <sourceConnections>
-                    <net.java.amateras.uml.model.AnchorModel reference="../../.."/>
-                  </sourceConnections>
-                  <targetConnections/>
-                  <children/>
-                  <filterProperty/>
-                  <backgroundColor reference="../../../../../../../backgroundColor"/>
-                  <foregroundColor reference="../../../../../../../foregroundColor"/>
-                  <showIcon>true</showIcon>
-                  <parent class="net.java.amateras.uml.activitydiagram.model.ActivityModel" reference="../../../../../.."/>
-                  <listeners serialization="custom">
-                    <java.beans.PropertyChangeSupport>
-                      <default>
-                        <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
-                        <source class="net.java.amateras.uml.model.NoteModel" reference="../../../.."/>
-                      </default>
-                      <null/>
-                    </java.beans.PropertyChangeSupport>
-                  </listeners>
-                </source>
-                <target class="net.java.amateras.uml.activitydiagram.model.InitialStateModel" reference="../../.."/>
-                <bendpoints/>
-                <showIcon>true</showIcon>
-                <listeners serialization="custom">
-                  <java.beans.PropertyChangeSupport>
-                    <default>
-                      <propertyChangeSupportSerializedDataVersion>2</propertyChangeSupportSerializedDataVersion>
-                      <source class="net.java.amateras.uml.model.AnchorModel" reference="../../../.."/>
-                    </default>
-                    <null/>
-                  </java.beans.PropertyChangeSupport>
-                </listeners>
-              </net.java.amateras.uml.model.AnchorModel>
+              <net.java.amateras.uml.model.AnchorModel reference="../../sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/source/targetConnections/net.java.amateras.uml.model.AnchorModel/source/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/parent/children/net.java.amateras.uml.model.NoteModel/sourceConnections/net.java.amateras.uml.model.AnchorModel"/>
               <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../../sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel"/>
               <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../../sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel[2]/target/targetConnections/net.java.amateras.uml.model.AnchorModel/source/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel"/>
-              <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../../sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/source/targetConnections/net.java.amateras.uml.model.AnchorModel/source/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel"/>
-              <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../../sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/source/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel"/>
-              <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../../sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel"/>
+              <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../../sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/source/targetConnections/net.java.amateras.uml.model.AnchorModel/source/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel"/>
+              <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../../sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/source/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel"/>
+              <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../../sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel"/>
               <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../../sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel[2]/target/targetConnections/net.java.amateras.uml.model.AnchorModel[2]/source/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel"/>
-              <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../../sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/targetConnections/net.java.amateras.uml.model.AnchorModel/source/targetConnections/net.java.amateras.uml.model.AnchorModel/source/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel"/>
+              <net.java.amateras.uml.activitydiagram.model.FlowModel reference="../../sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel"/>
             </targetConnections>
             <children/>
             <filterProperty/>
@@ -996,7 +1205,7 @@
             </listeners>
           </net.java.amateras.uml.activitydiagram.model.InitialStateModel>
           <net.java.amateras.uml.activitydiagram.model.ActionModel reference="../net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target"/>
-          <net.java.amateras.uml.model.NoteModel reference="../net.java.amateras.uml.activitydiagram.model.InitialStateModel/targetConnections/net.java.amateras.uml.model.AnchorModel/source"/>
+          <net.java.amateras.uml.model.NoteModel reference="../net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/source/targetConnections/net.java.amateras.uml.model.AnchorModel/source/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/parent/children/net.java.amateras.uml.model.NoteModel"/>
           <net.java.amateras.uml.activitydiagram.model.ActionModel reference="../net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel[2]/target/targetConnections/net.java.amateras.uml.model.AnchorModel/source"/>
           <net.java.amateras.uml.activitydiagram.model.ActionModel reference="../net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel[2]/target/targetConnections/net.java.amateras.uml.model.AnchorModel[2]/source"/>
           <net.java.amateras.uml.activitydiagram.model.ActionModel>
@@ -1014,7 +1223,7 @@
             <backgroundColor reference="../../../../backgroundColor"/>
             <foregroundColor reference="../../../../foregroundColor"/>
             <showIcon>true</showIcon>
-            <parent class="net.java.amateras.uml.activitydiagram.model.ActivityModel" reference="../../../../../.."/>
+            <parent class="net.java.amateras.uml.activitydiagram.model.ActivityModel" reference="../../net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/source/targetConnections/net.java.amateras.uml.model.AnchorModel/source/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/parent"/>
             <listeners serialization="custom">
               <java.beans.PropertyChangeSupport>
                 <default>
@@ -1040,7 +1249,7 @@
             <backgroundColor reference="../../../../backgroundColor"/>
             <foregroundColor reference="../../../../foregroundColor"/>
             <showIcon>true</showIcon>
-            <parent class="net.java.amateras.uml.activitydiagram.model.ActivityModel" reference="../../../../../.."/>
+            <parent class="net.java.amateras.uml.activitydiagram.model.ActivityModel" reference="../../net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/source/targetConnections/net.java.amateras.uml.model.AnchorModel/source/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/parent"/>
             <listeners serialization="custom">
               <java.beans.PropertyChangeSupport>
                 <default>
@@ -1079,18 +1288,20 @@
     </net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel>
     <net.java.amateras.uml.activitydiagram.model.InitialStateModel reference="../net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel"/>
     <net.java.amateras.uml.activitydiagram.model.ActionModel reference="../net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target"/>
-    <net.java.amateras.uml.model.NoteModel reference="../net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel/targetConnections/net.java.amateras.uml.model.AnchorModel/source"/>
+    <net.java.amateras.uml.model.NoteModel reference="../net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/source/targetConnections/net.java.amateras.uml.model.AnchorModel/source/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/parent/children/net.java.amateras.uml.model.NoteModel"/>
     <net.java.amateras.uml.activitydiagram.model.ActionModel reference="../net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel[2]/target/targetConnections/net.java.amateras.uml.model.AnchorModel/source"/>
     <net.java.amateras.uml.activitydiagram.model.ActionModel reference="../net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel[2]/target/targetConnections/net.java.amateras.uml.model.AnchorModel[2]/source"/>
     <net.java.amateras.uml.activitydiagram.model.ObjectModel reference="../net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel[2]/target"/>
-    <net.java.amateras.uml.activitydiagram.model.ActionModel reference="../net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/source/targetConnections/net.java.amateras.uml.model.AnchorModel/source/sourceConnections/net.java.amateras.uml.model.AnchorModel/target"/>
-    <net.java.amateras.uml.activitydiagram.model.ActionModel reference="../net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/source"/>
-    <net.java.amateras.uml.activitydiagram.model.ActionModel reference="../net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target"/>
-    <net.java.amateras.uml.model.NoteModel reference="../net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/source/targetConnections/net.java.amateras.uml.model.AnchorModel/source"/>
+    <net.java.amateras.uml.activitydiagram.model.ActionModel reference="../net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/source/targetConnections/net.java.amateras.uml.model.AnchorModel/source/sourceConnections/net.java.amateras.uml.model.AnchorModel/target"/>
+    <net.java.amateras.uml.activitydiagram.model.ActionModel reference="../net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/source"/>
+    <net.java.amateras.uml.activitydiagram.model.ActionModel reference="../net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target"/>
+    <net.java.amateras.uml.model.NoteModel reference="../net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/targetConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/source/targetConnections/net.java.amateras.uml.model.AnchorModel/source"/>
     <net.java.amateras.uml.activitydiagram.model.ActionModel reference="../net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target"/>
-    <net.java.amateras.uml.activitydiagram.model.ActionModel reference="../net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/targetConnections/net.java.amateras.uml.model.AnchorModel/source/targetConnections/net.java.amateras.uml.model.AnchorModel/source"/>
-    <net.java.amateras.uml.model.NoteModel reference="../net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/targetConnections/net.java.amateras.uml.model.AnchorModel/source"/>
+    <net.java.amateras.uml.activitydiagram.model.ActionModel reference="../net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target"/>
+    <net.java.amateras.uml.model.NoteModel reference="../net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[3]/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target"/>
     <net.java.amateras.uml.model.NoteModel reference="../net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target"/>
+    <net.java.amateras.uml.activitydiagram.model.FinalStateModel reference="../net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[2]/target"/>
+    <net.java.amateras.uml.model.NoteModel reference="../net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel[2]/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target"/>
   </children>
   <filterProperty/>
   <backgroundColor reference="../children/net.java.amateras.uml.activitydiagram.model.VerticalPartitionModel/parent/children/net.java.amateras.uml.activitydiagram.model.InitialStateModel/sourceConnections/net.java.amateras.uml.activitydiagram.model.FlowModel/target/sourceConnections/net.java.amateras.uml.model.AnchorModel/target/backgroundColor"/>
