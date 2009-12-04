@@ -110,9 +110,17 @@ public class SnapshotManagerImpl implements SnapshotManager {
                 snapshotDBs.put(dbName, snapMap);
             }
             
-            if (snapMap.containsKey(snap.getName()))
+            // if the snapshot exists already ...
+            if (snapMap.containsKey(snap.getName())) {
+                
+                // if no log entry needs to be created, i.e. the log is being
+                // replayed, ignore the request
+                if (!createLogEntry)
+                    return;
+                
                 throw new BabuDBException(ErrorCode.SNAP_EXISTS, "snapshot '" + snap.getName()
                     + "' already exists");
+            }
             
             snapMap.put(snap.getName(), new Snapshot(null));
             
@@ -165,9 +173,17 @@ public class SnapshotManagerImpl implements SnapshotManager {
         final Map<String, Snapshot> snapMap = snapshotDBs.get(dbName);
         final Snapshot snap = snapMap.get(snapshotName);
         
-        if (snap == null)
+        // if the snapshot does not exist ...
+        if (snap == null) {
+            
+            // if no log entry needs to be created, i.e. the log is being
+            // replayed, ignore the request
+            if (!createLogEntry)
+                return;
+            
             throw new BabuDBException(ErrorCode.NO_SUCH_SNAPSHOT, "snapshot '" + snapshotName
                 + "' does not exist");
+        }
         
         // shut down and remove the view
         snap.getView().shutdown();
