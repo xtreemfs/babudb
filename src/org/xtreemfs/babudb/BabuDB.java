@@ -143,6 +143,8 @@ public class BabuDB {
             AutoConverter.initiateConversion(dbConfigFile.getDBFormatVersion(), conf);
         }
         
+        snapshotManager.init();
+        
         try {
             if (conf instanceof ReplicationConfig)
                 DirectFileIO.replayBackupFiles((ReplicationConfig) conf);
@@ -213,8 +215,6 @@ public class BabuDB {
         
         if (dbConfigFile.isConversionRequired())
             AutoConverter.completeConversion(this);
-        
-        snapshotManager.init();
         
         // initialize and start the checkpointer; this has to be separated from
         // the instantiation because the instance has to be there when the log
