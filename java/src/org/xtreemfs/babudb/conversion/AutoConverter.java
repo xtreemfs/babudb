@@ -207,7 +207,7 @@ public class AutoConverter {
             File[] dbFilesToMove = dbDir.listFiles(new FileFilter() {
                 public boolean accept(File pathname) {
                     return !(pathname.equals(targetDir) || pathname.equals(cfgFile) || pathname
-                            .equals(backupDir));
+                            .equals(backupDir) || pathname.equals(dbLogDir));
                 }
             });
             
