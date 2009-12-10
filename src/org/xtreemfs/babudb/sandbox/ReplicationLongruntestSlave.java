@@ -157,7 +157,9 @@ public class ReplicationLongruntestSlave {
                 LookupGroup lookupGroup = generator.getLookupGroup(state.latest.getSequenceNo());
                 if (lookupGroup != null) {
                     for (int i=0;i<lookupGroup.size();i++){
-                        byte[] value = DBS.hiddenLookup(lookupGroup.dbName, lookupGroup.getIndex(i), lookupGroup.getKey(i));
+                        byte[] value = DBS.getDatabaseManager().getDatabase(
+                                lookupGroup.dbName).lookup(lookupGroup.getIndex(i),
+                                        lookupGroup.getKey(i), null).get();
                         // if the looked up entry is no delete ...
                         if (lookupGroup.getValue(i) != null) {
                             if (value==null) {
