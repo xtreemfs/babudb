@@ -446,51 +446,54 @@ public class BabuDB {
             
             // apply log entries to databases ...
             while (it.hasNext()) {
+                LogEntry le = null;
+                try {
+                    le = it.next();
                 
-                LogEntry le = it.next();
-                
-                // ignored
-                switch (le.getPayloadType()) {
-                
-                case LogEntry.PAYLOAD_TYPE_INSERT:
-                    InsertRecordGroup ai = InsertRecordGroup.deserialize(le.getPayload());
-                    databaseManager.insert(ai);
-                    break;
-                
-                case LogEntry.PAYLOAD_TYPE_SNAP:
-                    ObjectInputStream oin = null;
-                    try {
-                        oin = new ObjectInputStream(new ByteArrayInputStream(le.getPayload().array()));
-                        // deserialize the snapshot configuration
-                        int dbId = oin.readInt();
-                        SnapshotConfig snap = (SnapshotConfig) oin.readObject();
-                        snapshotManager.createPersistentSnapshot(databaseManager.getDatabase(dbId).getName(),
-                            snap, false);
-                    } catch (Exception e) {
-                        if (le != null)
-                            le.free();
-                        throw new BabuDBException(ErrorCode.IO_ERROR,
-                            "Snapshot could not be recovered because: " + e.getMessage(), e);
-                    } finally {
-                        if (oin != null)
-                            oin.close();
-                    }
-                    break;
-                
-                case LogEntry.PAYLOAD_TYPE_SNAP_DELETE:
-
-                    byte[] payload = le.getPayload().array();
-                    int offs = payload[0];
-                    String dbName = new String(payload, 1, offs);
-                    String snapName = new String(payload, offs + 1, payload.length - offs - 1);
+                    switch (le.getPayloadType()) {
                     
-                    snapshotManager.deletePersistentSnapshot(dbName, snapName, false);
-                    break;
+                    case LogEntry.PAYLOAD_TYPE_INSERT:
+                        InsertRecordGroup ai = InsertRecordGroup.deserialize(le.getPayload());
+                        databaseManager.insert(ai);
+                        break;
+                    
+                    case LogEntry.PAYLOAD_TYPE_SNAP:
+                        ObjectInputStream oin = null;
+                        try {
+                            oin = new ObjectInputStream(new ByteArrayInputStream(le.getPayload().array()));
+                            // deserialize the snapshot configuration
+                            int dbId = oin.readInt();
+                            SnapshotConfig snap = (SnapshotConfig) oin.readObject();
+                            snapshotManager.createPersistentSnapshot(databaseManager.getDatabase(dbId).getName(),
+                                snap, false);
+                        } catch (Exception e) {
+                            throw new BabuDBException(ErrorCode.IO_ERROR,
+                                "Snapshot could not be recovered because: " + e.getMessage(), e);
+                        } finally {
+                            if (oin != null)
+                                oin.close();
+                        }
+                        break;
+                    
+                    case LogEntry.PAYLOAD_TYPE_SNAP_DELETE:
+    
+                        byte[] payload = le.getPayload().array();
+                        int offs = payload[0];
+                        String dbName = new String(payload, 1, offs);
+                        String snapName = new String(payload, offs + 1, payload.length - offs - 1);
+                        
+                        snapshotManager.deletePersistentSnapshot(dbName, snapName, false);
+                        break;
+                        
+                    default: // create, copy and delete are skipped
+                        break; 
+                    }
+                    
+                    // set LSN
+                    nextLSN = new LSN(le.getViewId(), le.getLogSequenceNo() + 1L);
+                } finally {
+                    if (le!=null) le.free();
                 }
-                
-                // set LSN
-                nextLSN = new LSN(le.getViewId(), le.getLogSequenceNo() + 1L);
-                le.free();
                 
             }
             
