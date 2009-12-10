@@ -513,30 +513,6 @@ public class BabuDB {
         }
     }
     
-    /**
-     * FOR TESTING PURPOSE ONLY!
-     * 
-     * @param databaseName
-     *            the database name
-     * @param indexId
-     *            the ID of the index
-     * @param key
-     *            the key
-     * @return the value
-     * @throws BabuDBException
-     */
-    public byte[] hiddenLookup(String databaseName, int indexId, byte[] key) throws BabuDBException {
-        final LSMDatabase db = ((DatabaseImpl) databaseManager.getDatabase(databaseName)).getLSMDB();
-        
-        if (db == null) {
-            throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database does not exist");
-        }
-        if ((indexId >= db.getIndexCount()) || (indexId < 0)) {
-            throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
-        }
-        return db.getIndex(indexId).lookup(key);
-    }
-    
     public SnapshotManager getSnapshotManager() {
         return snapshotManager;
     }
