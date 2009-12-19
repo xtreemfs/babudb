@@ -1,8 +1,8 @@
 // Copyright (c) 2008, Felix Hupfeld, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist, Zuse Institute Berlin.
 // Licensed under the BSD License, see LICENSE file for details.
 
-#ifndef OGINDEX_H
-#define OGINDEX_H
+#ifndef LOGINDEX_H
+#define LOGINDEX_H
 
 #include <yield/platform/yunit.h>
 

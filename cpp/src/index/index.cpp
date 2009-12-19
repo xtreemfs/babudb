@@ -16,9 +16,13 @@
 #include "yield/platform/assert.h"
 #include "yield/platform/directory_walker.h"
 #include "yield/platform/memory_mapped_file.h"
+#include "yield/platform/disk_operations.h"
 
 #include <sstream>
 #include <algorithm>
+
+#define POSIX  // for O_ definitions from fcntl.h
+#include <fcntl.h>
 
 using namespace babudb;
 
@@ -29,7 +33,7 @@ ImmutableIndex::ImmutableIndex(auto_ptr<YIELD::MemoryMappedFile>  mm,
 ImmutableIndex* ImmutableIndex::Load(const string& name, lsn_t lsn, const KeyOrder& order) {
   auto_ptr<YIELD::MemoryMappedFile> mmap;
   mmap.reset(new YIELD::MemoryMappedFile(
-       name, 1024 * 1024, O_RDONLY|O_SYNC));
+      name, 1024 * 1024, O_RDONLY|O_SYNC));
   if (mmap.get() == NULL)
      return NULL;
 

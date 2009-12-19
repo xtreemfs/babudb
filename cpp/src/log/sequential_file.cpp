@@ -19,6 +19,9 @@ using namespace babudb;
 #include <yield/platform/assert.h>
 using namespace YIELD;
 
+#define POSIX  // for O_ definitions from fcntl.h
+#include <fcntl.h>
+
 #define FIRST_RECORD_OFFSET		8
 #define FIRST_RECORD_ADDRESS	(void*)((unsigned char*)memory->getRegionStart() + FIRST_RECORD_OFFSET)
 

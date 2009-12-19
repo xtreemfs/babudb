@@ -10,6 +10,11 @@
 
 #include "babudb/test.h"
 #include "yield/platform/memory_mapped_file.h"
+#include "yield/platform/disk_operations.h"
+
+#define POSIX  // for O_ definitions from fcntl.h
+#include <fcntl.h>
+
 using namespace YIELD;
 using namespace babudb;
 
