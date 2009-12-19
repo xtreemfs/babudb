@@ -47,7 +47,6 @@
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
 				UsePrecompiledHeader="0"
-				ProgramDataBaseFileName="lib\vc80.pdb"
 				WarningLevel="3"
 				DebugInformationFormat="4"
 			/>
@@ -109,7 +108,6 @@
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
-				ProgramDataBaseFileName="lib\vc80.pdb"
 				WarningLevel="3"
 				DebugInformationFormat="3"
 			/>
