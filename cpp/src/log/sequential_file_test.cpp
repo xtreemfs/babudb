@@ -9,7 +9,6 @@
 #include "babudb/log/sequential_file.h"
 
 #include "babudb/test.h"
-#include "yield/platform/memory_mapped_file.h"
 #include "yield/platform/disk_operations.h"
 
 #define POSIX  // for O_ definitions from fcntl.h
@@ -20,8 +19,7 @@ using namespace babudb;
 
 TEST_TMPDIR(SequentialFile_iteration,babudb)
 {
-	unsigned long mmap_flags = O_CREAT|O_RDWR|O_SYNC;
-	auto_ptr<MemoryMappedFile> file(new MemoryMappedFile(testPath("testfile").getHostCharsetPath(), 1024 * 1024, mmap_flags));
+  auto_ptr<LogStorage> file(PersistentLogStorage::Open(testPath("testfile").getHostCharsetPath()));
 	SequentialFile sf(file, NULL);
 
 	EXPECT_TRUE(sf.begin() == sf.end());
@@ -34,7 +32,7 @@ TEST_TMPDIR(SequentialFile_iteration,babudb)
 
 	sf.close();
 
-	file.reset(new MemoryMappedFile(testPath("testfile").getHostCharsetPath(), 1024 * 1024, O_RDONLY));
+  file.reset(PersistentLogStorage::OpenReadOnly(testPath("testfile").getHostCharsetPath()));
 	SequentialFile sf2(file, NULL);
 
 	SequentialFile::iterator i = sf2.begin();
@@ -74,7 +72,7 @@ TEST_TMPDIR(SequentialFile_iteration,babudb)
 
 TEST_TMPDIR(SequentialFile_rollback,babudb)
 {
-	auto_ptr<MemoryMappedFile> file(new MemoryMappedFile(testPath("testfile").getHostCharsetPath(), 1024 * 1024, O_CREAT|O_RDWR|O_SYNC));
+  auto_ptr<LogStorage> file(PersistentLogStorage::Open(testPath("testfile").getHostCharsetPath()));
 	SequentialFile sf(file, NULL);
 
 	sf.append(1,1);
@@ -84,7 +82,7 @@ TEST_TMPDIR(SequentialFile_rollback,babudb)
 
 	sf.close();
 
-	file.reset(new MemoryMappedFile(testPath("testfile").getHostCharsetPath(), 1024 * 1024, O_RDONLY));
+  file.reset(PersistentLogStorage::OpenReadOnly(testPath("testfile").getHostCharsetPath()));
 	SequentialFile sf2(file, NULL);
 
 	SequentialFile::iterator i = sf2.begin();

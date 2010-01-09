@@ -10,6 +10,7 @@
 
 #include "babudb/log/log.h"
 #include "babudb/log/log_section.h"
+#include "babudb/log/log_storage.h"
 #include "../util.h"
 #include "babudb/test.h"
 using namespace babudb;
@@ -19,8 +20,14 @@ using namespace babudb;
 using namespace std;
 
 #include "yield/platform/directory_walker.h"
-#include "yield/platform/memory_mapped_file.h"
 using namespace YIELD;
+
+Log::Log(Buffer data) : tail(NULL), name_prefix("") {  // volatile in-memory
+  auto_ptr<LogStorage> storage;
+  storage.reset(new VolatileLogStorage(data));
+  tail = new LogSection(storage, 1);
+	sections.push_back(tail);
+}
 
 Log::Log(const string& name_prefix) : tail(NULL), name_prefix(name_prefix) {}
 
@@ -33,7 +40,6 @@ Log::~Log() {
 void Log::close() {
 	advanceTail();
 }
-
 
 class LSNBefore {
 public:		
@@ -85,7 +91,7 @@ void Log::loadRequiredLogSections(lsn_t min_lsn) {
 		DiskSections::iterator next = i; next++;
 
 		if(next == disk_sections.end() || (min_lsn + 1) < next->second) {
-			auto_ptr<YIELD::MemoryMappedFile> file(new YIELD::MemoryMappedFile(i->first, 4, O_RDONLY));
+      auto_ptr<LogStorage> file(PersistentLogStorage::OpenReadOnly(i->first));
 
 			LogSection* section = new LogSection(file, i->second); // repairs if not graceful
 
@@ -121,13 +127,16 @@ LogSection* Log::getTail() {
 		if(!sections.empty())
 			next_lsn = sections.back()->getLastLSN() + 1;
 
-		std::ostringstream section_name;
-		section_name << name_prefix << "_" << next_lsn << ".log";
-
-		auto_ptr<YIELD::MemoryMappedFile> file(new YIELD::MemoryMappedFile(section_name.str(), 1024 * 1024, O_CREAT|O_RDWR|O_SYNC));
-		ASSERT_TRUE(file.get()->isOpen());
-
-		tail = new LogSection(file,next_lsn);
+    auto_ptr<LogStorage> storage;
+    // TODO: hack, refactor!
+    if (!name_prefix.empty()) {
+  		std::ostringstream section_name;
+  		section_name << name_prefix << "_" << next_lsn << ".log";
+  		storage.reset(PersistentLogStorage::Open(section_name.str()));
+    } else {
+      storage.reset(new VolatileLogStorage(1024));
+    }
+		tail = new LogSection(storage, next_lsn);
 		sections.push_back(tail);
 	}
 

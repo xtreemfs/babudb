@@ -12,10 +12,8 @@
 #include "index_writer.h"
 #include "babudb/log/sequential_file.h"
 
-#include "yield/platform/memory_mapped_file.h"
 #include "yield/platform/assert.h"
 #include "yield/platform/directory_walker.h"
-#include "yield/platform/memory_mapped_file.h"
 #include "yield/platform/disk_operations.h"
 
 #include <sstream>
@@ -26,14 +24,14 @@
 
 using namespace babudb;
 
-ImmutableIndex::ImmutableIndex(auto_ptr<YIELD::MemoryMappedFile>  mm,
+ImmutableIndex::ImmutableIndex(auto_ptr<LogStorage> mm,
                                const KeyOrder& order, lsn_t lsn)
     : storage(mm), order(order), latest_lsn(lsn), index(MapCompare(order)) {}
 
-ImmutableIndex* ImmutableIndex::Load(const string& name, lsn_t lsn, const KeyOrder& order) {
-  auto_ptr<YIELD::MemoryMappedFile> mmap;
-  mmap.reset(new YIELD::MemoryMappedFile(
-      name, 1024 * 1024, O_RDONLY|O_SYNC));
+ImmutableIndex* ImmutableIndex::Load(const string& name, lsn_t lsn,
+                                     const KeyOrder& order) {
+  auto_ptr<LogStorage> mmap;
+  mmap.reset(PersistentLogStorage::Open(name));
   if (mmap.get() == NULL)
      return NULL;
 
@@ -49,8 +47,8 @@ ImmutableIndexWriter* ImmutableIndex::Create(
     const string& name, lsn_t lsn, size_t chunk_size) {
 	std::ostringstream file_name;
 	file_name << name << "_" << lsn << ".idx";
-	auto_ptr<YIELD::MemoryMappedFile> mfile;
-  mfile.reset(new YIELD::MemoryMappedFile(file_name.str(), 1024*1024, O_CREAT|O_RDWR|O_SYNC));
+	auto_ptr<LogStorage> mfile;
+  mfile.reset(PersistentLogStorage::Open(file_name.str()));
   if (!mfile.get()) {
     return NULL;
   }

@@ -23,7 +23,9 @@ using namespace std;
 #include "babudb/key.h"
 #include "babudb/log/sequential_file.h"
 
-namespace YIELD { class MemoryMappedFile; }
+namespace YIELD {
+class Path;
+}
 
 namespace babudb {
 
@@ -54,7 +56,7 @@ public:
                        const string& obsolete_prefix); 
 
 private:
-	ImmutableIndex(auto_ptr<YIELD::MemoryMappedFile> mm, const KeyOrder& order, lsn_t);
+	ImmutableIndex(auto_ptr<LogStorage> mm, const KeyOrder& order, lsn_t);
   bool LoadRoot();
 	typedef std::map<Buffer,offset_t,MapCompare> Tree;
 

@@ -17,12 +17,12 @@ using std::string;
 #include "babudb/log/sequential_file.h"
 #include "babudb/buffer.h"
 
-namespace YIELD { class MemoryMappedFile; }
-
 #define LSN_RECORD_TYPE 0
 #define USER_RECORD_TYPE 1
 
 namespace babudb {
+
+class LogStorage;
 
 class Serializable {
 public:
@@ -34,7 +34,7 @@ public:
 
 class LogSection : public SequentialFile {
 public:
-	LogSection(auto_ptr<YIELD::MemoryMappedFile>, lsn_t first);
+	LogSection(auto_ptr<LogStorage>, lsn_t first);
 
 	lsn_t getFirstLSN();
 	lsn_t getLastLSN();

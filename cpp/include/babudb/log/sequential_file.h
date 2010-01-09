@@ -17,19 +17,18 @@ using std::string;
 using std::auto_ptr;
 
 #include <yield/platform/platform_types.h>
-#include <yield/platform/memory_mapped_file.h>
 
 #include "babudb/log/record_frame.h"
 #include "babudb/log/record_iterator.h"
+#include "babudb/log/log_storage.h"
 
 namespace babudb {
-
 class RecordIterator;
 class LogStats;
+class LogStorage;
 
 #define INVALID_OFFSET			0xFFFFffffFFFFffffULL
 typedef uint64_t				offset_t;
-
 
 /** An append-only file of records.
 */
@@ -42,7 +41,7 @@ public:
 	typedef class RecordFrame Record;
 	typedef class RecordIterator iterator;
 
-	SequentialFile(auto_ptr<YIELD::MemoryMappedFile>, LogStats* = NULL);
+	SequentialFile(auto_ptr<LogStorage>, LogStats* = NULL);
 	virtual ~SequentialFile() {}
 
 	void close();
@@ -67,6 +66,7 @@ public:
 
 	void frameData(void* location, size_t size, record_type_t type);
 	void* append(size_t size, record_type_t type);
+  void AppendRaw(void* data, size_t size);
 	void moveRecord( offset_t at, offset_t to );
 	void erase( offset_t );
 
@@ -83,6 +83,8 @@ public:
 	void setFlush( bool f );
 	void compact();
 
+  LogStorage* GetLogStorage() { return memory.get(); }
+
 private:
 	int initialize();
 	offset_t findNextAllocatedWord(offset_t);
@@ -90,7 +92,7 @@ private:
 
 	void copyRecord( Record*, void* );
 
-	auto_ptr<YIELD::MemoryMappedFile> memory;
+	auto_ptr<LogStorage> memory;
 	LogStats* stats;
 
 	offset_t next_write_offset;

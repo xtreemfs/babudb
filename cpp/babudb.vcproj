@@ -298,6 +298,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\log\log_storage.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\include\babudb\log\log_storage.h"
+				>
+			</File>
+			<File
 				RelativePath=".\src\log\record_frame.cpp"
 				>
 			</File>

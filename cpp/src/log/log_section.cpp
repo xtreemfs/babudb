@@ -8,15 +8,14 @@
 
 #include "babudb/log/log_section.h"
 #include "babudb/log/log_stats.h"
+#include "babudb/log/log_storage.h"
 #include "babudb/buffer.h"
 
-#include "yield/platform/yunit.h"
-#include "yield/platform/memory_mapped_file.h"
+#include "yield/platform/assert.h"
 
-using namespace YIELD;
 using namespace babudb;
 
-LogSection::LogSection(auto_ptr<MemoryMappedFile> mmfile, lsn_t first)
+LogSection::LogSection(auto_ptr<LogStorage> mmfile, lsn_t first)
 : SequentialFile(mmfile, new LogStats()), in_transaction(false), first_lsn(first), next_lsn(0) {
 	// set or retrieve last LSN
 	if(empty()) {

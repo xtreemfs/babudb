@@ -28,6 +28,7 @@ template <class T> class LogIterator;
 
 class Log {
 public:
+  Log(Buffer data);  // a volatile in-memory log
 	Log(const string& name_prefix);
 	~Log();
 

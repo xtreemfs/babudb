@@ -16,10 +16,7 @@ using namespace babudb;
 #include "babudb/test.h"
 #include "babudb/test_helper.h"
 
-TEST_TMPDIR(Log,babudb)
-{
-	auto_ptr<Log> log(new Log(testPath("testlog")));
-
+void WriteToLog(Log* log) {
 	LogSection* tail = log->getTail();
 
 	tail->Append(DummyOperation(1)); tail->Commit();
@@ -34,6 +31,13 @@ TEST_TMPDIR(Log,babudb)
 	tail->Append(DummyOperation(4)); tail->Commit();
 	tail->Append(DummyOperation(5)); tail->Commit();
 	tail->Append(DummyOperation(6)); tail->Commit();
+}
+
+TEST_TMPDIR(Log,babudb)
+{
+	auto_ptr<Log> log(new Log(testPath("testlog")));
+
+  WriteToLog(log.get());
 	log->close();
 
 	log.reset(new Log(testPath("testlog")));
@@ -50,4 +54,11 @@ TEST_TMPDIR(Log,babudb)
 	log->loadRequiredLogSections(2);
 	EXPECT_EQUAL(log->getSections().size(), 2);
 	log->close();
+}
+
+TEST_TMPDIR(LogVolatile,babudb) {
+  Buffer empty_buffer = Buffer::Empty();
+	auto_ptr<Log> log(new Log(empty_buffer));
+
+  WriteToLog(log.get());
 }

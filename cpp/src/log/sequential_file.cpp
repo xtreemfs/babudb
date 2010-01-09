@@ -23,10 +23,10 @@ using namespace YIELD;
 #include <fcntl.h>
 
 #define FIRST_RECORD_OFFSET		8
-#define FIRST_RECORD_ADDRESS	(void*)((unsigned char*)memory->getRegionStart() + FIRST_RECORD_OFFSET)
+#define FIRST_RECORD_ADDRESS	(void*)((unsigned char*)memory->Start() + FIRST_RECORD_OFFSET)
 
 
-SequentialFile::SequentialFile(auto_ptr<MemoryMappedFile> m, LogStats* stats ) : memory( m ), stats( stats )
+SequentialFile::SequentialFile(auto_ptr<LogStorage> m, LogStats* stats ) : memory( m ), stats( stats )
 {
 	if(stats == NULL)
 		this->stats = new LogStats();
@@ -35,7 +35,7 @@ SequentialFile::SequentialFile(auto_ptr<MemoryMappedFile> m, LogStats* stats ) :
 
 	database_version = *(unsigned int*)offset2record( 0 );
 
-	this->stats->log_file_length = (unsigned int)memory->getRegionSize();
+	this->stats->log_file_length = (unsigned int)memory->Size();
 	this->stats->log_length = (unsigned int)next_write_offset;
 
 	if(next_write_offset == FIRST_RECORD_OFFSET) // new database
@@ -45,7 +45,7 @@ SequentialFile::SequentialFile(auto_ptr<MemoryMappedFile> m, LogStats* stats ) :
 }
 
 void SequentialFile::close() {
-	memory->close();
+	memory->Close();
 }
 
 void SequentialFile::compact()
@@ -89,12 +89,15 @@ bool SequentialFile::empty() {
 }
 
 bool SequentialFile::isWritable() {
-	return (memory->getFlags() & O_RDWR) != 0;
+  return memory->IsWritable();
 }
 
 int SequentialFile::initialize()
 {
-	next_write_offset = (offset_t)memory->getRegionSize();
+  if (memory->Size() == 0)
+    memory->Resize(FIRST_RECORD_OFFSET);
+
+	next_write_offset = (offset_t)memory->Size();
 	next_write_offset = findNextAllocatedWord(next_write_offset);
 
 	record_frame_t* raw = (record_frame_t*)offset2record(next_write_offset);
@@ -130,7 +133,7 @@ int SequentialFile::initialize()
 	// clean memory after first valid record
 
 	if(isWritable())
-		for( raw = raw; (char*)raw < memory->getRegionEnd(); raw++ )
+		for( raw = raw; (char*)raw < memory->End(); raw++ )
 			*raw = 0;
 
 	rollback();		// remove any non-finalized transactions
@@ -149,7 +152,7 @@ bool SequentialFile::assertValidRecordChain( void* raw )
 	SequentialFile::Record* candidate_end = (Record*)raw;
 	SequentialFile::Record* candidate_begin = candidate_end->getStartHeader();
 
-	if( (char*)candidate_begin < memory->getRegionStart() || (char*)candidate_begin >= memory->getRegionEnd() )
+	if( (char*)candidate_begin < memory->Start() || (char*)candidate_begin >= memory->End() )
 		return false;
 
 	if( candidate_end->mightBeHeader() && candidate_begin->mightBeHeaderOf( candidate_end ) )
@@ -168,7 +171,7 @@ bool SequentialFile::assertValidRecordChain( void* raw )
 		SequentialFile::Record* next_end   = (Record*)test;
 		SequentialFile::Record* next_start = next_end->getStartHeader();
 
-		if( (void*)next_start < memory->getRegionStart() || (void*)next_start >= memory->getRegionEnd() )
+		if( (void*)next_start < memory->Start() || (void*)next_start >= memory->End() )
 			return false;
 
 		if( next_start->mightBeHeaderOf( next_end ) )
@@ -195,6 +198,15 @@ void* SequentialFile::append(size_t size, record_type_t type) {
 	void* location = getFreeSpace(size);
 	frameData(location, size, type);
 	return location;
+}
+
+void SequentialFile::AppendRaw(void* data, size_t size) {
+	void* location = getFreeSpace(size);
+  memcpy(location, data, size);
+  Record* new_record = static_cast<Record*>(location);
+  ASSERT_TRUE(new_record->isValid());
+	next_write_offset = record2offset( (SequentialFile::Record*)new_record->getEndOfRecord() );
+	ASSERT_TRUE(ISALIGNED((void*)next_write_offset, RECORD_FRAME_ALIGNMENT));
 }
 
 void SequentialFile::moveRecord( offset_t at, offset_t to )
@@ -286,7 +298,7 @@ void SequentialFile::erase( offset_t offset )
 }
 
 void* SequentialFile::getFreeSpace(size_t size) {
-	if( next_write_offset + size + 32 > memory->getRegionSize() )
+	if( next_write_offset + size + 32 > memory->Size() )
 		enlarge();
 
 	record_frame_t* location = (record_frame_t*)offset2record( next_write_offset );
@@ -298,10 +310,10 @@ void* SequentialFile::getFreeSpace(size_t size) {
 
 void SequentialFile::enlarge()
 {
-	size_t old_size = memory->getRegionSize();
+	size_t old_size = memory->Size();
 	size_t new_size = (unsigned int)((float)(old_size < 500000 ? old_size * 6 : old_size * 2));
 
-	memory->resize( new_size );
+	memory->Resize( new_size );
 
 	stats->log_file_length = (unsigned int)new_size;
 }
@@ -309,7 +321,7 @@ void SequentialFile::enlarge()
 void SequentialFile::truncate()
 {
 	size_t new_size = (unsigned int)next_write_offset;
-	memory->resize( new_size );
+	memory->Resize( new_size );
 
 	stats->log_file_length = (unsigned int)new_size;
 }
@@ -346,30 +358,30 @@ offset_t SequentialFile::pointer2offset( void* payload ) const
 
 SequentialFile::Record* SequentialFile::offset2record( offset_t offset ) const
 {
-	return ((Record*) ( offset + (char *)(memory->getRegionStart()) ) );
+	return ((Record*) ( offset + (char *)(memory->Start()) ) );
 }
 
 offset_t SequentialFile::record2offset( SequentialFile::Record* record ) const
 {
-	return (offset_t)( (char*)record - (char *)memory->getRegionStart() );
+	return (offset_t)( (char*)record - (char *)memory->Start() );
 }
 
 bool SequentialFile::isValid( SequentialFile::Record* r )
 {
-	return ((char*)r >= memory->getRegionStart() && (char*)r < memory->getRegionEnd() );
+	return ((char*)r >= memory->Start() && (char*)r < memory->End() );
 }
 
 void SequentialFile::writeBack( Record* record )
 {
-	memory->writeBack( record, record->getRecordSize() );
+	memory->WriteBack( record, record->getRecordSize() );
 }
 
 void SequentialFile::writeBack()
 {
-	memory->writeBack();
+	memory->WriteBack();
 }
 
-#define ACTUAL_START (char*)memory->getRegionStart() + FIRST_RECORD_OFFSET
+#define ACTUAL_START (char*)memory->Start() + FIRST_RECORD_OFFSET
 #define ACTUAL_SIZE (size_t)(next_write_offset - FIRST_RECORD_OFFSET)
 
 
