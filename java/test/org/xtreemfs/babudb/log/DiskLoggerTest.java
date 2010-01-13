@@ -12,21 +12,23 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.zip.CRC32;
 
 import junit.framework.TestCase;
 import junit.textui.TestRunner;
 
 import org.junit.After;
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.include.common.util.FSUtils;
 
 /**
  * 
@@ -52,6 +54,7 @@ public class DiskLoggerTest extends TestCase {
     
     @Before
     public void setUp() throws IOException {
+        FSUtils.delTree(new File(testdir));
         l = new DiskLogger(testdir, 1, 1, SyncMode.FSYNC, 0, 0, null);
         l.start();
     }
@@ -173,7 +176,10 @@ public class DiskLoggerTest extends TestCase {
     }
     
     @Test
-    public void testDefctiveEntries() throws Exception {
+    public void testDefectiveEntries() throws Exception {
+        
+        File logFile = new File(testdir + "1.1.dbl");
+        int[] offsets = new int[100];
         
         final AtomicInteger count = new AtomicInteger(0);
         
@@ -200,6 +206,8 @@ public class DiskLoggerTest extends TestCase {
             ReusableBuffer plb = ReusableBuffer.wrap(pl.getBytes());
             e = new LogEntry(plb, sl, LogEntry.PAYLOAD_TYPE_INSERT);
             l.append(e);
+            if (i < 99)
+                offsets[i + 1] = offsets[i] + LogEntry.headerLength + e.getPayload().remaining();
         }
         synchronized (e) {
             if (count.get() < 100)
@@ -216,52 +224,94 @@ public class DiskLoggerTest extends TestCase {
             l.unlockLogger();
         }
         
-        // write incorrect data...
-        RandomAccessFile raf = new RandomAccessFile(testdir + "1.1.dbl", "rw");
+        File tmpFile = new File(testdir + "log.dbl");
+        FSUtils.copyTree(logFile, tmpFile);
+        
+        // write incorrect data in the first entr...
+        RandomAccessFile raf = new RandomAccessFile(tmpFile.getAbsolutePath(), "rw");
         raf.seek(Integer.SIZE / 8);
         raf.writeInt(999999);
         raf.close();
         
-        LogEntry tmp = null;
-        try {
-            DiskLogFile f = new DiskLogFile(testdir + "1.1.dbl");
-            while (f.hasNext()) {
-                tmp = f.next();
-                byte[] data = tmp.getPayload().array();
-                String s = new String(data);
-                System.out.println("item: " + s);
-                tmp.free();
-                tmp = null;
-            }
-            Assert.fail("expected exception");
-        } catch (LogEntryException ex) {
-        } finally {
-            if (tmp != null)
-                tmp.free();
-        }
+        DiskLogFile f = new DiskLogFile(tmpFile.getAbsolutePath());
+        assertFalse(f.hasNext());
         
-        // write incorrect data...
-        raf = new RandomAccessFile(testdir + "1.1.dbl", "rw");
+        tmpFile.delete();
+        FSUtils.copyTree(logFile, tmpFile);
+        
+        // write an incorrect size in the first entry...
+        raf = new RandomAccessFile(tmpFile.getAbsoluteFile(), "rw");
         raf.writeInt(2);
         raf.close();
         
-        tmp = null;
-        try {
-            DiskLogFile f = new DiskLogFile(testdir + "1.1.dbl");
-            while (f.hasNext()) {
-                tmp = f.next();
-                byte[] data = tmp.getPayload().array();
-                String s = new String(data);
-                System.out.println("item: " + s);
-                tmp.free();
-                tmp = null;
-            }
-            Assert.fail("expected exception");
-        } catch (LogEntryException ex) {
-        } finally {
-            if (tmp != null)
-                tmp.free();
+        f = new DiskLogFile(tmpFile.getAbsolutePath());
+        assertFalse(f.hasNext());
+        
+        tmpFile.delete();
+        FSUtils.copyTree(logFile, tmpFile);
+        
+        // write a corrupted entry in the middle of the log file...
+        raf = new RandomAccessFile(tmpFile.getAbsolutePath(), "rw");
+        raf.seek(offsets[50]);
+        raf.writeInt(79);
+        raf.close();
+        
+        f = new DiskLogFile(tmpFile.getAbsolutePath());
+        for(int i = 0; i < 50; i++) {
+            LogEntry next = f.next();
+            assertNotNull(next);
+            next.free();
         }
+        assertFalse(f.hasNext());
+        
+        tmpFile.delete();
+        FSUtils.copyTree(logFile, tmpFile);
+        
+        // write a truncated entry at the end of the log file...
+        raf = new RandomAccessFile(tmpFile.getAbsolutePath(), "rw");
+        raf.getChannel().truncate(offsets[99] + 5);
+        raf.close();
+        
+        f = new DiskLogFile(tmpFile.getAbsolutePath());
+        for(int i = 0; i < 99; i++) {
+            LogEntry next = f.next();
+            assertNotNull(next);
+            next.free();
+        }
+        assertFalse(f.hasNext());
+        
+        // replace the old log file with the corrected log file
+        logFile.delete();
+        FSUtils.copyTree(tmpFile, logFile);
+        tmpFile.delete();
+        
+        // restart the disk logger and append new log entries
+        l.shutdown();
+        l = new DiskLogger(testdir, 1, 200, SyncMode.FSYNC, 0, 0, null);
+        l.start();
+        
+        e = null;
+        for (int i = 99; i < 120; i++) {
+            String pl = "Entry " + (i + 1);
+            ReusableBuffer plb = ReusableBuffer.wrap(pl.getBytes());
+            e = new LogEntry(plb, sl, LogEntry.PAYLOAD_TYPE_INSERT);
+            l.append(e);
+        }
+        synchronized (e) {
+            if (count.get() < 121)
+                e.wait(1000);
+        }
+        e.free();
+        
+        File[] logFiles = new File(testdir).listFiles();
+        DiskLogIterator it = new DiskLogIterator(logFiles, null);
+        for(int i = 0; i < 120; i++) {
+            LogEntry next = it.next();
+            System.out.println(i);
+            assertNotNull(next);
+            next.free();
+        }
+        assertFalse(it.hasNext());
         
     }
     

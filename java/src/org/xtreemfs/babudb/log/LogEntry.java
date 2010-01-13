@@ -155,7 +155,7 @@ public class LogEntry {
         data.position(cPos);
         
         if (length1 != length2) {
-            throw new LogEntryException("Invalid Frame. The length entries do not match.");
+            throw new LogEntryException("Invalid Frame. The length entries do not match; length1=" + length1 + ", length2=" + length2);
         }
         
     }

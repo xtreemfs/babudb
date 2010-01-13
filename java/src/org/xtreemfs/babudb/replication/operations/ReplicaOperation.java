@@ -139,6 +139,8 @@ public class ReplicaOperation extends Operation {
             else if (i==0) rq.sendReplicationException(ErrNo.LOG_CUT,"LogEntry unavailable.");
         } catch (IOException e) {
             rq.sendReplicationException(ErrNo.INTERNAL_ERROR,"Request not finished: "+e.getMessage());
+        } catch (LogEntryException e) {
+            rq.sendReplicationException(ErrNo.INTERNAL_ERROR,"Request not finished: "+e.getMessage());
         } finally {
             if (dlf!=null) {
                 try {

@@ -39,7 +39,7 @@ public class DiskLogIterator implements Iterator<LogEntry> {
     private LogEntry      nextEntry;
     
     public DiskLogIterator(File[] logFiles, LSN from) {
-
+        
         this.from = from;
         
         try {
@@ -127,8 +127,11 @@ public class DiskLogIterator implements Iterator<LogEntry> {
         if (logList == null || !logList.hasNext())
             return;
         
-        currentLog = logList.next();
-        currentFile = new DiskLogFile(dbLogDir, currentLog);
+        do {
+            currentLog = logList.next();
+            currentFile = new DiskLogFile(dbLogDir, currentLog);
+        } while (!currentFile.hasNext() && logList.hasNext());
+        
         while (currentFile.hasNext()) {
             LogEntry le = currentFile.next();
             if (from == null || le.getLSN().compareTo(from) >= 0) {
@@ -145,7 +148,7 @@ public class DiskLogIterator implements Iterator<LogEntry> {
         if (logList == null)
             return null;
         
-        // if there is another log entry in the curren file, return it
+        // if there is another log entry in the current file, return it
         if (currentFile.hasNext())
             return currentFile.next();
         
