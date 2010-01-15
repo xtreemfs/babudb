@@ -171,6 +171,9 @@ public class LSMDatabase {
                     return name.startsWith("IX" + idx + "V");
                 }
             });
+            if(files == null)
+                throw new BabuDBException(ErrorCode.IO_ERROR, "database directory '" + databaseDir + "' does not exist");
+            
             int maxView = -1;
             int maxSeq = -1;
             Pattern p = Pattern.compile(SNAPSHOT_FILENAME_REGEXP);
