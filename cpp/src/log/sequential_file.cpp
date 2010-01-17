@@ -113,6 +113,7 @@ int SequentialFile::initialize()
 	}
 
 	// find the first valid record
+  // TODO: skip initial zeros after FIRST_RECORD_ADDRESS
 
 	int lost_records = 0;
 	while(raw > (record_frame_t*)FIRST_RECORD_ADDRESS)
@@ -194,6 +195,17 @@ void SequentialFile::frameData(void* payload, size_t size, record_type_t type) {
 	ASSERT_TRUE(ISALIGNED((void*)next_write_offset, RECORD_FRAME_ALIGNMENT));
 }
 
+void* SequentialFile::getFreeSpace(size_t size) {
+	if( next_write_offset + size + 32 > memory->Size() )
+		enlarge();
+
+	record_frame_t* location = (record_frame_t*)offset2record( next_write_offset );
+	ASSERT_TRUE( *location == 0);
+
+	location++;
+	return location;
+}
+
 void* SequentialFile::append(size_t size, record_type_t type) {
 	void* location = getFreeSpace(size);
 	frameData(location, size, type);
@@ -201,9 +213,10 @@ void* SequentialFile::append(size_t size, record_type_t type) {
 }
 
 void SequentialFile::AppendRaw(void* data, size_t size) {
-	void* location = getFreeSpace(size);
+	record_frame_t* location = (record_frame_t*)getFreeSpace(size);
+  location--;  // TODO: clean up
   memcpy(location, data, size);
-  Record* new_record = static_cast<Record*>(location);
+  Record* new_record = static_cast<Record*>((void*)location);
   ASSERT_TRUE(new_record->isValid());
 	next_write_offset = record2offset( (SequentialFile::Record*)new_record->getEndOfRecord() );
 	ASSERT_TRUE(ISALIGNED((void*)next_write_offset, RECORD_FRAME_ALIGNMENT));
@@ -295,17 +308,6 @@ void SequentialFile::erase( offset_t offset )
 	stats->no_of_gaps += 1;
 	stats->gaps_length += target->getRecordSize();
 	stats->no_of_deletors--;
-}
-
-void* SequentialFile::getFreeSpace(size_t size) {
-	if( next_write_offset + size + 32 > memory->Size() )
-		enlarge();
-
-	record_frame_t* location = (record_frame_t*)offset2record( next_write_offset );
-	ASSERT_TRUE( *location == 0);
-
-	location++;
-	return location;
 }
 
 void SequentialFile::enlarge()
