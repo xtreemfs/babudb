@@ -16,7 +16,6 @@ import java.util.List;
 
 import org.xtreemfs.babudb.BabuDBRequest;
 import org.xtreemfs.babudb.clients.SlaveClient;
-import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.SlavesStates.NotEnoughAvailableSlavesException;
