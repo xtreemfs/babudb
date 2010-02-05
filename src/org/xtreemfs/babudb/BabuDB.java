@@ -60,7 +60,7 @@ public class BabuDB {
     /**
      * Version (name)
      */
-    public static final String           BABUDB_VERSION           = "0.3.1";
+    public static final String           BABUDB_VERSION           = "0.3.2";
     
     /**
      * Version of the DB on-disk format (to detect incompatibilities).
@@ -159,7 +159,7 @@ public class BabuDB {
                 dbLsn = ((DatabaseImpl) db).getLSMDB().getOndiskLSN();
             else {
                 LSN onDiskLSN = ((DatabaseImpl) db).getLSMDB().getOndiskLSN();
-                if (!LSMDatabase.NO_DB_LSN.equals(onDiskLSN) && !dbLsn.equals(onDiskLSN))
+                if (!(LSMDatabase.NO_DB_LSN.equals(dbLsn) || LSMDatabase.NO_DB_LSN.equals(onDiskLSN)) && !dbLsn.equals(onDiskLSN))
                     throw new RuntimeException("databases have different LSNs!");
             }
         }

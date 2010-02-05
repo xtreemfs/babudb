@@ -300,12 +300,13 @@ public class LSMDatabase {
             Logging.logMessage(Logging.LEVEL_INFO, this, "snapshotting index " + index + "(dbName = "
                 + databaseName + ")...");
             
-            String tmpFileName = databaseDir + "/.currentSnapshot";
+            File tmpDir = new File(databaseDir + "/.currentSnapshot");
+            if(tmpDir.exists())
+                FSUtils.delTree(tmpDir);
             
-            tree.materializeSnapshot(tmpFileName, snapIds[index]);
+            tree.materializeSnapshot(tmpDir.getAbsolutePath(), snapIds[index]);
             
-            final String newFileName = databaseDir + getSnapshotFilename(index, viewId, sequenceNo);
-            new File(tmpFileName).renameTo(new File(newFileName));
+            tmpDir.renameTo(new File(databaseDir + getSnapshotFilename(index, viewId, sequenceNo)));
             
             Logging.logMessage(Logging.LEVEL_INFO, this, "... done (index = " + index + ", dbName = "
                 + databaseName + ")");

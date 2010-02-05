@@ -1,0 +1,10 @@
+2009-12-08:	release 0.3.0
+  * first stable release with snapshot support
+	
+2010-01-13: release 0.3.1
+  * added support for automatic recovery from incomplete log files on startup
+	
+2010-02-05: release 0.3.2
+  * fixed a bug that prevented future checkpoints from being created if a
+    crash occurred during a checkpoint
+  * further improved robustness when recovering from a broken log file

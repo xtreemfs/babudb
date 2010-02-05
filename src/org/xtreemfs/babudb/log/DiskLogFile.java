@@ -87,9 +87,13 @@ public class DiskLogFile {
             myInt.flip();
             int entrySize = myInt.getInt();
             myInt.flip();
-            item = BufferPool.allocate(entrySize);
             offset = channel.position() - Integer.SIZE / 8;
             channel.position(offset);
+            
+            if (entrySize < 0)
+                throw new LogEntryException("log entry with negative size detected: " + entrySize);
+            
+            item = BufferPool.allocate(entrySize);
             channel.read(item.getBuffer());
             item.flip();
             LogEntry e = LogEntry.deserialize(item, csumAlgo);
@@ -116,7 +120,8 @@ public class DiskLogFile {
                 fout.getChannel().truncate(offset);
                 fout.close();
                 
-                // re-open the channel and set the position behind the last entry
+                // re-open the channel and set the position behind the last
+                // entry
                 fis = new FileInputStream(file);
                 channel = fis.getChannel();
                 channel.position(offset);
@@ -138,5 +143,5 @@ public class DiskLogFile {
         }
         
     }
-
+    
 }
