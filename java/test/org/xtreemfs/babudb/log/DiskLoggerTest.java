@@ -12,7 +12,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.zip.CRC32;
 
 import junit.framework.TestCase;
 import junit.textui.TestRunner;
@@ -25,7 +24,6 @@ import org.junit.Test;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.common.util.FSUtils;
@@ -267,6 +265,23 @@ public class DiskLoggerTest extends TestCase {
         tmpFile.delete();
         FSUtils.copyTree(logFile, tmpFile);
         
+        // write a negative-length entry in the middle of the log file...
+        raf = new RandomAccessFile(tmpFile.getAbsolutePath(), "rw");
+        raf.seek(offsets[50]);
+        raf.writeInt(-122);
+        raf.close();
+        
+        f = new DiskLogFile(tmpFile.getAbsolutePath());
+        for(int i = 0; i < 50; i++) {
+            LogEntry next = f.next();
+            assertNotNull(next);
+            next.free();
+        }
+        assertFalse(f.hasNext());
+        
+        tmpFile.delete();
+        FSUtils.copyTree(logFile, tmpFile);
+        
         // write a truncated entry at the end of the log file...
         raf = new RandomAccessFile(tmpFile.getAbsolutePath(), "rw");
         raf.getChannel().truncate(offsets[99] + 5);
@@ -307,7 +322,6 @@ public class DiskLoggerTest extends TestCase {
         DiskLogIterator it = new DiskLogIterator(logFiles, null);
         for(int i = 0; i < 120; i++) {
             LogEntry next = it.next();
-            System.out.println(i);
             assertNotNull(next);
             next.free();
         }
