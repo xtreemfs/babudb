@@ -60,7 +60,7 @@ public class BabuDB {
     /**
      * Version (name)
      */
-    public static final String           BABUDB_VERSION           = "0.3.2";
+    public static final String           BABUDB_VERSION           = "0.3.3";
     
     /**
      * Version of the DB on-disk format (to detect incompatibilities).
@@ -160,7 +160,7 @@ public class BabuDB {
             else {
                 LSN onDiskLSN = ((DatabaseImpl) db).getLSMDB().getOndiskLSN();
                 if (!(LSMDatabase.NO_DB_LSN.equals(dbLsn) || LSMDatabase.NO_DB_LSN.equals(onDiskLSN)) && !dbLsn.equals(onDiskLSN))
-                    throw new RuntimeException("databases have different LSNs!");
+                    throw new RuntimeException("databases have different LSNs: current LSN=" + onDiskLSN + ", LSN seen before=" + dbLsn);
             }
         }
         if (dbLsn == null) {
@@ -464,7 +464,12 @@ public class BabuDB {
                             // deserialize the snapshot configuration
                             int dbId = oin.readInt();
                             SnapshotConfig snap = (SnapshotConfig) oin.readObject();
-                            snapshotManager.createPersistentSnapshot(databaseManager.getDatabase(dbId).getName(),
+                            
+                            Database db = databaseManager.getDatabase(dbId);
+                            if(db == null)
+                                break;
+                            
+                            snapshotManager.createPersistentSnapshot(db.getName(),
                                 snap, false);
                         } catch (Exception e) {
                             throw new BabuDBException(ErrorCode.IO_ERROR,

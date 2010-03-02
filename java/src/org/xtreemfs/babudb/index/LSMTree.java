@@ -8,6 +8,7 @@
 
 package org.xtreemfs.babudb.index;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -19,10 +20,13 @@ import org.xtreemfs.babudb.index.overlay.MultiOverlayBufferTree;
 import org.xtreemfs.babudb.index.reader.DiskIndex;
 import org.xtreemfs.babudb.index.writer.DiskIndexWriter;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
+import org.xtreemfs.include.common.util.OutputUtils;
 
 public class LSMTree {
     
-    private static final byte[]       NULL_ELEMENT       = new byte[0];
+    private static long               totalOnDiskSize = 0;
+    
+    private static final byte[]       NULL_ELEMENT    = new byte[0];
     
     private MultiOverlayBufferTree    overlay;
     
@@ -37,7 +41,7 @@ public class LSMTree {
     private final int                 maxEntriesPerBlock;
     
     private final int                 maxBlockFileSize;
-                                                                               
+    
     /**
      * Creates a new LSM tree.
      * 
@@ -59,7 +63,8 @@ public class LSMTree {
         this.maxBlockFileSize = maxBlockFileSize;
         
         overlay = new MultiOverlayBufferTree(NULL_ELEMENT, comp);
-        index = indexFile == null ? null : new DiskIndex(indexFile, comp, compressed);
+        index = indexFile == null ? null : new DiskIndex(indexFile, comp, compressed, useMmap(new File(
+            indexFile).length()));
         lock = new Object();
     }
     
@@ -390,7 +395,10 @@ public class LSMTree {
     public void linkToSnapshot(String snapshotFile) throws IOException {
         final DiskIndex oldIndex = index;
         synchronized (lock) {
-            index = new DiskIndex(snapshotFile, comp, this.compressed);
+            totalOnDiskSize -= index == null? 0: index.getSize();
+            index = new DiskIndex(snapshotFile, comp, this.compressed, useMmap(new File(snapshotFile)
+                    .length()));
+            totalOnDiskSize += index.getSize();
             if (oldIndex != null)
                 oldIndex.destroy();
             overlay.cleanup();
@@ -403,10 +411,18 @@ public class LSMTree {
     public void destroy() throws IOException {
         
         synchronized (lock) {
-            if (index != null)
+            if (index != null) {
+                totalOnDiskSize -= index.getSize();
                 index.destroy();
+            }
             overlay.cleanup();
         }
+    }
+    
+    private boolean useMmap(long currentFileSize) {
+        final long maxSize = 500 * 1024 * 1024;
+        System.out.println("DB size: " + OutputUtils.formatBytes(totalOnDiskSize + currentFileSize));
+        return "x86_64".equals(System.getProperty("os.arch")) || totalOnDiskSize + currentFileSize < maxSize;
     }
     
 }

@@ -22,6 +22,7 @@ import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.sandbox.CLIParser.CliOption;
 import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.include.common.util.FSUtils;
 
 /**
  * 
@@ -74,6 +75,8 @@ public class BabuDBBenchmark {
         if (numKeys > Math.pow(CHARS.length, maxKeyLength))
             throw new IllegalArgumentException(maxKeyLength
                 + " is too short to create enough unique keys for " + numKeys + " keys");
+        
+        FSUtils.delTree(new File(dbDir));
         
         // use one worker because we use one database TODO rebuild
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(dbDir, dbDir, numDBWorkers, 1, 0, syncMode,
@@ -236,10 +239,10 @@ public class BabuDBBenchmark {
                     .name()));
             options.put("wait", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER, 0));
             options.put("maxq", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER, 0));
-            options.put("workers", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER, 1));
+            options.put("workers", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER, 0));
             options.put("thr", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER, 1));
             options.put("payload", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER, 50));
-            options.put("keymin", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER, 2));
+            options.put("keymin", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER, 5));
             options.put("keymax", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER, 20));
             options.put("nocp", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH, false));
             options.put("h", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH, false));

@@ -70,7 +70,7 @@ public class longruntest {
         
         // checkpoint every 1m and check every 1 min
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(basedir, basedir, 2, 1024 * 128, 60 * 1,
-            SyncMode.SYNC_WRITE, 0, 0, compression, 16, 1024 * 1024 * 512));
+            SyncMode.ASYNC, 0, 0, compression, 16, 1024 * 1024 * 512));
         
         database.getDatabaseManager().createDatabase(dbname, numIndices);
         
@@ -216,12 +216,12 @@ public class longruntest {
     
     public static void main(String[] args) {
         try {
-            if (args.length != 4) {
+            if (args.length != 5) {
                 System.out.println("usage: longruntest <dictionary> <basedir> <numIndices> <hours to run>");
                 System.exit(2);
             }
             
-            Logging.start(Logging.LEVEL_INFO);
+            Logging.start(Logging.LEVEL_DEBUG);
             
             final String dictFile = args[0];
             final String basedir = args[1];

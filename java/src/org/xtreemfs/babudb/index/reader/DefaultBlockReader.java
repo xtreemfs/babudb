@@ -8,7 +8,9 @@
 
 package org.xtreemfs.babudb.index.reader;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Map.Entry;
@@ -40,9 +42,9 @@ public class DefaultBlockReader implements BlockReader {
         this.position = position;
         this.limit = limit;
         this.comp = comp;
-
+        
         // with limit <= 0 there are no entries in the buffer
-        if(limit > 0) {
+        if (limit > 0) {
             int keysOffset = position + KEYS_OFFSET;
             int valsOffset = position + buf.getInt(position);
             numEntries = buf.getInt(position + 4);
@@ -54,10 +56,39 @@ public class DefaultBlockReader implements BlockReader {
                 : new FixedLenMiniPage(valEntrySize, numEntries, buf, valsOffset, limit, comp);
         } else {
             numEntries = 0;
-            keys = new FixedLenMiniPage(0,0, null, 0, 0, comp);
-            values = new FixedLenMiniPage(0,0, null, 0, 0, comp);            
+            keys = new FixedLenMiniPage(0, 0, null, 0, 0, comp);
+            values = new FixedLenMiniPage(0, 0, null, 0, 0, comp);
         }
-
+        
+    }
+    
+    public DefaultBlockReader(FileChannel channel, int position, int limit, ByteRangeComparator comp) throws IOException {
+        
+        ByteBuffer buf = ByteBuffer.allocate(limit - position);
+        channel.read(buf, position);
+        
+        this.position = position;
+        this.limit = limit;
+        this.comp = comp;
+        
+        // with limit <= 0 there are no entries in the buffer
+        if (limit > 0) {
+            int keysOffset = KEYS_OFFSET;
+            int valsOffset = buf.getInt(0);
+            numEntries = buf.getInt(4);
+            int keyEntrySize = buf.getInt(8);
+            int valEntrySize = buf.getInt(12);
+            keys = keyEntrySize == -1 ? new VarLenMiniPage(numEntries, buf, keysOffset, valsOffset, comp)
+                : new FixedLenMiniPage(keyEntrySize, numEntries, buf, keysOffset, valsOffset, comp);
+            values = valEntrySize == -1 ? new VarLenMiniPage(numEntries, buf, valsOffset, limit - position,
+                comp) : new FixedLenMiniPage(valEntrySize, numEntries, buf, valsOffset, limit - position,
+                comp);
+        } else {
+            numEntries = 0;
+            keys = new FixedLenMiniPage(0, 0, null, 0, 0, comp);
+            values = new FixedLenMiniPage(0, 0, null, 0, 0, comp);
+        }
+        
     }
     
     public BlockReader clone() {
