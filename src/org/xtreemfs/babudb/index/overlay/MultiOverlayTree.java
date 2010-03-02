@@ -27,13 +27,13 @@ import org.xtreemfs.babudb.index.OverlayMergeIterator;
  */
 public class MultiOverlayTree<K, V> {
     
-    class OverlayTreeList {
+    static class OverlayTreeList<K, V> {
         
-        public TreeMap<K, V>   tree;
+        public TreeMap<K, V>         tree;
         
-        public OverlayTreeList next;
+        public OverlayTreeList<K, V> next;
         
-        public OverlayTreeList(TreeMap<K, V> tree, OverlayTreeList next) {
+        public OverlayTreeList(TreeMap<K, V> tree, OverlayTreeList<K, V> next) {
             this.tree = tree;
             this.next = next;
         }
@@ -42,27 +42,27 @@ public class MultiOverlayTree<K, V> {
     /**
      * value that marks an entry as deleted
      */
-    private final V                       nullValue;
+    private final V                             nullValue;
     
     /**
      * Comparator for keys
      */
-    private Comparator<K>                 comparator;
+    private Comparator<K>                       comparator;
     
     /**
      * the ID of the current overlay
      */
-    private int                           overlayId;
+    private int                                 overlayId;
     
     /**
      * overlay ID -> sublist of overlay trees
      */
-    private Map<Integer, OverlayTreeList> overlayMap;
+    private Map<Integer, OverlayTreeList<K, V>> overlayMap;
     
     /**
      * the list of overlay trees
      */
-    private OverlayTreeList               treeList;
+    private OverlayTreeList<K, V>               treeList;
     
     /**
      * Creates a new multi-overlay tree. This call is equivalent to
@@ -99,8 +99,8 @@ public class MultiOverlayTree<K, V> {
         } else
             this.comparator = comparator;
         
-        treeList = new OverlayTreeList(new TreeMap<K, V>(comparator), null);
-        overlayMap = new HashMap<Integer, OverlayTreeList>();
+        treeList = new OverlayTreeList<K, V>(new TreeMap<K, V>(comparator), null);
+        overlayMap = new HashMap<Integer, OverlayTreeList<K, V>>();
         
         this.nullValue = nullValue;
     }
@@ -112,7 +112,7 @@ public class MultiOverlayTree<K, V> {
      */
     public int newOverlay() {
         overlayMap.put(overlayId, treeList);
-        treeList = new OverlayTreeList(new TreeMap<K, V>(comparator), treeList);
+        treeList = new OverlayTreeList<K, V>(new TreeMap<K, V>(comparator), treeList);
         return overlayId++;
     }
     
@@ -223,7 +223,7 @@ public class MultiOverlayTree<K, V> {
         return rangeLookup(from, to, overlayMap.get(overlayId), includeDeletedEntries, ascending);
     }
     
-    private V lookup(K key, OverlayTreeList list) {
+    private V lookup(K key, OverlayTreeList<K, V> list) {
         
         for (; list != null; list = list.next) {
             
@@ -236,12 +236,12 @@ public class MultiOverlayTree<K, V> {
         return null;
     }
     
-    private Iterator<Entry<K, V>> rangeLookup(K from, K to, OverlayTreeList treeList,
+    private Iterator<Entry<K, V>> rangeLookup(K from, K to, OverlayTreeList<K, V> treeList,
         boolean includeDeletedEntries, boolean ascending) {
         
         // initialize a final list w/ submap iterators of all overlays
         final List<Iterator<Entry<K, V>>> itList = new ArrayList<Iterator<Entry<K, V>>>();
-        for (OverlayTreeList list = treeList; list != null; list = list.next) {
+        for (OverlayTreeList<K, V> list = treeList; list != null; list = list.next) {
             if (from != null && to != null) {
                 // both boundaries are provided
                 if (ascending)

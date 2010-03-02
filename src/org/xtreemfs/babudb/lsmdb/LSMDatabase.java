@@ -171,8 +171,9 @@ public class LSMDatabase {
                     return name.startsWith("IX" + idx + "V");
                 }
             });
-            if(files == null)
-                throw new BabuDBException(ErrorCode.IO_ERROR, "database directory '" + databaseDir + "' does not exist");
+            if (files == null)
+                throw new BabuDBException(ErrorCode.IO_ERROR, "database directory '" + databaseDir
+                    + "' does not exist");
             
             int maxView = -1;
             int maxSeq = -1;
@@ -214,6 +215,7 @@ public class LSMDatabase {
                         this.maxEntriesPerBlock, this.maxBlockFileSize));
                 }
             } catch (IOException ex) {
+                Logging.logError(Logging.LEVEL_ERROR, this, ex);
                 throw new BabuDBException(ErrorCode.IO_ERROR, "cannot load index from disk", ex);
             }
         }
@@ -301,7 +303,7 @@ public class LSMDatabase {
                 + databaseName + ")...");
             
             File tmpDir = new File(databaseDir + "/.currentSnapshot");
-            if(tmpDir.exists())
+            if (tmpDir.exists())
                 FSUtils.delTree(tmpDir);
             
             tree.materializeSnapshot(tmpDir.getAbsolutePath(), snapIds[index]);
@@ -353,13 +355,26 @@ public class LSMDatabase {
      *             if snapshots cannot be cleaned up
      */
     public void cleanupSnapshot(final int viewId, final long sequenceNo) throws IOException {
+        
         for (int index = 0; index < trees.size(); index++) {
+            
             final LSMTree tree = trees.get(index);
             
             Logging.logMessage(Logging.LEVEL_INFO, this, "linking to snapshot " + databaseDir
                 + getSnapshotFilename(index, viewId, sequenceNo) + ", dbName=" + databaseName + ", index="
                 + index);
-            tree.linkToSnapshot(databaseDir + getSnapshotFilename(index, viewId, sequenceNo));
+            
+            // catch any I/O exception that may occur while re-linking the
+            // snapshot; this is done to ensure that old checkpoints are
+            // properly cleaned up, and the database remains in a consistent
+            // state
+            IOException exception = null;
+            try {
+                tree.linkToSnapshot(databaseDir + getSnapshotFilename(index, viewId, sequenceNo));
+            } catch (IOException exc) {
+                Logging.logError(Logging.LEVEL_ERROR, this, exc);
+                exception = exc;
+            }
             Logging.logMessage(Logging.LEVEL_INFO, this, "...done");
             
             ondiskLSN = new LSN(viewId, sequenceNo);
@@ -384,6 +399,10 @@ public class LSMDatabase {
                     
                 }
             }
+            
+            // throw any I/O exception that has occurred before
+            if (exception != null)
+                throw new IOException(exception);
         }
     }
     

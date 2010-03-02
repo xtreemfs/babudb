@@ -8,7 +8,9 @@
 
 package org.xtreemfs.babudb.index.reader;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Map.Entry;
@@ -33,8 +35,8 @@ public class CompressedBlockReader implements BlockReader {
     private MiniPage            values;
     
     private int                 numEntries;
-
-    private byte[]				prefix;
+    
+    private byte[]              prefix;
     
     public CompressedBlockReader(ByteBuffer buf, int position, int limit, ByteRangeComparator comp) {
         
@@ -53,12 +55,12 @@ public class CompressedBlockReader implements BlockReader {
         int prefixSize = (keysOffset - position) - PREFIX_OFFSET;
         prefix = new byte[prefixSize];
         
-        if(prefixSize > 0) {
-        	// move to the position to perform the read
-        	buf.position(position + PREFIX_OFFSET);
-        	buf.get(prefix);
-        	// reset to original position
-        	buf.position(position);
+        if (prefixSize > 0) {
+            // move to the position to perform the read
+            buf.position(position + PREFIX_OFFSET);
+            buf.get(prefix);
+            // reset to original position
+            buf.position(position);
         }
         
         keys = keyEntrySize == -1 ? new VarLenMiniPage(numEntries, buf, keysOffset, valsOffset, comp)
@@ -67,53 +69,88 @@ public class CompressedBlockReader implements BlockReader {
             : new FixedLenMiniPage(valEntrySize, numEntries, buf, valsOffset, limit, comp);
     }
     
+    public CompressedBlockReader(FileChannel channel, int position, int limit, ByteRangeComparator comp) throws IOException {
+        
+        ByteBuffer buf = ByteBuffer.allocate(limit - position);
+        channel.read(buf, position);
+        
+        this.position = position;
+        this.limit = limit;
+        this.comp = comp;
+        
+        int valsOffset = buf.getInt(0);
+        int keysOffset = buf.getInt(4);
+        numEntries = buf.getInt(8);
+        int keyEntrySize = buf.getInt(12);
+        int valEntrySize = buf.getInt(16);
+        
+        // read in the prefix string
+        int prefixSize = keysOffset - PREFIX_OFFSET;
+        prefix = new byte[prefixSize];
+        
+        if (prefixSize > 0) {
+            // move to the position to perform the read
+            buf.position(PREFIX_OFFSET);
+            buf.get(prefix);
+            // reset to original position
+            buf.position(0);
+        }
+        
+        keys = keyEntrySize == -1 ? new VarLenMiniPage(numEntries, buf, keysOffset, valsOffset, comp)
+            : new FixedLenMiniPage(keyEntrySize, numEntries, buf, keysOffset, valsOffset, comp);
+        values = valEntrySize == -1 ? new VarLenMiniPage(numEntries, buf, valsOffset, limit - position, comp)
+            : new FixedLenMiniPage(valEntrySize, numEntries, buf, valsOffset, limit - position, comp);
+        
+    }
+    
     public CompressedBlockReader clone() {
         buffer.position(0);
         return new CompressedBlockReader(buffer.slice(), position, limit, comp);
     }
     
     /**
-     * Returns null if the key is not matching the block prefix, 
-     * otherwise the suffix is returned, i.e. key - prefix.
+     * Returns null if the key is not matching the block prefix, otherwise the
+     * suffix is returned, i.e. key - prefix.
+     * 
      * @param key
      * @return byte[] suffix of key.
      */
     private byte[] usableSuffix(byte[] key) {
-    	// key cant contain the prefix
-    	if(key == null || prefix.length > key.length)
-    		return null;
-
-    	// no prefix exist, use the key as is
-    	if(prefix.length == 0)
-    		return key;
-    		
-    	byte[] prefixKey = new byte[prefix.length];
-    	System.arraycopy(key, 0, prefixKey, 0, prefix.length);
-    	
-    	if(comp.compare(prefix, prefixKey) != 0)
-    		return null;
-
-    	byte[] suffixKey = new byte[key.length - prefix.length];
-		System.arraycopy(key, prefix.length, suffixKey, 0, key.length - prefix.length);
-		
-    	return suffixKey;
-    }
-
-    public ByteRange lookup(byte[] key) {
-    	// if the key contains prefix check if the block 
-    	// contains what remains after removing the prefix
-
-    	byte[] suffixKey = usableSuffix(key);
-
-    	if(suffixKey == null)
-    		return null;
-    	
-    	int index = keys.getPosition(suffixKey);
-
-    	if (index == -1)
-    		return null;
+        // key cant contain the prefix
+        if (key == null || prefix.length > key.length)
+            return null;
         
-    	return values.getEntry(index);
+        // no prefix exist, use the key as is
+        if (prefix.length == 0)
+            return key;
+        
+        byte[] prefixKey = new byte[prefix.length];
+        System.arraycopy(key, 0, prefixKey, 0, prefix.length);
+        
+        if (comp.compare(prefix, prefixKey) != 0)
+            return null;
+        
+        byte[] suffixKey = new byte[key.length - prefix.length];
+        System.arraycopy(key, prefix.length, suffixKey, 0, key.length - prefix.length);
+        
+        return suffixKey;
+    }
+    
+    public ByteRange lookup(byte[] key) {
+        // if the key contains prefix check if the block
+        // contains what remains after removing the prefix
+        
+        byte[] suffixKey = usableSuffix(key);
+        
+        if (suffixKey == null)
+            return null;
+        
+        int index = keys.getPosition(suffixKey);
+        
+        if (index == -1)
+            return null;
+        
+        return values.getEntry(index);
     }
     
     public Iterator<Entry<ByteRange, ByteRange>> rangeLookup(byte[] from, byte[] to, final boolean ascending) {
@@ -122,12 +159,13 @@ public class CompressedBlockReader implements BlockReader {
         final int endIndex;
         
         {
-        	byte[] suffixFrom = usableSuffix(from);
+            byte[] suffixFrom = usableSuffix(from);
             startIndex = keys.getTopPosition(suffixFrom);
             assert (startIndex >= -1) : "invalid block start offset: " + startIndex;
             
-        	byte[] suffixTo = usableSuffix(to);
-            endIndex = ascending ? keys.getExclBottomPosition(suffixTo) : keys.getInclBottomPosition(suffixTo);
+            byte[] suffixTo = usableSuffix(to);
+            endIndex = ascending ? keys.getExclBottomPosition(suffixTo) : keys
+                    .getInclBottomPosition(suffixTo);
             assert (endIndex >= -1) : "invalid block end offset: " + endIndex;
         }
         
@@ -159,7 +197,7 @@ public class CompressedBlockReader implements BlockReader {
                     
                     @Override
                     public ByteRange getKey() {
-                    	key.addPrefix(prefix);
+                        key.addPrefix(prefix);
                         return key;
                     }
                     

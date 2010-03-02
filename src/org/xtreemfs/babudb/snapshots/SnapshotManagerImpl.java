@@ -171,6 +171,9 @@ public class SnapshotManagerImpl implements SnapshotManager {
         throws BabuDBException {
         
         final Map<String, Snapshot> snapMap = snapshotDBs.get(dbName);
+        if(snapMap == null)
+            return;
+        
         final Snapshot snap = snapMap.get(snapshotName);
         
         // if the snapshot does not exist ...

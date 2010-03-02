@@ -41,6 +41,7 @@ public class DiskIndexPerformanceTest {
         options.put("scans", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,1000));
         options.put("debug", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.NUMBER,Logging.LEVEL_EMERG));
         options.put("compression", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH, false));
+        options.put("mmap", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH, true));
         options.put("overwrite", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH, false));
         options.put("h", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.SWITCH, false));
         options.put("input", new CLIParser.CliOption(CLIParser.CliOption.OPTIONTYPE.STRING, DEFAULT_DATAGEN));
@@ -74,6 +75,7 @@ public class DiskIndexPerformanceTest {
         final Random generator = new Random();
         
         final boolean compress = options.get("compression").switchValue.booleanValue();
+        final boolean mmap = options.get("mmap").switchValue.booleanValue();
         final boolean overwrite = options.get("overwrite").switchValue.booleanValue();
         	
         final String input = options.get("input").stringValue.toString();
@@ -110,7 +112,7 @@ public class DiskIndexPerformanceTest {
             }
         } else {
         	// 	populate the lookup-hits table
-        	DiskIndex diskIndexTmp = new DiskIndex(path, new DefaultByteRangeComparator(), compress);
+        	DiskIndex diskIndexTmp = new DiskIndex(path, new DefaultByteRangeComparator(), compress, mmap);
         	Iterator<Entry<byte[], byte[]>> itTmp = diskIndexTmp.rangeLookup(null, null, true);
         	while(itTmp.hasNext()) {
                 if(generator.nextInt() % hitrate == 0)
@@ -125,7 +127,7 @@ public class DiskIndexPerformanceTest {
         while(warmups-- > 0) {
         	int readEntries = 10000;        	
         	// 	read the disk index
-        	DiskIndex diskIndex = new DiskIndex(path, new DefaultByteRangeComparator(), compress);
+        	DiskIndex diskIndex = new DiskIndex(path, new DefaultByteRangeComparator(), compress, mmap);
         	Iterator<Entry<byte[], byte[]>> it = diskIndex.rangeLookup(null, null, true);
         	while(it.hasNext() && readEntries-- > 0) it.next();
         	diskIndex.destroy();
@@ -139,7 +141,7 @@ public class DiskIndexPerformanceTest {
     	Runtime.getRuntime().gc();
     	
     	// 	read the disk index
-    	DiskIndex diskIndex = new DiskIndex(path, new DefaultByteRangeComparator(), compress);
+    	DiskIndex diskIndex = new DiskIndex(path, new DefaultByteRangeComparator(), compress, mmap);
     	Iterator<Entry<byte[], byte[]>> it = diskIndex.rangeLookup(null, null, true);
     
     	/* iterate over all data in the disk index to measure the prefix lookup throughput */
