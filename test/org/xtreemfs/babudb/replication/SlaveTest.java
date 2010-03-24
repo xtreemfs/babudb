@@ -29,7 +29,6 @@ import org.junit.Test;
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.clients.SlaveClient;
-import org.xtreemfs.babudb.clients.StateClient;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
@@ -50,6 +49,7 @@ import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
 import org.xtreemfs.include.foundation.oncrpc.server.ONCRPCRequest;
 import org.xtreemfs.include.foundation.oncrpc.server.RPCNIOSocketServer;
 import org.xtreemfs.include.foundation.oncrpc.server.RPCServerRequestListener;
+import org.xtreemfs.include.foundation.oncrpc.utils.XDRUnmarshaller;
 
 import static org.xtreemfs.babudb.replication.TestData.*;
 
@@ -65,7 +65,6 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
     private static ReplicationConfig conf;
     private RPCNIOSocketClient       rpcClient;
     private SlaveClient              client;
-    private StateClient              sClient;
     private BabuDB                   db;
     public LSN                       current;  
     private long                     replicaRangeLength = new Random().nextInt(100)+1L;
@@ -110,8 +109,7 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
            
             rpcClient = new RPCNIOSocketClient(null,5000,10000);
             rpcClient.setLifeCycleListener(this);  
-            client = new SlaveClient(rpcClient,conf.getInetSocketAddress());
-            sClient = new StateClient(rpcClient,conf.getInetSocketAddress());
+            client = new SlaveClient(rpcClient,conf.getInetSocketAddress(),null);
             
             List<InetSocketAddress> openAddresses = 
                 new LinkedList<InetSocketAddress>(conf.getParticipants());
@@ -122,17 +120,11 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
             rpcServer.start();
             rpcServer.waitForStartup();
             
-            db = BabuDBFactory.createReplicatedBabuDB(conf);
+            db = BabuDBFactory.createReplicatedBabuDB(conf,null);
             
             rpcClient.start();
             rpcClient.waitForStartup();
             
-            RPCResponse<LSN> rsp = sClient.remoteStop();
-            assertEquals(new LSN(1,0L), rsp.get());
-            RPCResponse<Object> rp = sClient.toSlave(
-                    new InetSocketAddress(address,port));
-            
-            rp.get();
         } catch (Exception e) {
             System.err.println("BEFORE-FAILED: "+e.getMessage());
             throw e;
@@ -383,7 +375,7 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
         int opNum = rq.getRequestHeader().getProcedure();
         if (opNum == heartbeatOperation) {
             heartbeatRequest request = new heartbeatRequest();
-            request.deserialize(rq.getRequestFragment());
+            request.unmarshal(new XDRUnmarshaller(rq.getRequestFragment()));
             LSN lsn = new LSN(request.getLsn().getViewId(),
                     request.getLsn().getSequenceNo());
             current = lsn;
@@ -391,25 +383,25 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
             rq.sendResponse(new heartbeatResponse());   
         } else if (opNum == replicaOperation) {
             replicaRequest request = new replicaRequest();
-            request.deserialize(rq.getRequestFragment());
+            request.unmarshal(new XDRUnmarshaller(rq.getRequestFragment()));
             LSNRange r = request.getRange();
             assertEquals(1, r.getViewId());
             assertEquals(replicaRangeLength, r.getSequenceEnd()-r.getSequenceStart());
         } else if (opNum == loadOperation) {
             loadRequest request = new loadRequest();
-            request.deserialize(rq.getRequestFragment());
+            request.unmarshal(new XDRUnmarshaller(rq.getRequestFragment()));
             org.xtreemfs.babudb.interfaces.LSN lsn = request.getLsn();
             assertEquals(1, lsn.getViewId());
             assertEquals(2L,lsn.getSequenceNo());
         } else {
-            rq.sendInternalServerError(new Throwable("DUMMY-REPLICATION"), new errnoException("DUMMY-REPLICATION"));
+            rq.sendInternalServerError(new Throwable("DUMMY-REPLICATION"), new errnoException());
             fail("ERROR: received "+opNum);
         }
         mailbox.add(opNum);
     }
 
     @Override
-    public void crashPerformed() { fail("Slave - client crashed!"); }
+    public void crashPerformed(Throwable exc) { fail("Slave - client crashed! "+exc.getMessage()); }
 
     @Override
     public void shutdownPerformed() {}

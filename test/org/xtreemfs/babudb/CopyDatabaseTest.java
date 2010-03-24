@@ -63,7 +63,7 @@ public class CopyDatabaseTest extends TestCase {
         final int NUMIDX = 5;
         
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0, SyncMode.ASYNC, 0,
-            0, compression, maxNumRecs, maxBlockFileSize));
+            0, compression, maxNumRecs, maxBlockFileSize),null);
         
         Database db = database.getDatabaseManager().createDatabase("testDB", NUMIDX);
         

@@ -33,10 +33,8 @@ import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.interfaces.LogEntries;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.remoteStopResponse;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateResponse;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.toSlaveResponse;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCError;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCException;
 import org.xtreemfs.babudb.log.LogEntry;
@@ -54,6 +52,7 @@ import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
 import org.xtreemfs.include.foundation.oncrpc.server.ONCRPCRequest;
 import org.xtreemfs.include.foundation.oncrpc.server.RPCNIOSocketServer;
 import org.xtreemfs.include.foundation.oncrpc.server.RPCServerRequestListener;
+import org.xtreemfs.include.foundation.oncrpc.utils.XDRUnmarshaller;
 
 public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         
@@ -90,11 +89,11 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         assertEquals(0, p.waitFor());
         
         try {
-            db = BabuDBFactory.createReplicatedBabuDB(conf);
+            db = BabuDBFactory.createReplicatedBabuDB(conf,null);
             assertTrue (conf.getSSLOptions() == null);
             rpcClient = new RPCNIOSocketClient(null,5000,10000);
             rpcClient.setLifeCycleListener(this);
-            client = new MasterClient(rpcClient,conf.getInetSocketAddress());
+            client = new MasterClient(rpcClient,conf.getInetSocketAddress(),null);
             
             int port = 35666;
             InetAddress address = InetAddress.getByAddress(new byte[]{127,0,0,1});
@@ -106,21 +105,6 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
             
             rpcClient.waitForStartup();
             rpcServer.waitForStartup();
-            
-            db.getReplicationManager().declareToMaster();
-            synchronized (response) {
-                while (response.get()!=remoteStopOperation)
-                    response.wait();
-                
-                response.set(-1);
-                response.notify();
-                
-                while (response.get()!=toSlaveOperation)
-                    response.wait();
-                
-                response.set(-1);
-                response.notify();
-            }
             
         } catch (Exception e) {
             System.err.println("BEFORE-FAILED: "+e.getMessage());
@@ -263,7 +247,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
             synchronized (response) {
                 if (opNum == replicateOperation) {
                     replicateRequest request = new replicateRequest();
-                    request.deserialize(rq.getRequestFragment());
+                    request.unmarshal(new XDRUnmarshaller(rq.getRequestFragment()));
                     
                     LogEntry le = null;
                     try {
@@ -316,7 +300,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
                             break;
                             
                         default:
-                            rq.sendInternalServerError(new Throwable("TEST-DUMMY-RESPONSE"), new errnoException("TEST-DUMMY-RESPONSE"));
+                            rq.sendInternalServerError(new Throwable("TEST-DUMMY-RESPONSE"), new errnoException());
                             fail("Unexpected response received!");
                             break;
                         }
@@ -330,21 +314,8 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
                         if (le!=null) le.free();
                     }
                     rq.sendResponse(new replicateResponse());
-                } else if (opNum == remoteStopOperation) {
-                    rq.sendResponse(new remoteStopResponse(
-                            new org.xtreemfs.babudb.interfaces.LSN(0,0L)));
-                    
-                    if (response.get() != -1)
-                        response.wait();
-                    response.set(remoteStopOperation);
-                } else if (opNum == toSlaveOperation) {
-                    rq.sendResponse(new toSlaveResponse());
-                    
-                    if (response.get() != -1)
-                        response.wait();
-                    response.set(toSlaveOperation);
                 } else {
-                    rq.sendInternalServerError(new Throwable("TEST-DUMMY-RESPONSE"), new errnoException("TEST-DUMMY-RESPONSE"));
+                    rq.sendInternalServerError(new Throwable("TEST-DUMMY-RESPONSE"), new errnoException());
                     fail("Unexpected response received!");
                 }
                 response.notify();
@@ -428,7 +399,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
     }
 
     @Override
-    public void crashPerformed() { fail("Master crashed!"); }
+    public void crashPerformed(Throwable exc) { fail("Master crashed! "+exc.getMessage()); }
 
     @Override
     public void shutdownPerformed() { }
