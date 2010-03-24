@@ -32,7 +32,7 @@ public class HugeDBTest {
         
         // checkpoint every 1m and check every 1 min
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(basedir, basedir, 0, 1024 * 128, 60 * 1,
-            SyncMode.ASYNC, 0, 0, false, 16, 1024 * 1024 * 512));
+            SyncMode.ASYNC, 0, 0, false, 16, 1024 * 1024 * 512),null);
         
         database.getDatabaseManager().createDatabase(dbname, 5);
     }

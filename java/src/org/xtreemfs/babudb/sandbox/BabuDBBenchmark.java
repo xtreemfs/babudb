@@ -80,7 +80,7 @@ public class BabuDBBenchmark {
         
         // use one worker because we use one database TODO rebuild
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(dbDir, dbDir, numDBWorkers, 1, 0, syncMode,
-            pseudoModeWait, maxQ, compression, maxNumRecordsPerBlock, maxBlockFileSize));
+            pseudoModeWait, maxQ, compression, maxNumRecordsPerBlock, maxBlockFileSize),null);
         /*
          * ReplicationConfig conf = new
          * ReplicationConfig("config/replication.properties"); conf.read();
