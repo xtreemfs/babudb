@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2008-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -23,10 +23,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.zip.CRC32;
 
-import org.xtreemfs.babudb.BabuDBRequest;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.ReplicateResponse;
 import org.xtreemfs.babudb.replication.ReplicationManagerImpl;
+import org.xtreemfs.babudb.replication.ReplicateResponse;
 import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
@@ -123,10 +122,7 @@ public class DiskLogger extends Thread {
     private final int 	                 pseudoSyncWait;
     
     private final ReplicationManagerImpl replMan;
-    
-    private BabuDBRequest<Object>        listener;
-    private final AtomicInteger          qLength = new AtomicInteger(0);
-    
+        
     /**
      * Max number of LogEntries to write before sync.
      */
@@ -205,6 +201,13 @@ public class DiskLogger extends Thread {
     public static String createLogFileName(int viewId, long sequenceNo) {
         return viewId + "." + sequenceNo + ".dbl";
     }
+    
+    public static LSN disassembleLogFileName(String name) {
+        String[] parts = name.split(".");
+        assert (parts.length == 3);
+        
+        return new LSN(Integer.parseInt(parts[0]),Long.parseLong(parts[1]));
+    }
 
     public long getLogFileSize() {
         return new File(this.currentLogFileName).length();
@@ -217,7 +220,6 @@ public class DiskLogger extends Thread {
     public void append(LogEntry entry) throws InterruptedException {
         assert (entry != null);
         
-        qLength.incrementAndGet();
         entries.put(entry);
     }
 
@@ -263,6 +265,8 @@ public class DiskLogger extends Thread {
             this.currentViewId.incrementAndGet();
             this.nextLogSequenceNo.set(1L);
         }
+        
+        if (replMan != null) replMan.updateLastOnView(lastSyncedLSN);
         return lastSyncedLSN;
     }
 
@@ -306,6 +310,10 @@ public class DiskLogger extends Thread {
                             "LogEntry (" + le.getPayloadType() + ") had " +
                             "unexpected LSN: " + le.getLSN() + "\n" + viewID +
                             ":" + seqNo + " was expected instead.";
+                        
+                        // logEntries with attached LSN were replicated by a 
+                        // master
+                        boolean replicate = (le.getLSN() == null);
                         le.assignId(viewID, seqNo);
                         
                         ReusableBuffer buffer = null;
@@ -315,9 +323,14 @@ public class DiskLogger extends Thread {
                             // write the LogEntry to the local disk
                             channel.write(buffer.getBuffer());
                         
-                            // replicate the LogEntry
-                            if (replMan != null && replMan.isMaster())
+                            // replicate the LogEntry, if replication is enabled,
+                            // initialized and the entry does not have been 
+                            // replicated yet
+                            if (replMan != null && 
+                                replicate && 
+                                replMan.isInitialized()) {
                                 responses.add(replMan.replicate(le,buffer));
+                            }
                         } finally {
                             csumAlgo.reset();
                             if (buffer != null) BufferPool.free(buffer);
@@ -332,8 +345,9 @@ public class DiskLogger extends Thread {
                     // setup the responses
                     if (responses.size() != 0) {
                         for (ReplicateResponse rp : responses) {
-                            replMan.subscribeListener(rp);
-                            qLength.decrementAndGet();
+                            if (!rp.hasFailed()) {
+                                replMan.subscribeListener(rp);
+                            }
                         }
                         
                         if (responses.size() != tmpE.size())
@@ -345,7 +359,6 @@ public class DiskLogger extends Thread {
                     
                     for (LogEntry le : tmpE) { 
                         le.getListener().synced(le); 
-                        qLength.decrementAndGet();
                     }  
                     responses.clear();
                     tmpE.clear();
@@ -362,24 +375,15 @@ public class DiskLogger extends Thread {
                 for (ReplicateResponse re : responses) {
                     tmpE.remove(re.getLogEntry());
                     re.failed();
-                    qLength.decrementAndGet();
                 }  
                 responses.clear();
                 
                 for (LogEntry le : tmpE) {
                     le.getListener().failed(le, ex);
-                    qLength.decrementAndGet();
                 }
                 tmpE.clear();
             } catch (InterruptedException ex) {
                 /* ignored */
-            }
-
-            synchronized (qLength) {
-                if (qLength.get() == 0 && listener != null) {
-                    listener.finished();
-                    listener = null;
-                } 
             }
         }
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "shutdown %s","complete");
@@ -444,17 +448,5 @@ public class DiskLogger extends Thread {
      */
     public String getLatestLogFileName(){
         return currentLogFileName;
-    }
-    
-    public void registerListener(BabuDBRequest<Object> listener) {
-        synchronized (qLength) {
-            if (qLength.get() == 0)
-                listener.finished();
-            else {
-                assert (this.listener == null) : "DiskLogger: Only one " +
-                		"listener can be established at once.";
-                this.listener = listener; 
-            }
-        }  
     }
 }

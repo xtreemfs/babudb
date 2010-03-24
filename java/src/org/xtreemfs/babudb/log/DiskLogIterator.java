@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
- *                     Felix Hupfeld, Zuse Institute Berlin
+ * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
@@ -38,55 +38,47 @@ public class DiskLogIterator implements Iterator<LogEntry> {
     
     private LogEntry      nextEntry;
     
-    public DiskLogIterator(File[] logFiles, LSN from) {
+    public DiskLogIterator(File[] logFiles, LSN from) 
+        throws LogEntryException, IOException {
         
         this.from = from;
-        
-        try {
             
-            if (logFiles != null && logFiles.length > 0) {
-                
-                dbLogDir = logFiles[0].getParent() + "/";
-                
-                // read list of logs and create a list ordered from min LSN to
-                // max LSN
-                int count = -1;
-                SortedSet<LSN> orderedLogList = new TreeSet<LSN>();
-                Pattern p = Pattern.compile("(\\d+)\\.(\\d+)\\.dbl");
-                for (File logFile : logFiles) {
-                    Matcher m = p.matcher(logFile.getName());
-                    m.matches();
-                    String tmp = m.group(1);
-                    int viewId = Integer.valueOf(tmp);
-                    tmp = m.group(2);
-                    int seqNo = Integer.valueOf(tmp);
-                    orderedLogList.add(new LSN(viewId, seqNo));
-                    count++;
-                }
-                LSN[] copy = orderedLogList.toArray(new LSN[orderedLogList.size()]);
-                LSN last = null;
-                for (LSN lsn : copy) {
-                    if (last == null)
+        if (logFiles != null && logFiles.length > 0) {
+            
+            dbLogDir = logFiles[0].getParent() + "/";
+            
+            // read list of logs and create a list ordered from min LSN to
+            // max LSN
+            int count = -1;
+            SortedSet<LSN> orderedLogList = new TreeSet<LSN>();
+            Pattern p = Pattern.compile("(\\d+)\\.(\\d+)\\.dbl");
+            for (File logFile : logFiles) {
+                Matcher m = p.matcher(logFile.getName());
+                m.matches();
+                String tmp = m.group(1);
+                int viewId = Integer.valueOf(tmp);
+                tmp = m.group(2);
+                int seqNo = Integer.valueOf(tmp);
+                orderedLogList.add(new LSN(viewId, seqNo));
+                count++;
+            }
+            LSN[] copy = orderedLogList.toArray(new LSN[orderedLogList.size()]);
+            LSN last = null;
+            for (LSN lsn : copy) {
+                if (last == null)
+                    last = lsn;
+                else {
+                    if (from != null && lsn.compareTo(from) <= 0) {
+                        orderedLogList.remove(last);
                         last = lsn;
-                    else {
-                        if (from != null && lsn.compareTo(from) <= 0) {
-                            orderedLogList.remove(last);
-                            last = lsn;
-                        } else
-                            break;
-                    }
+                    } else
+                        break;
                 }
-                
-                logList = orderedLogList.iterator();
-                findFirstEntry();
             }
             
-        } catch (LogEntryException exc) {
-            throw new RuntimeException(exc);
-        } catch (IOException exc) {
-            throw new RuntimeException(exc);
+            logList = orderedLogList.iterator();
+            findFirstEntry();
         }
-        
     }
     
     @Override
@@ -140,10 +132,9 @@ public class DiskLogIterator implements Iterator<LogEntry> {
             }
             le.free();
         }
-        
     }
     
-    protected LogEntry findNextEntry() throws IOException, LogEntryException {
+    public LogEntry findNextEntry() throws IOException, LogEntryException {
         
         if (logList == null)
             return null;
@@ -168,7 +159,5 @@ public class DiskLogIterator implements Iterator<LogEntry> {
         currentLog = logList.next();
         currentFile = new DiskLogFile(dbLogDir, currentLog);
         return findNextEntry();
-        
     }
-    
 }
