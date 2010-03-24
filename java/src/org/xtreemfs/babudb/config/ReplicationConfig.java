@@ -1,9 +1,10 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
- *                   Felix Hupfeld, Felix Langner, Zuse Institute Berlin
- * All rights reserved.
+ * Copyright (c) 2008-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
+ * 
+ * Licensed under the BSD License, see LICENSE file for details.
+ * 
  */
-
 package org.xtreemfs.babudb.config;
 
 import java.io.File;
@@ -18,7 +19,9 @@ import java.util.Properties;
 import java.util.Set;
 
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
-import org.xtreemfs.include.foundation.pinky.SSLOptions;
+import org.xtreemfs.babudb.replication.ReplicationControlLayer;
+import org.xtreemfs.foundation.flease.FleaseConfig;
+import org.xtreemfs.include.foundation.SSLOptions;
 
 /**
  * Reading configurations from the replication-config-file.
@@ -38,6 +41,10 @@ public class ReplicationConfig extends BabuDBConfig {
     
     protected int                    localTimeRenew;
     
+    protected int                    timeSyncInterval;
+    
+    protected final FleaseConfig     fleaseConfig;
+    
     // for master usage only
     
     protected int                    syncN;
@@ -52,22 +59,35 @@ public class ReplicationConfig extends BabuDBConfig {
     protected String                 backupDir;
     
     /** Error message. */
-    public static final String       slaveProtection        = "You are not allowed to "
-                                                                + "proceed this operation, because this DB is not running in "
-                                                                + "master-mode!";
+    public static final String       slaveProtectionMsg = "You are not allowed"+
+    		" to process this operation, because this DB is not running in"+
+                " master-mode!";
     
-    public ReplicationConfig() {
-        super();
-    }
+    /** maximal retries per failure */
+    public static final int          MAX_RETRIES            = 3;
     
+    /** longest duration a message can live on the wire, before it becomes void */
+    private static final int         MESSAGE_TIMEOUT        = 10 * 1000;
+    
+    /** longest duration a connection can be established without getting closed */
+    public static final int         LEASE_TIMEOUT           = 3 * 60 * 1000;
+        
     public ReplicationConfig(Properties prop) throws IOException {
         super(prop);
         read();
+        
+        this.fleaseConfig = new FleaseConfig(LEASE_TIMEOUT, this.localTimeRenew, 
+                MESSAGE_TIMEOUT, this.address, 
+                ReplicationControlLayer.getIdentity(this.address), MAX_RETRIES);
     }
     
     public ReplicationConfig(String filename) throws IOException {
         super(filename);
         read();
+        
+        this.fleaseConfig = new FleaseConfig(LEASE_TIMEOUT, this.localTimeRenew,
+                MESSAGE_TIMEOUT, this.address,
+                ReplicationControlLayer.getIdentity(this.address), MAX_RETRIES);
     }
     
     public ReplicationConfig(String baseDir, String logDir, int numThreads, long maxLogFileSize,
@@ -77,6 +97,7 @@ public class ReplicationConfig extends BabuDBConfig {
         
         super(baseDir, logDir, numThreads, maxLogFileSize, checkInterval, mode, pseudoSyncWait, maxQ,
             compression, maxNumRecordsPerBlock, maxBlockFileSize);
+        
         this.participants = new HashSet<InetSocketAddress>();
         this.localTimeRenew = localTimeRenew;
         Socket s;
@@ -96,17 +117,23 @@ public class ReplicationConfig extends BabuDBConfig {
                 }
             }
         }
-        assert (this.address != null) : "No one of the given participants " + "described the localhost!";
+        assert (this.address != null) : "None of the given participants " + 
+                                        "described the localhost!";
         this.sslOptions = sslOptions;
         this.syncN = syncN;
         this.chunkSize = DEFAULT_MAX_CHUNK_SIZE;
         this.backupDir = backupDir;
+                
+        this.fleaseConfig = new FleaseConfig(LEASE_TIMEOUT, this.localTimeRenew,
+                MESSAGE_TIMEOUT, this.address, 
+                ReplicationControlLayer.getIdentity(this.address), MAX_RETRIES);
     }
     
     public void read() throws IOException {
         super.read();
         
-        this.localTimeRenew = this.readOptionalInt("babudb.localTimeRenew", 3000);
+        this.localTimeRenew = this.readOptionalInt("babudb.localTimeRenew", 100);
+        this.timeSyncInterval = this.readOptionalInt("babudb.timeSync", 20000);
         
         if (this.readRequiredBoolean("babudb.ssl.enabled")) {
             this.sslOptions = new SSLOptions(new FileInputStream(this
@@ -127,6 +154,7 @@ public class ReplicationConfig extends BabuDBConfig {
         InetSocketAddress addrs;
         while ((addrs = this.readOptionalInetSocketAddr("babudb.repl.participant." + number,
             "babudb.repl.participant." + number + ".port", null)) != null) {
+            
             s = new Socket();
             try {
                 s.bind(addrs);
@@ -138,26 +166,27 @@ public class ReplicationConfig extends BabuDBConfig {
             } finally {
                 try {
                     s.close();
-                } catch (IOException e) { /* ignored */
-                }
+                } catch (IOException e) { /* ignored */ }
             }
             number++;
         }
         if (this.address == null)
-            throw new IOException("None of the given " + "participants described the localhost!");
+            throw new IOException("None of the given participants described" +
+            		" the localhost!");
         
         this.chunkSize = this.readOptionalInt("babudb.repl.chunkSize", DEFAULT_MAX_CHUNK_SIZE);
         
         this.syncN = this.readOptionalInt("babudb.repl.sync.n", 0);
         
-        if (this.syncN < 0 || this.syncN > this.participants.size())
-            throw new IOException("Wrong Sync-N! It has to be at least 0 and #of "
-                + "participants at the maximum!");
+        if (this.syncN < 0 || this.syncN > participants.size())
+            throw new IOException("Wrong Sync-N! It has to be at least 0 and" +
+            		" #of participants ("+this.participants.size()+") at" +
+            	        " the maximum!");
         
         if (this.syncN != 0 && this.syncN <= participants.size() / 2)
-            throw new IOException("The requested N-sync-mode (N=" + this.syncN + ")"
-                + " may cause inconsistent behavior, because there are '" + this.participants.size()
-                + "' participants. The sync-N " + "has to be at least '" + (this.participants.size() / 2) + 1
+            throw new IOException("The requested N-sync-mode (N=" + syncN + ")"
+                + " may cause inconsistent behavior, because there are '" + participants.size()
+                + "' participants. The sync-N " + "has to be at least '" + (participants.size() / 2)
                 + "'!");
         
         String backupDir = this.readRequiredString("babudb.repl.backupDir");
@@ -192,6 +221,10 @@ public class ReplicationConfig extends BabuDBConfig {
         return localTimeRenew;
     }
     
+    public int getTimeSyncInterval() {
+        return timeSyncInterval;
+    }
+    
     public int getSyncN() {
         return this.syncN;
     }
@@ -202,5 +235,13 @@ public class ReplicationConfig extends BabuDBConfig {
     
     public String getBackupDir() {
         return backupDir;
+    }
+    
+    public FleaseConfig getFleaseConfig() {
+        return fleaseConfig;
+    }
+    
+    public int getLeaseTimeout() {
+        return LEASE_TIMEOUT;
     }
 }
