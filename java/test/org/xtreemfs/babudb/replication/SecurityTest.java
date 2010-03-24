@@ -57,7 +57,7 @@ public class SecurityTest {
             assertEquals(0, p.waitFor());
         
             // start the slave
-            slave = BabuDBFactory.createReplicatedBabuDB(conf);
+            slave = BabuDBFactory.createReplicatedBabuDB(conf,null);
             ((DatabaseManagerImpl) slave.getDatabaseManager()).proceedCreate(DB_NAME, 2, null);
         } catch (Exception e){
         	System.out.println("ERROR: "+e.getMessage());
