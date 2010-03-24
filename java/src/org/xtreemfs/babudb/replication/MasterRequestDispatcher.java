@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -7,25 +7,21 @@
  */
 package org.xtreemfs.babudb.replication;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
-import org.xtreemfs.babudb.BabuDBRequest;
+import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.clients.SlaveClient;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.SlavesStates.NotEnoughAvailableSlavesException;
 import org.xtreemfs.babudb.replication.SlavesStates.UnknownParticipantException;
-import org.xtreemfs.babudb.replication.operations.ChunkOperation;
 import org.xtreemfs.babudb.replication.operations.HeartbeatOperation;
-import org.xtreemfs.babudb.replication.operations.LoadOperation;
 import org.xtreemfs.babudb.replication.operations.Operation;
-import org.xtreemfs.babudb.replication.operations.ReplicaOperation;
-import org.xtreemfs.babudb.replication.operations.StateOperation;
 import org.xtreemfs.babudb.replication.stages.StageRequest;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
@@ -45,10 +41,23 @@ public class MasterRequestDispatcher extends RequestDispatcher {
     private final SlavesStates states;
     private final int syncN;
     
-    public final int chunkSize;
-    
-    /** The last acknowledged LSN of the last view. */
-    public final LSN lastOnView;
+    public MasterRequestDispatcher(BabuDB dbs, LSN initial, 
+            ReplicationControlLayer replCtl) throws Exception {
+        
+        super("Master", dbs, initial, replCtl);
+        
+        // Because the master is already synchronized and belongs to the set
+        // of N participants.
+        this.syncN = (replCtl.configuration.getSyncN() > 0) ?
+                      replCtl.configuration.getSyncN()-1 : 
+                      replCtl.configuration.getSyncN();
+                      
+        List<InetSocketAddress> slaves = 
+            new LinkedList<InetSocketAddress>(
+                    replCtl.configuration.getParticipants());
+        this.states = new SlavesStates(this.syncN,slaves,rpcClient,
+                replCtl.configuration.getInetSocketAddress());
+    }
     
     /**
      * Constructor to change the {@link RequestDispatcher} behavior to
@@ -56,56 +65,34 @@ public class MasterRequestDispatcher extends RequestDispatcher {
      * 
      * @param oldDispatcher
      * @param own - address of the master.
-     * @throws IOException 
      */
-    public MasterRequestDispatcher(RequestDispatcher oldDispatcher, 
-            InetSocketAddress own) throws IOException {
-        
+    public MasterRequestDispatcher(RequestDispatcher oldDispatcher, InetSocketAddress own) {
         super("Master", oldDispatcher);
-        assert(oldDispatcher.isPaused());
         
         DispatcherState oldState = oldDispatcher.getState();
         if (oldState.requestQueue != null)
             for (StageRequest rq : oldState.requestQueue)
                 rq.free();
-        
-        this.chunkSize = oldDispatcher.configuration.getChunkSize();
-        
+                
         // Because the master is already synchronized and belongs to the set
         // of N participants.
-        this.syncN = (oldDispatcher.configuration.getSyncN() > 0) ?
-                oldDispatcher.configuration.getSyncN()-1 : 
-                oldDispatcher.configuration.getSyncN();
+        this.syncN = (getConfig().getSyncN() > 0) ? getConfig().getSyncN()-1 : 
+                      getConfig().getSyncN();
         
         List<InetSocketAddress> slaves = new LinkedList<InetSocketAddress>(
-                oldDispatcher.configuration.getParticipants());
+                getConfig().getParticipants());
         
-        this.states = new SlavesStates(this.syncN,slaves,rpcClient);
-        
-        // the sequence number of the initial LSN before incrementing the viewID cannot be 0 
-        LSN initial = oldDispatcher.getState().latest;
-        this.lastOnView = (initial.getSequenceNo() == 0L) ? new LSN(0,0L) : initial;
+        this.states = new SlavesStates(this.syncN,slaves,rpcClient,
+                getConfig().getInetSocketAddress());
     }
 
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.RequestDispatcher#initializeOperations()
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#additionalOperations(java.util.Map)
      */
     @Override
-    protected void initializeOperations() {
-        Operation op = new StateOperation(this);
-        operations.put(op.getProcedureId(),op);
-        
-        op = new ReplicaOperation(this);
-        operations.put(op.getProcedureId(),op);
-        
-        op = new LoadOperation(this);
-        operations.put(op.getProcedureId(),op);
-        
-        op = new ChunkOperation();
-        operations.put(op.getProcedureId(),op);
-        
-        op = new HeartbeatOperation(this);
+    protected void additionalOperations(Map<Integer, Operation> operations) {        
+        Operation op = new HeartbeatOperation(this);
         operations.put(op.getProcedureId(),op);
     }
         
@@ -164,14 +151,18 @@ public class MasterRequestDispatcher extends RequestDispatcher {
     
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.RequestDispatcher#_replicate(org.xtreemfs.babudb.log.LogEntry, org.xtreemfs.include.common.buffer.ReusableBuffer)
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#replicate(org.xtreemfs.babudb.log.LogEntry, org.xtreemfs.include.common.buffer.ReusableBuffer)
      */
     @SuppressWarnings("unchecked")
     @Override
-    protected ReplicateResponse _replicate(LogEntry le, ReusableBuffer payload)
-            throws NotEnoughAvailableSlavesException, InterruptedException {
+    ReplicateResponse _replicate(LogEntry le, ReusableBuffer payload) {
         
-        List<SlaveClient> slaves = getSlavesForBroadCast(); 
+        List<SlaveClient> slaves;
+        try {
+            slaves = getSlavesForBroadCast();
+        } catch (Exception e) {
+            return new ReplicateResponse(le, e);
+        }  
         final ReplicateResponse result = new ReplicateResponse(le,
                 slaves.size() - this.syncN);
         
@@ -224,11 +215,10 @@ public class MasterRequestDispatcher extends RequestDispatcher {
     
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.RequestDispatcher#pauses(org.xtreemfs.babudb.BabuDBRequest)
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#_suspend()
      */
     @Override
-    public void pauses(BabuDBRequest<Object> listener) {
-        super.pauses(listener);
+    protected void _suspend() {
         states.clearListeners();
     }
 }

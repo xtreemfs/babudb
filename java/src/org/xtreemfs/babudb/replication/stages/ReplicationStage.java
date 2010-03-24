@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -13,7 +13,10 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBRequest;
+import org.xtreemfs.babudb.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
@@ -28,8 +31,8 @@ import org.xtreemfs.babudb.replication.stages.logic.RequestLogic;
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.foundation.LifeCycleThread;
 
-import static org.xtreemfs.babudb.replication.stages.logic.LogicID.*;
 import static org.xtreemfs.babudb.replication.operations.ErrNo.*;
+import static org.xtreemfs.babudb.replication.stages.logic.LogicID.*;
 
 /**
  * Stage to perform {@link ReplicationManagerImpl}-{@link Operation}s on the slave.
@@ -40,8 +43,7 @@ import static org.xtreemfs.babudb.replication.operations.ErrNo.*;
 
 public class ReplicationStage extends LifeCycleThread {
 
-    public final static int MAX_RETRIES = 3;
-    public final static int RETRY_DELAY = 500;
+    private final static int                    RETRY_DELAY_MS = 500;
         
     public LSN                                  lastInserted;
     
@@ -69,7 +71,7 @@ public class ReplicationStage extends LifeCycleThread {
     /** Counter for the number of tries needed to perform an operation */
     private int                                 tries = 0;
     
-    private BabuDBRequest<Object>               listener = null;
+    private BabuDBRequest<Boolean>               listener = null;
     
     /**
      * 
@@ -80,6 +82,7 @@ public class ReplicationStage extends LifeCycleThread {
      */
     public ReplicationStage(SlaveRequestDispatcher dispatcher, int max_q, 
             BlockingQueue<StageRequest> queue, LSN last) {
+        
         super("ReplicationStage");
         
         if (queue!=null) {
@@ -93,7 +96,6 @@ public class ReplicationStage extends LifeCycleThread {
         this.quit = false;
         this.dispatcher = dispatcher;
         this.lastInserted = last;
-        setLifeCycleListener(dispatcher);
         
         // ---------------------
         // initialize logic
@@ -133,7 +135,7 @@ public class ReplicationStage extends LifeCycleThread {
         notifyStarted();
         while (!quit) {
             try {
-                if (tries != 0) Thread.sleep(RETRY_DELAY*tries);
+                if (tries != 0) Thread.sleep(RETRY_DELAY_MS*tries);
                 logics.get(logicID).run();
                 tries = 0;
             } catch(ConnectionLostException cle) {
@@ -143,13 +145,17 @@ public class ReplicationStage extends LifeCycleThread {
                     setLogic(LOAD, "Master said, logfile was cut off.");
                     break;
                 case TOO_BUSY :
-                    if (++tries < MAX_RETRIES) break;
+                    if (++tries < ReplicationConfig.MAX_RETRIES) break;
                 case SERVICE_UNAVAILABLE : 
-                    // fail-over: pauses()
+                    // fail-over: suspend()
                 default :
                     Logging.logError(Logging.LEVEL_WARN, this, cle);
                     quit = true;
-                    dispatcher.pauses(null);
+                    if (listener != null) {
+                        listener.failed(new BabuDBException(
+                                ErrorCode.REPLICATION_FAILURE,cle.getMessage()));
+                    }
+                    dispatcher.suspend();
                     break;
                 }
             } catch(InterruptedException ie) {
@@ -172,38 +178,53 @@ public class ReplicationStage extends LifeCycleThread {
      * @param reason - for the logic change, needed for logging purpose.
      */
     public void setLogic(LogicID lgc, String reason) {
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "Replication logic changed: %s, because: %s", lgc.toString(), reason);
+        setLogic(lgc, reason, false);
+    }
+    
+    /**
+     * <p>Changes the currently used logic to the given <code>lgc</code>.</p>
+     * <b>WARNING: This operation is not thread safe!</b>
+     * <br>
+     * @param lgc
+     * @param reason - for the logic change, needed for logging purpose.
+     * @param loaded - true if the database was loaded remotely, false otherwise.
+     */
+    public void setLogic(LogicID lgc, String reason, boolean loaded) {
+        Logging.logMessage(Logging.LEVEL_INFO, this, 
+                "Replication logic changed: %s, because: %s", 
+                lgc.toString(), reason);
+        
         this.logicID = lgc;
         if (listener != null && lgc.equals(BASIC)){
-            listener.finished();
+            listener.finished(!loaded);
             listener = null;
         }
     }
     
     /**
      * Method to trigger a {@link LOAD} manually.
+     * Listener will contain true on finish , if it was a request synchronization,
+     * or if just the log file was switched. 
+     * otherwise, if it was a load, the listener will notified with false.
      * 
      * @param listener
      * 
-     * @return true, if it was a request synchronization, false if it was a load.
+     * @return 
      */
-    public boolean manualLoad(BabuDBRequest<Object> listener, LSN from, 
+    public void manualLoad(BabuDBRequest<Boolean> listener, LSN from, 
             LSN to) {
-        boolean result = false;
-        
         this.listener = listener;
         
         if (from.getViewId() == to.getViewId()) {
             missing = new LSNRange(from.getViewId(),from.getSequenceNo()+1L, 
                     to.getSequenceNo()+1L);
             setLogic(REQUEST, "manually synchronization");
-            result = true;
-        } else 
+        } else {
+            missing = new LSNRange(to.getViewId(), 1L, to.getSequenceNo()+1L);
             setLogic(LOAD, "manually synchronization");
-        
+        }
+        // necessary to wake up the mechanism
         if (q.isEmpty()) q.add(new StageRequest(null));
-        
-        return result;
     }
     
     /**

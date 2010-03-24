@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -58,7 +58,8 @@ public class BasicLogic extends Logic {
         final StageRequest op = queue.take();
         if (op.getLSN() == null) return;
         final LSN lsn = op.getLSN();
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "Replicate requested: %s", lsn.toString());
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "Replicate requested: %s", 
+                lsn.toString());
         
         // check the LSN of the logEntry to write
         if (lsn.getViewId() > stage.lastInserted.getViewId()) {
@@ -76,7 +77,8 @@ public class BasicLogic extends Logic {
                 queue.add(op);
                 stage.missing = new LSNRange(lsn.getViewId(),
                         stage.lastInserted.getSequenceNo()+1,lsn.getSequenceNo());
-                stage.setLogic(REQUEST, "We missed some LogEntries "+stage.missing.toString()+".");
+                stage.setLogic(REQUEST, "We missed some LogEntries "+
+                        stage.missing.toString()+".");
                 return;
             } else { 
                 /* continue execution */ 
@@ -97,7 +99,8 @@ public class BasicLogic extends Logic {
                 @Override
                 public void failed(LogEntry entry, Exception ex) {
                     stage.finalizeRequest(op);
-                    stage.lastInserted = new LSN(lsn.getViewId(),lsn.getSequenceNo()-1L);
+                    stage.lastInserted = new LSN(lsn.getViewId(),
+                            lsn.getSequenceNo()-1L);
                     Logging.logError(Logging.LEVEL_ERROR, stage, ex);
                 }
             }, stage.dispatcher.dbs);

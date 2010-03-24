@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -41,7 +41,6 @@ public class HeartbeatThread extends LifeCycleThread {
     public HeartbeatThread(SlaveRequestDispatcher dispatcher, LSN initial) {
         super("HeartbeatThread");
         this.dispatcher = dispatcher;
-        setLifeCycleListener(dispatcher);
         this.latestLSN = initial;
     }
     
@@ -106,16 +105,14 @@ public class HeartbeatThread extends LifeCycleThread {
      */
     @SuppressWarnings("unchecked")
     private void processHeartbeat() {
-        if (dispatcher.master != null) {
-            dispatcher.master.heartbeat(latestLSN).registerListener(
-                    new RPCResponseAvailableListener() {
-            
-                @Override
-                public void responseAvailable(RPCResponse r) { 
-                    if (r!=null) r.freeBuffers(); 
-                }
-            });
-        }
+        dispatcher.master.heartbeat(latestLSN).registerListener(
+                new RPCResponseAvailableListener() {
+        
+            @Override
+            public void responseAvailable(RPCResponse r) { 
+                if (r!=null) r.freeBuffers(); 
+            }
+        });
     }
 
     /**

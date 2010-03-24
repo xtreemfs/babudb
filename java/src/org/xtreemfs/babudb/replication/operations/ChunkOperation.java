@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -15,7 +15,6 @@ import java.nio.channels.FileChannel;
 import org.xtreemfs.babudb.interfaces.Chunk;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.chunkRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.chunkResponse;
-import org.xtreemfs.babudb.interfaces.utils.Serializable;
 import org.xtreemfs.babudb.replication.Request;
 import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
@@ -50,7 +49,7 @@ public class ChunkOperation extends Operation {
      * @see org.xtreemfs.babudb.replication.operations.Operation#parseRPCMessage(org.xtreemfs.babudb.replication.Request)
      */
     @Override
-    public Serializable parseRPCMessage(Request rq) {
+    public yidl.runtime.Object parseRPCMessage(Request rq) {
         chunkRequest amr = new chunkRequest();
         rq.deserializeMessage(amr);
         
@@ -76,7 +75,9 @@ public class ChunkOperation extends Operation {
         Chunk chunk = request.getChunk();
         int length = (int) (chunk.getEnd() - chunk.getBegin());
       
-        Logging.logMessage(Logging.LEVEL_INFO, this, "CHUNK request received: %s", chunk.toString());
+        Logging.logMessage(Logging.LEVEL_INFO, this, 
+                "%s request received from %s", chunk.toString(), 
+                rq.getRPCRequest().getClientIdentity().toString());
         
         FileChannel channel = null;
         ReusableBuffer payload = null;
@@ -91,22 +92,17 @@ public class ChunkOperation extends Operation {
             
         } catch (Exception e) {
             rq.sendReplicationException(ErrNo.FILE_UNAVAILABLE, 
-                    "The requested chunk is not available anymore: "+chunk.toString());
+                    "The requested chunk ("+chunk.toString()+") is not" +
+                    " available anymore, because: "+e.getMessage());
+            
+            if (e.getMessage() == null) 
+                Logging.logError(Logging.LEVEL_INFO, this, e);
         } finally {
             try {
                 if (channel != null) channel.close();
             } catch (IOException e) { /* ignored */ }
             
-            if (payload!=null) BufferPool.free(payload);
+            if (payload != null) BufferPool.free(payload);
         }
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.operations.Operation#canBeDisabled()
-     */
-    @Override
-    public boolean canBeDisabled() {
-        return true;
     }
 }

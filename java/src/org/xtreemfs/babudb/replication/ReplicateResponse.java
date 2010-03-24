@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -26,13 +26,28 @@ public final class ReplicateResponse extends LatestLSNUpdateListener {
     private final LogEntry logEntry;
     
     /**
+     * Dummy constructor to respond already failed requests.
+     * 
+     * @param le
+     * @param error
+     */
+    public ReplicateResponse(LogEntry le, Exception error) {
+        super(le.getLSN());
+        
+        this.finished = true;
+        this.permittedFailures = -1;
+        this.logEntry = le;
+        this.logEntry.getListener().failed(logEntry, error);
+    }
+    
+    /**
      * Initializes the response object waiting for the given {@link LSN} to become
      * the next stable state.
      * 
      * @param le - {@link LogEntry} associated with the {@link LSN}.
      * @param slavesThatCanFail - buffer for negative RPCResponses.
      */
-    ReplicateResponse(LogEntry le, int slavesThatCanFail) {
+    public ReplicateResponse(LogEntry le, int slavesThatCanFail) {
         super(le.getLSN());
         logEntry = le;
         permittedFailures = slavesThatCanFail;
@@ -41,7 +56,7 @@ public final class ReplicateResponse extends LatestLSNUpdateListener {
     /**
      * Use this function to update the permitted failures on this response.
      */
-    synchronized void decrementPermittedFailures(){
+    public synchronized void decrementPermittedFailures(){
         if (permittedFailures == 0 && !finished) {
             finished = true;
             logEntry.getListener().failed(logEntry, new BabuDBException(
@@ -56,6 +71,14 @@ public final class ReplicateResponse extends LatestLSNUpdateListener {
      */
     public LogEntry getLogEntry() {
         return this.logEntry;
+    }
+    
+    /**
+     * @return true if this response indicates, that its request has already 
+     *         failed. false otherwise.
+     */
+    public synchronized boolean hasFailed() {
+        return finished && permittedFailures < 0;
     }
         
     /*

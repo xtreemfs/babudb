@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -12,7 +12,6 @@ import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateRequest;
-import org.xtreemfs.babudb.interfaces.utils.Serializable;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.lsmdb.LSN;
@@ -58,7 +57,7 @@ public class ReplicateOperation extends Operation {
      * @see org.xtreemfs.babudb.replication.operations.Operation#parseRPCMessage(org.xtreemfs.babudb.replication.Request)
      */
     @Override
-    public Serializable parseRPCMessage(Request rq) {
+    public yidl.runtime.Object parseRPCMessage(Request rq) {
         replicateRequest rpcrq = new replicateRequest();
         
         // check if requesting client is a master
@@ -104,7 +103,8 @@ public class ReplicateOperation extends Operation {
     @Override
     public void startRequest(Request rq) {
         replicateRequest request = (replicateRequest) rq.getRequestMessage();
-        final LSN lsn = new LSN(request.getLsn().getViewId(),request.getLsn().getSequenceNo());
+        final LSN lsn = new LSN(request.getLsn().getViewId(),
+                request.getLsn().getSequenceNo());
         LogEntry le = (LogEntry) rq.getAttachment();
         try {
             dispatcher.replication.enqueueOperation(new Object[]{ lsn, le });
@@ -113,14 +113,5 @@ public class ReplicateOperation extends Operation {
             if (le!=null) le.free();
             rq.sendReplicationException(ErrNo.TOO_BUSY,e.getMessage());
         }
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.operations.Operation#canBeDisabled()
-     */
-    @Override
-    public boolean canBeDisabled() {
-        return true;
     }
 }

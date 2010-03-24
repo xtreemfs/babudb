@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -8,11 +8,10 @@
 package org.xtreemfs.babudb.replication.operations;
 
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.heartbeatRequest;
-import org.xtreemfs.babudb.interfaces.utils.Serializable;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.MasterRequestDispatcher;
 import org.xtreemfs.babudb.replication.Request;
+import org.xtreemfs.babudb.replication.MasterRequestDispatcher;
 import org.xtreemfs.babudb.replication.SlavesStates.UnknownParticipantException;
 import org.xtreemfs.include.common.TimeSync;
 
@@ -48,7 +47,7 @@ public class HeartbeatOperation extends Operation {
      * @see org.xtreemfs.babudb.replication.operations.Operation#parseRPCMessage(org.xtreemfs.babudb.replication.Request)
      */
     @Override
-    public Serializable parseRPCMessage(Request rq) {
+    public yidl.runtime.Object parseRPCMessage(Request rq) {
         heartbeatRequest rpcrq = new heartbeatRequest();
         rq.deserializeMessage(rpcrq);
         
@@ -79,14 +78,5 @@ public class HeartbeatOperation extends Operation {
             rq.sendReplicationException(ErrNo.SECURITY,
                     "You are not allowed to request that!");
         } 
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.operations.Operation#canBeDisabled()
-     */
-    @Override
-    public boolean canBeDisabled() {
-        return true;
     }
 }
