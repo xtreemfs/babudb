@@ -1,77 +1,66 @@
 package org.xtreemfs.babudb.interfaces.ReplicationInterface;
 
+import java.io.StringWriter;
+import org.xtreemfs.*;
 import org.xtreemfs.babudb.*;
 import org.xtreemfs.babudb.interfaces.*;
-import java.util.HashMap;
 import org.xtreemfs.babudb.interfaces.utils.*;
-import org.xtreemfs.include.foundation.oncrpc.utils.ONCRPCBufferWriter;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import yidl.runtime.Marshaller;
+import yidl.runtime.PrettyPrinter;
+import yidl.runtime.Struct;
+import yidl.runtime.Unmarshaller;
 
 
 
 
-public class loadResponse implements org.xtreemfs.babudb.interfaces.utils.Response
+public class loadResponse extends org.xtreemfs.babudb.interfaces.utils.Response
 {
-    public static final int TAG = 1016;
-
+    public static final int TAG = 1012;
     
-    public loadResponse() { returnValue = new DBFileMetaDataSet(); }
+    public loadResponse() { returnValue = new DBFileMetaDataSet();  }
     public loadResponse( DBFileMetaDataSet returnValue ) { this.returnValue = returnValue; }
-    public loadResponse( Object from_hash_map ) { returnValue = new DBFileMetaDataSet(); this.deserialize( from_hash_map ); }
-    public loadResponse( Object[] from_array ) { returnValue = new DBFileMetaDataSet();this.deserialize( from_array ); }
 
     public DBFileMetaDataSet getReturnValue() { return returnValue; }
     public void setReturnValue( DBFileMetaDataSet returnValue ) { this.returnValue = returnValue; }
 
-    // Object
-    public String toString()
-    {
-        return "loadResponse( " + returnValue.toString() + " )";
+    // java.lang.Object
+    public String toString() 
+    { 
+        StringWriter string_writer = new StringWriter();
+        string_writer.append(this.getClass().getCanonicalName());
+        string_writer.append(" ");
+        PrettyPrinter pretty_printer = new PrettyPrinter( string_writer );
+        pretty_printer.writeStruct( "", this );
+        return string_writer.toString();
     }
 
-    // Serializable
-    public int getTag() { return 1016; }
+
+    // java.io.Serializable
+    public static final long serialVersionUID = 1012;    
+
+    // yidl.runtime.Object
+    public int getTag() { return 1012; }
     public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::loadResponse"; }
-
-    public void deserialize( Object from_hash_map )
-    {
-        this.deserialize( ( HashMap<String, Object> )from_hash_map );
-    }
-        
-    public void deserialize( HashMap<String, Object> from_hash_map )
-    {
-        this.returnValue.deserialize( ( Object[] )from_hash_map.get( "returnValue" ) );
-    }
     
-    public void deserialize( Object[] from_array )
-    {
-        this.returnValue.deserialize( ( Object[] )from_array[0] );        
-    }
-
-    public void deserialize( ReusableBuffer buf )
-    {
-        returnValue = new DBFileMetaDataSet(); returnValue.deserialize( buf );
-    }
-
-    public Object serialize()
-    {
-        HashMap<String, Object> to_hash_map = new HashMap<String, Object>();
-        to_hash_map.put( "returnValue", returnValue.serialize() );
-        return to_hash_map;        
-    }
-
-    public void serialize( ONCRPCBufferWriter writer ) 
-    {
-        returnValue.serialize( writer );
-    }
-    
-    public int calculateSize()
+    public int getXDRSize()
     {
         int my_size = 0;
-        my_size += returnValue.calculateSize();
+        my_size += returnValue.getXDRSize(); // returnValue
         return my_size;
+    }    
+    
+    public void marshal( Marshaller marshaller )
+    {
+        marshaller.writeSequence( "returnValue", returnValue );
     }
-
+    
+    public void unmarshal( Unmarshaller unmarshaller ) 
+    {
+        returnValue = new DBFileMetaDataSet(); unmarshaller.readSequence( "returnValue", returnValue );    
+    }
+        
+    
 
     private DBFileMetaDataSet returnValue;    
 

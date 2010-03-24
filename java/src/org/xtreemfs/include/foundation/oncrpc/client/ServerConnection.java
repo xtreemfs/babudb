@@ -35,7 +35,7 @@ import org.xtreemfs.include.common.TimeSync;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.foundation.oncrpc.server.RPCNIOSocketServer;
-import org.xtreemfs.include.foundation.pinky.channels.ChannelIO;
+import org.xtreemfs.include.foundation.oncrpc.channels.ChannelIO;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCRecordFragmentHeader;
 
 /**
@@ -73,6 +73,8 @@ public class ServerConnection {
     private ONCRPCRequest   sendRequest;
 
     private final InetSocketAddress    endpoint;
+
+    volatile long bytesRX, bytesTX;
     
 
     public ServerConnection(InetSocketAddress endpoint) {
@@ -85,6 +87,8 @@ public class ServerConnection {
         responseFragHdr = ByteBuffer.allocateDirect(ONCRPCRecordFragmentHeader.getFragmentHeaderSize());
         clearResponseFragments();
         this.endpoint = endpoint;
+        bytesTX = 0;
+        bytesRX = 0;
     }
 
     boolean isConnected() {

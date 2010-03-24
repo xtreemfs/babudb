@@ -1,11 +1,15 @@
 package org.xtreemfs.babudb.interfaces.ReplicationInterface;
 
+import java.io.StringWriter;
+import org.xtreemfs.*;
 import org.xtreemfs.babudb.*;
 import org.xtreemfs.babudb.interfaces.*;
-import java.util.HashMap;
 import org.xtreemfs.babudb.interfaces.utils.*;
-import org.xtreemfs.include.foundation.oncrpc.utils.ONCRPCBufferWriter;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import yidl.runtime.Marshaller;
+import yidl.runtime.PrettyPrinter;
+import yidl.runtime.Struct;
+import yidl.runtime.Unmarshaller;
 
 
 
@@ -13,12 +17,9 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 public class errnoException extends org.xtreemfs.babudb.interfaces.utils.ONCRPCException
 {
     public static final int TAG = 1101;
-
     
-    public errnoException() { error_code = 0; error_message = ""; stack_trace = ""; }
+    public errnoException() {  }
     public errnoException( int error_code, String error_message, String stack_trace ) { this.error_code = error_code; this.error_message = error_message; this.stack_trace = stack_trace; }
-    public errnoException( Object from_hash_map ) { error_code = 0; error_message = ""; stack_trace = ""; this.deserialize( from_hash_map ); }
-    public errnoException( Object[] from_array ) { error_code = 0; error_message = ""; stack_trace = "";this.deserialize( from_array ); }
 
     public int getError_code() { return error_code; }
     public void setError_code( int error_code ) { this.error_code = error_code; }
@@ -27,67 +28,49 @@ public class errnoException extends org.xtreemfs.babudb.interfaces.utils.ONCRPCE
     public String getStack_trace() { return stack_trace; }
     public void setStack_trace( String stack_trace ) { this.stack_trace = stack_trace; }
 
-    // Object
-    public String toString()
-    {
-        return "errnoException( " + Integer.toString( error_code ) + ", " + "\"" + error_message + "\"" + ", " + "\"" + stack_trace + "\"" + " )";
+    // java.lang.Object
+    public String toString() 
+    { 
+        StringWriter string_writer = new StringWriter();
+        string_writer.append(this.getClass().getCanonicalName());
+        string_writer.append(" ");
+        PrettyPrinter pretty_printer = new PrettyPrinter( string_writer );
+        pretty_printer.writeStruct( "", this );
+        return string_writer.toString();
     }
 
-    // Serializable
+
+    // java.io.Serializable
+    public static final long serialVersionUID = 1101;    
+
+    // yidl.runtime.Object
     public int getTag() { return 1101; }
     public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::errnoException"; }
-
-    public void deserialize( Object from_hash_map )
-    {
-        this.deserialize( ( HashMap<String, Object> )from_hash_map );
-    }
-        
-    public void deserialize( HashMap<String, Object> from_hash_map )
-    {
-        this.error_code = ( from_hash_map.get( "error_code" ) instanceof Integer ) ? ( ( Integer )from_hash_map.get( "error_code" ) ).intValue() : ( ( Long )from_hash_map.get( "error_code" ) ).intValue();
-        this.error_message = ( String )from_hash_map.get( "error_message" );
-        this.stack_trace = ( String )from_hash_map.get( "stack_trace" );
-    }
     
-    public void deserialize( Object[] from_array )
-    {
-        this.error_code = ( from_array[0] instanceof Integer ) ? ( ( Integer )from_array[0] ).intValue() : ( ( Long )from_array[0] ).intValue();
-        this.error_message = ( String )from_array[1];
-        this.stack_trace = ( String )from_array[2];        
-    }
-
-    public void deserialize( ReusableBuffer buf )
-    {
-        error_code = buf.getInt();
-        error_message = org.xtreemfs.babudb.interfaces.utils.XDRUtils.deserializeString( buf );
-        stack_trace = org.xtreemfs.babudb.interfaces.utils.XDRUtils.deserializeString( buf );
-    }
-
-    public Object serialize()
-    {
-        HashMap<String, Object> to_hash_map = new HashMap<String, Object>();
-        to_hash_map.put( "error_code", new Integer( error_code ) );
-        to_hash_map.put( "error_message", error_message );
-        to_hash_map.put( "stack_trace", stack_trace );
-        return to_hash_map;        
-    }
-
-    public void serialize( ONCRPCBufferWriter writer ) 
-    {
-        writer.putInt( error_code );
-        org.xtreemfs.babudb.interfaces.utils.XDRUtils.serializeString( error_message, writer );
-        org.xtreemfs.babudb.interfaces.utils.XDRUtils.serializeString( stack_trace, writer );
-    }
-    
-    public int calculateSize()
+    public int getXDRSize()
     {
         int my_size = 0;
-        my_size += ( Integer.SIZE / 8 );
-        my_size += org.xtreemfs.babudb.interfaces.utils.XDRUtils.stringLengthPadded(error_message);
-        my_size += org.xtreemfs.babudb.interfaces.utils.XDRUtils.stringLengthPadded(stack_trace);
+        my_size += Integer.SIZE / 8; // error_code
+        my_size += Integer.SIZE / 8 + ( error_message != null ? ( ( error_message.getBytes().length % 4 == 0 ) ? error_message.getBytes().length : ( error_message.getBytes().length + 4 - error_message.getBytes().length % 4 ) ) : 0 ); // error_message
+        my_size += Integer.SIZE / 8 + ( stack_trace != null ? ( ( stack_trace.getBytes().length % 4 == 0 ) ? stack_trace.getBytes().length : ( stack_trace.getBytes().length + 4 - stack_trace.getBytes().length % 4 ) ) : 0 ); // stack_trace
         return my_size;
+    }    
+    
+    public void marshal( Marshaller marshaller )
+    {
+        marshaller.writeUint32( "error_code", error_code );
+        marshaller.writeString( "error_message", error_message );
+        marshaller.writeString( "stack_trace", stack_trace );
     }
-
+    
+    public void unmarshal( Unmarshaller unmarshaller ) 
+    {
+        error_code = unmarshaller.readUint32( "error_code" );
+        error_message = unmarshaller.readString( "error_message" );
+        stack_trace = unmarshaller.readString( "stack_trace" );    
+    }
+        
+    
 
     private int error_code;
     private String error_message;

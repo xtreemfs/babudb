@@ -1,4 +1,5 @@
-/*  Copyright (c) 2008 Konrad-Zuse-Zentrum fuer Informationstechnik Berlin.
+/*  Copyright (c) 2010 Konrad-Zuse-Zentrum fuer Informationstechnik Berlin and
+    Barcelona Supercomputing Center - Centro Nacional de Supercomputacion.
 
     This file is part of XtreemFS. XtreemFS is part of XtreemOS, a Linux-based
     Grid Operating System, see <http://www.xtreemos.eu> for more details.
@@ -17,27 +18,31 @@
 
     You should have received a copy of the GNU General Public License
     along with XtreemFS. If not, see <http://www.gnu.org/licenses/>.
-*/
-/*
- * AUTHORS: Björn Kolbeck (ZIB), Jan Stender (ZIB), Christian Lorenz (ZIB)
  */
+/*
+ * AUTHORS: Felix Langner (ZIB)
+ */
+package org.xtreemfs.include.common;
 
-package org.xtreemfs.include.foundation.pinky;
+import java.net.InetSocketAddress;
+
+import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
 
 /**
- * Listener interface to register for client requests with Pinky.
+ * Provides methods to synchronize with a XtreemFS TimeServer, usually provided
+ * by a DIR service.
  * 
- * @author bjko
+ * @author flangner
+ * @since 03/01/2010
  */
-public interface PinkyRequestListener {
+
+public interface TimeServerClient {
 
     /**
-     * Called when a request is received.
+     * Requests the global time at the given server.
      * 
-     * @attention <B>This operation blocks the Pinky server thread!</B>
-     * @param theRequest
-     *            the request received from the client.
+     * @param server - if null, the default will be used.
+     * @return a {@link RPCResponse} future for an UNIX time-stamp.
      */
-    public void receiveRequest(PinkyRequest theRequest);
-
+    public RPCResponse<Long> xtreemfs_global_time_get(InetSocketAddress server);
 }

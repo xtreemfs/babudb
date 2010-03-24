@@ -29,8 +29,8 @@ import org.xtreemfs.include.common.TimeSync;
 import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.foundation.oncrpc.utils.ONCRPCBufferWriter;
+import org.xtreemfs.include.foundation.oncrpc.utils.XDRUnmarshaller;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCRequestHeader;
-import org.xtreemfs.babudb.interfaces.utils.Serializable;
 
 
 /**
@@ -56,11 +56,13 @@ public class ONCRPCRequest {
 
     private final Object              attachment;
 
-    ONCRPCRequest(RPCResponseListener listener, int xid, int programId, int versionId, int procedureId, Serializable response, Object attachment) {
+    long startT, endT;
+
+    ONCRPCRequest(RPCResponseListener listener, int xid, int programId, int versionId, int procedureId, yidl.runtime.Object response, Object attachment) {
         ONCRPCRequestHeader hdr = new ONCRPCRequestHeader(xid, programId, versionId,procedureId);
         ONCRPCBufferWriter writer = new ONCRPCBufferWriter(ONCRPCBufferWriter.BUFF_SIZE);
-        hdr.serialize(writer);
-        response.serialize(writer);
+        hdr.marshal(writer);
+        response.marshal(writer);
         writer.flip();
 
         this.requestBuffers = writer.getBuffers();
@@ -133,8 +135,8 @@ public class ONCRPCRequest {
         this.responseFragments = responseFragments;
     }
 
-    public void deserializeResponse(Serializable msg) {
-        msg.deserialize(responseFragments.get(0));
+    public void deserializeResponse(yidl.runtime.Object msg) {
+        msg.unmarshal(new XDRUnmarshaller(responseFragments.get(0)));
     }
 
     public void freeBuffers() {
@@ -148,9 +150,16 @@ public class ONCRPCRequest {
         }
     }
 
-    
-
-    
-    
-
+    /**
+     * duration of request from sending the request until the response
+     * was received completeley.
+     * @return duration in ns
+     */
+    public long getDuration() {
+        if (RPCNIOSocketClient.ENABLE_STATISTICS) {
+            return endT-startT;
+        } else {
+            return 0l;
+        }
+    }
 }

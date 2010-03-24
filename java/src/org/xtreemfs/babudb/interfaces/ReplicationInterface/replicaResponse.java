@@ -1,77 +1,66 @@
 package org.xtreemfs.babudb.interfaces.ReplicationInterface;
 
+import java.io.StringWriter;
+import org.xtreemfs.*;
 import org.xtreemfs.babudb.*;
 import org.xtreemfs.babudb.interfaces.*;
-import java.util.HashMap;
 import org.xtreemfs.babudb.interfaces.utils.*;
-import org.xtreemfs.include.foundation.oncrpc.utils.ONCRPCBufferWriter;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import yidl.runtime.Marshaller;
+import yidl.runtime.PrettyPrinter;
+import yidl.runtime.Struct;
+import yidl.runtime.Unmarshaller;
 
 
 
 
-public class replicaResponse implements org.xtreemfs.babudb.interfaces.utils.Response
+public class replicaResponse extends org.xtreemfs.babudb.interfaces.utils.Response
 {
     public static final int TAG = 1015;
-
     
-    public replicaResponse() { returnValue = new LogEntries(); }
+    public replicaResponse() { returnValue = new LogEntries();  }
     public replicaResponse( LogEntries returnValue ) { this.returnValue = returnValue; }
-    public replicaResponse( Object from_hash_map ) { returnValue = new LogEntries(); this.deserialize( from_hash_map ); }
-    public replicaResponse( Object[] from_array ) { returnValue = new LogEntries();this.deserialize( from_array ); }
 
     public LogEntries getReturnValue() { return returnValue; }
     public void setReturnValue( LogEntries returnValue ) { this.returnValue = returnValue; }
 
-    // Object
-    public String toString()
-    {
-        return "replicaResponse( " + returnValue.toString() + " )";
+    // java.lang.Object
+    public String toString() 
+    { 
+        StringWriter string_writer = new StringWriter();
+        string_writer.append(this.getClass().getCanonicalName());
+        string_writer.append(" ");
+        PrettyPrinter pretty_printer = new PrettyPrinter( string_writer );
+        pretty_printer.writeStruct( "", this );
+        return string_writer.toString();
     }
 
-    // Serializable
+
+    // java.io.Serializable
+    public static final long serialVersionUID = 1015;    
+
+    // yidl.runtime.Object
     public int getTag() { return 1015; }
     public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::replicaResponse"; }
-
-    public void deserialize( Object from_hash_map )
-    {
-        this.deserialize( ( HashMap<String, Object> )from_hash_map );
-    }
-        
-    public void deserialize( HashMap<String, Object> from_hash_map )
-    {
-        this.returnValue.deserialize( ( Object[] )from_hash_map.get( "returnValue" ) );
-    }
     
-    public void deserialize( Object[] from_array )
-    {
-        this.returnValue.deserialize( ( Object[] )from_array[0] );        
-    }
-
-    public void deserialize( ReusableBuffer buf )
-    {
-        returnValue = new LogEntries(); returnValue.deserialize( buf );
-    }
-
-    public Object serialize()
-    {
-        HashMap<String, Object> to_hash_map = new HashMap<String, Object>();
-        to_hash_map.put( "returnValue", returnValue.serialize() );
-        return to_hash_map;        
-    }
-
-    public void serialize( ONCRPCBufferWriter writer ) 
-    {
-        returnValue.serialize( writer );
-    }
-    
-    public int calculateSize()
+    public int getXDRSize()
     {
         int my_size = 0;
-        my_size += returnValue.calculateSize();
+        my_size += returnValue.getXDRSize(); // returnValue
         return my_size;
+    }    
+    
+    public void marshal( Marshaller marshaller )
+    {
+        marshaller.writeSequence( "returnValue", returnValue );
     }
-
+    
+    public void unmarshal( Unmarshaller unmarshaller ) 
+    {
+        returnValue = new LogEntries(); unmarshaller.readSequence( "returnValue", returnValue );    
+    }
+        
+    
 
     private LogEntries returnValue;    
 

@@ -25,5 +25,5 @@
 package org.xtreemfs.babudb.interfaces.utils;
 
 
-public interface Response extends Serializable
+public abstract class Response implements yidl.runtime.Struct
 { };   

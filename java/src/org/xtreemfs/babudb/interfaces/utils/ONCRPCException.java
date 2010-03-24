@@ -28,7 +28,7 @@ package org.xtreemfs.babudb.interfaces.utils;
  *
  * @author bjko
  */
-public abstract class ONCRPCException extends Exception implements Serializable {
+public abstract class ONCRPCException extends Exception implements yidl.runtime.Struct {
 
     public ONCRPCException() {
         super();

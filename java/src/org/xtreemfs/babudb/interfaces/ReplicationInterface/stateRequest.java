@@ -1,75 +1,65 @@
 package org.xtreemfs.babudb.interfaces.ReplicationInterface;
 
+import java.io.StringWriter;
+import org.xtreemfs.*;
 import org.xtreemfs.babudb.*;
 import org.xtreemfs.babudb.interfaces.*;
-import java.util.HashMap;
 import org.xtreemfs.babudb.interfaces.utils.*;
-import org.xtreemfs.include.foundation.oncrpc.utils.ONCRPCBufferWriter;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import yidl.runtime.Marshaller;
+import yidl.runtime.PrettyPrinter;
+import yidl.runtime.Struct;
+import yidl.runtime.Unmarshaller;
 
 
 
 
-public class stateRequest implements org.xtreemfs.babudb.interfaces.utils.Request
+public class stateRequest extends org.xtreemfs.babudb.interfaces.utils.Request
 {
     public static final int TAG = 1011;
-
     
     public stateRequest() {  }
-    public stateRequest( Object from_hash_map ) {  this.deserialize( from_hash_map ); }
-    public stateRequest( Object[] from_array ) { this.deserialize( from_array ); }
 
-    // Object
-    public String toString()
-    {
-        return "stateRequest()";
-    }
-
-    // Serializable
-    public int getTag() { return 1011; }
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::stateRequest"; }
-
-    public void deserialize( Object from_hash_map )
-    {
-        this.deserialize( ( HashMap<String, Object> )from_hash_map );
-    }
-        
-    public void deserialize( HashMap<String, Object> from_hash_map )
-    {
-
-    }
-    
-    public void deserialize( Object[] from_array )
-    {
-        
-    }
-
-    public void deserialize( ReusableBuffer buf )
-    {
-
-    }
-
-    public Object serialize()
-    {
-        HashMap<String, Object> to_hash_map = new HashMap<String, Object>();
-return to_hash_map;        
-    }
-
-    public void serialize( ONCRPCBufferWriter writer ) 
-    {
-
-    }
-    
-    public int calculateSize()
-    {
-        int my_size = 0;
-
-        return my_size;
+    // java.lang.Object
+    public String toString() 
+    { 
+        StringWriter string_writer = new StringWriter();
+        string_writer.append(this.getClass().getCanonicalName());
+        string_writer.append(" ");
+        PrettyPrinter pretty_printer = new PrettyPrinter( string_writer );
+        pretty_printer.writeStruct( "", this );
+        return string_writer.toString();
     }
 
     // Request
     public Response createDefaultResponse() { return new stateResponse(); }
+
+
+    // java.io.Serializable
+    public static final long serialVersionUID = 1011;    
+
+    // yidl.runtime.Object
+    public int getTag() { return 1011; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::stateRequest"; }
     
+    public int getXDRSize()
+    {
+        int my_size = 0;
+
+        return my_size;
+    }    
+    
+    public void marshal( Marshaller marshaller )
+    {
+
+    }
+    
+    public void unmarshal( Unmarshaller unmarshaller ) 
+    {
+    
+    }
+        
+        
 
 }
 

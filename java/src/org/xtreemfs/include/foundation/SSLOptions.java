@@ -22,7 +22,7 @@
  * AUTHORS: Björn Kolbeck (ZIB), Jan Stender (ZIB), Christian Lorenz (ZIB)
  */
 
-package org.xtreemfs.include.foundation.pinky;
+package org.xtreemfs.include.foundation;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,9 +33,12 @@ import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 
+import java.security.cert.X509Certificate;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509TrustManager;
 
 /**
  * Encapsulates the SSLOptions for the connections of pinky and speedy
@@ -92,6 +95,8 @@ public class SSLOptions {
      * knows the used certs and more
      */
     private final SSLContext   sslContext;
+
+    private final boolean     useFakeSSLMode;
     
     /**
      * creates a new SSLOptions object, which uses PKCS12 Container and
@@ -110,7 +115,7 @@ public class SSLOptions {
     public SSLOptions(InputStream serverCredentialFile, String serverCredentialFilePassphrase,
         InputStream trustedCertificatesFile, String trustedCertificatesFilePassphrase) throws IOException {
         this(serverCredentialFile, serverCredentialFilePassphrase, PKCS12_CONTAINER, trustedCertificatesFile,
-            trustedCertificatesFilePassphrase, PKCS12_CONTAINER, false);
+            trustedCertificatesFilePassphrase, JKS_CONTAINER, false);
     }
     
     /**
@@ -130,9 +135,9 @@ public class SSLOptions {
      */
     public SSLOptions(InputStream serverCredentialFile, String serverCredentialFilePassphrase,
         InputStream trustedCertificatesFile, String trustedCertificatesFilePassphrase,
-        boolean authenticationWithoutEncryption) throws IOException {
+        boolean authenticationWithoutEncryption, boolean useGridSSL) throws IOException {
         this(serverCredentialFile, serverCredentialFilePassphrase, PKCS12_CONTAINER, trustedCertificatesFile,
-            trustedCertificatesFilePassphrase, PKCS12_CONTAINER, authenticationWithoutEncryption);
+            trustedCertificatesFilePassphrase, JKS_CONTAINER, authenticationWithoutEncryption,useGridSSL);
     }
     
     /**
@@ -158,6 +163,15 @@ public class SSLOptions {
         String serverCredentialFileContainer, InputStream trustedCertificatesFile,
         String trustedCertificatesFilePassphrase, String trustedCertificatesFileContainer,
         boolean authenticationWithoutEncryption) throws IOException {
+        this(serverCredentialFile,serverCredentialFilePassphrase,serverCredentialFileContainer,
+             trustedCertificatesFile,trustedCertificatesFilePassphrase,trustedCertificatesFileContainer,
+             authenticationWithoutEncryption,false);
+    }
+
+    public SSLOptions(InputStream serverCredentialFile, String serverCredentialFilePassphrase,
+        String serverCredentialFileContainer, InputStream trustedCertificatesFile,
+        String trustedCertificatesFilePassphrase, String trustedCertificatesFileContainer,
+        boolean authenticationWithoutEncryption, boolean useFakeSSLMode) throws IOException {
         this.serverCredentialFile = serverCredentialFile;
         this.trustedCertificatesFile = trustedCertificatesFile;
         
@@ -175,6 +189,8 @@ public class SSLOptions {
         this.trustedCertificatesFileContainer = trustedCertificatesFileContainer;
         
         this.authenticationWithoutEncryption = authenticationWithoutEncryption;
+
+        this.useFakeSSLMode = useFakeSSLMode;
         
         sslContext = createSSLContext();
     }
@@ -191,8 +207,14 @@ public class SSLOptions {
             // First initialize the key and trust material.
             KeyStore ksKeys = KeyStore.getInstance(serverCredentialFileContainer);
             ksKeys.load(serverCredentialFile, serverCredentialFilePassphrase);
-            KeyStore ksTrust = KeyStore.getInstance(trustedCertificatesFileContainer);
-            ksTrust.load(trustedCertificatesFile, trustedCertificatesFilePassphrase);
+            
+            KeyStore ksTrust = null;
+            if (trustedCertificatesFileContainer.equals("none")) {
+                ksTrust = KeyStore.getInstance(KeyStore.getDefaultType());
+            } else {
+                ksTrust = KeyStore.getInstance(trustedCertificatesFileContainer);
+                ksTrust.load(trustedCertificatesFile, trustedCertificatesFilePassphrase);
+            }
             
             // KeyManager's decide which key material to use.
             KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
@@ -203,21 +225,22 @@ public class SSLOptions {
             tmf.init(ksTrust);
             
             sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+            if (trustedCertificatesFileContainer.equals("none")) {
+                 TrustManager[] myTMs = new TrustManager [] {
+                              new NoAuthTrustStore() };
+                 sslContext.init(kmf.getKeyManagers(), myTMs, null);
+            } else {
+                sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+            }
         } catch (UnrecoverableKeyException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         } catch (KeyManagementException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         } catch (KeyStoreException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         } catch (NoSuchAlgorithmException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         } catch (CertificateException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
         return sslContext;
@@ -257,5 +280,29 @@ public class SSLOptions {
     
     public SSLContext getSSLContext() {
         return this.sslContext;
+    }
+
+    public boolean isFakeSSLMode() {
+        return this.useFakeSSLMode;
+    }
+
+    private static class NoAuthTrustStore implements X509TrustManager {
+
+        @Override
+        public void checkClientTrusted(X509Certificate[] arg0, String arg1) throws CertificateException {
+            //ignore
+        }
+
+        @Override
+        public void checkServerTrusted(X509Certificate[] arg0, String arg1) throws CertificateException {
+            //ignore
+        }
+
+        @Override
+        public X509Certificate[] getAcceptedIssuers() {
+            return new X509Certificate[]{};
+        }
+
+
     }
 }

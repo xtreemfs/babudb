@@ -1,80 +1,69 @@
 package org.xtreemfs.babudb.interfaces.ReplicationInterface;
 
+import java.io.StringWriter;
+import org.xtreemfs.*;
 import org.xtreemfs.babudb.*;
 import org.xtreemfs.babudb.interfaces.*;
-import java.util.HashMap;
 import org.xtreemfs.babudb.interfaces.utils.*;
-import org.xtreemfs.include.foundation.oncrpc.utils.ONCRPCBufferWriter;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import yidl.runtime.Marshaller;
+import yidl.runtime.PrettyPrinter;
+import yidl.runtime.Struct;
+import yidl.runtime.Unmarshaller;
 
 
 
 
-public class replicaRequest implements org.xtreemfs.babudb.interfaces.utils.Request
+public class replicaRequest extends org.xtreemfs.babudb.interfaces.utils.Request
 {
     public static final int TAG = 1015;
-
     
-    public replicaRequest() { range = new LSNRange(); }
+    public replicaRequest() { range = new LSNRange();  }
     public replicaRequest( LSNRange range ) { this.range = range; }
-    public replicaRequest( Object from_hash_map ) { range = new LSNRange(); this.deserialize( from_hash_map ); }
-    public replicaRequest( Object[] from_array ) { range = new LSNRange();this.deserialize( from_array ); }
 
     public LSNRange getRange() { return range; }
     public void setRange( LSNRange range ) { this.range = range; }
 
-    // Object
-    public String toString()
-    {
-        return "replicaRequest( " + range.toString() + " )";
-    }
-
-    // Serializable
-    public int getTag() { return 1015; }
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::replicaRequest"; }
-
-    public void deserialize( Object from_hash_map )
-    {
-        this.deserialize( ( HashMap<String, Object> )from_hash_map );
-    }
-        
-    public void deserialize( HashMap<String, Object> from_hash_map )
-    {
-        this.range.deserialize( from_hash_map.get( "range" ) );
-    }
-    
-    public void deserialize( Object[] from_array )
-    {
-        this.range.deserialize( from_array[0] );        
-    }
-
-    public void deserialize( ReusableBuffer buf )
-    {
-        range = new LSNRange(); range.deserialize( buf );
-    }
-
-    public Object serialize()
-    {
-        HashMap<String, Object> to_hash_map = new HashMap<String, Object>();
-        to_hash_map.put( "range", range.serialize() );
-        return to_hash_map;        
-    }
-
-    public void serialize( ONCRPCBufferWriter writer ) 
-    {
-        range.serialize( writer );
-    }
-    
-    public int calculateSize()
-    {
-        int my_size = 0;
-        my_size += range.calculateSize();
-        return my_size;
+    // java.lang.Object
+    public String toString() 
+    { 
+        StringWriter string_writer = new StringWriter();
+        string_writer.append(this.getClass().getCanonicalName());
+        string_writer.append(" ");
+        PrettyPrinter pretty_printer = new PrettyPrinter( string_writer );
+        pretty_printer.writeStruct( "", this );
+        return string_writer.toString();
     }
 
     // Request
     public Response createDefaultResponse() { return new replicaResponse(); }
 
+
+    // java.io.Serializable
+    public static final long serialVersionUID = 1015;    
+
+    // yidl.runtime.Object
+    public int getTag() { return 1015; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::replicaRequest"; }
+    
+    public int getXDRSize()
+    {
+        int my_size = 0;
+        my_size += range.getXDRSize(); // range
+        return my_size;
+    }    
+    
+    public void marshal( Marshaller marshaller )
+    {
+        marshaller.writeStruct( "range", range );
+    }
+    
+    public void unmarshal( Unmarshaller unmarshaller ) 
+    {
+        range = new LSNRange(); unmarshaller.readStruct( "range", range );    
+    }
+        
+    
 
     private LSNRange range;    
 
