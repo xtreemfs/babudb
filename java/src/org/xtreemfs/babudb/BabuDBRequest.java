@@ -1,36 +1,10 @@
-/*  Copyright (c) 2008, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
-                    Felix Hupfeld, Felix Langner, Zuse Institute Berlin
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions
-are met:
-
-    * Redistributions of source code must retain the above
-      copyright notice, this list of conditions and the
-      following disclaimer.
-    * Redistributions in binary form must reproduce the above
-      copyright notice, this list of conditions and the following
-      disclaimer in the documentation and/or other materials
-      provided with the distribution.
-    * Neither the name of the Zuse Institute Berlin nor the
-      names of its contributors may be used to endorse or promote
-      products derived from this software without specific prior
-      written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
-ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-POSSIBILITY OF SUCH DAMAGE.
-*/
+/*
+ * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
+ * 
+ * Licensed under the BSD License, see LICENSE file for details.
+ * 
+ */
 /*
  * AUTHORS: Felix Langner (ZIB)
  */
@@ -112,22 +86,6 @@ public class BabuDBRequest<T> implements BabuDBRequestResult<T>{
      */
     public void failed(BabuDBException error) {
         finished(null,error);
-    }
-    
-    /**
-     * <p>
-     * This method resets the inner state of this request object,
-     * to reuse it in the same context.
-     * This helps to safe the performance of instantiating a new object. 
-     * </p>
-     */
-    public void recycle() {
-        synchronized (finished) {
-            listener = null;
-            error = null;
-            result = null;
-            finished.set(false);
-        }
     }
     
 /*

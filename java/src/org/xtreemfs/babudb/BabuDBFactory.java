@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -25,10 +25,10 @@ public class BabuDBFactory {
      * @param configuration the configuration
      * @throws BabuDBException
      */
-    public static BabuDB createBabuDB(BabuDBConfig configuration) 
-        throws BabuDBException {
+    public static BabuDB createBabuDB(BabuDBConfig configuration, 
+        StaticInitialization staticInit) throws BabuDBException {
         
-        return new BabuDB(configuration);
+        return new BabuDB(configuration, staticInit);
     }
     
     /**
@@ -39,9 +39,10 @@ public class BabuDBFactory {
      * @param configuration the {@link ReplicationConfig}
      * @throws BabuDBException 
      */
-    public static BabuDB createReplicatedBabuDB(ReplicationConfig configuration) 
+    public static BabuDB createReplicatedBabuDB(ReplicationConfig configuration,
+            StaticInitialization staticInit) 
         throws BabuDBException {
         
-        return new BabuDB(configuration);
+        return new BabuDB(configuration, staticInit);
     }
 }
