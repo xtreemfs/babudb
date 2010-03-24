@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -11,14 +11,13 @@ import java.net.InetSocketAddress;
 
 import org.xtreemfs.babudb.interfaces.LSN;
 import org.xtreemfs.babudb.interfaces.LogEntry;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.ReplicationInterface;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateResponse;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
-import org.xtreemfs.include.foundation.oncrpc.client.ONCRPCClient;
 import org.xtreemfs.include.foundation.oncrpc.client.RPCNIOSocketClient;
 import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
 import org.xtreemfs.include.foundation.oncrpc.client.RPCResponseDecoder;
+import org.xtreemfs.include.foundation.oncrpc.utils.XDRUnmarshaller;
 
 /**
  * Client to communicate with the slave. Supports the replication.
@@ -27,10 +26,11 @@ import org.xtreemfs.include.foundation.oncrpc.client.RPCResponseDecoder;
  * @since 05/08/2009
  */
 
-public class SlaveClient extends ONCRPCClient {
+public class SlaveClient extends StateClient {
 
-    public SlaveClient(RPCNIOSocketClient client, InetSocketAddress defaultServer) {
-        super(client, defaultServer, 1, ReplicationInterface.getVersion());
+    public SlaveClient(RPCNIOSocketClient client, InetSocketAddress defaultServer,
+            InetSocketAddress localAddress) {
+        super(client, defaultServer, localAddress);
     }
 
     /**
@@ -54,7 +54,7 @@ public class SlaveClient extends ONCRPCClient {
             @Override
             public Object getResult(ReusableBuffer data) {
                 final replicateResponse rp = new replicateResponse();
-                rp.deserialize(data);
+                rp.unmarshal(new XDRUnmarshaller(data));
                 return null;
             }
         });
