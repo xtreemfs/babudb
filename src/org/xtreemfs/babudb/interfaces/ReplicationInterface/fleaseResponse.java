@@ -14,15 +14,11 @@ import yidl.runtime.Unmarshaller;
 
 
 
-public class stateResponse extends org.xtreemfs.babudb.interfaces.utils.Response
+public class fleaseResponse extends org.xtreemfs.babudb.interfaces.utils.Response
 {
-    public static final int TAG = 1011;
+    public static final int TAG = 1014;
     
-    public stateResponse() { returnValue = new LSN();  }
-    public stateResponse( LSN returnValue ) { this.returnValue = returnValue; }
-
-    public LSN getReturnValue() { return returnValue; }
-    public void setReturnValue( LSN returnValue ) { this.returnValue = returnValue; }
+    public fleaseResponse() {  }
 
     // java.lang.Object
     public String toString() 
@@ -37,32 +33,30 @@ public class stateResponse extends org.xtreemfs.babudb.interfaces.utils.Response
 
 
     // java.io.Serializable
-    public static final long serialVersionUID = 1011;    
+    public static final long serialVersionUID = 1014;    
 
     // yidl.runtime.Object
-    public int getTag() { return 1011; }
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::stateResponse"; }
+    public int getTag() { return 1014; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::fleaseResponse"; }
     
     public int getXDRSize()
     {
         int my_size = 0;
-        my_size += returnValue.getXDRSize(); // returnValue
+
         return my_size;
     }    
     
     public void marshal( Marshaller marshaller )
     {
-        marshaller.writeStruct( "returnValue", returnValue );
+
     }
     
     public void unmarshal( Unmarshaller unmarshaller ) 
     {
-        returnValue = new LSN(); unmarshaller.readStruct( "returnValue", returnValue );    
+    
     }
         
-    
-
-    private LSN returnValue;    
+        
 
 }
 

@@ -24,6 +24,7 @@
 
 package org.xtreemfs.babudb.interfaces.utils;
 
+import java.nio.charset.Charset;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.foundation.oncrpc.utils.ONCRPCBufferWriter;
 import org.xtreemfs.include.common.buffer.BufferPool;
@@ -46,6 +47,12 @@ public class XDRUtils {
     //public static final int MAX_ARRAY_ELEMS = 8*1024;
     public static final int MAX_ARRAY_ELEMS = 1024*1024;
 
+    public static final int TYPE_CALL = 0;
+
+    public static final int TYPE_RESPONSE = 1;
+
+    private static final Charset UTF8 = Charset.forName("UTF-8");
+
 
     public static ReusableBuffer deserializeSerializableBuffer(ReusableBuffer data) {
         final int dataSize = data.getInt();
@@ -65,10 +72,10 @@ public class XDRUtils {
 
     public static void serializeSerializableBuffer(ReusableBuffer data, ONCRPCBufferWriter writer) {
         if (data == null) {
-            writer.putInt(0);
+            writer.writeInt32(null,0);
         } else {
             final int len = data.remaining();
-            writer.putInt(len);
+            writer.writeInt32(null,len);
             writer.put(data);
             if (len % 4 > 0) {
                 for (int k = 0; k < (4 - (len % 4)); k++) {
@@ -109,7 +116,7 @@ public class XDRUtils {
             throw new IllegalArgumentException("string is too large ("+strlen+"), maximum allowed is "+MAX_STRLEN+" bytes");
         byte[] bytes = new byte[strlen];
         buf.get(bytes);
-        final String str = new String(bytes);
+        final String str = new String(bytes,UTF8);
         if (strlen% 4 > 0) {
             for (int k = 0; k < (4 - (strlen % 4)); k++) {
                 buf.get();
@@ -120,10 +127,10 @@ public class XDRUtils {
 
     public static void serializeString(String str, ONCRPCBufferWriter writer) {
         if (str == null) {
-            writer.putInt(0);
+            writer.writeInt32(null,0);
             return;
         }
-        final byte[] bytes = str.getBytes();
+        final byte[] bytes = str.getBytes(UTF8);
         serializeString(bytes, writer);
     }
 
@@ -131,7 +138,7 @@ public class XDRUtils {
         final int strlen = bytes.length;
         if (strlen > MAX_STRLEN)
             throw new IllegalArgumentException("string is too large ("+strlen+"), maximum allowed is "+MAX_STRLEN+" bytes");
-        writer.putInt(strlen);
+        writer.writeInt32(null,strlen);
         writer.put(bytes);
         if (strlen% 4 > 0) {
             for (int k = 0; k < (4 - (strlen % 4)); k++) {

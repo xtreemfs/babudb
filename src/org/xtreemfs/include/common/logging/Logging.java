@@ -25,7 +25,9 @@
 package org.xtreemfs.include.common.logging;
 
 import java.io.PrintStream;
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 
 /**
@@ -71,61 +73,61 @@ public class Logging {
          * log messages pertaining storage on OSD or database access on MRC/DIR
          */
         db, // TODO: rename to "storage"
-            /**
-             * logs messages pertaining to replication
-             */
-            replication,
-            /**
-             * logs messages from additional tools
-             */
-            tool,
-            /**
-             * logs messages from tests
-             */
-            test
+        /**
+         * logs messages pertaining to replication 
+         */
+        replication,
+        /**
+         * logs messages from additional tools
+         */
+        tool,
+        /**
+         * logs messages from tests
+         */
+        test
     }
     
-    protected static final char           ABBREV_LEVEL_INFO  = 'I';
+    protected static final char      ABBREV_LEVEL_INFO  = 'I';
     
-    protected static final char           ABBREV_LEVEL_DEBUG = 'D';
+    protected static final char      ABBREV_LEVEL_DEBUG = 'D';
     
-    protected static final char           ABBREV_LEVEL_WARN  = 'W';
+    protected static final char      ABBREV_LEVEL_WARN  = 'W';
     
-    protected static final char           ABBREV_LEVEL_ERROR = 'E';
+    protected static final char      ABBREV_LEVEL_ERROR = 'E';
     
-    protected static final char           ABBREV_LEVEL_TRACE = 'T';
+    protected static final char      ABBREV_LEVEL_TRACE = 'T';
     
-    public static final int               LEVEL_EMERG        = 0;
+    public static final int          LEVEL_EMERG        = 0;
     
-    public static final int               LEVEL_ALERT        = 1;
+    public static final int          LEVEL_ALERT        = 1;
     
-    public static final int               LEVEL_CRIT         = 2;
+    public static final int          LEVEL_CRIT         = 2;
     
-    public static final int               LEVEL_ERROR        = 3;
+    public static final int          LEVEL_ERROR        = 3;
     
-    public static final int               LEVEL_WARN         = 4;
+    public static final int          LEVEL_WARN         = 4;
     
-    public static final int               LEVEL_NOTICE       = 5;
+    public static final int          LEVEL_NOTICE       = 5;
     
-    public static final int               LEVEL_INFO         = 6;
+    public static final int          LEVEL_INFO         = 6;
     
-    public static final int               LEVEL_DEBUG        = 7;
+    public static final int          LEVEL_DEBUG        = 7;
     
-    public static final String            FORMAT_PATTERN     = "[ %c | %-20s | %-15s | %3d | %15s ] %s";
+    public static final String       FORMAT_PATTERN     = "[ %c | %-20s | %-15s | %3d | %15s ] %s";
     
-    private static final PrintStream      out                = System.out;
+    private static final PrintStream out                = System.out;
     
-    protected static Logging              instance;
+    protected static Logging         instance;
     
-    protected static boolean              tracingEnabled     = false;
+    protected static boolean         tracingEnabled     = false;
     
-    private final int                     level;
+    private final int                level;
     
-    private final int                     catMask;
+    private final int                catMask;
     
-    private long                          startTime;
-    
-    private static final SimpleDateFormat dateFormat         = new SimpleDateFormat("MMM dd HH:mm:ss");
+    private long                     startTime;
+
+    private static final SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd HH:mm:ss");
     
     /**
      * Creates a new instance of Logging
@@ -234,7 +236,7 @@ public class Logging {
                 catMask |= 2 << cat.ordinal();
             }
             
-            if (categories.length == 0)
+            if(categories.length == 0)
                 catMask = -1;
             
             instance = new Logging(level, catMask);
@@ -263,12 +265,11 @@ public class Logging {
     }
     
     private static String getTimeStamp() {
-        /*
-         * long seconds = (System.currentTimeMillis() - instance.startTime) /
-         * 1000; long hours = seconds / 3600; long mins = (seconds % 3600) / 60;
-         * long secs = seconds % 60; return hours + ":" + (mins < 10 ? "0" : "")
-         * + mins + ":" + (secs < 10 ? "0" : "") + secs;
-         */
+        /*long seconds = (System.currentTimeMillis() - instance.startTime) / 1000;
+        long hours = seconds / 3600;
+        long mins = (seconds % 3600) / 60;
+        long secs = seconds % 60;
+        return hours + ":" + (mins < 10 ? "0" : "") + mins + ":" + (secs < 10 ? "0" : "") + secs;*/
         return dateFormat.format(new Date());
     }
     

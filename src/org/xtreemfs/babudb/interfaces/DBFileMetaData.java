@@ -1,23 +1,24 @@
 package org.xtreemfs.babudb.interfaces;
 
+import java.io.StringWriter;
+import org.xtreemfs.*;
 import org.xtreemfs.babudb.*;
-import java.util.HashMap;
 import org.xtreemfs.babudb.interfaces.utils.*;
-import org.xtreemfs.include.foundation.oncrpc.utils.ONCRPCBufferWriter;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import yidl.runtime.Marshaller;
+import yidl.runtime.PrettyPrinter;
+import yidl.runtime.Struct;
+import yidl.runtime.Unmarshaller;
 
 
 
 
-public class DBFileMetaData implements org.xtreemfs.babudb.interfaces.utils.Serializable
+public class DBFileMetaData implements Struct
 {
     public static final int TAG = 1020;
-
     
-    public DBFileMetaData() { fileName = ""; fileSize = 0; maxChunkSize = 0; }
+    public DBFileMetaData() {  }
     public DBFileMetaData( String fileName, long fileSize, int maxChunkSize ) { this.fileName = fileName; this.fileSize = fileSize; this.maxChunkSize = maxChunkSize; }
-    public DBFileMetaData( Object from_hash_map ) { fileName = ""; fileSize = 0; maxChunkSize = 0; this.deserialize( from_hash_map ); }
-    public DBFileMetaData( Object[] from_array ) { fileName = ""; fileSize = 0; maxChunkSize = 0;this.deserialize( from_array ); }
 
     public String getFileName() { return fileName; }
     public void setFileName( String fileName ) { this.fileName = fileName; }
@@ -26,67 +27,49 @@ public class DBFileMetaData implements org.xtreemfs.babudb.interfaces.utils.Seri
     public int getMaxChunkSize() { return maxChunkSize; }
     public void setMaxChunkSize( int maxChunkSize ) { this.maxChunkSize = maxChunkSize; }
 
-    // Object
-    public String toString()
-    {
-        return "DBFileMetaData( " + "\"" + fileName + "\"" + ", " + Long.toString( fileSize ) + ", " + Integer.toString( maxChunkSize ) + " )";
+    // java.lang.Object
+    public String toString() 
+    { 
+        StringWriter string_writer = new StringWriter();
+        string_writer.append(this.getClass().getCanonicalName());
+        string_writer.append(" ");
+        PrettyPrinter pretty_printer = new PrettyPrinter( string_writer );
+        pretty_printer.writeStruct( "", this );
+        return string_writer.toString();
     }
 
-    // Serializable
+
+    // java.io.Serializable
+    public static final long serialVersionUID = 1020;    
+
+    // yidl.runtime.Object
     public int getTag() { return 1020; }
     public String getTypeName() { return "org::xtreemfs::babudb::interfaces::DBFileMetaData"; }
-
-    public void deserialize( Object from_hash_map )
-    {
-        this.deserialize( ( HashMap<String, Object> )from_hash_map );
-    }
-        
-    public void deserialize( HashMap<String, Object> from_hash_map )
-    {
-        this.fileName = ( String )from_hash_map.get( "fileName" );
-        this.fileSize = ( from_hash_map.get( "fileSize" ) instanceof Integer ) ? ( ( Integer )from_hash_map.get( "fileSize" ) ).longValue() : ( ( Long )from_hash_map.get( "fileSize" ) ).longValue();
-        this.maxChunkSize = ( from_hash_map.get( "maxChunkSize" ) instanceof Integer ) ? ( ( Integer )from_hash_map.get( "maxChunkSize" ) ).intValue() : ( ( Long )from_hash_map.get( "maxChunkSize" ) ).intValue();
-    }
     
-    public void deserialize( Object[] from_array )
-    {
-        this.fileName = ( String )from_array[0];
-        this.fileSize = ( from_array[1] instanceof Integer ) ? ( ( Integer )from_array[1] ).longValue() : ( ( Long )from_array[1] ).longValue();
-        this.maxChunkSize = ( from_array[2] instanceof Integer ) ? ( ( Integer )from_array[2] ).intValue() : ( ( Long )from_array[2] ).intValue();        
-    }
-
-    public void deserialize( ReusableBuffer buf )
-    {
-        fileName = org.xtreemfs.babudb.interfaces.utils.XDRUtils.deserializeString( buf );
-        fileSize = buf.getLong();
-        maxChunkSize = buf.getInt();
-    }
-
-    public Object serialize()
-    {
-        HashMap<String, Object> to_hash_map = new HashMap<String, Object>();
-        to_hash_map.put( "fileName", fileName );
-        to_hash_map.put( "fileSize", new Long( fileSize ) );
-        to_hash_map.put( "maxChunkSize", new Integer( maxChunkSize ) );
-        return to_hash_map;        
-    }
-
-    public void serialize( ONCRPCBufferWriter writer ) 
-    {
-        org.xtreemfs.babudb.interfaces.utils.XDRUtils.serializeString( fileName, writer );
-        writer.putLong( fileSize );
-        writer.putInt( maxChunkSize );
-    }
-    
-    public int calculateSize()
+    public int getXDRSize()
     {
         int my_size = 0;
-        my_size += org.xtreemfs.babudb.interfaces.utils.XDRUtils.stringLengthPadded(fileName);
-        my_size += ( Long.SIZE / 8 );
-        my_size += ( Integer.SIZE / 8 );
+        my_size += Integer.SIZE / 8 + ( fileName != null ? ( ( fileName.getBytes().length % 4 == 0 ) ? fileName.getBytes().length : ( fileName.getBytes().length + 4 - fileName.getBytes().length % 4 ) ) : 0 ); // fileName
+        my_size += Long.SIZE / 8; // fileSize
+        my_size += Integer.SIZE / 8; // maxChunkSize
         return my_size;
+    }    
+    
+    public void marshal( Marshaller marshaller )
+    {
+        marshaller.writeString( "fileName", fileName );
+        marshaller.writeUint64( "fileSize", fileSize );
+        marshaller.writeUint32( "maxChunkSize", maxChunkSize );
     }
-
+    
+    public void unmarshal( Unmarshaller unmarshaller ) 
+    {
+        fileName = unmarshaller.readString( "fileName" );
+        fileSize = unmarshaller.readUint64( "fileSize" );
+        maxChunkSize = unmarshaller.readUint32( "maxChunkSize" );    
+    }
+        
+    
 
     private String fileName;
     private long fileSize;

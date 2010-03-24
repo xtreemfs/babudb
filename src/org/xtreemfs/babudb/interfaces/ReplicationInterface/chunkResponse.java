@@ -1,77 +1,66 @@
 package org.xtreemfs.babudb.interfaces.ReplicationInterface;
 
+import java.io.StringWriter;
+import org.xtreemfs.*;
 import org.xtreemfs.babudb.*;
 import org.xtreemfs.babudb.interfaces.*;
-import java.util.HashMap;
 import org.xtreemfs.babudb.interfaces.utils.*;
-import org.xtreemfs.include.foundation.oncrpc.utils.ONCRPCBufferWriter;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import yidl.runtime.Marshaller;
+import yidl.runtime.PrettyPrinter;
+import yidl.runtime.Struct;
+import yidl.runtime.Unmarshaller;
 
 
 
 
-public class chunkResponse implements org.xtreemfs.babudb.interfaces.utils.Response
+public class chunkResponse extends org.xtreemfs.babudb.interfaces.utils.Response
 {
-    public static final int TAG = 1017;
-
+    public static final int TAG = 1013;
     
-    public chunkResponse() { returnValue = null; }
+    public chunkResponse() {  }
     public chunkResponse( ReusableBuffer returnValue ) { this.returnValue = returnValue; }
-    public chunkResponse( Object from_hash_map ) { returnValue = null; this.deserialize( from_hash_map ); }
-    public chunkResponse( Object[] from_array ) { returnValue = null;this.deserialize( from_array ); }
 
     public ReusableBuffer getReturnValue() { return returnValue; }
     public void setReturnValue( ReusableBuffer returnValue ) { this.returnValue = returnValue; }
 
-    // Object
-    public String toString()
-    {
-        return "chunkResponse( " + "\"" + returnValue + "\"" + " )";
+    // java.lang.Object
+    public String toString() 
+    { 
+        StringWriter string_writer = new StringWriter();
+        string_writer.append(this.getClass().getCanonicalName());
+        string_writer.append(" ");
+        PrettyPrinter pretty_printer = new PrettyPrinter( string_writer );
+        pretty_printer.writeStruct( "", this );
+        return string_writer.toString();
     }
 
-    // Serializable
-    public int getTag() { return 1017; }
+
+    // java.io.Serializable
+    public static final long serialVersionUID = 1013;    
+
+    // yidl.runtime.Object
+    public int getTag() { return 1013; }
     public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::chunkResponse"; }
-
-    public void deserialize( Object from_hash_map )
-    {
-        this.deserialize( ( HashMap<String, Object> )from_hash_map );
-    }
-        
-    public void deserialize( HashMap<String, Object> from_hash_map )
-    {
-        this.returnValue = ( ReusableBuffer )from_hash_map.get( "returnValue" );
-    }
     
-    public void deserialize( Object[] from_array )
-    {
-        this.returnValue = ( ReusableBuffer )from_array[0];        
-    }
-
-    public void deserialize( ReusableBuffer buf )
-    {
-        { returnValue = org.xtreemfs.babudb.interfaces.utils.XDRUtils.deserializeSerializableBuffer( buf ); }
-    }
-
-    public Object serialize()
-    {
-        HashMap<String, Object> to_hash_map = new HashMap<String, Object>();
-        to_hash_map.put( "returnValue", returnValue );
-        return to_hash_map;        
-    }
-
-    public void serialize( ONCRPCBufferWriter writer ) 
-    {
-        { org.xtreemfs.babudb.interfaces.utils.XDRUtils.serializeSerializableBuffer( returnValue, writer ); }
-    }
-    
-    public int calculateSize()
+    public int getXDRSize()
     {
         int my_size = 0;
-        my_size += org.xtreemfs.babudb.interfaces.utils.XDRUtils.serializableBufferLength( returnValue );
+        my_size += Integer.SIZE / 8 + ( returnValue != null ? ( ( returnValue.remaining() % 4 == 0 ) ? returnValue.remaining() : ( returnValue.remaining() + 4 - returnValue.remaining() % 4 ) ) : 0 ); // returnValue
         return my_size;
+    }    
+    
+    public void marshal( Marshaller marshaller )
+    {
+        marshaller.writeBuffer( "returnValue", returnValue );
     }
-
+    
+    public void unmarshal( Unmarshaller unmarshaller ) 
+    {
+        returnValue = ( ReusableBuffer )unmarshaller.readBuffer( "returnValue" );    
+    }
+        
+    
 
     private ReusableBuffer returnValue;    
 

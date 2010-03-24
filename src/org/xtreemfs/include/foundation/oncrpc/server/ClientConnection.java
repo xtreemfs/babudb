@@ -30,7 +30,7 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.xtreemfs.include.foundation.pinky.channels.ChannelIO;
+import org.xtreemfs.include.foundation.oncrpc.channels.ChannelIO;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCRecordFragmentHeader;
 
 /**
@@ -79,6 +79,9 @@ public class ClientConnection {
             getReceive().freeBuffers();
         if (getSend() != null)
             getSend().freeBuffers();
+        for (ONCRPCRecord r : pendingResponses) {
+            r.freeBuffers();
+        }
     }
 
     /**
