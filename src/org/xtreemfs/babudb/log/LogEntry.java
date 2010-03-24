@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2008-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -8,7 +8,6 @@
 
 package org.xtreemfs.babudb.log;
 
-import java.io.IOException;
 import java.util.zip.Checksum;
 
 import org.xtreemfs.babudb.lsmdb.LSN;
@@ -26,7 +25,8 @@ public class LogEntry {
     /**
      * length of the entry's header (excluding the length field itself)
      */
-    protected static final int  headerLength        = Integer.SIZE / 8 * 4 + Long.SIZE / 8 + Byte.SIZE / 8;
+    protected static final int  headerLength        = Integer.SIZE / 8 * 4 + 
+                                                  Long.SIZE / 8 + Byte.SIZE / 8;
     
     public static final boolean USE_CHECKSUMS       = true;
     
@@ -56,7 +56,7 @@ public class LogEntry {
     
     protected SyncListener      listener;
     
-    private LSMDBRequest        attachment;
+    private LSMDBRequest<?>     attachment;
     
     protected byte              payloadType;
     
@@ -74,7 +74,7 @@ public class LogEntry {
         this.logSequenceNo = logSequenceNo;
     }
     
-    public ReusableBuffer serialize(Checksum csumAlgo) throws IOException {
+    public ReusableBuffer serialize(Checksum csumAlgo) {
         assert (viewId > 0);
         assert (logSequenceNo > 0);
         
@@ -133,7 +133,8 @@ public class LogEntry {
         else return new LSN(this.viewId, this.logSequenceNo);
     }
     
-    public static void checkIntegrity(ReusableBuffer data) throws LogEntryException {
+    public static void checkIntegrity(ReusableBuffer data) 
+        throws LogEntryException {
         int cPos = data.position();
         
         if (data.remaining() < Integer.SIZE / 8)
@@ -144,8 +145,9 @@ public class LogEntry {
         if ((length1 - Integer.SIZE / 8) > data.remaining()) {
             data.position(cPos);
             Logging.logMessage(Logging.LEVEL_DEBUG, null, "not long enough");
-            throw new LogEntryException("The log entry is incomplete. The length indicated in the header "
-                + "exceeds the available data.");
+            throw new LogEntryException("The log entry is incomplete. " +
+            		"The length indicated in the header exceeds the " +
+            		"available data.");
         }
         
         data.position(cPos + length1 - Integer.SIZE / 8);
@@ -155,12 +157,15 @@ public class LogEntry {
         data.position(cPos);
         
         if (length1 != length2) {
-            throw new LogEntryException("Invalid Frame. The length entries do not match; length1=" + length1 + ", length2=" + length2);
+            throw new LogEntryException("Invalid Frame. The length entries do" +
+            		" not match; length1=" + length1 + ", length2=" + 
+            		length2);
         }
         
     }
     
-    public static LogEntry deserialize(ReusableBuffer data, Checksum csumAlgo) throws LogEntryException {
+    public static LogEntry deserialize(ReusableBuffer data, Checksum csumAlgo) 
+        throws LogEntryException {
         checkIntegrity(data);
         
         final int bufSize = data.getInt();
@@ -185,10 +190,9 @@ public class LogEntry {
             int csum = (int) csumAlgo.getValue();
             
             if (csum != e.checksum) {
-                // Logging.logMessage(Logging.LEVEL_ERROR,
-                // null,"checksum is: "+csum+" expected: "+e.checksum);
                 throw new LogEntryException(
-                    "Invalid Checksum. Checksum in log entry and calculated checksum do not match.");
+                    "Invalid Checksum. Checksum in log entry and calculated " +
+                    "checksum do not match.");
             }
         }
         
@@ -200,11 +204,11 @@ public class LogEntry {
         payload = null;
     }
     
-    public LSMDBRequest getAttachment() {
+    public LSMDBRequest<?> getAttachment() {
         return attachment;
     }
     
-    public void setAttachment(LSMDBRequest attachment) {
+    public void setAttachment(LSMDBRequest<?> attachment) {
         this.attachment = attachment;
     }
     
