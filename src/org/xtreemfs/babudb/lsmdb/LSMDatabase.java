@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2008-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -425,7 +425,8 @@ public class LSMDatabase {
      * @return the {@link LSN} retrieved from the filename.
      */
     public static LSN getSnapshotLSNbyFilename(String fname) {
-        Matcher m = Pattern.compile(SNAPSHOT_FILENAME_REGEXP).matcher(new File(fname).getName());
+        Matcher m = Pattern.compile(SNAPSHOT_FILENAME_REGEXP)
+                           .matcher(new File(fname).getName());
         m.matches();
         
         return new LSN(Integer.valueOf(m.group(2)), Integer.valueOf(m.group(3)));
@@ -465,7 +466,8 @@ public class LSMDatabase {
             for (String fname : files) {
                 Matcher m = p.matcher(fname);
                 m.matches();
-                Logging.logMessage(Logging.LEVEL_DEBUG, this, "inspecting snapshot: " + fname);
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                        "inspecting snapshot: " + fname);
                 
                 int view = Integer.valueOf(m.group(2));
                 int seq = Integer.valueOf(m.group(3));
@@ -479,9 +481,19 @@ public class LSMDatabase {
                 
                 if (maxView > -1) {
                     String fName = getSnapshotFilename(index, maxView, maxSeq);
-                    File snapshotFile = new File(databaseDir + fName);
+                    File snapshotDir = new File(databaseDir + fName);
                     
-                    result.add(new DBFileMetaData(databaseDir + fName, snapshotFile.length(), chunkSize));
+                    if (snapshotDir.isDirectory()) {
+                        for (File file : snapshotDir.listFiles()) {
+                            result.add(new DBFileMetaData(databaseDir + fName +
+                                    File.separator + file.getName(), 
+                                    file.length(), chunkSize));
+                        }
+                    } else {
+                        // for compatibility with older versions of BabuDB
+                        result.add(new DBFileMetaData(databaseDir + fName, 
+                                snapshotDir.length(), chunkSize));
+                    }
                 }
             }
         }
