@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -13,7 +13,6 @@ import org.xtreemfs.babudb.interfaces.Chunk;
 import org.xtreemfs.babudb.interfaces.DBFileMetaDataSet;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.interfaces.LogEntries;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.ReplicationInterface;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.chunkRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.chunkResponse;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.heartbeatRequest;
@@ -25,10 +24,10 @@ import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicaResponse;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
-import org.xtreemfs.include.foundation.oncrpc.client.ONCRPCClient;
 import org.xtreemfs.include.foundation.oncrpc.client.RPCNIOSocketClient;
 import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
 import org.xtreemfs.include.foundation.oncrpc.client.RPCResponseDecoder;
+import org.xtreemfs.include.foundation.oncrpc.utils.XDRUnmarshaller;
 
 /**
  * Client to communicate with the master. Supports the replication.
@@ -37,12 +36,13 @@ import org.xtreemfs.include.foundation.oncrpc.client.RPCResponseDecoder;
  * @since 05/08/2009
  */
 
-public class MasterClient extends ONCRPCClient {
-
-    public MasterClient(RPCNIOSocketClient client, InetSocketAddress defaultServer) {
-        super(client, defaultServer, 1, ReplicationInterface.getVersion());
-    }
+public class MasterClient extends StateClient {
     
+    public MasterClient(RPCNIOSocketClient client, InetSocketAddress defaultServer, 
+            InetSocketAddress localAddress) {
+        super(client, defaultServer, localAddress);
+    }
+
     /**
      * Requests a list of {@link LogEntry}s inclusive between the given {@link LSN}s start and end at the master.
      * 
@@ -63,7 +63,7 @@ public class MasterClient extends ONCRPCClient {
             @Override
             public LogEntries getResult(ReusableBuffer data) {
                 final replicaResponse rp = new replicaResponse();
-                rp.deserialize(data);
+                rp.unmarshal(new XDRUnmarshaller(data));
                 return rp.getReturnValue();
             }
         });
@@ -91,7 +91,7 @@ public class MasterClient extends ONCRPCClient {
             @Override
             public DBFileMetaDataSet getResult(ReusableBuffer data) {
                 final loadResponse rp = new loadResponse();
-                rp.deserialize(data);
+                rp.unmarshal(new XDRUnmarshaller(data));
                 return rp.getReturnValue();
             }
         });
@@ -118,7 +118,7 @@ public class MasterClient extends ONCRPCClient {
             @Override
             public ReusableBuffer getResult(ReusableBuffer data) {
                 final chunkResponse rp = new chunkResponse();
-                rp.deserialize(data);
+                rp.unmarshal(new XDRUnmarshaller(data));
                 return rp.getReturnValue();
             }
         });
@@ -145,7 +145,7 @@ public class MasterClient extends ONCRPCClient {
             @Override
             public Object getResult(ReusableBuffer data) {
                 final heartbeatResponse rp = new heartbeatResponse();
-                rp.deserialize(data);
+                rp.unmarshal(new XDRUnmarshaller(data));
                 return null;
             }
         });

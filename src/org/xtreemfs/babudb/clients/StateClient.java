@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -10,21 +10,19 @@ package org.xtreemfs.babudb.clients;
 import java.net.InetSocketAddress;
 
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.interfaces.InetAddress;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.ReplicationInterface;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.remoteStopRequest;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.remoteStopResponse;
+import org.xtreemfs.babudb.interfaces.ReplicationInterface.fleaseRequest;
+import org.xtreemfs.babudb.interfaces.ReplicationInterface.fleaseResponse;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.stateRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.stateResponse;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.toMasterRequest;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.toMasterResponse;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.toSlaveRequest;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.toSlaveResponse;
+import org.xtreemfs.foundation.flease.comm.FleaseMessage;
+import org.xtreemfs.include.common.buffer.BufferPool;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.foundation.oncrpc.client.ONCRPCClient;
 import org.xtreemfs.include.foundation.oncrpc.client.RPCNIOSocketClient;
 import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
 import org.xtreemfs.include.foundation.oncrpc.client.RPCResponseDecoder;
+import org.xtreemfs.include.foundation.oncrpc.utils.XDRUnmarshaller;
 
 /**
  * Client to request the state of any client.
@@ -35,8 +33,12 @@ import org.xtreemfs.include.foundation.oncrpc.client.RPCResponseDecoder;
 
 public class StateClient extends ONCRPCClient {
 
-    public StateClient(RPCNIOSocketClient client, InetSocketAddress defaultServer) {
+    private final InetSocketAddress local;
+    
+    public StateClient(RPCNIOSocketClient client, InetSocketAddress defaultServer, 
+            InetSocketAddress localServer) {
         super(client, defaultServer, 1, ReplicationInterface.getVersion());
+        this.local = localServer;
     }
 
     /**
@@ -57,7 +59,7 @@ public class StateClient extends ONCRPCClient {
             @Override
             public LSN getResult(ReusableBuffer data) {
                 final stateResponse rp = new stateResponse();
-                rp.deserialize(data);
+                rp.unmarshal(new XDRUnmarshaller(data));
                 org.xtreemfs.babudb.interfaces.LSN result = rp.getReturnValue();
                 return new LSN(result.getViewId(),result.getSequenceNo());
             }
@@ -67,47 +69,20 @@ public class StateClient extends ONCRPCClient {
     }
     
     /**
-     * <p>
-     * Stops the BabuDB of the given client and returns the {@link LSN} 
-     * of its latest written LogEntry.
-     * </p>
+     * Sends a {@link FleaseMessage} to the client.
      * 
-     * @return the {@link RPCResponse} receiving a state as {@link LSN}.
+     * @return the {@link RPCResponse} as proxy for the response.
      */
     @SuppressWarnings("unchecked")
-    public RPCResponse<LSN> remoteStop () {
-        remoteStopRequest rq = new remoteStopRequest();
+    public RPCResponse<Object> flease (FleaseMessage message) {
+        assert (local != null);
         
-        RPCResponse<LSN> r = (RPCResponse<LSN>) sendRequest(null, rq.getTag(), rq, new RPCResponseDecoder<org.xtreemfs.babudb.lsmdb.LSN>() {
+        ReusableBuffer buffer = BufferPool.allocate(message.getSize());
+        message.serialize(buffer);
+        buffer.flip();
         
-            /*
-             * (non-Javadoc)
-             * @see org.xtreemfs.include.foundation.oncrpc.client.RPCResponseDecoder#getResult(org.xtreemfs.include.common.buffer.ReusableBuffer)
-             */
-            @Override
-            public LSN getResult(ReusableBuffer data) {
-                final remoteStopResponse rp = new remoteStopResponse();
-                rp.deserialize(data);
-                org.xtreemfs.babudb.interfaces.LSN result = rp.getReturnValue();
-                return new LSN(result.getViewId(),result.getSequenceNo());
-            }
-        });
-        
-        return r;
-    }
-    
-    /**
-     * <p>
-     * Switches the mode of the client BabuDB to slave-mode.
-     * The BabuDB has to be stopped before!
-     * </p>
-     * 
-     * @param address - of the new master.
-     * @return the response proxy.
-     */
-    @SuppressWarnings("unchecked")
-    public RPCResponse<Object> toSlave (InetSocketAddress address) {
-        toSlaveRequest rq = new toSlaveRequest(new InetAddress(address.getHostName(),address.getPort()));
+        fleaseRequest rq = new fleaseRequest(buffer, 
+                local.getAddress().getHostAddress(), local.getPort());
         
         RPCResponse<Object> r = (RPCResponse<Object>) sendRequest(null, rq.getTag(), rq, new RPCResponseDecoder<Object>() {
         
@@ -117,8 +92,8 @@ public class StateClient extends ONCRPCClient {
              */
             @Override
             public Object getResult(ReusableBuffer data) {
-                final toSlaveResponse rp = new toSlaveResponse();
-                rp.deserialize(data);
+                final fleaseResponse rp = new fleaseResponse();
+                rp.unmarshal(new XDRUnmarshaller(data));
                 return null;
             }
         });
@@ -127,32 +102,10 @@ public class StateClient extends ONCRPCClient {
     }
     
     /**
-     * <p>
-     * Switches the mode of the client BabuDB to pseudo-master-mode.
-     * A checkpoint will be established. The BabuDB has to be stopped before!
-     * </p>
-     * 
-     * @param address - of the new slave.
-     * @return the response proxy.
+     * @return the localAddress transmitted with each FLease message send by 
+     *         this client.
      */
-    @SuppressWarnings("unchecked")
-    public RPCResponse<Object> toMaster () {
-        toMasterRequest rq = new toMasterRequest();
-        
-        RPCResponse<Object> r = (RPCResponse<Object>) sendRequest(null, rq.getTag(), rq, new RPCResponseDecoder<Object>() {
-        
-            /*
-             * (non-Javadoc)
-             * @see org.xtreemfs.include.foundation.oncrpc.client.RPCResponseDecoder#getResult(org.xtreemfs.include.common.buffer.ReusableBuffer)
-             */
-            @Override
-            public Object getResult(ReusableBuffer data) {
-                final toMasterResponse rp = new toMasterResponse();
-                rp.deserialize(data);
-                return null;
-            }
-        });
-        
-        return r;
+    public InetSocketAddress getLocalAddress() {
+        return local;
     }
 }
