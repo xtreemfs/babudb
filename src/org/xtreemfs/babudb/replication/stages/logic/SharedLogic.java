@@ -12,16 +12,29 @@ import static org.xtreemfs.babudb.log.LogEntry.*;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.net.InetSocketAddress;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.clients.MasterClient;
+import org.xtreemfs.babudb.clients.StateClient;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
+import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
+import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.include.foundation.oncrpc.client.RPCNIOSocketClient;
+import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
 
 /**
  * Static functions used in more than one {@link Logic}.
@@ -30,7 +43,7 @@ import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
  * @since 06/08/2009
  */
 
-final class SharedLogic {
+public final class SharedLogic {
     
     /**
      * <p>
@@ -128,5 +141,79 @@ final class SharedLogic {
         
         // append logEntry to the logFile
         dbs.getLogger().append(entry);  
+    }
+    
+    /**
+     * Chooses a server from the given list which is at least that up-to-date to
+     * synchronize with this server.
+     * 
+     * @param progressAtLeast
+     * @param babuDBS
+     * @param client
+     * @param master - client for the replications master.
+     * @return a master client retrieved from the list, or null if none of the 
+     *         given babuDBs has the required information. 
+     */
+    static MasterClient getSynchronizationPartner(Set<InetSocketAddress> babuDBS, 
+            LSN progressAtLeast, MasterClient master) {
+        InetSocketAddress local = master.getLocalAddress();
+        babuDBS.remove(master.getDefaultServerAddress());
+        
+        if (babuDBS.size() > 0) {
+            Map<InetSocketAddress, LSN> states = getStates(
+                    new LinkedList<InetSocketAddress>(babuDBS), master.client, local);
+            
+            for (Entry<InetSocketAddress, LSN> e : states.entrySet()) {
+                if (e.getValue().compareTo(progressAtLeast) >= 0)
+                    return new MasterClient(master.client, e.getKey(), local);
+            }
+        }
+        
+        return master;
+    }
+    
+    /**
+     * <p>
+     * Performs a network broadcast to get the latest LSN from every available DB.
+     * </p>
+     * 
+     * @param babuDBs
+     * @param client
+     * @param localAddress
+     * @return the LSNs of the latest written LogEntries for the <code>babuDBs
+     *         </code> that were available.
+     */
+    @SuppressWarnings("unchecked")
+    public static Map<InetSocketAddress, LSN> getStates(
+            List<InetSocketAddress> babuDBs, RPCNIOSocketClient client, 
+            InetSocketAddress localAddress) {
+        int numRqs = babuDBs.size();
+        Map<InetSocketAddress,LSN> result = new HashMap<InetSocketAddress, LSN>();
+        RPCResponse<LSN>[] rps = new RPCResponse[numRqs];
+        
+        // send the requests
+        StateClient c;
+        for (int i=0;i<numRqs;i++) {
+            c = new StateClient(client, babuDBs.get(i), localAddress);
+            rps[i] = (RPCResponse<LSN>) c.getState();
+        }
+        
+        // get the responses
+        for (int i=0;i<numRqs;i++) {
+            try{
+                LSN val = rps[i].get();
+                result.put(babuDBs.get(i), val);
+            } catch (Exception e) {
+                Logging.logMessage(Logging.LEVEL_INFO, client, 
+                        "Could not receive state of '%s', because: %s.", 
+                        babuDBs.get(i), e.getMessage());
+                if (e.getMessage() == null)
+                    Logging.logError(Logging.LEVEL_INFO, client, e);
+            } finally {
+                if (rps[i]!=null) rps[i].freeBuffers();
+            }
+        }
+        
+        return result;
     }
 }

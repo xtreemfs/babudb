@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -18,6 +18,7 @@ import java.util.concurrent.PriorityBlockingQueue;
 
 import org.xtreemfs.babudb.clients.SlaveClient;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.replication.LatestLSNUpdateListener;
 import org.xtreemfs.babudb.replication.stages.HeartbeatThread;
 import org.xtreemfs.include.common.TimeSync;
 import org.xtreemfs.include.common.logging.Logging;
@@ -95,10 +96,11 @@ public class SlavesStates {
      * Sets the stateTable up. 
      * 
      * @param syncN
+     * @param localAddress
      * @param slaves - to register.
      */
     public SlavesStates(int syncN,List<InetSocketAddress> slaves, 
-            RPCNIOSocketClient client) {
+            RPCNIOSocketClient client, InetSocketAddress localAddress) {
         
         assert(slaves!=null);
         
@@ -109,7 +111,7 @@ public class SlavesStates {
         
         for (InetSocketAddress slave : slaves) 
             stateTable.put(slave.getAddress(), 
-                    new State(new SlaveClient(client,slave)));
+                    new State(new SlaveClient(client,slave,localAddress)));
     }
     
     /**
@@ -173,10 +175,14 @@ public class SlavesStates {
     }
     
     /**
-     * <p>Use this if you want to send requests to the slaves.
-     * The open-request-counter of the returned slaves will be incremented.</p>
-     * <p>Flow-control: If there are too many busy slaves, to get more or equal 
-     * syncN slaves, this operation blocks until enough slaves are available.</p>
+     * <p>
+     * Use this if you want to send requests to the slaves.
+     * The open-request-counter of the returned slaves will be incremented.
+     * </p>
+     * <p>
+     * Flow-control: If there are too many busy slaves, to get more or equal 
+     * syncN slaves, this operation blocks until enough slaves are available.
+     * </p>
      * 
      * @return a list of available slaves.
      * @throws NotEnoughAvailableSlavesException
@@ -233,8 +239,8 @@ public class SlavesStates {
     }
 
     /**
-     * Registers a listener to notify, if the latest common {@link LSN} has changed.
-     * Listeners will be registered in natural order of their LSNs.
+     * Registers a listener to notify, if the latest common {@link LSN} has 
+     * changed. Listeners will be registered in natural order of their LSNs.
      * 
      * @param listener
      */
@@ -257,7 +263,8 @@ public class SlavesStates {
     }
     
     /**
-     * Marks a slave manually as dead and decrements the open requests for the slave.
+     * Marks a slave manually as dead and decrements the open requests for the 
+     * slave.
      * 
      * @param slave
      */
@@ -292,15 +299,15 @@ public class SlavesStates {
     }
     
     /**
-     * Removes all available listeners from the queue.
-     * Necessary due master fail-over.
+     * Removes all available listeners from the queue. The listeners will be 
+     * notified that the operation they are listening for has failed.
      */
     public void clearListeners(){
         Set<LatestLSNUpdateListener> lSet = 
             new HashSet<LatestLSNUpdateListener>();
         
         listeners.drainTo(lSet);
-        for (LatestLSNUpdateListener l : lSet) l.upToDate();
+        for (LatestLSNUpdateListener l : lSet) l.failed();
     }
     
 /*
@@ -312,11 +319,11 @@ public class SlavesStates {
      */
     private void notifyListeners(){
         LatestLSNUpdateListener listener = listeners.poll();
-        while (listener!=null && listener.lsn.compareTo(latestCommon)<=0) {
+        while (listener != null && listener.lsn.compareTo(latestCommon)<=0) {
             listener.upToDate();
             listener = listeners.poll();
         }
-        if (listener!=null) listeners.add(listener);
+        if (listener != null) listeners.add(listener);
     }
     
 /*

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -11,7 +11,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
 import org.xtreemfs.include.foundation.oncrpc.client.RPCResponseAvailableListener;
 import org.xtreemfs.include.foundation.oncrpc.server.ONCRPCRequest;
-import org.xtreemfs.babudb.interfaces.utils.Serializable;
 import org.xtreemfs.babudb.replication.Request;
 
 /**
@@ -29,16 +28,11 @@ public abstract class Operation {
     public abstract int getProcedureId();
     
     /**
-     * @return true, if this operation can be disabled, false otherwise. 
-     */
-    public abstract boolean canBeDisabled();
-
-    /**
      * Parses the request.
      * @param rq the request
      * @return null if successful, error message otherwise
      */
-    public abstract Serializable parseRPCMessage(Request rq);
+    public abstract yidl.runtime.Object parseRPCMessage(Request rq);
     
     /**
      * called after request was parsed and operation assigned.

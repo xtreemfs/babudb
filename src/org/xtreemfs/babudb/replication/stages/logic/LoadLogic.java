@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -14,6 +14,7 @@ import java.nio.channels.FileChannel;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.clients.MasterClient;
 import org.xtreemfs.babudb.interfaces.Chunk;
 import org.xtreemfs.babudb.interfaces.DBFileMetaData;
 import org.xtreemfs.babudb.interfaces.DBFileMetaDataSet;
@@ -37,7 +38,7 @@ import static org.xtreemfs.babudb.replication.stages.logic.LogicID.*;
 
 /**
  * <p>Performs an initial load request at the master.
- * This is an all-or-nothing operation.</p>
+ * This is an all-or-nothing mechanism.</p>
  * @author flangner
  * @since 06/08/2009
  */
@@ -62,10 +63,24 @@ public class LoadLogic extends Logic {
      * @see java.lang.Runnable#run()
      */
     @Override
-    public void run() throws ConnectionLostException, InterruptedException{         
+    public void run() throws ConnectionLostException, InterruptedException{
+        LSN until = (stage.missing == null) ? 
+                new LSN(stage.lastInserted.getViewId()+1,0L) :
+                new LSN(stage.missing.getViewId(),stage.missing.getSequenceEnd());
+        
+        if (stage.missing != null && 
+            stage.missing.getSequenceEnd() == stage.missing.getSequenceStart()) {
+            stage.missing = null;
+        }
+                
+        MasterClient master = SharedLogic.getSynchronizationPartner(
+                stage.dispatcher.getConfig().getParticipants(), until, 
+                stage.dispatcher.master);
+        
         // make the request and get the result synchronously
-        Logging.logMessage(Logging.LEVEL_INFO, stage, "Loading from: %s", stage.lastInserted.toString());
-        RPCResponse<DBFileMetaDataSet> rp = stage.dispatcher.master.load(stage.lastInserted);
+        Logging.logMessage(Logging.LEVEL_INFO, stage, "Loading DB since %s from %s.", 
+                stage.lastInserted.toString(), master.getDefaultServerAddress().toString());
+        RPCResponse<DBFileMetaDataSet> rp = master.load(stage.lastInserted);
         DBFileMetaDataSet result = null;
         try {
             result = rp.get();  
@@ -81,7 +96,8 @@ public class LoadLogic extends Logic {
             if (rp!=null) rp.freeBuffers();
         }
         
-        // switch log file, if the response was empty
+        // switch log file by triggering a manual checkpoint, 
+        // if the response was empty
         if (result.size() == 0) {
             DiskLogger logger = stage.dispatcher.dbs.getLogger();
             try {
@@ -94,21 +110,11 @@ public class LoadLogic extends Logic {
             } finally {
                 logger.unlockLogger();
             }
-            Logging.logMessage(Logging.LEVEL_INFO, this, 
-             "Logfile switched with at LSN: %s", stage.lastInserted.toString());
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+            "Logfile switched at LSN %s.", stage.lastInserted.toString());
+            
             stage.lastInserted = new LSN(stage.lastInserted.getViewId()+1,0L);
-            if (stage.missing != null && stage.missing.getSequenceEnd() > 
-                    stage.lastInserted.getSequenceNo()+1L) {
-                stage.missing = new LSNRange(stage.lastInserted.getViewId(),
-                        stage.lastInserted.getSequenceNo()+1L,
-                        stage.missing.getSequenceEnd());
-                stage.setLogic(REQUEST, "There are still some logEntries " +
-                		"missing after switching the logfile.");
-            } else {
-                stage.missing = null;
-                stage.setLogic(BASIC, "Only the viewId changed, " +
-                		"we can go on with the basicLogic.");
-            }
+            loadFinished(false);
             return;
         }
         
@@ -116,7 +122,7 @@ public class LoadLogic extends Logic {
         stage.dispatcher.heartbeat.infarction();
         stage.dispatcher.dbs.stop();
         try {
-            backupFiles(stage.dispatcher.configuration);
+            backupFiles(stage.dispatcher.getConfig());
         } catch (IOException e) {
             // file backup failed --> retry
             Logging.logError(Logging.LEVEL_WARN, this, e);
@@ -140,11 +146,12 @@ public class LoadLogic extends Logic {
             
             // validate the informations
             String fileName = fileData.getFileName();
-            if (LSMDatabase.isSnapshotFilename(fileName)) {
+            String parentName = new File(fileName).getParentFile().getName();
+            if (LSMDatabase.isSnapshotFilename(parentName)) {
                 if (lsn == null) 
-                    lsn = LSMDatabase.getSnapshotLSNbyFilename(fileName);
+                    lsn = LSMDatabase.getSnapshotLSNbyFilename(parentName);
                 else if (!lsn.equals(LSMDatabase.
-                        getSnapshotLSNbyFilename(fileName))){
+                        getSnapshotLSNbyFilename(parentName))){
                     Logging.logMessage(Logging.LEVEL_WARN, this, 
                             "Indexfiles had ambiguous LSNs: %s", 
                             "LOAD will be retried.");
@@ -157,7 +164,7 @@ public class LoadLogic extends Logic {
             if (!(fileSize > 0L)) return;
             assert (maxChunkSize > 0L) : "Empty chunks are not allowed: "+fileName;
             synchronized (openChunks) {
-                if (openChunks.get()!=-1)
+                if (openChunks.get() != -1)
                     openChunks.addAndGet((int) (fileSize / maxChunkSize));
             }
                 
@@ -168,7 +175,7 @@ public class LoadLogic extends Logic {
                 begin = end;
                 
                 // request the chunk
-                final RPCResponse<ReusableBuffer> chunkRp = stage.dispatcher.master.chunk(chunk);       
+                final RPCResponse<ReusableBuffer> chunkRp = master.chunk(chunk);       
                 chunkRp.registerListener(new RPCResponseAvailableListener<ReusableBuffer>() {
                 
                     @Override
@@ -204,11 +211,13 @@ public class LoadLogic extends Logic {
                             if (e instanceof errnoException) {
                                 errnoException err = (errnoException) e;
                                 Logging.logMessage(Logging.LEVEL_ERROR, this,
-                                       "Chunk request failed: (%d) %s", err.
-                                       getError_code(), err.getError_message());
+                                       "Chunk request (%s) failed: (%d) %s", 
+                                       chunk.toString(), err.getError_code(), 
+                                       err.getError_message());
                             } else
                                 Logging.logMessage(Logging.LEVEL_ERROR, this, 
-                                    "Chunk request failed: %s", e.getMessage());
+                                    "Chunk request (%s) failed: %s", 
+                                    chunk.toString(), e.getMessage());
                             
                             synchronized (openChunks) {
                                 openChunks.set(-1);
@@ -235,22 +244,34 @@ public class LoadLogic extends Logic {
         try {
             stage.dispatcher.updateLatestLSN(
                     stage.lastInserted = stage.dispatcher.dbs.restart());
-            removeBackupFiles(stage.dispatcher.configuration);
-            if (stage.missing != null && stage.missing.getSequenceEnd() > 
-                    stage.lastInserted.getSequenceNo()+1L) {
-                stage.missing = new LSNRange(stage.lastInserted.getViewId(),
-                        stage.lastInserted.getSequenceNo()+1L,
-                        stage.missing.getSequenceEnd());
-                stage.setLogic(REQUEST, "There are still some logEntries missing after switching the logfile.");
-            } else {
-                stage.missing = null;
-                stage.setLogic(BASIC, "Loading finished with LSN("+stage.
-                        lastInserted+"), we can go on with the basicLogic.");
-            }
+            removeBackupFiles(stage.dispatcher.getConfig());
+            loadFinished(true);
         } catch (BabuDBException e) {
             // resetting the DBS failed --> retry
             Logging.logMessage(Logging.LEVEL_WARN, this, "Loading failed, because the " +
             		"reloading the DBS failed due: %s", e.getMessage());
+        }
+    }
+    
+    /**
+     * Method to execute, after the Load was finished successfully.
+     * 
+     * @param loaded - induces whether the DBS had to be reload or not
+     */
+    private void loadFinished(boolean loaded) {
+        if (stage.missing != null && stage.missing.getSequenceEnd() > 
+            stage.lastInserted.getSequenceNo()+1L) {
+            stage.missing = new LSNRange(stage.lastInserted.getViewId(),
+            stage.lastInserted.getSequenceNo()+1L,
+            stage.missing.getSequenceEnd());
+            stage.setLogic(REQUEST, "There are still some logEntries " +
+                    "missing after switching the logfile.");
+        } else {
+            String msg = (loaded) ? "Loading finished with LSN("+stage.
+                    lastInserted+"), we can go on with the basicLogic." : 
+                    "Only the viewId changed, we can go on with the basicLogic.";
+            stage.missing = null;
+            stage.setLogic(BASIC, msg, loaded);
         }
     }
     
@@ -264,26 +285,32 @@ public class LoadLogic extends Logic {
     private File getFile(Chunk chunk) throws IOException {
         File chnk = new File(chunk.getFileName());
         String fName = chnk.getName();
+        String pName = chnk.getParentFile().getName();
         File result;
         String baseDir = stage.dispatcher.dbs.getConfig().getBaseDir();
         
-        if (LSMDatabase.isSnapshotFilename(fName)) {
+        if (LSMDatabase.isSnapshotFilename(pName)) {
             // create the db-name directory, if necessary
             new File(baseDir + chnk.getParentFile().getName() + File.separatorChar)
                     .mkdirs();
             // create the file if necessary
-            result = new File(baseDir + chnk.getParentFile().getName() 
-                    + File.separatorChar + fName);
+            result = new File(baseDir + 
+                         chnk.getParentFile().getParentFile().getName() +
+                         File.separatorChar +  pName +
+                         File.separator + fName);
+            result.getParentFile().mkdirs();
             result.createNewFile();
         } else if (chnk.getParent() == null) {
             // create the file if necessary
             result = new File(baseDir +
                     stage.dispatcher.dbs.getConfig().getDbCfgFile());
+            result.getParentFile().mkdirs();
             result.createNewFile();
         } else {
             // create the file if necessary
             result = new File(stage.dispatcher.dbs.getConfig().getDbLogDir()
                     + fName);
+            result.getParentFile().mkdirs();
             result.createNewFile();
         }
         return result;

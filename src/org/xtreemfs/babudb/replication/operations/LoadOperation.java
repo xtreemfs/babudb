@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -13,14 +13,13 @@ import org.xtreemfs.babudb.interfaces.DBFileMetaData;
 import org.xtreemfs.babudb.interfaces.DBFileMetaDataSet;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.loadRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.loadResponse;
-import org.xtreemfs.babudb.interfaces.utils.Serializable;
 import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
 import org.xtreemfs.babudb.lsmdb.Database;
 import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
 import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.MasterRequestDispatcher;
 import org.xtreemfs.babudb.replication.Request;
+import org.xtreemfs.babudb.replication.RequestDispatcher;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
@@ -33,9 +32,9 @@ import org.xtreemfs.include.common.logging.Logging;
 public class LoadOperation extends Operation {
 
     private final int procId;
-    private final MasterRequestDispatcher dispatcher;
+    private final RequestDispatcher dispatcher;
     
-    public LoadOperation(MasterRequestDispatcher dispatcher) {
+    public LoadOperation(RequestDispatcher dispatcher) {
         this.procId = new loadRequest().getTag();
         this.dispatcher = dispatcher;
     }
@@ -54,7 +53,7 @@ public class LoadOperation extends Operation {
      * @see org.xtreemfs.babudb.replication.operations.Operation#parseRPCMessage(org.xtreemfs.babudb.replication.Request)
      */
     @Override
-    public Serializable parseRPCMessage(Request rq) {
+    public yidl.runtime.Object parseRPCMessage(Request rq) {
         loadRequest rpcrq = new loadRequest();
         rq.deserializeMessage(rpcrq);
         
@@ -83,17 +82,16 @@ public class LoadOperation extends Operation {
                 request.getLsn().toString(), rq.getRPCRequest()
                 .getClientIdentity().toString());
         
-        if (dispatcher.lastOnView != null && 
-                new LSN(request.getLsn().getViewId(),request.getLsn().getSequenceNo())
-                .equals(dispatcher.lastOnView))
+        if (new LSN(request.getLsn().getViewId(),request.getLsn().getSequenceNo())
+                .equals(dispatcher.lastOnView.get())) {
             rq.sendSuccess(new loadResponse());
-        else {
+        } else {
             synchronized (((DatabaseManagerImpl) dispatcher.dbs.
                     getDatabaseManager()).getDBModificationLock()) {
                 synchronized (((CheckpointerImpl) dispatcher.dbs.
                         getCheckpointer()).getCheckpointerLock()) {
                     // add the DB-structure-file metadata
-                    int chunkSize = dispatcher.chunkSize;
+                    int chunkSize = dispatcher.getConfig().getChunkSize();
                     String path = dispatcher.dbs.getDBConfigPath();
                     assert (path!=null) : "No checkpoint available!";
                     long length = new File(path).length();
@@ -109,14 +107,5 @@ public class LoadOperation extends Operation {
             }
             rq.sendSuccess(new loadResponse(result));
         }
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.operations.Operation#canBeDisabled()
-     */
-    @Override
-    public boolean canBeDisabled() {
-        return true;
     }
 }

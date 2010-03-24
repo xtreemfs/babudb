@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -7,6 +7,8 @@
  */
 package org.xtreemfs.babudb.replication.operations;
 
+import java.io.File;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
@@ -14,17 +16,19 @@ import java.util.zip.Checksum;
 import org.xtreemfs.babudb.interfaces.LogEntries;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicaRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicaResponse;
-import org.xtreemfs.babudb.interfaces.utils.Serializable;
-import org.xtreemfs.babudb.log.DiskLogFile;
+import org.xtreemfs.babudb.log.DiskLogIterator;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
+import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.MasterRequestDispatcher;
 import org.xtreemfs.babudb.replication.Request;
+import org.xtreemfs.babudb.replication.RequestDispatcher;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
  * {@link Operation} to request {@link LogEntry}s from the master.
+ * This operation tries to retrieve the logEntries from the log by iterating
+ * over them and returning the requested ones.
  * 
  * @since 05/03/2009
  * @author flangner
@@ -34,11 +38,11 @@ public class ReplicaOperation extends Operation {
 
     private final int procId;
     
-    private final MasterRequestDispatcher dispatcher;
+    private final RequestDispatcher dispatcher;
     
     private final Checksum checksum = new CRC32();
     
-    public ReplicaOperation(MasterRequestDispatcher dispatcher) {
+    public ReplicaOperation(RequestDispatcher dispatcher) {
         this.dispatcher = dispatcher;
         procId = new replicaRequest().getTag();
     }
@@ -57,7 +61,7 @@ public class ReplicaOperation extends Operation {
      * @see org.xtreemfs.babudb.replication.operations.Operation#parseRPCMessage(org.xtreemfs.babudb.replication.Request)
      */
     @Override
-    public Serializable parseRPCMessage(Request rq) {
+    public yidl.runtime.Object parseRPCMessage(Request rq) {
         replicaRequest rpcrq = new replicaRequest();
         rq.deserializeMessage(rpcrq);  
         return null;
@@ -79,83 +83,72 @@ public class ReplicaOperation extends Operation {
     @Override
     public void startRequest(Request rq) {
         replicaRequest req = (replicaRequest) rq.getRequestMessage();
-        LSN start = new LSN(req.getRange().getViewId(),req.getRange().getSequenceStart());
-        int numOfLEs = (int) (req.getRange().getSequenceEnd()-req.getRange().getSequenceStart());
+        LSN start = new LSN(req.getRange().getViewId(),
+                            req.getRange().getSequenceStart());
+        int numOfLEs = (int) (req.getRange().getSequenceEnd() - 
+                              req.getRange().getSequenceStart());
         LogEntries result = new LogEntries();
         
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "REQUEST received " +
-        	"(start: %s, numOfLEs: %d)", start.toString(), numOfLEs);
+        Logging.logMessage(Logging.LEVEL_INFO, this, "REQUEST received " +
+        	"(start: %s, numOfLEs: %d) from %s", start.toString(), numOfLEs,
+        	rq.getRPCRequest().getClientIdentity());
         
-        int i = 0;
+        CheckpointerImpl chkPntr = (CheckpointerImpl) dispatcher.dbs.getCheckpointer();
         LogEntry le = null;
-        // get the latest logFile
-        DiskLogFile dlf = null;
-        try {
-            dlf = new DiskLogFile(dispatcher.dbs.getLogger().getLatestLogFileName());
-            
-            // get the first logEntry
-            while (dlf.hasNext() && i == 0) {
-                try {
-                    le = dlf.next();
-                    if (le.getLSN().equals(start)) {
-                        assert (le.getPayload().array().length > 0) : "Empty logentries are not allowed anymore!";
-                        result.add(new org.xtreemfs.babudb.interfaces.LogEntry(le.serialize(checksum)));
-                        i++;
-                    }
-                } catch (LogEntryException e) {
-                    rq.sendReplicationException(ErrNo.LOG_CUT,"LogEntry unavailable: "+e.getMessage());
-                    i = -1;
-                } finally {
-                    checksum.reset();
-                  // clears the buffer, before it gets the next entry
-                    if (le!=null) le.free();
-                }
-            }
+        DiskLogIterator it = null;
+        
+        synchronized (chkPntr.getCheckpointerLock()) {
+            try {   
+                chkPntr.waitForCheckpoint();
                 
-            
-            // get the remaining requested logEntries          
-            if (i > 0) {
-                try {
-                    for (int j=i;j<numOfLEs;j++) {
-                        le = dlf.next();           
-                        assert (le.getPayload().array().length > 0) : "Empty logentries are not allowed anymore!";
-                        result.add(new org.xtreemfs.babudb.interfaces.LogEntry(le.serialize(checksum)));
-                        checksum.reset();
-                        le.free();
+                // get the logFiles for the requested logEntries
+                File f = new File(dispatcher.getConfig().getDbLogDir());
+                File[] logFiles = f.listFiles(new FilenameFilter() {
+                    public boolean accept(File dir, String name) {
+                        return name.endsWith(".dbl");
                     }
-                } catch (LogEntryException e) {
-                    rq.sendReplicationException(ErrNo.LOG_CUT,"LogEntry unavailable: "+e.getMessage());
-                    i = -1;
-                } finally {
+                });
+                
+                it = new DiskLogIterator(logFiles, start);
+                for (int i = 0;i < numOfLEs; i++) {
+                    if (!it.hasNext()) {
+                        rq.sendReplicationException(ErrNo.LOG_CUT,
+                                "LogEntry unavailable.");
+                        return;
+                    }
+                    
+                    le = it.findNextEntry();
+                    assert (le.getPayload().array().length > 0) : 
+                        "Empty log-entries are not allowed!";
+                    result.add(new org.xtreemfs.babudb.interfaces.LogEntry(
+                            le.serialize(checksum)));
                     checksum.reset();
-                  // clears the buffer, before it gets the next entry
-                    if (le!=null) le.free();
+                    le.free();
                 }
-            }
-            
-            // send the response, if the requested log entries are found
-            if (i > 0) rq.sendSuccess(new replicaResponse(result));
-            // send a replication exception if not done so far
-            else if (i==0) rq.sendReplicationException(ErrNo.LOG_CUT,"LogEntry unavailable.");
-        } catch (IOException e) {
-            rq.sendReplicationException(ErrNo.INTERNAL_ERROR,"Request not finished: "+e.getMessage());
-        } catch (LogEntryException e) {
-            rq.sendReplicationException(ErrNo.INTERNAL_ERROR,"Request not finished: "+e.getMessage());
-        } finally {
-            if (dlf!=null) {
-                try {
-                    dlf.close();
-                } catch (IOException e) { /* ignored */ }
+                
+                // send the response, if the requested log entries are found
+                rq.sendSuccess(new replicaResponse(result));
+            } catch (InterruptedException e) {
+                Logging.logError(Logging.LEVEL_INFO, this, e);
+                rq.sendReplicationException(ErrNo.TOO_BUSY,
+                        "Request not finished: "+e.getMessage());
+            } catch (IOException e) {
+                Logging.logError(Logging.LEVEL_INFO, this, e);
+                rq.sendReplicationException(ErrNo.TOO_BUSY,
+                        "Request not finished: "+e.getMessage());
+            } catch (LogEntryException e) {
+                Logging.logError(Logging.LEVEL_INFO, this, e);
+                rq.sendReplicationException(ErrNo.INTERNAL_ERROR,
+                        "Request not finished: "+e.getMessage());
+            } finally {
+                checksum.reset();
+                if (le != null) le.free();
+                if (it != null) {
+                    try {
+                        it.destroy();
+                    } catch (IOException e) { /* ignored */ }
+                }
             }
         }
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.operations.Operation#canBeDisabled()
-     */
-    @Override
-    public boolean canBeDisabled() {
-        return true;
     }
 }

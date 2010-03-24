@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -9,9 +9,9 @@ package org.xtreemfs.babudb.replication;
 
 import org.xtreemfs.include.common.logging.Logging;
 import org.xtreemfs.include.foundation.oncrpc.server.ONCRPCRequest;
+import org.xtreemfs.include.foundation.oncrpc.utils.XDRUnmarshaller;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
 import org.xtreemfs.babudb.interfaces.utils.ONCRPCException;
-import org.xtreemfs.babudb.interfaces.utils.Serializable;
 import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 /**
@@ -25,25 +25,25 @@ public class Request {
     
     private final ONCRPCRequest rpcRequest;
     
-    private Serializable        requestMessage;
+    private yidl.runtime.Object requestMessage;
     
     private Object              attachment;
     
-    public Request(ONCRPCRequest rpcRequest) {
+    Request(ONCRPCRequest rpcRequest) {
         this.rpcRequest = rpcRequest;
     }
 
-    public void deserializeMessage(Serializable message) {
+    public void deserializeMessage(yidl.runtime.Object message) {
         final ReusableBuffer payload = rpcRequest.getRequestFragment();
-        message.deserialize(payload);
+        message.unmarshal(new XDRUnmarshaller(payload));
         requestMessage = message;
     }
 
-    public Serializable getRequestMessage() {
+    public yidl.runtime.Object getRequestMessage() {
         return requestMessage;
     }
 
-    public void sendSuccess(Serializable response) {
+    public void sendSuccess(yidl.runtime.Object response) {
         rpcRequest.sendResponse(response);
     }
 
