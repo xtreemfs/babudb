@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -7,7 +7,7 @@
  */
 package org.xtreemfs.babudb;
 
-import static org.xtreemfs.babudb.config.ReplicationConfig.slaveProtection;
+import static org.xtreemfs.babudb.config.ReplicationConfig.slaveProtectionMsg;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -107,19 +107,15 @@ public class BabuDB {
     private final AtomicBoolean          stopped;
     
     /**
-     * Flag that determines if the slaveCheck should be enabled, or not.
-     */
-    private volatile boolean             slaveCheck               = true;
-    
-    /**
      * Starts the BabuDB database. If conf is instance of MasterConfig it comes
      * with replication in master-mode. If conf is instance of SlaveConfig it
      * comes with replication in slave-mode.
      * 
      * @param conf
+     * @param staticInit
      * @throws BabuDBException
      */
-    BabuDB(BabuDBConfig conf) throws BabuDBException {
+    BabuDB(BabuDBConfig conf, final StaticInitialization staticInit) throws BabuDBException {
         Logging.start(conf.getDebugLevel());
         
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "base dir: " + conf.getBaseDir());
@@ -133,12 +129,11 @@ public class BabuDB {
         
         if (dbConfigFile.isConversionRequired()) {
             
-            Logging
-                    .logMessage(
-                        Logging.LEVEL_WARN,
-                        Category.db,
-                        this,
-                        "The database version is outdated. The database will be automatically converted to the latest version if possible. This may take some time, depending on the size.");
+            Logging.logMessage(Logging.LEVEL_WARN, Category.db, this, "The " +
+            		"database version is outdated. The database will be " +
+            		"automatically converted to the latest version if " +
+            		"possible. This may take some time, depending on " +
+            		"the size.");
             
             AutoConverter.initiateConversion(dbConfigFile.getDBFormatVersion(), conf);
         }
@@ -181,11 +176,15 @@ public class BabuDB {
         // set up the replication service
         LSN lastLSN = new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo() - 1);
         try {
-            if (conf instanceof ReplicationConfig)
+            if (conf instanceof ReplicationConfig) {
                 this.replicationManager = new ReplicationManagerImpl(this, lastLSN);
-            else
+                Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB will use replication");
+            } else {
                 this.replicationManager = null;
+                Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB will not use replication");
+            }
         } catch (Exception e) {
+            Logging.logError(Logging.LEVEL_ERROR, this, e);
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
         }
         
@@ -222,11 +221,13 @@ public class BabuDB {
         dbCheckptr.init(logger, conf.getCheckInterval(), conf.getMaxLogfileSize());
         dbCheckptr.start();
         
-        // start the replication service after all other components of babuDB
-        // have been started successfully
+        if (staticInit != null) {
+            staticInit.initialize(databaseManager, snapshotManager, 
+                    replicationManager);
+        }
+               
         this.stopped = new AtomicBoolean(false);
-        if (this.replicationManager != null)
-            this.replicationManager.initialize();
+        if (replicationManager != null) replicationManager.initialize();
         
         Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running " + "(version "
             + BABUDB_VERSION + ")");
@@ -355,7 +356,13 @@ public class BabuDB {
         
         // stop the replication
         if (replicationManager != null) {
-            replicationManager.shutdown();
+            try {
+                replicationManager.shutdown();
+            } catch (Exception e) {
+                Logging.logMessage(Logging.LEVEL_ERROR, this, "Replication " +
+                		"mechanism could not be shut down gracefully, " +
+                		"because: %s", e.getMessage());
+            }
         }
         
         logger.shutdown();
@@ -551,20 +558,15 @@ public class BabuDB {
         return worker[dbId % worker.length];
     }
     
-    public void enableSlaveCheck() {
-        this.slaveCheck = true;
-    }
-    
-    public void disableSlaveCheck() {
-        this.slaveCheck = false;
-    }
-    
     /**
      * 
      * @return true, if replication runs in slave-mode, false otherwise.
      */
     public void slaveCheck() throws BabuDBException {
-        if (slaveCheck && replicationManager != null && !replicationManager.isMaster())
-            throw new BabuDBException(ErrorCode.NO_ACCESS, slaveProtection);
+        if (replicationManager != null && 
+            replicationManager.isInitialized() && 
+           !replicationManager.isMaster()) {
+            throw new BabuDBException(ErrorCode.NO_ACCESS, slaveProtectionMsg);
+        }
     }
 }
