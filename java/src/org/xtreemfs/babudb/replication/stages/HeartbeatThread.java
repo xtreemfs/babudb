@@ -92,7 +92,8 @@ public class HeartbeatThread extends LifeCycleThread {
                     if (halted.get())
                         halted.wait();
                 } catch (InterruptedException e) {
-                    assert (quit==true) : "halted must be notified, if thread should not shut down";
+                    assert (quit==true) : "halted must be notified, if thread "+
+                    		"should not shut down";
                 }
             }
         }

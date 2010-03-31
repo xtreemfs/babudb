@@ -16,7 +16,7 @@ import yidl.runtime.Unmarshaller;
 
 public class replicaRequest extends org.xtreemfs.babudb.interfaces.utils.Request
 {
-    public static final int TAG = 1015;
+    public static final int TAG = 1016;
     
     public replicaRequest() { range = new LSNRange();  }
     public replicaRequest( LSNRange range ) { this.range = range; }
@@ -40,10 +40,10 @@ public class replicaRequest extends org.xtreemfs.babudb.interfaces.utils.Request
 
 
     // java.io.Serializable
-    public static final long serialVersionUID = 1015;    
+    public static final long serialVersionUID = 1016;    
 
     // yidl.runtime.Object
-    public int getTag() { return 1015; }
+    public int getTag() { return 1016; }
     public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::replicaRequest"; }
     
     public int getXDRSize()

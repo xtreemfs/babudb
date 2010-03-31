@@ -16,7 +16,7 @@ import yidl.runtime.Unmarshaller;
 
 public class replicaResponse extends org.xtreemfs.babudb.interfaces.utils.Response
 {
-    public static final int TAG = 1015;
+    public static final int TAG = 1016;
     
     public replicaResponse() { returnValue = new LogEntries();  }
     public replicaResponse( LogEntries returnValue ) { this.returnValue = returnValue; }
@@ -37,10 +37,10 @@ public class replicaResponse extends org.xtreemfs.babudb.interfaces.utils.Respon
 
 
     // java.io.Serializable
-    public static final long serialVersionUID = 1015;    
+    public static final long serialVersionUID = 1016;    
 
     // yidl.runtime.Object
-    public int getTag() { return 1015; }
+    public int getTag() { return 1016; }
     public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::replicaResponse"; }
     
     public int getXDRSize()

@@ -24,6 +24,7 @@ import org.xtreemfs.include.common.buffer.ReusableBuffer;
 import org.xtreemfs.include.common.logging.Logging;
 
 /**
+ * <p>Implements the {@link ReplicationManager} user interface.</p>
  * <p>Configurable settings.</p>
  * <p>Used to be one single Instance.</p>
  * <p>Thread safe.</p>

@@ -10,7 +10,6 @@ package org.xtreemfs.babudb.replication;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -45,6 +44,7 @@ public class MasterRequestDispatcher extends RequestDispatcher {
             ReplicationControlLayer replCtl) throws Exception {
         
         super("Master", dbs, initial, replCtl);
+        this.timeDriftDetector.start();
         
         // Because the master is already synchronized and belongs to the set
         // of N participants.
@@ -52,11 +52,8 @@ public class MasterRequestDispatcher extends RequestDispatcher {
                       replCtl.configuration.getSyncN()-1 : 
                       replCtl.configuration.getSyncN();
                       
-        List<InetSocketAddress> slaves = 
-            new LinkedList<InetSocketAddress>(
-                    replCtl.configuration.getParticipants());
-        this.states = new SlavesStates(this.syncN,slaves,rpcClient,
-                replCtl.configuration.getInetSocketAddress());
+        this.states = new SlavesStates(this.syncN,
+                replCtl.configuration.getParticipants(), rpcClient);
     }
     
     /**
@@ -68,6 +65,7 @@ public class MasterRequestDispatcher extends RequestDispatcher {
      */
     public MasterRequestDispatcher(RequestDispatcher oldDispatcher, InetSocketAddress own) {
         super("Master", oldDispatcher);
+        this.timeDriftDetector.start();
         
         DispatcherState oldState = oldDispatcher.getState();
         if (oldState.requestQueue != null)
@@ -78,12 +76,9 @@ public class MasterRequestDispatcher extends RequestDispatcher {
         // of N participants.
         this.syncN = (getConfig().getSyncN() > 0) ? getConfig().getSyncN()-1 : 
                       getConfig().getSyncN();
-        
-        List<InetSocketAddress> slaves = new LinkedList<InetSocketAddress>(
-                getConfig().getParticipants());
-        
-        this.states = new SlavesStates(this.syncN,slaves,rpcClient,
-                getConfig().getInetSocketAddress());
+                
+        this.states = new SlavesStates(this.syncN, 
+                getConfig().getParticipants(), rpcClient);
     }
 
     /*

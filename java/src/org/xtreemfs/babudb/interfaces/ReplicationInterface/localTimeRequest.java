@@ -14,11 +14,11 @@ import yidl.runtime.Unmarshaller;
 
 
 
-public class replicateResponse extends org.xtreemfs.babudb.interfaces.utils.Response
+public class localTimeRequest extends org.xtreemfs.babudb.interfaces.utils.Request
 {
-    public static final int TAG = 1018;
+    public static final int TAG = 1015;
     
-    public replicateResponse() {  }
+    public localTimeRequest() {  }
 
     // java.lang.Object
     public String toString() 
@@ -31,13 +31,16 @@ public class replicateResponse extends org.xtreemfs.babudb.interfaces.utils.Resp
         return string_writer.toString();
     }
 
+    // Request
+    public Response createDefaultResponse() { return new localTimeResponse(); }
+
 
     // java.io.Serializable
-    public static final long serialVersionUID = 1018;    
+    public static final long serialVersionUID = 1015;    
 
     // yidl.runtime.Object
-    public int getTag() { return 1018; }
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::replicateResponse"; }
+    public int getTag() { return 1015; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::localTimeRequest"; }
     
     public int getXDRSize()
     {

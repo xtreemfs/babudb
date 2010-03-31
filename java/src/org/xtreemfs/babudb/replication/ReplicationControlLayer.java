@@ -34,6 +34,7 @@ import org.xtreemfs.babudb.replication.ReplicateResponse;
 import org.xtreemfs.babudb.replication.RequestDispatcher;
 import org.xtreemfs.babudb.replication.SlaveRequestDispatcher;
 import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherState;
+import org.xtreemfs.babudb.replication.TimeDriftDetector.TimeDriftListener;
 import org.xtreemfs.babudb.replication.stages.logic.SharedLogic;
 import org.xtreemfs.foundation.flease.Flease;
 import org.xtreemfs.foundation.flease.FleaseStage;
@@ -59,7 +60,7 @@ import org.xtreemfs.include.foundation.LifeCycleThread;
  * @since 02/24/2010
  */
 public class ReplicationControlLayer extends LifeCycleThread implements 
-    LifeCycleListener, FleaseStatusListener {
+    LifeCycleListener, FleaseStatusListener, TimeDriftListener {
     
     /** designation of the flease-cell */
     private final static ASCIIString        REPLICATION_CELL = 
@@ -291,7 +292,7 @@ public class ReplicationControlLayer extends LifeCycleThread implements
     @Override
     public void leaseFailed(ASCIIString cellId, FleaseException error) {
         Logging.logMessage(Logging.LEVEL_WARN, this, "Flease was not" +
-                " able to get the current lease holder because:" +
+                " able to become the current lease holder because:" +
                 " %s ", error.getMessage());
     }
 
@@ -366,6 +367,24 @@ public class ReplicationControlLayer extends LifeCycleThread implements
     @Override
     public void startupPerformed() {
         Logging.logMessage(Logging.LEVEL_NOTICE, this, "started successfully.");
+    }
+    
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.TimeDriftDetector.TimeDriftListener#driftDetected()
+     */
+    @Override
+    public void driftDetected() {
+        Logging.logMessage(Logging.LEVEL_ERROR, this, "Illegal time-drift " +
+                        "detected! The servers participating at the replication" +
+                        " are not synchronized anymore. Mutual exclusion cannot" +
+                        " be ensured. Replication is stopped immediately.");
+        
+        try {
+            shutdown();
+        } catch (Exception e) {
+            notifyCrashed(e);
+        }
     }
     
     /**
@@ -520,8 +539,11 @@ public class ReplicationControlLayer extends LifeCycleThread implements
      * @throws BabuDBException 
      * @throws IOException 
      */
-    private void becomeMaster(ASCIIString masterId, DispatcherState state) throws InterruptedException, BabuDBException, IOException {
-        Logging.logMessage(Logging.LEVEL_INFO, this, "Becoming the replication master.");
+    private void becomeMaster(ASCIIString masterId, DispatcherState state) 
+        throws InterruptedException, BabuDBException, IOException {
+        
+        Logging.logMessage(Logging.LEVEL_INFO, this, 
+                "Becoming the replication master.");
         
         List<InetSocketAddress> slaves = new LinkedList<InetSocketAddress>(
                     configuration.getParticipants());
@@ -564,8 +586,7 @@ public class ReplicationControlLayer extends LifeCycleThread implements
                 if (entry.getValue().equals(latest)) {
                     Logging.logMessage(Logging.LEVEL_INFO, this, 
                             "synchronize with '%s'", entry.getKey()
-                            .toString());
-                                                
+                            .toString());  
                     
                     // setup a slave dispatcher to synchronize the 
                     // BabuDB with a replicated participant
@@ -573,10 +594,8 @@ public class ReplicationControlLayer extends LifeCycleThread implements
                     lDisp = new SlaveRequestDispatcher(this.dispatcher, 
                             entry.getKey(), this);
                     this.dispatcher = lDisp;
-
                 
                     snapshot = lDisp.synchronize(state.latest, latest);
-                    
                     break;
                 }
             }
@@ -603,7 +622,7 @@ public class ReplicationControlLayer extends LifeCycleThread implements
         // wait for the slaves to recognize the master-change, 
         // before setting up the masterDispatcher (asynchronous)
         long difference = TimeSync.getLocalSystemTime() - now;
-        long threshold = configuration.getLeaseTimeout() / 2;
+        long threshold = ReplicationConfig.LEASE_TIMEOUT / 2;
         Thread.sleep((difference < threshold ? threshold-difference : 0 ));
         
         // reset the new master
