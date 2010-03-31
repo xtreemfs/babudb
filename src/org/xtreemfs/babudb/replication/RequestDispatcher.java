@@ -32,6 +32,7 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.operations.ChunkOperation;
 import org.xtreemfs.babudb.replication.operations.FleaseOperation;
 import org.xtreemfs.babudb.replication.operations.LoadOperation;
+import org.xtreemfs.babudb.replication.operations.LocalTimeOperation;
 import org.xtreemfs.babudb.replication.operations.Operation;
 import org.xtreemfs.babudb.replication.operations.ReplicaOperation;
 import org.xtreemfs.babudb.replication.operations.StateOperation;
@@ -83,8 +84,11 @@ public abstract class RequestDispatcher implements RPCServerRequestListener {
      */
     protected final AtomicBoolean           suspended = new AtomicBoolean();
 
+    protected final TimeDriftDetector       timeDriftDetector;
+    
     /** the replication control layer */
     private final ReplicationControlLayer   replCtl;
+    
 /*
  * constructors
  */
@@ -130,7 +134,8 @@ public abstract class RequestDispatcher implements RPCServerRequestListener {
         rpcServer.setLifeCycleListener(replCtl);
         
         rpcClient = new RPCNIOSocketClient(replCtl.configuration.getSSLOptions(), 
-                30*1000, 5*60*1000);
+                ReplicationConfig.REQUEST_TIMEOUT, 
+                ReplicationConfig.CONNECTION_TIMEOUT);
         rpcClient.setLifeCycleListener(replCtl);
         
         // -------------------------------
@@ -140,6 +145,10 @@ public abstract class RequestDispatcher implements RPCServerRequestListener {
             assert (!participant.equals(replCtl.configuration.getInetSocketAddress()));
             permittedClients.add(participant.getAddress());
         }
+        
+        this.timeDriftDetector = new TimeDriftDetector(replCtl, 
+                replCtl.configuration.getParticipants(), rpcClient, 
+                replCtl.configuration.getLocalTimeRenew());
     }
     
     /**
@@ -150,6 +159,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener {
      */
     protected RequestDispatcher(String name, RequestDispatcher oldDispatcher) {
         this.replCtl = oldDispatcher.replCtl;
+        this.timeDriftDetector = oldDispatcher.timeDriftDetector;
         
         // ---------------------
         // initialize operations
@@ -213,7 +223,10 @@ public abstract class RequestDispatcher implements RPCServerRequestListener {
      */
     private Map<Integer,Operation> initializeOperations() {
         Map<Integer, Operation> result = new HashMap<Integer, Operation>();
-        Operation op = new StateOperation(this);
+        Operation op = new LocalTimeOperation();
+        result.put(op.getProcedureId(), op);
+        
+        op = new StateOperation(this);
         result.put(op.getProcedureId(), op);
         
         if (!replCtl.quit) {
@@ -266,6 +279,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener {
     
     void asyncShutdown() {
         try {
+            timeDriftDetector.shutdown();
             rpcServer.shutdown();
             rpcClient.shutdown();
         } catch (Exception ex) {
@@ -276,11 +290,13 @@ public abstract class RequestDispatcher implements RPCServerRequestListener {
     
     void shutdown() {
         try {    
+            timeDriftDetector.shutdown();
+            
             rpcServer.shutdown();
             rpcServer.waitForShutdown();
             
             rpcClient.shutdown();
-            rpcClient.waitForShutdown();                        
+            rpcClient.waitForShutdown();  
         } catch (Exception ex) {
             Logging.logMessage(Logging.LEVEL_ERROR, this, "shutdown failed");
             Logging.logError(Logging.LEVEL_ERROR, this, ex);

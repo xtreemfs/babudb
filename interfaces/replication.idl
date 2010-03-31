@@ -21,13 +21,14 @@ module org # 1000
 	  DBFileMetaDataSet load (LSN lsn) # 2;             // load request from the master/slave
       	  buffer chunk (Chunk chunk) # 3;                   // chunk request from the master/slave
 	  void flease(buffer message, string host, uint32_t port) # 4;                  // flease message from master/slave
+	  uint64_t localTime() # 5;                         // time request from the master/slave
 	  
 	  // master
-	  LogEntries replica (LSNRange range) # 5;	    // getReplica request from a slave
-	  void heartbeat(LSN lsn) # 6;                      // heartbeat message from a slave
+	  LogEntries replica (LSNRange range) # 6;	    // getReplica request from a slave
+	  void heartbeat(LSN lsn) # 7;                      // heartbeat message from a slave
 
 	  // slave
-	  void replicate (LSN lsn, LogEntry logEntry) # 7;  // replicate request from the master
+	  void replicate (LSN lsn, LogEntry logEntry) # 8;  // replicate request from the master
 
 	  exception ProtocolException # 90 { uint32_t accept_stat; uint32_t error_code; string stack_trace; };
 	  exception errnoException # 91 { uint32_t error_code; string error_message; string stack_trace; };

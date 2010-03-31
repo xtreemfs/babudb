@@ -45,6 +45,18 @@ public class ReplicationConfig extends BabuDBConfig {
     
     protected final FleaseConfig     fleaseConfig;
     
+    /** longest duration a message can live on the wire, before it becomes void */
+    private static final int         MESSAGE_TIMEOUT        = 10 * 1000;
+    
+    /** longest duration a connection can be established without getting closed */
+    public static final int          LEASE_TIMEOUT          = 3 * 60 * 1000;
+        
+    /** longest duration before an RPC-Call is timed out */
+    public static final int          REQUEST_TIMEOUT        = 30 * 1000;
+    
+    /** longest duration before an idle connection is closed */
+    public static final int          CONNECTION_TIMEOUT     = 5 * 60 * 1000;
+    
     // for master usage only
     
     protected int                    syncN;
@@ -66,12 +78,6 @@ public class ReplicationConfig extends BabuDBConfig {
     /** maximal retries per failure */
     public static final int          MAX_RETRIES            = 3;
     
-    /** longest duration a message can live on the wire, before it becomes void */
-    private static final int         MESSAGE_TIMEOUT        = 10 * 1000;
-    
-    /** longest duration a connection can be established without getting closed */
-    public static final int         LEASE_TIMEOUT           = 3 * 60 * 1000;
-        
     public ReplicationConfig(Properties prop) throws IOException {
         super(prop);
         read();
@@ -163,6 +169,9 @@ public class ReplicationConfig extends BabuDBConfig {
                 this.address = addrs;
             } catch (BindException e) {
                 this.participants.add(addrs);
+            } catch (Exception e) {
+                System.err.println("'"+addrs+"' will be ignored, because: " + 
+                        e.getMessage());
             } finally {
                 try {
                     s.close();
@@ -239,9 +248,5 @@ public class ReplicationConfig extends BabuDBConfig {
     
     public FleaseConfig getFleaseConfig() {
         return fleaseConfig;
-    }
-    
-    public int getLeaseTimeout() {
-        return LEASE_TIMEOUT;
     }
 }

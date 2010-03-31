@@ -13,6 +13,8 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.ReplicationInterface;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.fleaseRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.fleaseResponse;
+import org.xtreemfs.babudb.interfaces.ReplicationInterface.localTimeRequest;
+import org.xtreemfs.babudb.interfaces.ReplicationInterface.localTimeResponse;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.stateRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.stateResponse;
 import org.xtreemfs.foundation.flease.comm.FleaseMessage;
@@ -50,7 +52,7 @@ public class StateClient extends ONCRPCClient {
     public RPCResponse<LSN> getState () {
         stateRequest rq = new stateRequest();
         
-        RPCResponse<LSN> r = (RPCResponse<LSN>) sendRequest(null, rq.getTag(), rq, new RPCResponseDecoder<org.xtreemfs.babudb.lsmdb.LSN>() {
+        RPCResponse<LSN> r = (RPCResponse<LSN>) sendRequest(null, rq.getTag(), rq, new RPCResponseDecoder<LSN>() {
         
             /*
              * (non-Javadoc)
@@ -62,6 +64,32 @@ public class StateClient extends ONCRPCClient {
                 rp.unmarshal(new XDRUnmarshaller(data));
                 org.xtreemfs.babudb.interfaces.LSN result = rp.getReturnValue();
                 return new LSN(result.getViewId(),result.getSequenceNo());
+            }
+        });
+        
+        return r;
+    }
+    
+    /**
+     * The local time-stamp of the registered participant.
+     * 
+     * @return the {@link RPCResponse} receiving a time-stamp as {@link Long}.
+     */
+    @SuppressWarnings("unchecked")
+    public RPCResponse<Long> getLocalTime () {
+        localTimeRequest rq = new localTimeRequest();
+        
+        RPCResponse<Long> r = (RPCResponse<Long>) sendRequest(null, rq.getTag(), rq, new RPCResponseDecoder<Long>() {
+        
+            /*
+             * (non-Javadoc)
+             * @see org.xtreemfs.include.foundation.oncrpc.client.RPCResponseDecoder#getResult(org.xtreemfs.include.common.buffer.ReusableBuffer)
+             */
+            @Override
+            public Long getResult(ReusableBuffer data) {
+                final localTimeResponse rp = new localTimeResponse();
+                rp.unmarshal(new XDRUnmarshaller(data));
+                return rp.getReturnValue();
             }
         });
         

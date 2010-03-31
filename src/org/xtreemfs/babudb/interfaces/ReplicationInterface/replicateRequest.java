@@ -16,7 +16,7 @@ import yidl.runtime.Unmarshaller;
 
 public class replicateRequest extends org.xtreemfs.babudb.interfaces.utils.Request
 {
-    public static final int TAG = 1017;
+    public static final int TAG = 1018;
     
     public replicateRequest() { lsn = new LSN(); logEntry = new LogEntry();  }
     public replicateRequest( LSN lsn, LogEntry logEntry ) { this.lsn = lsn; this.logEntry = logEntry; }
@@ -42,10 +42,10 @@ public class replicateRequest extends org.xtreemfs.babudb.interfaces.utils.Reque
 
 
     // java.io.Serializable
-    public static final long serialVersionUID = 1017;    
+    public static final long serialVersionUID = 1018;    
 
     // yidl.runtime.Object
-    public int getTag() { return 1017; }
+    public int getTag() { return 1018; }
     public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::replicateRequest"; }
     
     public int getXDRSize()

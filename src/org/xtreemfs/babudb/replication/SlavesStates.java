@@ -63,7 +63,8 @@ public class SlavesStates {
      * between two heartBeats, than it is definitively to slow and must be dead, 
      * or will be dead soon.
      */ 
-    public final static long DELAY_TILL_DEAD = 2 * HeartbeatThread.MAX_DELAY_BETWEEN_HEARTBEATS;
+    public final static long DELAY_TILL_DEAD = 
+        2 * HeartbeatThread.MAX_DELAY_BETWEEN_HEARTBEATS;
     
     /** 
      * The number of request a master can send to one slave is limited by this
@@ -75,7 +76,8 @@ public class SlavesStates {
      * Determines how long the master should wait for busy slaves to become
      * available again, before it refuses a replication request.  
      */
-    public final static long WAIT_TILL_REFUSE = HeartbeatThread.MAX_DELAY_BETWEEN_HEARTBEATS;
+    public final static long WAIT_TILL_REFUSE = 
+        HeartbeatThread.MAX_DELAY_BETWEEN_HEARTBEATS;
     
     private final HashMap<InetAddress, State> stateTable = 
         new HashMap<InetAddress, State>(); 
@@ -99,8 +101,8 @@ public class SlavesStates {
      * @param localAddress
      * @param slaves - to register.
      */
-    public SlavesStates(int syncN,List<InetSocketAddress> slaves, 
-            RPCNIOSocketClient client, InetSocketAddress localAddress) {
+    public SlavesStates(int syncN,Set<InetSocketAddress> slaves, 
+            RPCNIOSocketClient client) {
         
         assert(slaves!=null);
         
@@ -111,7 +113,7 @@ public class SlavesStates {
         
         for (InetSocketAddress slave : slaves) 
             stateTable.put(slave.getAddress(), 
-                    new State(new SlaveClient(client,slave,localAddress)));
+                    new State(new SlaveClient(client, slave, null)));
     }
     
     /**

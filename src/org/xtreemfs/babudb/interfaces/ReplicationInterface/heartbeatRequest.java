@@ -16,7 +16,7 @@ import yidl.runtime.Unmarshaller;
 
 public class heartbeatRequest extends org.xtreemfs.babudb.interfaces.utils.Request
 {
-    public static final int TAG = 1016;
+    public static final int TAG = 1017;
     
     public heartbeatRequest() { lsn = new LSN();  }
     public heartbeatRequest( LSN lsn ) { this.lsn = lsn; }
@@ -40,10 +40,10 @@ public class heartbeatRequest extends org.xtreemfs.babudb.interfaces.utils.Reque
 
 
     // java.io.Serializable
-    public static final long serialVersionUID = 1016;    
+    public static final long serialVersionUID = 1017;    
 
     // yidl.runtime.Object
-    public int getTag() { return 1016; }
+    public int getTag() { return 1017; }
     public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::heartbeatRequest"; }
     
     public int getXDRSize()

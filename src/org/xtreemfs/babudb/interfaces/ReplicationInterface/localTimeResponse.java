@@ -14,11 +14,15 @@ import yidl.runtime.Unmarshaller;
 
 
 
-public class replicateResponse extends org.xtreemfs.babudb.interfaces.utils.Response
+public class localTimeResponse extends org.xtreemfs.babudb.interfaces.utils.Response
 {
-    public static final int TAG = 1018;
+    public static final int TAG = 1015;
     
-    public replicateResponse() {  }
+    public localTimeResponse() {  }
+    public localTimeResponse( long returnValue ) { this.returnValue = returnValue; }
+
+    public long getReturnValue() { return returnValue; }
+    public void setReturnValue( long returnValue ) { this.returnValue = returnValue; }
 
     // java.lang.Object
     public String toString() 
@@ -33,30 +37,32 @@ public class replicateResponse extends org.xtreemfs.babudb.interfaces.utils.Resp
 
 
     // java.io.Serializable
-    public static final long serialVersionUID = 1018;    
+    public static final long serialVersionUID = 1015;    
 
     // yidl.runtime.Object
-    public int getTag() { return 1018; }
-    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::replicateResponse"; }
+    public int getTag() { return 1015; }
+    public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::localTimeResponse"; }
     
     public int getXDRSize()
     {
         int my_size = 0;
-
+        my_size += Long.SIZE / 8; // returnValue
         return my_size;
     }    
     
     public void marshal( Marshaller marshaller )
     {
-
+        marshaller.writeUint64( "returnValue", returnValue );
     }
     
     public void unmarshal( Unmarshaller unmarshaller ) 
     {
-    
+        returnValue = unmarshaller.readUint64( "returnValue" );    
     }
         
-        
+    
+
+    private long returnValue;    
 
 }
 

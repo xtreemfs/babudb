@@ -57,6 +57,7 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
             InetSocketAddress master, LifeCycleListener listener) {
         
         super("Slave", oldDispatcher);
+        this.timeDriftDetector.stop();
         
         oldDispatcher.suspend();
         DispatcherState state = oldDispatcher.getState();

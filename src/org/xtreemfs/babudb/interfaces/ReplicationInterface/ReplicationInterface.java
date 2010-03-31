@@ -38,9 +38,10 @@ public class ReplicationInterface
             case 1012: return new loadRequest();
             case 1013: return new chunkRequest();
             case 1014: return new fleaseRequest();
-            case 1015: return new replicaRequest();
-            case 1016: return new heartbeatRequest();
-            case 1017: return new replicateRequest();
+            case 1015: return new localTimeRequest();
+            case 1016: return new replicaRequest();
+            case 1017: return new heartbeatRequest();
+            case 1018: return new replicateRequest();
 
             default: throw new Exception( "unknown request tag " + Integer.toString( header.getProcedure() ) );
         }
@@ -50,7 +51,7 @@ public class ReplicationInterface
     {
         switch( header.getXID() )
         {
-            case 1011: return new stateResponse();            case 1012: return new loadResponse();            case 1013: return new chunkResponse();            case 1014: return new fleaseResponse();            case 1015: return new replicaResponse();            case 1016: return new heartbeatResponse();            case 1017: return new replicateResponse();
+            case 1011: return new stateResponse();            case 1012: return new loadResponse();            case 1013: return new chunkResponse();            case 1014: return new fleaseResponse();            case 1015: return new localTimeResponse();            case 1016: return new replicaResponse();            case 1017: return new heartbeatResponse();            case 1018: return new replicateResponse();
             default: throw new Exception( "unknown response XID " + Integer.toString( header.getXID() ) );
         }
     }    
