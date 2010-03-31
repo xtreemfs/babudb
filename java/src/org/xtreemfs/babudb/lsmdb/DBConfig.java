@@ -22,7 +22,7 @@ import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
-import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging;
 
 /**
  * <p>

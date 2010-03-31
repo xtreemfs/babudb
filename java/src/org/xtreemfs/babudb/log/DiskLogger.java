@@ -26,9 +26,9 @@ import java.util.zip.CRC32;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.ReplicationManagerImpl;
 import org.xtreemfs.babudb.replication.ReplicateResponse;
-import org.xtreemfs.include.common.buffer.BufferPool;
-import org.xtreemfs.include.common.buffer.ReusableBuffer;
-import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.foundation.buffer.BufferPool;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.logging.Logging;
 
 /**
  * Writes entries to the on disc operations log and syncs after blocks of MAX_ENTRIES_PER_BLOCK.

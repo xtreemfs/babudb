@@ -1,6 +1,6 @@
 package org.xtreemfs.babudb.index.writer;
 
-import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
 public interface BlockWriter {
 

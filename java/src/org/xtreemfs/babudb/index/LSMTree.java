@@ -20,7 +20,7 @@ import org.xtreemfs.babudb.index.overlay.MultiOverlayBufferTree;
 import org.xtreemfs.babudb.index.reader.DiskIndex;
 import org.xtreemfs.babudb.index.writer.DiskIndexWriter;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
-import org.xtreemfs.include.common.util.OutputUtils;
+import org.xtreemfs.foundation.util.OutputUtils;
 
 public class LSMTree {
     

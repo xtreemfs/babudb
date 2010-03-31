@@ -16,9 +16,9 @@ import org.xtreemfs.babudb.interfaces.Chunk;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.chunkRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.chunkResponse;
 import org.xtreemfs.babudb.replication.Request;
-import org.xtreemfs.include.common.buffer.BufferPool;
-import org.xtreemfs.include.common.buffer.ReusableBuffer;
-import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.foundation.buffer.BufferPool;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.logging.Logging;
 
 /**
  * {@link Operation} to request a {@link Chunk} from the master.

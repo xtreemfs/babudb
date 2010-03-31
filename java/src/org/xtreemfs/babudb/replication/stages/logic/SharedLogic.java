@@ -32,9 +32,9 @@ import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
-import org.xtreemfs.include.common.logging.Logging;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCNIOSocketClient;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
+import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.oncrpc.client.RPCNIOSocketClient;
+import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
 
 /**
  * Static functions used in more than one {@link Logic}.
@@ -161,11 +161,11 @@ public final class SharedLogic {
         
         if (babuDBS.size() > 0) {
             Map<InetSocketAddress, LSN> states = getStates(
-                    new LinkedList<InetSocketAddress>(babuDBS), master.client, local);
+                    new LinkedList<InetSocketAddress>(babuDBS), master.getClient(), local);
             
             for (Entry<InetSocketAddress, LSN> e : states.entrySet()) {
                 if (e.getValue().compareTo(progressAtLeast) >= 0)
-                    return new MasterClient(master.client, e.getKey(), local);
+                    return new MasterClient(master.getClient(), e.getKey(), local);
             }
         }
         

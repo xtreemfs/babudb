@@ -5,6 +5,7 @@
 
 package org.xtreemfs.babudb;
 
+import java.io.File;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
@@ -17,15 +18,14 @@ import org.junit.Test;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.Database;
-import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.util.FSUtils;
 
 /**
  * 
  * @author bjko
  */
 public class CopyDatabaseTest extends TestCase {
-    
-    public final static boolean WIN = System.getProperty("os.name").toLowerCase().contains("win");
     
     public static final String baseDir = "/tmp/lsmdb-test/";
     
@@ -43,13 +43,7 @@ public class CopyDatabaseTest extends TestCase {
     
     @Before
     public void setUp() throws Exception {
-        Process p;
-        if (WIN) {
-            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + baseDir + "\"");
-        } else {
-            p = Runtime.getRuntime().exec("rm -rf " + baseDir);
-        }
-        assertEquals(0, p.waitFor());
+        FSUtils.delTree(new File(baseDir));
     }
     
     @After

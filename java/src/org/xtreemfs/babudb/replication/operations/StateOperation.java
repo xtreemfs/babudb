@@ -13,7 +13,7 @@ import org.xtreemfs.babudb.interfaces.ReplicationInterface.stateResponse;
 import org.xtreemfs.babudb.replication.Request;
 import org.xtreemfs.babudb.replication.RequestDispatcher;
 import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherState;
-import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging;
 
 /**
  * {@link Operation} to request the latest {@link org.xtreemfs.babudb.lsmdb.LSN} 

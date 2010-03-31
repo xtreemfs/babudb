@@ -22,10 +22,10 @@ import org.xtreemfs.babudb.replication.SlavesStates.UnknownParticipantException;
 import org.xtreemfs.babudb.replication.operations.HeartbeatOperation;
 import org.xtreemfs.babudb.replication.operations.Operation;
 import org.xtreemfs.babudb.replication.stages.StageRequest;
-import org.xtreemfs.include.common.buffer.ReusableBuffer;
-import org.xtreemfs.include.common.logging.Logging;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCResponseAvailableListener;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
+import org.xtreemfs.foundation.oncrpc.client.RPCResponseAvailableListener;
 
 /**
  * Dispatches incoming master-requests.
@@ -146,7 +146,7 @@ public class MasterRequestDispatcher extends RequestDispatcher {
     
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.RequestDispatcher#replicate(org.xtreemfs.babudb.log.LogEntry, org.xtreemfs.include.common.buffer.ReusableBuffer)
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#replicate(org.xtreemfs.babudb.log.LogEntry, org.xtreemfs.foundation.buffer.ReusableBuffer)
      */
     @SuppressWarnings("unchecked")
     @Override

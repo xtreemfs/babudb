@@ -9,8 +9,8 @@ package org.xtreemfs.babudb.replication.stages;
 
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.include.common.buffer.BufferPool;
-import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.buffer.BufferPool;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
 /**
  * Wrapper for stage requests.

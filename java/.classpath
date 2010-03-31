@@ -8,5 +8,6 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry kind="lib" path="C:/Users/flangner/workspace/babu/lib/Flease.jar" sourcepath="C:/Users/flangner/workspace/Flease"/>
 	<classpathentry kind="lib" path="C:/Users/flangner/workspace/xtreemfs/src/servers/lib/yidl.jar"/>
+	<classpathentry kind="lib" path="lib/Foundation.jar" sourcepath="C:/Users/flangner/workspace/xtreemfs/src/foundation/src"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

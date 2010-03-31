@@ -31,9 +31,9 @@ import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
-import org.xtreemfs.include.common.buffer.ReusableBuffer;
-import org.xtreemfs.include.common.logging.Logging;
-import org.xtreemfs.include.common.util.FSUtils;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.util.FSUtils;
 
 public class DatabaseManagerImpl implements DatabaseManager {
     

@@ -20,8 +20,8 @@ import java.util.Set;
 
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.replication.ReplicationControlLayer;
+import org.xtreemfs.foundation.SSLOptions;
 import org.xtreemfs.foundation.flease.FleaseConfig;
-import org.xtreemfs.include.foundation.SSLOptions;
 
 /**
  * Reading configurations from the replication-config-file.

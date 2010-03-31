@@ -8,9 +8,10 @@
 package org.xtreemfs.babudb.replication.operations;
 
 import java.util.concurrent.atomic.AtomicInteger;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCResponseAvailableListener;
-import org.xtreemfs.include.foundation.oncrpc.server.ONCRPCRequest;
+
+import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
+import org.xtreemfs.foundation.oncrpc.client.RPCResponseAvailableListener;
+import org.xtreemfs.foundation.oncrpc.server.ONCRPCRequest;
 import org.xtreemfs.babudb.replication.Request;
 
 /**

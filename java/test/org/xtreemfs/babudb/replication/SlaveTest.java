@@ -28,6 +28,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBFactory;
+import org.xtreemfs.babudb.clients.ReplicationInterfaceExceptionParser;
 import org.xtreemfs.babudb.clients.SlaveClient;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.interfaces.LSNRange;
@@ -40,16 +41,18 @@ import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.include.common.buffer.ReusableBuffer;
-import org.xtreemfs.include.common.logging.Logging;
-import org.xtreemfs.include.common.logging.Logging.Category;
-import org.xtreemfs.include.foundation.LifeCycleListener;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCNIOSocketClient;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
-import org.xtreemfs.include.foundation.oncrpc.server.ONCRPCRequest;
-import org.xtreemfs.include.foundation.oncrpc.server.RPCNIOSocketServer;
-import org.xtreemfs.include.foundation.oncrpc.server.RPCServerRequestListener;
-import org.xtreemfs.include.foundation.oncrpc.utils.XDRUnmarshaller;
+import org.xtreemfs.foundation.LifeCycleListener;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging.Category;
+import org.xtreemfs.foundation.oncrpc.client.RPCNIOSocketClient;
+import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
+import org.xtreemfs.foundation.oncrpc.client.RemoteExceptionParser;
+import org.xtreemfs.foundation.oncrpc.server.NullAuthFlavorProvider;
+import org.xtreemfs.foundation.oncrpc.server.ONCRPCRequest;
+import org.xtreemfs.foundation.oncrpc.server.RPCNIOSocketServer;
+import org.xtreemfs.foundation.oncrpc.server.RPCServerRequestListener;
+import org.xtreemfs.foundation.oncrpc.utils.XDRUnmarshaller;
 
 import static org.xtreemfs.babudb.replication.TestData.*;
 
@@ -107,7 +110,8 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
         try {
             assertTrue (conf.getSSLOptions() == null);
            
-            rpcClient = new RPCNIOSocketClient(null,5000,10000);
+            rpcClient = new RPCNIOSocketClient(null,5000,10000, 
+                    new RemoteExceptionParser[]{new ReplicationInterfaceExceptionParser()});
             rpcClient.setLifeCycleListener(this);  
             client = new SlaveClient(rpcClient,conf.getInetSocketAddress(),null);
             
@@ -115,7 +119,8 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
                 new LinkedList<InetSocketAddress>(conf.getParticipants());
             int port = openAddresses.get(0).getPort();
             InetAddress address = openAddresses.get(0).getAddress();
-            rpcServer = new RPCNIOSocketServer(port,address,this,null);
+            rpcServer = new RPCNIOSocketServer(port,address,this,null,
+                            new NullAuthFlavorProvider());
             rpcServer.setLifeCycleListener(this);
             rpcServer.start();
             rpcServer.waitForStartup();
@@ -394,7 +399,7 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
             assertEquals(1, lsn.getViewId());
             assertEquals(2L,lsn.getSequenceNo());
         } else {
-            rq.sendInternalServerError(new Throwable("DUMMY-REPLICATION"), new errnoException());
+            rq.sendException(new errnoException());
             fail("ERROR: received "+opNum);
         }
         mailbox.add(opNum);

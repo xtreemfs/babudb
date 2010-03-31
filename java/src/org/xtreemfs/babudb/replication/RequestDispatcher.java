@@ -20,13 +20,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.xtreemfs.babudb.BabuDB;
+import org.xtreemfs.babudb.clients.ReplicationInterfaceExceptionParser;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.ProtocolException;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.ReplicationInterface;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.stateRequest;
-import org.xtreemfs.babudb.interfaces.utils.ONCRPCRequestHeader;
-import org.xtreemfs.babudb.interfaces.utils.ONCRPCResponseHeader;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.operations.ChunkOperation;
@@ -37,13 +36,18 @@ import org.xtreemfs.babudb.replication.operations.Operation;
 import org.xtreemfs.babudb.replication.operations.ReplicaOperation;
 import org.xtreemfs.babudb.replication.operations.StateOperation;
 import org.xtreemfs.babudb.replication.stages.StageRequest;
-import org.xtreemfs.include.common.buffer.ReusableBuffer;
-import org.xtreemfs.include.common.logging.Logging;
-import org.xtreemfs.include.foundation.ErrNo;
-import org.xtreemfs.include.foundation.oncrpc.server.ONCRPCRequest;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCNIOSocketClient;
-import org.xtreemfs.include.foundation.oncrpc.server.RPCNIOSocketServer;
-import org.xtreemfs.include.foundation.oncrpc.server.RPCServerRequestListener;
+import org.xtreemfs.foundation.ErrNo;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.oncrpc.client.RPCNIOSocketClient;
+import org.xtreemfs.foundation.oncrpc.client.RemoteExceptionParser;
+import org.xtreemfs.foundation.oncrpc.server.NullAuthFlavorProvider;
+import org.xtreemfs.foundation.oncrpc.server.ONCRPCRequest;
+import org.xtreemfs.foundation.oncrpc.server.RPCNIOSocketServer;
+import org.xtreemfs.foundation.oncrpc.server.RPCServerRequestListener;
+import org.xtreemfs.foundation.util.OutputUtils;
+import org.xtreemfs.interfaces.utils.ONCRPCRequestHeader;
+import org.xtreemfs.interfaces.utils.ONCRPCResponseHeader;
 
 import yidl.runtime.Object;
 
@@ -130,12 +134,14 @@ public abstract class RequestDispatcher implements RPCServerRequestListener {
         // -------------------------------
         rpcServer = new RPCNIOSocketServer(replCtl.configuration.getPort(), 
                 replCtl.configuration.getInetSocketAddress().getAddress(), this, 
-                replCtl.configuration.getSSLOptions());
+                replCtl.configuration.getSSLOptions(), 
+                new NullAuthFlavorProvider());
         rpcServer.setLifeCycleListener(replCtl);
         
         rpcClient = new RPCNIOSocketClient(replCtl.configuration.getSSLOptions(), 
-                ReplicationConfig.REQUEST_TIMEOUT, 
-                ReplicationConfig.CONNECTION_TIMEOUT);
+                ReplicationConfig.REQUEST_TIMEOUT, -
+                ReplicationConfig.CONNECTION_TIMEOUT, 
+                new RemoteExceptionParser[]{new ReplicationInterfaceExceptionParser()});
         rpcClient.setLifeCycleListener(replCtl);
         
         // -------------------------------
@@ -305,7 +311,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener {
 
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.include.foundation.oncrpc.server.
+     * @see org.xtreemfs.foundation.oncrpc.server.
      * RPCServerRequestListener#receiveRecord(org.xtreemfs.include.
      * foundation.oncrpc.server.ONCRPCRequest)
      */
@@ -343,17 +349,18 @@ public abstract class RequestDispatcher implements RPCServerRequestListener {
             Object message = op.parseRPCMessage(rpcrq);
             if (message!=null) throw new Exception(message.getTypeName());
         } catch (Throwable ex) {
-            rq.sendGarbageArgs(ex.toString(),new ProtocolException(
-                    ONCRPCResponseHeader.ACCEPT_STAT_SYSTEM_ERR, 
-                    ErrNo.EINVAL,"message could not be retrieved"));
+            rq.sendGarbageArgs();
             return;
         }
         
         try {
             op.startRequest(rpcrq);
         } catch (Throwable ex) {
-            rq.sendInternalServerError(ex,new errnoException(
-                    ErrNo.ENOSYS,ex.getMessage(),null));
+            Logging.logError(Logging.LEVEL_ERROR, this, ex);
+            
+            rq.sendException(new errnoException(ErrNo.EIO, 
+                    "internal server error: "+ex.toString(), 
+                    OutputUtils.stackTraceToString(ex)));
             return;
         }
     }

@@ -19,7 +19,8 @@ import junit.textui.TestRunner;
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.snapshots.DefaultSnapshotConfig;
-import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.util.FSUtils;
 
 public class LSMTreeTest extends TestCase {
     
@@ -36,17 +37,17 @@ public class LSMTreeTest extends TestCase {
     
     public void setUp() {
         Logging.start(Logging.LEVEL_ERROR);
-        TestUtils.deleteDirectory(new File(SNAP_FILE));
-        TestUtils.deleteDirectory(new File(SNAP_FILE2));
-        TestUtils.deleteDirectory(new File(SNAP_FILE3));
-        TestUtils.deleteDirectory(new File(SNAP_FILE4));
+        FSUtils.delTree(new File(SNAP_FILE));
+        FSUtils.delTree(new File(SNAP_FILE2));
+        FSUtils.delTree(new File(SNAP_FILE3));
+        FSUtils.delTree(new File(SNAP_FILE4));
     }
     
     public void tearDown() throws Exception {
-        TestUtils.deleteDirectory(new File(SNAP_FILE));
-        TestUtils.deleteDirectory(new File(SNAP_FILE2));
-        TestUtils.deleteDirectory(new File(SNAP_FILE3));
-        TestUtils.deleteDirectory(new File(SNAP_FILE4));
+        FSUtils.delTree(new File(SNAP_FILE));
+        FSUtils.delTree(new File(SNAP_FILE2));
+        FSUtils.delTree(new File(SNAP_FILE3));
+        FSUtils.delTree(new File(SNAP_FILE4));
     }
     
     public void testSnapshots() throws Exception {

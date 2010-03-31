@@ -28,8 +28,8 @@ import org.xtreemfs.babudb.replication.stages.logic.Logic;
 import org.xtreemfs.babudb.replication.stages.logic.BasicLogic;
 import org.xtreemfs.babudb.replication.stages.logic.LogicID;
 import org.xtreemfs.babudb.replication.stages.logic.RequestLogic;
-import org.xtreemfs.include.common.logging.Logging;
-import org.xtreemfs.include.foundation.LifeCycleThread;
+import org.xtreemfs.foundation.LifeCycleThread;
+import org.xtreemfs.foundation.logging.Logging;
 
 import static org.xtreemfs.babudb.replication.operations.ErrNo.*;
 import static org.xtreemfs.babudb.replication.stages.logic.LogicID.*;

@@ -20,7 +20,7 @@ import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.Request;
 import org.xtreemfs.babudb.replication.RequestDispatcher;
-import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging;
 
 /**
  * {@link Operation} to request a {@link DBFileMetaDataSet} from the master.

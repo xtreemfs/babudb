@@ -12,8 +12,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.xtreemfs.babudb.index.reader.DefaultBlockReader;
-import org.xtreemfs.include.common.buffer.BufferPool;
-import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.buffer.BufferPool;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
 public class DefaultBlockWriter implements BlockWriter {
     

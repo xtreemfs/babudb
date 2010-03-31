@@ -14,10 +14,10 @@ import java.util.TimerTask;
 
 import org.xtreemfs.babudb.clients.StateClient;
 import org.xtreemfs.babudb.config.ReplicationConfig;
-import org.xtreemfs.include.common.TimeSync;
-import org.xtreemfs.include.common.logging.Logging;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCNIOSocketClient;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
+import org.xtreemfs.foundation.TimeSync;
+import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.oncrpc.client.RPCNIOSocketClient;
+import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
 
 /**
  * Component that checks regularly the time-drift of all available replication

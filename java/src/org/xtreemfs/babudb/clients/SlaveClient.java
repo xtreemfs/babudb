@@ -13,11 +13,11 @@ import org.xtreemfs.babudb.interfaces.LSN;
 import org.xtreemfs.babudb.interfaces.LogEntry;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateResponse;
-import org.xtreemfs.include.common.buffer.ReusableBuffer;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCNIOSocketClient;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCResponseDecoder;
-import org.xtreemfs.include.foundation.oncrpc.utils.XDRUnmarshaller;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.oncrpc.client.RPCNIOSocketClient;
+import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
+import org.xtreemfs.foundation.oncrpc.client.RPCResponseDecoder;
+import org.xtreemfs.foundation.oncrpc.utils.XDRUnmarshaller;
 
 /**
  * Client to communicate with the slave. Supports the replication.
@@ -49,7 +49,7 @@ public class SlaveClient extends StateClient {
         
             /*
              * (non-Javadoc)
-             * @see org.xtreemfs.include.foundation.oncrpc.client.RPCResponseDecoder#getResult(org.xtreemfs.include.common.buffer.ReusableBuffer)
+             * @see org.xtreemfs.foundation.oncrpc.client.RPCResponseDecoder#getResult(org.xtreemfs.foundation.buffer.ReusableBuffer)
              */
             @Override
             public Object getResult(ReusableBuffer data) {

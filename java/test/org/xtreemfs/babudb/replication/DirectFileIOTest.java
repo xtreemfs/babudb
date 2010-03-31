@@ -15,10 +15,12 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.xtreemfs.babudb.config.ReplicationConfig;
+import org.xtreemfs.foundation.util.FSUtils;
 
 import static org.xtreemfs.babudb.replication.DirectFileIO.*;
 
@@ -30,8 +32,6 @@ import static org.xtreemfs.babudb.replication.DirectFileIO.*;
 
 public class DirectFileIOTest {
 
-    public final static boolean WIN = System.getProperty("os.name").toLowerCase().contains("win");
-    
     private static ReplicationConfig conf;
     
     // define the test data
@@ -51,25 +51,17 @@ public class DirectFileIOTest {
     }
     
     @Before
-    public void setUpBefore() throws Exception {       
-        Process p;
-        if (WIN) {
-            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getBaseDir() + "\"");
-        } else 
-            p = Runtime.getRuntime().exec("rm -rf " + conf.getBaseDir());
-        p.waitFor();
-        
-        if (WIN) {
-            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getDbLogDir() + "\"");
-        } else 
-            p = Runtime.getRuntime().exec("rm -rf " + conf.getDbLogDir());
-        p.waitFor();
-        
-        if (WIN) {
-            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getBackupDir() + "\"");
-        } else 
-            p = Runtime.getRuntime().exec("rm -rf " + conf.getBackupDir());
-        p.waitFor();
+    public void setUpBefore() throws Exception {   
+        FSUtils.delTree(new File(conf.getBaseDir()));
+        FSUtils.delTree(new File(conf.getDbLogDir()));
+        FSUtils.delTree(new File(conf.getBackupDir()));
+    }
+    
+    @After
+    public void tearDown() throws Exception {
+        FSUtils.delTree(new File(conf.getBaseDir()));
+        FSUtils.delTree(new File(conf.getDbLogDir()));
+        FSUtils.delTree(new File(conf.getBackupDir()));
     }
 
     @Test
@@ -125,12 +117,14 @@ public class DirectFileIOTest {
     }
     
     @Test
-    public void testRemoveBackupFiles() throws IOException {
+    public void testRemoveBackupFiles() throws IOException, InterruptedException {
         setupTestdata();
         backupFiles(conf);
         removeBackupFiles(conf);
         
         File backup = new File(conf.getBackupDir());
+        
+        if (backup.exists()) Thread.sleep(1000);
         assertFalse(backup.exists());
     }
 
@@ -184,12 +178,15 @@ public class DirectFileIOTest {
         // insert base test data
         File base = new File(conf.getBaseDir());
         assertTrue(base.mkdirs());
+        base = null;
         
         File bf = new File(conf.getBaseDir() + baseFile);
         assertTrue(bf.createNewFile());
+        bf = null;
         
         File bd = new File(conf.getBaseDir() + baseDir);
         assertTrue(bd.mkdir());
+        bd = null;
         
         File bdf = new File(conf.getBaseDir() + baseDir + File.separator + baseDirFile);
         assertTrue(bdf.createNewFile());
@@ -197,16 +194,21 @@ public class DirectFileIOTest {
         FileWriter w = new FileWriter(bdf);
         w.write(baseTestString);
         w.close();
+        w = null;
+        bdf = null;
         
         // insert log test data
         File log = new File(conf.getDbLogDir());
         log.mkdirs();
+        log = null;
         
         File lf = new File(conf.getDbLogDir() + logFile);
         assertTrue(lf.createNewFile());
+        lf = null;
         
         File ld = new File(conf.getDbLogDir() + logDir);
         assertTrue(ld.mkdir());
+        ld = null;
         
         File ldf = new File(conf.getDbLogDir() + logDir + File.separator + logDirFile);
         assertTrue(ldf.createNewFile());
@@ -214,5 +216,7 @@ public class DirectFileIOTest {
         w = new FileWriter(ldf);
         w.write(logTestString);
         w.close();
+        w = null;
+        ldf = null;
     }
 }

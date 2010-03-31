@@ -12,10 +12,10 @@ import java.net.InetSocketAddress;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.fleaseRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.fleaseResponse;
 import org.xtreemfs.babudb.replication.Request;
+import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.flease.Flease;
 import org.xtreemfs.foundation.flease.FleaseStage;
 import org.xtreemfs.foundation.flease.comm.FleaseMessage;
-import org.xtreemfs.include.common.buffer.BufferPool;
 
 /**
  * {@link Operation} to process an incoming {@link Flease} message.

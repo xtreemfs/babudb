@@ -19,7 +19,7 @@ import java.util.Map.Entry;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 
-import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging;
 
 /**
  * A class loader that loads classes from a BabuDB JAR.

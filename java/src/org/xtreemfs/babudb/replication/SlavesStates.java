@@ -20,9 +20,9 @@ import org.xtreemfs.babudb.clients.SlaveClient;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.LatestLSNUpdateListener;
 import org.xtreemfs.babudb.replication.stages.HeartbeatThread;
-import org.xtreemfs.include.common.TimeSync;
-import org.xtreemfs.include.common.logging.Logging;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCNIOSocketClient;
+import org.xtreemfs.foundation.TimeSync;
+import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.oncrpc.client.RPCNIOSocketClient;
 
 /**
  * <p>Holds registered slaves by their {@link InetAddress} and their {@link State}.</p>
