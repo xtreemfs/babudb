@@ -15,8 +15,10 @@ import org.junit.Test;
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
+import org.xtreemfs.babudb.StaticInitialization;
 import org.xtreemfs.babudb.config.ReplicationConfig;
-import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
+import org.xtreemfs.babudb.lsmdb.DatabaseManager;
+import org.xtreemfs.babudb.snapshots.SnapshotManager;
 import org.xtreemfs.include.common.logging.Logging;
 
 import static org.xtreemfs.babudb.BabuDBException.ErrorCode.NO_ACCESS;
@@ -32,7 +34,7 @@ public class SecurityTest {
     
     @Before
     public void setUp() throws Exception {   
-        Logging.start(Logging.LEVEL_DEBUG);
+        Logging.start(Logging.LEVEL_ERROR);
         
         try {
             conf = new ReplicationConfig("config/replication.properties");
@@ -42,23 +44,32 @@ public class SecurityTest {
                 p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getBaseDir() + "\"");
             } else 
                 p = Runtime.getRuntime().exec("rm -rf " + conf.getBaseDir());
-            assertEquals(0, p.waitFor());
+            p.waitFor();
             
             if (WIN) {
                 p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getDbLogDir() + "\"");
             } else 
                 p = Runtime.getRuntime().exec("rm -rf " + conf.getDbLogDir());
-            assertEquals(0, p.waitFor());
+            p.waitFor();
             
             if (WIN) {
                 p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getBackupDir() + "\"");
             } else 
                 p = Runtime.getRuntime().exec("rm -rf " + conf.getBackupDir());
-            assertEquals(0, p.waitFor());
+            p.waitFor();
         
             // start the slave
-            slave = BabuDBFactory.createReplicatedBabuDB(conf,null);
-            ((DatabaseManagerImpl) slave.getDatabaseManager()).proceedCreate(DB_NAME, 2, null);
+            slave = BabuDBFactory.createReplicatedBabuDB(conf,new StaticInitialization() {
+                
+                @Override
+                public void initialize(DatabaseManager dbMan, SnapshotManager sMan, ReplicationManager replMan) {
+                    try {
+                        dbMan.createDatabase(DB_NAME, 2);
+                    } catch (BabuDBException e) {
+                        System.out.println("ERROR: "+e.getMessage());
+                    }
+                }
+            });
         } catch (Exception e){
         	System.out.println("ERROR: "+e.getMessage());
         }

@@ -57,19 +57,19 @@ public class DirectFileIOTest {
             p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getBaseDir() + "\"");
         } else 
             p = Runtime.getRuntime().exec("rm -rf " + conf.getBaseDir());
-        assertEquals(0, p.waitFor());
+        p.waitFor();
         
         if (WIN) {
             p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getDbLogDir() + "\"");
         } else 
             p = Runtime.getRuntime().exec("rm -rf " + conf.getDbLogDir());
-        assertEquals(0, p.waitFor());
+        p.waitFor();
         
         if (WIN) {
             p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getBackupDir() + "\"");
         } else 
             p = Runtime.getRuntime().exec("rm -rf " + conf.getBackupDir());
-        assertEquals(0, p.waitFor());
+        p.waitFor();
     }
 
     @Test

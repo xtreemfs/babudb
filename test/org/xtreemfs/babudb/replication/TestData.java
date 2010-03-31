@@ -7,8 +7,10 @@
  */
 package org.xtreemfs.babudb.replication;
 
+import org.xtreemfs.babudb.interfaces.ReplicationInterface.fleaseRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.heartbeatRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.loadRequest;
+import org.xtreemfs.babudb.interfaces.ReplicationInterface.localTimeRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicaRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateRequest;
 
@@ -27,4 +29,6 @@ public final class TestData {
     public static final int heartbeatOperation = new heartbeatRequest().getTag();
     public static final int replicaOperation = new replicaRequest().getTag();
     public static final int loadOperation = new loadRequest().getTag();
+    public static final int fleaseOperation = new fleaseRequest().getTag();
+    public static final int localTimeOperation = new localTimeRequest().getTag();
 }
