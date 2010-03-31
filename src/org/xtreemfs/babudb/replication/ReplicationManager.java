@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.include.foundation.LifeCycleListener;
+import org.xtreemfs.foundation.LifeCycleListener;
 
 /**
  * <p>

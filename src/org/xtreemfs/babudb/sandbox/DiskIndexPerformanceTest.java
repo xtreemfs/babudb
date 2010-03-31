@@ -24,7 +24,7 @@ import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.index.reader.DiskIndex;
 import org.xtreemfs.babudb.index.writer.DiskIndexWriter;
 import org.xtreemfs.babudb.sandbox.CLIParser.CliOption;
-import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging;
 
 public class DiskIndexPerformanceTest {
     private static final String DEFAULT_DATAGEN = "random";

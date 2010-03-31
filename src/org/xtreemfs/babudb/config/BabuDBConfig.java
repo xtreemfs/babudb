@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.util.Properties;
 
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
-import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging;
 
 /**
  * Reading configurations from the babuDB-config-file.

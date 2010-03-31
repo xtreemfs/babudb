@@ -19,7 +19,7 @@ import org.xtreemfs.babudb.StaticInitialization;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.lsmdb.DatabaseManager;
 import org.xtreemfs.babudb.snapshots.SnapshotManager;
-import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging;
 
 import static org.xtreemfs.babudb.BabuDBException.ErrorCode.NO_ACCESS;
 

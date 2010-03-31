@@ -13,7 +13,7 @@ import java.util.Random;
 
 import org.junit.Test;
 import org.xtreemfs.babudb.sandbox.ContinuesRandomGenerator;
-import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging;
 
 /**
  * 

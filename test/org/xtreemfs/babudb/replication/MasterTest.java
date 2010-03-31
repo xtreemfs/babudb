@@ -29,14 +29,13 @@ import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.BabuDBRequestListener;
 import org.xtreemfs.babudb.BabuDBRequestResult;
 import org.xtreemfs.babudb.clients.MasterClient;
+import org.xtreemfs.babudb.clients.ReplicationInterfaceExceptionParser;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.interfaces.LogEntries;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateResponse;
-import org.xtreemfs.babudb.interfaces.utils.ONCRPCError;
-import org.xtreemfs.babudb.interfaces.utils.ONCRPCException;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
@@ -44,15 +43,19 @@ import org.xtreemfs.babudb.lsmdb.Database;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
-import org.xtreemfs.include.common.logging.Logging;
-import org.xtreemfs.include.common.logging.Logging.Category;
-import org.xtreemfs.include.foundation.LifeCycleListener;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCNIOSocketClient;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
-import org.xtreemfs.include.foundation.oncrpc.server.ONCRPCRequest;
-import org.xtreemfs.include.foundation.oncrpc.server.RPCNIOSocketServer;
-import org.xtreemfs.include.foundation.oncrpc.server.RPCServerRequestListener;
-import org.xtreemfs.include.foundation.oncrpc.utils.XDRUnmarshaller;
+import org.xtreemfs.foundation.LifeCycleListener;
+import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging.Category;
+import org.xtreemfs.foundation.oncrpc.client.RPCNIOSocketClient;
+import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
+import org.xtreemfs.foundation.oncrpc.client.RemoteExceptionParser;
+import org.xtreemfs.foundation.oncrpc.server.NullAuthFlavorProvider;
+import org.xtreemfs.foundation.oncrpc.server.ONCRPCRequest;
+import org.xtreemfs.foundation.oncrpc.server.RPCNIOSocketServer;
+import org.xtreemfs.foundation.oncrpc.server.RPCServerRequestListener;
+import org.xtreemfs.foundation.oncrpc.utils.XDRUnmarshaller;
+import org.xtreemfs.interfaces.utils.ONCRPCError;
+import org.xtreemfs.interfaces.utils.ONCRPCException;
 
 public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         
@@ -91,13 +94,15 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         try {
             db = BabuDBFactory.createReplicatedBabuDB(conf,null);
             assertTrue (conf.getSSLOptions() == null);
-            rpcClient = new RPCNIOSocketClient(null,5000,10000);
+            rpcClient = new RPCNIOSocketClient(null,5000,10000, 
+                    new RemoteExceptionParser[]{new ReplicationInterfaceExceptionParser()});
             rpcClient.setLifeCycleListener(this);
             client = new MasterClient(rpcClient,conf.getInetSocketAddress(),null);
             
             int port = 35666;
             InetAddress address = InetAddress.getByAddress(new byte[]{127,0,0,1});
-            rpcServer = new RPCNIOSocketServer(port,address,this,null);
+            rpcServer = new RPCNIOSocketServer(port,address,this,null, 
+                new NullAuthFlavorProvider());
             rpcServer.setLifeCycleListener(this);
             
             rpcClient.start();
@@ -300,7 +305,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
                             break;
                             
                         default:
-                            rq.sendInternalServerError(new Throwable("TEST-DUMMY-RESPONSE"), new errnoException());
+                            rq.sendException(new errnoException());
                             fail("Unexpected response received!");
                             break;
                         }
@@ -315,7 +320,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
                     }
                     rq.sendResponse(new replicateResponse());
                 } else {
-                    rq.sendInternalServerError(new Throwable("TEST-DUMMY-RESPONSE"), new errnoException());
+                    rq.sendException(new errnoException());
                     fail("Unexpected response received!");
                 }
                 response.notify();

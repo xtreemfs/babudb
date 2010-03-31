@@ -10,8 +10,8 @@ package org.xtreemfs.babudb.replication.operations;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.localTimeRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.localTimeResponse;
 import org.xtreemfs.babudb.replication.Request;
-import org.xtreemfs.include.common.TimeSync;
-import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.foundation.TimeSync;
+import org.xtreemfs.foundation.logging.Logging;
 
 /**
  * {@link Operation} to answer a local-time request.

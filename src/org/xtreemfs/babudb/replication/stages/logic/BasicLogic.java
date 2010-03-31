@@ -17,7 +17,7 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.operations.Operation;
 import org.xtreemfs.babudb.replication.stages.ReplicationStage;
 import org.xtreemfs.babudb.replication.stages.StageRequest;
-import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging;
 
 import static org.xtreemfs.babudb.replication.stages.logic.LogicID.*;
 

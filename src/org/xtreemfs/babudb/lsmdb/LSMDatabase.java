@@ -22,8 +22,8 @@ import org.xtreemfs.babudb.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.interfaces.DBFileMetaData;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
-import org.xtreemfs.include.common.logging.Logging;
-import org.xtreemfs.include.common.util.FSUtils;
+import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.util.FSUtils;
 
 /**
  * A LSMDatabase contains up to MAX_INDICES LSMTrees.

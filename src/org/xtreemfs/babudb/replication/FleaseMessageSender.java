@@ -17,9 +17,9 @@ import java.util.Map;
 import org.xtreemfs.babudb.clients.StateClient;
 import org.xtreemfs.foundation.flease.FleaseMessageSenderInterface;
 import org.xtreemfs.foundation.flease.comm.FleaseMessage;
-import org.xtreemfs.include.common.logging.Logging;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCNIOSocketClient;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
+import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.oncrpc.client.RPCNIOSocketClient;
+import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
 
 /**
  * Interface for sending {@link FleaseMessage}s to a distinct receiver.

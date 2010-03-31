@@ -42,8 +42,8 @@ import org.xtreemfs.babudb.replication.stages.logic.LoadLogic;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManager;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
-import org.xtreemfs.include.common.logging.Logging;
-import org.xtreemfs.include.common.logging.Logging.Category;
+import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging.Category;
 
 /**
  * <p>
@@ -129,7 +129,7 @@ public class BabuDB {
         
         if (dbConfigFile.isConversionRequired()) {
             
-            Logging.logMessage(Logging.LEVEL_WARN, Category.db, this, "The " +
+            Logging.logMessage(Logging.LEVEL_WARN, Category.storage, this, "The " +
             		"database version is outdated. The database will be " +
             		"automatically converted to the latest version if " +
             		"possible. This may take some time, depending on " +

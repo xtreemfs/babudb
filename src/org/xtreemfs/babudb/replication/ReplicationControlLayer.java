@@ -36,17 +36,17 @@ import org.xtreemfs.babudb.replication.SlaveRequestDispatcher;
 import org.xtreemfs.babudb.replication.RequestDispatcher.DispatcherState;
 import org.xtreemfs.babudb.replication.TimeDriftDetector.TimeDriftListener;
 import org.xtreemfs.babudb.replication.stages.logic.SharedLogic;
+import org.xtreemfs.foundation.LifeCycleListener;
+import org.xtreemfs.foundation.LifeCycleThread;
+import org.xtreemfs.foundation.TimeSync;
+import org.xtreemfs.foundation.buffer.ASCIIString;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.flease.Flease;
 import org.xtreemfs.foundation.flease.FleaseStage;
 import org.xtreemfs.foundation.flease.FleaseStatusListener;
 import org.xtreemfs.foundation.flease.FleaseViewChangeListenerInterface;
 import org.xtreemfs.foundation.flease.proposer.FleaseException;
-import org.xtreemfs.include.common.TimeSync;
-import org.xtreemfs.include.common.buffer.ASCIIString;
-import org.xtreemfs.include.common.buffer.ReusableBuffer;
-import org.xtreemfs.include.common.logging.Logging;
-import org.xtreemfs.include.foundation.LifeCycleListener;
-import org.xtreemfs.include.foundation.LifeCycleThread;
+import org.xtreemfs.foundation.logging.Logging;
 
 /**
  * <p>
@@ -287,7 +287,7 @@ public class ReplicationControlLayer extends LifeCycleThread implements
     
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.foundation.flease.FleaseStatusListener#leaseFailed(org.xtreemfs.include.common.buffer.ASCIIString, org.xtreemfs.foundation.flease.proposer.FleaseException)
+     * @see org.xtreemfs.foundation.flease.FleaseStatusListener#leaseFailed(org.xtreemfs.foundation.buffer.ASCIIString, org.xtreemfs.foundation.flease.proposer.FleaseException)
      */
     @Override
     public void leaseFailed(ASCIIString cellId, FleaseException error) {
@@ -298,7 +298,7 @@ public class ReplicationControlLayer extends LifeCycleThread implements
 
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.foundation.flease.FleaseStatusListener#statusChanged(org.xtreemfs.include.common.buffer.ASCIIString, org.xtreemfs.foundation.flease.Flease)
+     * @see org.xtreemfs.foundation.flease.FleaseStatusListener#statusChanged(org.xtreemfs.foundation.buffer.ASCIIString, org.xtreemfs.foundation.flease.Flease)
      */
     @Override
     public void statusChanged(ASCIIString cellId, Flease lease) {
@@ -340,7 +340,7 @@ public class ReplicationControlLayer extends LifeCycleThread implements
     
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.include.foundation.LifeCycleListener#crashPerformed(java.lang.Throwable)
+     * @see org.xtreemfs.foundation.LifeCycleListener#crashPerformed(java.lang.Throwable)
      */
     @Override
     public void crashPerformed(Throwable exc) {
@@ -353,7 +353,7 @@ public class ReplicationControlLayer extends LifeCycleThread implements
 
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.include.foundation.LifeCycleListener#shutdownPerformed()
+     * @see org.xtreemfs.foundation.LifeCycleListener#shutdownPerformed()
      */
     @Override
     public void shutdownPerformed() {
@@ -362,7 +362,7 @@ public class ReplicationControlLayer extends LifeCycleThread implements
 
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.include.foundation.LifeCycleListener#startupPerformed()
+     * @see org.xtreemfs.foundation.LifeCycleListener#startupPerformed()
      */
     @Override
     public void startupPerformed() {

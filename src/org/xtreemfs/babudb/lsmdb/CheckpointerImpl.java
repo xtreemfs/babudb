@@ -25,8 +25,8 @@ import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
-import org.xtreemfs.include.common.logging.Logging;
-import org.xtreemfs.include.common.util.OutputUtils;
+import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.util.OutputUtils;
 
 /**
  * This thread regularly checks the size of the database operations log and

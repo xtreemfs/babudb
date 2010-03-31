@@ -22,10 +22,10 @@ import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.lsmdb.Database;
-import org.xtreemfs.include.common.logging.Logging;
-import org.xtreemfs.include.common.logging.Logging.Category;
-import org.xtreemfs.include.common.util.FSUtils;
-import org.xtreemfs.include.common.util.OutputUtils;
+import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging.Category;
+import org.xtreemfs.foundation.util.FSUtils;
+import org.xtreemfs.foundation.util.OutputUtils;
 
 public class AutoConverter {
     
@@ -42,7 +42,7 @@ public class AutoConverter {
                 lenBytes = ByteBuffer.wrap(new byte[4]);
                 
             } catch (IOException exc) {
-                Logging.logMessage(Logging.LEVEL_ERROR, Category.db, this,
+                Logging.logMessage(Logging.LEVEL_ERROR, Category.storage, this,
                     "an error occurred while trying to convert the database: "
                         + OutputUtils.stackTraceToString(exc));
             }
@@ -57,7 +57,7 @@ public class AutoConverter {
                 
             } catch (IOException exc) {
                 
-                Logging.logMessage(Logging.LEVEL_ERROR, Category.db, this,
+                Logging.logMessage(Logging.LEVEL_ERROR, Category.storage, this,
                     "an error occurred while trying to convert the database: "
                         + OutputUtils.stackTraceToString(exc));
                 
@@ -77,7 +77,7 @@ public class AutoConverter {
                     Logging
                             .logMessage(
                                 Logging.LEVEL_ERROR,
-                                Category.db,
+                                Category.storage,
                                 this,
                                 "an error occurred while trying to convert the database; database dump corrupted (only %d bytes read, available: %d)",
                                 tmp, in.available());
@@ -94,7 +94,7 @@ public class AutoConverter {
                     Logging
                             .logMessage(
                                 Logging.LEVEL_ERROR,
-                                Category.db,
+                                Category.storage,
                                 this,
                                 "an error occurred while trying to convert the database; expected key length: %d, actual key length: %d",
                                 len, num);
@@ -107,7 +107,7 @@ public class AutoConverter {
                     Logging
                             .logMessage(
                                 Logging.LEVEL_ERROR,
-                                Category.db,
+                                Category.storage,
                                 this,
                                 "an error occurred while trying to convert the database; database dump corrupted (only %d bytes read, available: %d)",
                                 tmp, in.available());
@@ -127,7 +127,7 @@ public class AutoConverter {
                     Logging
                             .logMessage(
                                 Logging.LEVEL_ERROR,
-                                Category.db,
+                                Category.storage,
                                 this,
                                 "an error occurred while trying to convert the database; expected value length: %d, actual value length: %d",
                                 len, num);
@@ -154,7 +154,7 @@ public class AutoConverter {
                 
             } catch (IOException exc) {
                 
-                Logging.logMessage(Logging.LEVEL_ERROR, Category.db, this,
+                Logging.logMessage(Logging.LEVEL_ERROR, Category.storage, this,
                     "an error occurred while trying to convert the database: "
                         + OutputUtils.stackTraceToString(exc));
                 
@@ -183,7 +183,7 @@ public class AutoConverter {
         
         else
             Logging
-                    .logMessage(Logging.LEVEL_INFO, Category.db, (Object) null,
+                    .logMessage(Logging.LEVEL_INFO, Category.storage, (Object) null,
                         "starting database conversion");
         
         final File dbDir = new File(cfg.getBaseDir());
@@ -303,7 +303,7 @@ public class AutoConverter {
         // delete the version-independent dump
         FSUtils.delTree(targetDir);
         
-        Logging.logMessage(Logging.LEVEL_INFO, Category.db, (Object) null, "conversion completed");
+        Logging.logMessage(Logging.LEVEL_INFO, Category.storage, (Object) null, "conversion completed");
     }
     
 }

@@ -8,6 +8,7 @@
 
 package org.xtreemfs.babudb.snapshots;
 
+import java.io.File;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
@@ -24,16 +25,14 @@ import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
 import org.xtreemfs.babudb.lsmdb.Database;
 import org.xtreemfs.babudb.lsmdb.DatabaseRO;
-import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.util.FSUtils;
 
 /**
  * 
  * @author bjko
  */
 public class SnapshotTest extends TestCase {
-    
-    public final static boolean WIN              = System.getProperty("os.name").toLowerCase()
-                                                         .contains("win");
     
     public static final String  baseDir          = "/tmp/lsmdb-test/";
     
@@ -46,18 +45,12 @@ public class SnapshotTest extends TestCase {
     private BabuDB              database;
     
     public SnapshotTest() {
-        Logging.start(Logging.LEVEL_DEBUG);
+        Logging.start(Logging.LEVEL_ERROR);
     }
     
     @Before
     public void setUp() throws Exception {
-        Process p;
-        if (WIN) {
-            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + baseDir + "\"");
-        } else {
-            p = Runtime.getRuntime().exec("rm -rf " + baseDir);
-        }
-        assertEquals(0, p.waitFor());
+        FSUtils.delTree(new File(baseDir));
     }
     
     @After

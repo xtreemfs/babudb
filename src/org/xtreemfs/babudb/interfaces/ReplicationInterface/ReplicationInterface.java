@@ -4,8 +4,9 @@ import java.io.StringWriter;
 import org.xtreemfs.*;
 import org.xtreemfs.babudb.*;
 import org.xtreemfs.babudb.interfaces.*;
-import org.xtreemfs.babudb.interfaces.utils.*;
-import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
+import org.xtreemfs.interfaces.utils.*;
+
 import yidl.runtime.PrettyPrinter;
 
 

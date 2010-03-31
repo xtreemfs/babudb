@@ -23,11 +23,11 @@ import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicaRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicaResponse;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.include.common.buffer.ReusableBuffer;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCNIOSocketClient;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCResponseDecoder;
-import org.xtreemfs.include.foundation.oncrpc.utils.XDRUnmarshaller;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.oncrpc.client.RPCNIOSocketClient;
+import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
+import org.xtreemfs.foundation.oncrpc.client.RPCResponseDecoder;
+import org.xtreemfs.foundation.oncrpc.utils.XDRUnmarshaller;
 
 /**
  * Client to communicate with the master. Supports the replication.
@@ -58,7 +58,7 @@ public class MasterClient extends StateClient {
         
             /*
              * (non-Javadoc)
-             * @see org.xtreemfs.include.foundation.oncrpc.client.RPCResponseDecoder#getResult(org.xtreemfs.include.common.buffer.ReusableBuffer)
+             * @see org.xtreemfs.foundation.oncrpc.client.RPCResponseDecoder#getResult(org.xtreemfs.foundation.buffer.ReusableBuffer)
              */
             @Override
             public LogEntries getResult(ReusableBuffer data) {
@@ -86,7 +86,7 @@ public class MasterClient extends StateClient {
         
             /*
              * (non-Javadoc)
-             * @see org.xtreemfs.include.foundation.oncrpc.client.RPCResponseDecoder#getResult(org.xtreemfs.include.common.buffer.ReusableBuffer)
+             * @see org.xtreemfs.foundation.oncrpc.client.RPCResponseDecoder#getResult(org.xtreemfs.foundation.buffer.ReusableBuffer)
              */
             @Override
             public DBFileMetaDataSet getResult(ReusableBuffer data) {
@@ -113,7 +113,7 @@ public class MasterClient extends StateClient {
         
             /*
              * (non-Javadoc)
-             * @see org.xtreemfs.include.foundation.oncrpc.client.RPCResponseDecoder#getResult(org.xtreemfs.include.common.buffer.ReusableBuffer)
+             * @see org.xtreemfs.foundation.oncrpc.client.RPCResponseDecoder#getResult(org.xtreemfs.foundation.buffer.ReusableBuffer)
              */
             @Override
             public ReusableBuffer getResult(ReusableBuffer data) {
@@ -140,7 +140,7 @@ public class MasterClient extends StateClient {
         
             /*
              * (non-Javadoc)
-             * @see org.xtreemfs.include.foundation.oncrpc.client.RPCResponseDecoder#getResult(org.xtreemfs.include.common.buffer.ReusableBuffer)
+             * @see org.xtreemfs.foundation.oncrpc.client.RPCResponseDecoder#getResult(org.xtreemfs.foundation.buffer.ReusableBuffer)
              */
             @Override
             public Object getResult(ReusableBuffer data) {

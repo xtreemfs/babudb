@@ -7,12 +7,12 @@
  */
 package org.xtreemfs.babudb.replication;
 
-import org.xtreemfs.include.common.logging.Logging;
-import org.xtreemfs.include.foundation.oncrpc.server.ONCRPCRequest;
-import org.xtreemfs.include.foundation.oncrpc.utils.XDRUnmarshaller;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.oncrpc.server.ONCRPCRequest;
+import org.xtreemfs.foundation.oncrpc.utils.XDRUnmarshaller;
+import org.xtreemfs.interfaces.utils.ONCRPCException;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
-import org.xtreemfs.babudb.interfaces.utils.ONCRPCException;
-import org.xtreemfs.include.common.buffer.ReusableBuffer;
 
 /**
  * Request object.
@@ -45,10 +45,6 @@ public class Request {
 
     public void sendSuccess(yidl.runtime.Object response) {
         rpcRequest.sendResponse(response);
-    }
-
-    public void sendInternalServerError(Throwable rootCause, errnoException ex) {
-        rpcRequest.sendInternalServerError(rootCause, ex);
     }
 
     public void sendException(ONCRPCException exception) {

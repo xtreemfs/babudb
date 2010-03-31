@@ -15,8 +15,8 @@ import java.nio.channels.FileChannel;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import org.xtreemfs.include.common.buffer.BufferPool;
-import org.xtreemfs.include.common.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.buffer.BufferPool;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
 /**
  * Writes an index to a set of files on disk. A file will not be larger than
@@ -97,7 +97,6 @@ public class DiskIndexWriter {
 
         int entryCount = 0;
         int blockOffset = 0;
-        int currentFileSize = 0;
         boolean newBlockFile = false;
 
         // write each block to disk
@@ -161,6 +160,7 @@ public class DiskIndexWriter {
      */
     public void writeIndex(Iterator<Entry<byte[], byte[]>> iterator) throws IOException {
 
+        new File (path + "blockindex.idx").createNewFile();
         FileChannel channel = new FileOutputStream(path + "blockindex.idx").getChannel();
         channel.truncate(0);
         BlockWriter blockIndex = new DefaultBlockWriter(true, false);

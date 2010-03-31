@@ -13,7 +13,7 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.Request;
 import org.xtreemfs.babudb.replication.MasterRequestDispatcher;
 import org.xtreemfs.babudb.replication.SlavesStates.UnknownParticipantException;
-import org.xtreemfs.include.common.TimeSync;
+import org.xtreemfs.foundation.TimeSync;
 
 /**
  * {@link Operation} to send the {@link LSN} of the latest written {@link LogEntry} to the master.

@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 
 import org.xtreemfs.babudb.config.ReplicationConfig;
+import org.xtreemfs.foundation.util.FSUtils;
 
 /**
  * <p>Methods to perform direct file Operations.<br><br>
@@ -35,10 +36,10 @@ public class DirectFileIO {
     public static void removeBackupFiles(ReplicationConfig configuration) {
         File backupDir = new File(configuration.getBackupDir());
         if (backupDir.exists()) { 
-            File backupLock = new File (backupDir.getPath()+File.separator+BACKUP_LOCK_FILE);
+            File backupLock = new File (backupDir.getPath() + File.separator +
+                    BACKUP_LOCK_FILE);
             if (backupLock.exists()) backupLock.delete();
-            cleanUpFiles(backupDir);
-            backupDir.delete();
+            FSUtils.delTree(backupDir);
         }
     }
     
@@ -65,8 +66,7 @@ public class DirectFileIO {
                 copyDir(backupLogDir, logDir);
             }
             
-            cleanUpFiles(backupDir);
-            backupDir.delete();
+            FSUtils.delTree(backupDir);
         }
     }
     
@@ -171,14 +171,13 @@ public class DirectFileIO {
             
             // delete existing files
             for (File f : parent.listFiles()) {
-                if (f.isFile())
+                if (f.isFile()) {
                     f.delete();
-                else if (f.isDirectory()) {
-                    cleanUpFiles(f);
-                    if (f.listFiles().length == 0)
-                        f.delete();
-                } else
+                } else if (f.isDirectory()) {
+                    FSUtils.delTree(f);
+                } else {
                     assert(false);
+                }
             }
         }
     }

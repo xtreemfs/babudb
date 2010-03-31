@@ -17,14 +17,14 @@ import org.xtreemfs.babudb.interfaces.ReplicationInterface.localTimeRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.localTimeResponse;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.stateRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.stateResponse;
+import org.xtreemfs.foundation.buffer.BufferPool;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.flease.comm.FleaseMessage;
-import org.xtreemfs.include.common.buffer.BufferPool;
-import org.xtreemfs.include.common.buffer.ReusableBuffer;
-import org.xtreemfs.include.foundation.oncrpc.client.ONCRPCClient;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCNIOSocketClient;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCResponseDecoder;
-import org.xtreemfs.include.foundation.oncrpc.utils.XDRUnmarshaller;
+import org.xtreemfs.foundation.oncrpc.client.ONCRPCClient;
+import org.xtreemfs.foundation.oncrpc.client.RPCNIOSocketClient;
+import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
+import org.xtreemfs.foundation.oncrpc.client.RPCResponseDecoder;
+import org.xtreemfs.foundation.oncrpc.utils.XDRUnmarshaller;
 
 /**
  * Client to request the state of any client.
@@ -56,7 +56,7 @@ public class StateClient extends ONCRPCClient {
         
             /*
              * (non-Javadoc)
-             * @see org.xtreemfs.include.foundation.oncrpc.client.RPCResponseDecoder#getResult(org.xtreemfs.include.common.buffer.ReusableBuffer)
+             * @see org.xtreemfs.foundation.oncrpc.client.RPCResponseDecoder#getResult(org.xtreemfs.foundation.buffer.ReusableBuffer)
              */
             @Override
             public LSN getResult(ReusableBuffer data) {
@@ -83,7 +83,7 @@ public class StateClient extends ONCRPCClient {
         
             /*
              * (non-Javadoc)
-             * @see org.xtreemfs.include.foundation.oncrpc.client.RPCResponseDecoder#getResult(org.xtreemfs.include.common.buffer.ReusableBuffer)
+             * @see org.xtreemfs.foundation.oncrpc.client.RPCResponseDecoder#getResult(org.xtreemfs.foundation.buffer.ReusableBuffer)
              */
             @Override
             public Long getResult(ReusableBuffer data) {
@@ -116,7 +116,7 @@ public class StateClient extends ONCRPCClient {
         
             /*
              * (non-Javadoc)
-             * @see org.xtreemfs.include.foundation.oncrpc.client.RPCResponseDecoder#getResult(org.xtreemfs.include.common.buffer.ReusableBuffer)
+             * @see org.xtreemfs.foundation.oncrpc.client.RPCResponseDecoder#getResult(org.xtreemfs.foundation.buffer.ReusableBuffer)
              */
             @Override
             public Object getResult(ReusableBuffer data) {

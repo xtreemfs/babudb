@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.Random;
 
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.babudb.sandbox.ContinuesRandomGenerator.Operation;
 
 import static org.xtreemfs.babudb.sandbox.ContinuesRandomGenerator.Operation.*;

@@ -11,9 +11,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.SlaveRequestDispatcher;
-import org.xtreemfs.include.foundation.LifeCycleThread;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCResponse;
-import org.xtreemfs.include.foundation.oncrpc.client.RPCResponseAvailableListener;
+import org.xtreemfs.foundation.LifeCycleThread;
+import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
+import org.xtreemfs.foundation.oncrpc.client.RPCResponseAvailableListener;
 
 /**
  * <p>Simple Thread for sending acknowledged {@link LSN}s to the master.</p>

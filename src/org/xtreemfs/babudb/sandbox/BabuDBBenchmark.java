@@ -21,8 +21,8 @@ import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.sandbox.CLIParser.CliOption;
-import org.xtreemfs.include.common.logging.Logging;
-import org.xtreemfs.include.common.util.FSUtils;
+import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.util.FSUtils;
 
 /**
  * 

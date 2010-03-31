@@ -24,9 +24,9 @@ import org.xtreemfs.babudb.replication.operations.ReplicateOperation;
 import org.xtreemfs.babudb.replication.stages.HeartbeatThread;
 import org.xtreemfs.babudb.replication.stages.ReplicationStage;
 import org.xtreemfs.babudb.replication.stages.StageRequest;
-import org.xtreemfs.include.common.buffer.ReusableBuffer;
-import org.xtreemfs.include.common.logging.Logging;
-import org.xtreemfs.include.foundation.LifeCycleListener;
+import org.xtreemfs.foundation.LifeCycleListener;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.logging.Logging;
 
 /**
  * Dispatches incoming master-requests.
@@ -196,7 +196,7 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
 
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.RequestDispatcher#replicate(org.xtreemfs.babudb.log.LogEntry, org.xtreemfs.include.common.buffer.ReusableBuffer)
+     * @see org.xtreemfs.babudb.replication.RequestDispatcher#replicate(org.xtreemfs.babudb.log.LogEntry, org.xtreemfs.foundation.buffer.ReusableBuffer)
      */
     @Override
     ReplicateResponse _replicate(LogEntry le, ReusableBuffer payload) {

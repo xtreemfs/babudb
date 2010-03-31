@@ -17,11 +17,11 @@ import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.ReplicateResponse;
+import org.xtreemfs.foundation.TimeSync;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.flease.Flease;
 import org.xtreemfs.foundation.flease.FleaseStage;
-import org.xtreemfs.include.common.TimeSync;
-import org.xtreemfs.include.common.buffer.ReusableBuffer;
-import org.xtreemfs.include.common.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging;
 
 /**
  * <p>Implements the {@link ReplicationManager} user interface.</p>
@@ -194,7 +194,7 @@ public class ReplicationManagerImpl implements ReplicationManager {
     
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.include.foundation.LifeCycleListener#crashPerformed(java.lang.Throwable)
+     * @see org.xtreemfs.foundation.LifeCycleListener#crashPerformed(java.lang.Throwable)
      */
     @Override
     public void crashPerformed(Throwable exc) {
@@ -211,7 +211,7 @@ public class ReplicationManagerImpl implements ReplicationManager {
 
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.include.foundation.LifeCycleListener#shutdownPerformed()
+     * @see org.xtreemfs.foundation.LifeCycleListener#shutdownPerformed()
      */
     @Override
     public void shutdownPerformed() {
@@ -220,7 +220,7 @@ public class ReplicationManagerImpl implements ReplicationManager {
 
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.include.foundation.LifeCycleListener#startupPerformed()
+     * @see org.xtreemfs.foundation.LifeCycleListener#startupPerformed()
      */
     @Override
     public void startupPerformed() {
