@@ -164,19 +164,6 @@ public class ReplicationConfig extends BabuDBConfig {
         
         this.syncN = this.readOptionalInt("babudb.repl.sync.n", 0);
         
-        if (this.syncN < 0 || this.syncN > participants.size())
-            throw new IOException("Wrong Sync-N! It has to be at least 0 and" +
-                        " #of participants ("+this.participants.size()+") at" +
-                        " the maximum!");
-        
-        if (this.syncN != 0 && this.syncN <= participants.size() / 2)
-            throw new IOException("The requested N-sync-mode (N=" + syncN + ")"
-                + " may cause inconsistent behavior, because there are '" + 
-                participants.size()
-                + "' participants. The sync-N " + "has to be at least '" + 
-                (participants.size() / 2)
-                + "'!");
-        
         // read the participants
         this.participants = new HashSet<InetSocketAddress>();
         
@@ -208,6 +195,19 @@ public class ReplicationConfig extends BabuDBConfig {
         if (this.address == null)
             throw new IOException("None of the given participants described" +
             		" the localhost!");
+        
+        if (this.syncN < 0 || this.syncN > participants.size())
+            throw new IOException("Wrong Sync-N! It has to be at least 0 and" +
+                        " #of participants ("+this.participants.size()+") at" +
+                        " the maximum!");
+        
+        if (this.syncN != 0 && this.syncN <= participants.size() / 2)
+            throw new IOException("The requested N-sync-mode (N=" + syncN + ")"
+                + " may cause inconsistent behavior, because there are '" + 
+                participants.size()
+                + "' participants. The sync-N " + "has to be at least '" + 
+                (participants.size() / 2)
+                + "'!");
     }
     
     public InetSocketAddress getInetSocketAddress() {
