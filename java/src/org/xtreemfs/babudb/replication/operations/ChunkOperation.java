@@ -93,7 +93,7 @@ public class ChunkOperation extends Operation {
         } catch (Exception e) {
             rq.sendReplicationException(ErrNo.FILE_UNAVAILABLE, 
                     "The requested chunk ("+chunk.toString()+") is not" +
-                    " available anymore, because: "+e.getMessage());
+                    " available anymore, because: "+e.getMessage(), e);
             
             if (e.getMessage() == null) 
                 Logging.logError(Logging.LEVEL_INFO, this, e);

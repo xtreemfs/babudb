@@ -144,7 +144,7 @@ public class ReplicationStage extends LifeCycleThread {
                 case LOG_CUT : 
                     setLogic(LOAD, "Master said, logfile was cut off.");
                     break;
-                case TOO_BUSY :
+                case BUSY :
                     if (++tries < ReplicationConfig.MAX_RETRIES) break;
                 case SERVICE_UNAVAILABLE : 
                     // fail-over: suspend()

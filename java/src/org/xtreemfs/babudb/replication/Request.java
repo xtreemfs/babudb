@@ -9,8 +9,10 @@ package org.xtreemfs.babudb.replication;
 
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging.Category;
 import org.xtreemfs.foundation.oncrpc.server.ONCRPCRequest;
 import org.xtreemfs.foundation.oncrpc.utils.XDRUnmarshaller;
+import org.xtreemfs.foundation.util.OutputUtils;
 import org.xtreemfs.interfaces.utils.ONCRPCException;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
 
@@ -49,16 +51,23 @@ public class Request {
 
     public void sendException(ONCRPCException exception) {
         if (Logging.isDebug()) {
-            Logging.logMessage(Logging.LEVEL_DEBUG, this,"sending exception return value: "+exception);
+            Logging.logMessage(Logging.LEVEL_DEBUG, Category.net, this,
+                    "sending exception return value: "+exception);
         }
         rpcRequest.sendException(exception);
     }
     
     public void sendReplicationException(int errno, String message) {
+        sendReplicationException(errno, message, null);
+    }
+    
+    public void sendReplicationException(int errno, String message, Throwable t) {
         if (Logging.isDebug()) {
-            Logging.logMessage(Logging.LEVEL_DEBUG, this,"sending errno exception #"+errno);
+            Logging.logMessage(Logging.LEVEL_DEBUG, Category.net, this,
+                    "sending errno exception #"+errno);
         }
-        getRPCRequest().sendException(new errnoException(errno, message, null));
+        getRPCRequest().sendException(new errnoException(errno, message, 
+                OutputUtils.stackTraceToString(t)));
     }
     
     /**
