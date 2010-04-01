@@ -111,7 +111,7 @@ public class ReplicateOperation extends Operation {
             rq.sendSuccess(request.createDefaultResponse());
         } catch (TooBusyException e) {
             if (le!=null) le.free();
-            rq.sendReplicationException(ErrNo.TOO_BUSY,e.getMessage());
+            rq.sendReplicationException(ErrNo.BUSY,e.getMessage());
         }
     }
 }

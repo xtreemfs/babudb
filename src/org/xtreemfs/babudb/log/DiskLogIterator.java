@@ -134,7 +134,7 @@ public class DiskLogIterator implements Iterator<LogEntry> {
         }
     }
     
-    public LogEntry findNextEntry() throws IOException, LogEntryException {
+    protected LogEntry findNextEntry() throws IOException, LogEntryException {
         
         if (logList == null)
             return null;

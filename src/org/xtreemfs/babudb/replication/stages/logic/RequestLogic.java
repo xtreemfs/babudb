@@ -81,6 +81,10 @@ public class RequestLogic extends Logic {
         try {
             rp = master.getReplica(stage.missing);
             logEntries = (LogEntries) rp.get();
+            assert (logEntries.size() == 
+                (stage.missing.getSequenceEnd() - 
+                 stage.missing.getSequenceStart()));
+            
             final AtomicInteger count = new AtomicInteger(logEntries.size());
             // insert all logEntries
             LSN check = null;

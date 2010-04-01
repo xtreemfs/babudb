@@ -64,7 +64,7 @@ public class ReplicationConfig extends BabuDBConfig {
     /** Chunk size, for initial load of file chunks. */
     protected int                    chunkSize;
     
-    public final static int          DEFAULT_MAX_CHUNK_SIZE = 5 * 1024 * 1024;
+    public final static int          MAX_CHUNK_SIZE = 5 * 1024 * 1024;
     
     // for slave usage only
     
@@ -127,7 +127,7 @@ public class ReplicationConfig extends BabuDBConfig {
                                         "described the localhost!";
         this.sslOptions = sslOptions;
         this.syncN = syncN;
-        this.chunkSize = DEFAULT_MAX_CHUNK_SIZE;
+        this.chunkSize = MAX_CHUNK_SIZE;
         this.backupDir = backupDir;
                 
         this.fleaseConfig = new FleaseConfig(LEASE_TIMEOUT, this.localTimeRenew,
@@ -137,6 +137,13 @@ public class ReplicationConfig extends BabuDBConfig {
     
     public void read() throws IOException {
         super.read();
+        
+        String backupDir = this.readRequiredString("babudb.repl.backupDir");
+        if (backupDir.equals(baseDir) || backupDir.equals(dbLogDir))
+            throw new IOException("The backup-directory has to be different to "
+                + "the dbLog-directory and the base-directory!");
+        
+        this.backupDir = (backupDir.endsWith(File.separator)) ? backupDir : backupDir + File.separator;
         
         this.localTimeRenew = this.readOptionalInt("babudb.localTimeRenew", 100);
         this.timeSyncInterval = this.readOptionalInt("babudb.timeSync", 20000);
@@ -151,6 +158,24 @@ public class ReplicationConfig extends BabuDBConfig {
                     .readRequiredString("babudb.ssl.trusted_certs.container"), this
                     .readRequiredBoolean("babudb.ssl.authenticationWithoutEncryption"));
         }
+        
+        this.chunkSize = this.readOptionalInt("babudb.repl.chunkSize", 
+                MAX_CHUNK_SIZE);
+        
+        this.syncN = this.readOptionalInt("babudb.repl.sync.n", 0);
+        
+        if (this.syncN < 0 || this.syncN > participants.size())
+            throw new IOException("Wrong Sync-N! It has to be at least 0 and" +
+                        " #of participants ("+this.participants.size()+") at" +
+                        " the maximum!");
+        
+        if (this.syncN != 0 && this.syncN <= participants.size() / 2)
+            throw new IOException("The requested N-sync-mode (N=" + syncN + ")"
+                + " may cause inconsistent behavior, because there are '" + 
+                participants.size()
+                + "' participants. The sync-N " + "has to be at least '" + 
+                (participants.size() / 2)
+                + "'!");
         
         // read the participants
         this.participants = new HashSet<InetSocketAddress>();
@@ -179,31 +204,10 @@ public class ReplicationConfig extends BabuDBConfig {
             }
             number++;
         }
+        
         if (this.address == null)
             throw new IOException("None of the given participants described" +
             		" the localhost!");
-        
-        this.chunkSize = this.readOptionalInt("babudb.repl.chunkSize", DEFAULT_MAX_CHUNK_SIZE);
-        
-        this.syncN = this.readOptionalInt("babudb.repl.sync.n", 0);
-        
-        if (this.syncN < 0 || this.syncN > participants.size())
-            throw new IOException("Wrong Sync-N! It has to be at least 0 and" +
-            		" #of participants ("+this.participants.size()+") at" +
-            	        " the maximum!");
-        
-        if (this.syncN != 0 && this.syncN <= participants.size() / 2)
-            throw new IOException("The requested N-sync-mode (N=" + syncN + ")"
-                + " may cause inconsistent behavior, because there are '" + participants.size()
-                + "' participants. The sync-N " + "has to be at least '" + (participants.size() / 2)
-                + "'!");
-        
-        String backupDir = this.readRequiredString("babudb.repl.backupDir");
-        if (backupDir.equals(baseDir) || backupDir.equals(dbLogDir))
-            throw new IOException("The backup-directory has to be different to "
-                + "the dbLog-directory and the base-directory!");
-        
-        this.backupDir = (backupDir.endsWith(File.separator)) ? backupDir : backupDir + File.separator;
     }
     
     public InetSocketAddress getInetSocketAddress() {

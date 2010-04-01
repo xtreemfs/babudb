@@ -18,7 +18,6 @@ import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicaRequest;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicaResponse;
 import org.xtreemfs.babudb.log.DiskLogIterator;
 import org.xtreemfs.babudb.log.LogEntry;
-import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.Request;
@@ -117,7 +116,7 @@ public class ReplicaOperation extends Operation {
                         return;
                     }
                     
-                    le = it.findNextEntry();
+                    le = it.next();
                     assert (le.getPayload().array().length > 0) : 
                         "Empty log-entries are not allowed!";
                     result.add(new org.xtreemfs.babudb.interfaces.LogEntry(
@@ -128,18 +127,10 @@ public class ReplicaOperation extends Operation {
                 
                 // send the response, if the requested log entries are found
                 rq.sendSuccess(new replicaResponse(result));
-            } catch (InterruptedException e) {
+            } catch (Exception e) {
                 Logging.logError(Logging.LEVEL_INFO, this, e);
-                rq.sendReplicationException(ErrNo.TOO_BUSY,
-                        "Request not finished: "+e.getMessage());
-            } catch (IOException e) {
-                Logging.logError(Logging.LEVEL_INFO, this, e);
-                rq.sendReplicationException(ErrNo.TOO_BUSY,
-                        "Request not finished: "+e.getMessage());
-            } catch (LogEntryException e) {
-                Logging.logError(Logging.LEVEL_INFO, this, e);
-                rq.sendReplicationException(ErrNo.INTERNAL_ERROR,
-                        "Request not finished: "+e.getMessage());
+                rq.sendReplicationException(ErrNo.BUSY,
+                        "Request not finished: "+e.getMessage(), e);
             } finally {
                 checksum.reset();
                 if (le != null) le.free();

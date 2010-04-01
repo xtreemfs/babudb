@@ -18,7 +18,7 @@ public final class ErrNo {
     public static final int SECURITY            = 1;
     public static final int LOG_CUT             = 2;
     public static final int FILE_UNAVAILABLE    = 3;
-    public static final int TOO_BUSY            = 4;
+    public static final int BUSY                = 4;
     public static final int INTERNAL_ERROR      = 5;
     
     public static final int UNKNOWN             = 99;
