@@ -91,8 +91,10 @@ class TimeDriftDetector {
      */
     void stop() {
         synchronized (this) {
-            this.task.cancel();
-            this.task = null;
+            if (this.task != null) {
+                this.task.cancel();
+                this.task = null;
+            }
         }
     }
 
