@@ -46,8 +46,8 @@ import org.xtreemfs.foundation.oncrpc.server.ONCRPCRequest;
 import org.xtreemfs.foundation.oncrpc.server.RPCNIOSocketServer;
 import org.xtreemfs.foundation.oncrpc.server.RPCServerRequestListener;
 import org.xtreemfs.foundation.util.OutputUtils;
-import org.xtreemfs.interfaces.utils.ONCRPCRequestHeader;
-import org.xtreemfs.interfaces.utils.ONCRPCResponseHeader;
+import org.xtreemfs.foundation.oncrpc.utils.ONCRPCRequestHeader;
+import org.xtreemfs.foundation.oncrpc.utils.ONCRPCResponseHeader;
 
 import yidl.runtime.Object;
 

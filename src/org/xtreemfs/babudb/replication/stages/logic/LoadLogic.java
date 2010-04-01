@@ -31,7 +31,7 @@ import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
 import org.xtreemfs.foundation.oncrpc.client.RPCResponseAvailableListener;
-import org.xtreemfs.interfaces.utils.ONCRPCException;
+import org.xtreemfs.foundation.oncrpc.utils.ONCRPCException;
 
 import static org.xtreemfs.babudb.replication.DirectFileIO.*;
 import static org.xtreemfs.babudb.replication.stages.logic.LogicID.*;

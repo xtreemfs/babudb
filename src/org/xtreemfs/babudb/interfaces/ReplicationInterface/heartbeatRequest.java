@@ -5,8 +5,7 @@ import org.xtreemfs.*;
 import org.xtreemfs.babudb.*;
 import org.xtreemfs.babudb.interfaces.*;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
-import org.xtreemfs.interfaces.utils.*;
-
+import org.xtreemfs.foundation.oncrpc.utils.*;
 import yidl.runtime.Marshaller;
 import yidl.runtime.PrettyPrinter;
 import yidl.runtime.Struct;
@@ -15,10 +14,10 @@ import yidl.runtime.Unmarshaller;
 
 
 
-public class heartbeatRequest extends org.xtreemfs.interfaces.utils.Request
+public class heartbeatRequest extends org.xtreemfs.foundation.oncrpc.utils.Request
 {
     public static final int TAG = 1017;
-    
+
     public heartbeatRequest() { lsn = new LSN();  }
     public heartbeatRequest( LSN lsn ) { this.lsn = lsn; }
 
@@ -26,8 +25,8 @@ public class heartbeatRequest extends org.xtreemfs.interfaces.utils.Request
     public void setLsn( LSN lsn ) { this.lsn = lsn; }
 
     // java.lang.Object
-    public String toString() 
-    { 
+    public String toString()
+    {
         StringWriter string_writer = new StringWriter();
         string_writer.append(this.getClass().getCanonicalName());
         string_writer.append(" ");
@@ -39,34 +38,29 @@ public class heartbeatRequest extends org.xtreemfs.interfaces.utils.Request
     // Request
     public Response createDefaultResponse() { return new heartbeatResponse(); }
 
-
     // java.io.Serializable
-    public static final long serialVersionUID = 1017;    
+    public static final long serialVersionUID = 1017;
 
     // yidl.runtime.Object
     public int getTag() { return 1017; }
     public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::heartbeatRequest"; }
-    
+
     public int getXDRSize()
     {
         int my_size = 0;
         my_size += lsn.getXDRSize(); // lsn
         return my_size;
-    }    
-    
+    }
+
     public void marshal( Marshaller marshaller )
     {
         marshaller.writeStruct( "lsn", lsn );
     }
-    
-    public void unmarshal( Unmarshaller unmarshaller ) 
+
+    public void unmarshal( Unmarshaller unmarshaller )
     {
-        lsn = new LSN(); unmarshaller.readStruct( "lsn", lsn );    
+        lsn = new LSN(); unmarshaller.readStruct( "lsn", lsn );
     }
-        
-    
 
-    private LSN lsn;    
-
+    private LSN lsn;
 }
-

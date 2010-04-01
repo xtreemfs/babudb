@@ -5,8 +5,7 @@ import org.xtreemfs.*;
 import org.xtreemfs.babudb.*;
 import org.xtreemfs.babudb.interfaces.*;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
-import org.xtreemfs.interfaces.utils.*;
-
+import org.xtreemfs.foundation.oncrpc.utils.*;
 import yidl.runtime.Marshaller;
 import yidl.runtime.PrettyPrinter;
 import yidl.runtime.Struct;
@@ -15,21 +14,21 @@ import yidl.runtime.Unmarshaller;
 
 
 
-public class replicateRequest extends org.xtreemfs.interfaces.utils.Request
+public class replicateRequest extends org.xtreemfs.foundation.oncrpc.utils.Request
 {
     public static final int TAG = 1018;
-    
+
     public replicateRequest() { lsn = new LSN(); logEntry = new LogEntry();  }
     public replicateRequest( LSN lsn, LogEntry logEntry ) { this.lsn = lsn; this.logEntry = logEntry; }
 
     public LSN getLsn() { return lsn; }
-    public void setLsn( LSN lsn ) { this.lsn = lsn; }
     public LogEntry getLogEntry() { return logEntry; }
+    public void setLsn( LSN lsn ) { this.lsn = lsn; }
     public void setLogEntry( LogEntry logEntry ) { this.logEntry = logEntry; }
 
     // java.lang.Object
-    public String toString() 
-    { 
+    public String toString()
+    {
         StringWriter string_writer = new StringWriter();
         string_writer.append(this.getClass().getCanonicalName());
         string_writer.append(" ");
@@ -41,38 +40,33 @@ public class replicateRequest extends org.xtreemfs.interfaces.utils.Request
     // Request
     public Response createDefaultResponse() { return new replicateResponse(); }
 
-
     // java.io.Serializable
-    public static final long serialVersionUID = 1018;    
+    public static final long serialVersionUID = 1018;
 
     // yidl.runtime.Object
     public int getTag() { return 1018; }
     public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::replicateRequest"; }
-    
+
     public int getXDRSize()
     {
         int my_size = 0;
         my_size += lsn.getXDRSize(); // lsn
         my_size += logEntry.getXDRSize(); // logEntry
         return my_size;
-    }    
-    
+    }
+
     public void marshal( Marshaller marshaller )
     {
         marshaller.writeStruct( "lsn", lsn );
         marshaller.writeStruct( "logEntry", logEntry );
     }
-    
-    public void unmarshal( Unmarshaller unmarshaller ) 
+
+    public void unmarshal( Unmarshaller unmarshaller )
     {
         lsn = new LSN(); unmarshaller.readStruct( "lsn", lsn );
-        logEntry = new LogEntry(); unmarshaller.readStruct( "logEntry", logEntry );    
+        logEntry = new LogEntry(); unmarshaller.readStruct( "logEntry", logEntry );
     }
-        
-    
 
     private LSN lsn;
-    private LogEntry logEntry;    
-
+    private LogEntry logEntry;
 }
-
