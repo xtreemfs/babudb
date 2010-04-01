@@ -37,7 +37,7 @@ import java.io.IOException;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.ReplicationInterface;
 import org.xtreemfs.foundation.oncrpc.client.RemoteExceptionParser;
 import org.xtreemfs.foundation.oncrpc.utils.XDRUnmarshaller;
-import org.xtreemfs.interfaces.utils.ONCRPCException;
+import org.xtreemfs.foundation.oncrpc.utils.ONCRPCException;
 
 /**
  *

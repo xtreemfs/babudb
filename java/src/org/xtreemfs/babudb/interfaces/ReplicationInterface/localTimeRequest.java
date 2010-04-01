@@ -5,8 +5,7 @@ import org.xtreemfs.*;
 import org.xtreemfs.babudb.*;
 import org.xtreemfs.babudb.interfaces.*;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
-import org.xtreemfs.interfaces.utils.*;
-
+import org.xtreemfs.foundation.oncrpc.utils.*;
 import yidl.runtime.Marshaller;
 import yidl.runtime.PrettyPrinter;
 import yidl.runtime.Struct;
@@ -15,15 +14,15 @@ import yidl.runtime.Unmarshaller;
 
 
 
-public class localTimeRequest extends org.xtreemfs.interfaces.utils.Request
+public class localTimeRequest extends org.xtreemfs.foundation.oncrpc.utils.Request
 {
     public static final int TAG = 1015;
-    
+
     public localTimeRequest() {  }
 
     // java.lang.Object
-    public String toString() 
-    { 
+    public String toString()
+    {
         StringWriter string_writer = new StringWriter();
         string_writer.append(this.getClass().getCanonicalName());
         string_writer.append(" ");
@@ -35,32 +34,27 @@ public class localTimeRequest extends org.xtreemfs.interfaces.utils.Request
     // Request
     public Response createDefaultResponse() { return new localTimeResponse(); }
 
-
     // java.io.Serializable
-    public static final long serialVersionUID = 1015;    
+    public static final long serialVersionUID = 1015;
 
     // yidl.runtime.Object
     public int getTag() { return 1015; }
     public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::localTimeRequest"; }
-    
+
     public int getXDRSize()
     {
         int my_size = 0;
 
         return my_size;
-    }    
-    
+    }
+
     public void marshal( Marshaller marshaller )
     {
 
     }
-    
-    public void unmarshal( Unmarshaller unmarshaller ) 
+
+    public void unmarshal( Unmarshaller unmarshaller )
     {
-    
+
     }
-        
-        
-
 }
-

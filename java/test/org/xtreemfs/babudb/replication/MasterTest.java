@@ -54,8 +54,8 @@ import org.xtreemfs.foundation.oncrpc.server.ONCRPCRequest;
 import org.xtreemfs.foundation.oncrpc.server.RPCNIOSocketServer;
 import org.xtreemfs.foundation.oncrpc.server.RPCServerRequestListener;
 import org.xtreemfs.foundation.oncrpc.utils.XDRUnmarshaller;
-import org.xtreemfs.interfaces.utils.ONCRPCError;
-import org.xtreemfs.interfaces.utils.ONCRPCException;
+import org.xtreemfs.foundation.oncrpc.utils.ONCRPCError;
+import org.xtreemfs.foundation.oncrpc.utils.ONCRPCException;
 
 public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         

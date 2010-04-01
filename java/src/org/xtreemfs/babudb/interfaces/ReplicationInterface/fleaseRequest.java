@@ -5,8 +5,7 @@ import org.xtreemfs.*;
 import org.xtreemfs.babudb.*;
 import org.xtreemfs.babudb.interfaces.*;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
-import org.xtreemfs.interfaces.utils.*;
-
+import org.xtreemfs.foundation.oncrpc.utils.*;
 import yidl.runtime.Marshaller;
 import yidl.runtime.PrettyPrinter;
 import yidl.runtime.Struct;
@@ -15,23 +14,23 @@ import yidl.runtime.Unmarshaller;
 
 
 
-public class fleaseRequest extends org.xtreemfs.interfaces.utils.Request
+public class fleaseRequest extends org.xtreemfs.foundation.oncrpc.utils.Request
 {
     public static final int TAG = 1014;
-    
+
     public fleaseRequest() {  }
     public fleaseRequest( ReusableBuffer message, String host, int port ) { this.message = message; this.host = host; this.port = port; }
 
     public ReusableBuffer getMessage() { return message; }
-    public void setMessage( ReusableBuffer message ) { this.message = message; }
     public String getHost() { return host; }
-    public void setHost( String host ) { this.host = host; }
     public int getPort() { return port; }
+    public void setMessage( ReusableBuffer message ) { this.message = message; }
+    public void setHost( String host ) { this.host = host; }
     public void setPort( int port ) { this.port = port; }
 
     // java.lang.Object
-    public String toString() 
-    { 
+    public String toString()
+    {
         StringWriter string_writer = new StringWriter();
         string_writer.append(this.getClass().getCanonicalName());
         string_writer.append(" ");
@@ -43,14 +42,13 @@ public class fleaseRequest extends org.xtreemfs.interfaces.utils.Request
     // Request
     public Response createDefaultResponse() { return new fleaseResponse(); }
 
-
     // java.io.Serializable
-    public static final long serialVersionUID = 1014;    
+    public static final long serialVersionUID = 1014;
 
     // yidl.runtime.Object
     public int getTag() { return 1014; }
     public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::fleaseRequest"; }
-    
+
     public int getXDRSize()
     {
         int my_size = 0;
@@ -58,27 +56,23 @@ public class fleaseRequest extends org.xtreemfs.interfaces.utils.Request
         my_size += Integer.SIZE / 8 + ( host != null ? ( ( host.getBytes().length % 4 == 0 ) ? host.getBytes().length : ( host.getBytes().length + 4 - host.getBytes().length % 4 ) ) : 0 ); // host
         my_size += Integer.SIZE / 8; // port
         return my_size;
-    }    
-    
+    }
+
     public void marshal( Marshaller marshaller )
     {
         marshaller.writeBuffer( "message", message );
         marshaller.writeString( "host", host );
         marshaller.writeUint32( "port", port );
     }
-    
-    public void unmarshal( Unmarshaller unmarshaller ) 
+
+    public void unmarshal( Unmarshaller unmarshaller )
     {
         message = ( ReusableBuffer )unmarshaller.readBuffer( "message" );
         host = unmarshaller.readString( "host" );
-        port = unmarshaller.readUint32( "port" );    
+        port = unmarshaller.readUint32( "port" );
     }
-        
-    
 
     private ReusableBuffer message;
     private String host;
-    private int port;    
-
+    private int port;
 }
-

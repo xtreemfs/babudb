@@ -27,7 +27,7 @@ import org.xtreemfs.babudb.replication.stages.ReplicationStage.ConnectionLostExc
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
-import org.xtreemfs.interfaces.utils.ONCRPCException;
+import org.xtreemfs.foundation.oncrpc.utils.ONCRPCException;
 
 import static org.xtreemfs.babudb.replication.stages.ReplicationStage.ConnectionLostException;
 import static org.xtreemfs.babudb.replication.stages.logic.LogicID.*;

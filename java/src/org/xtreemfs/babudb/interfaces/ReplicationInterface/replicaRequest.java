@@ -5,8 +5,7 @@ import org.xtreemfs.*;
 import org.xtreemfs.babudb.*;
 import org.xtreemfs.babudb.interfaces.*;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
-import org.xtreemfs.interfaces.utils.*;
-
+import org.xtreemfs.foundation.oncrpc.utils.*;
 import yidl.runtime.Marshaller;
 import yidl.runtime.PrettyPrinter;
 import yidl.runtime.Struct;
@@ -15,10 +14,10 @@ import yidl.runtime.Unmarshaller;
 
 
 
-public class replicaRequest extends org.xtreemfs.interfaces.utils.Request
+public class replicaRequest extends org.xtreemfs.foundation.oncrpc.utils.Request
 {
     public static final int TAG = 1016;
-    
+
     public replicaRequest() { range = new LSNRange();  }
     public replicaRequest( LSNRange range ) { this.range = range; }
 
@@ -26,8 +25,8 @@ public class replicaRequest extends org.xtreemfs.interfaces.utils.Request
     public void setRange( LSNRange range ) { this.range = range; }
 
     // java.lang.Object
-    public String toString() 
-    { 
+    public String toString()
+    {
         StringWriter string_writer = new StringWriter();
         string_writer.append(this.getClass().getCanonicalName());
         string_writer.append(" ");
@@ -39,34 +38,29 @@ public class replicaRequest extends org.xtreemfs.interfaces.utils.Request
     // Request
     public Response createDefaultResponse() { return new replicaResponse(); }
 
-
     // java.io.Serializable
-    public static final long serialVersionUID = 1016;    
+    public static final long serialVersionUID = 1016;
 
     // yidl.runtime.Object
     public int getTag() { return 1016; }
     public String getTypeName() { return "org::xtreemfs::babudb::interfaces::ReplicationInterface::replicaRequest"; }
-    
+
     public int getXDRSize()
     {
         int my_size = 0;
         my_size += range.getXDRSize(); // range
         return my_size;
-    }    
-    
+    }
+
     public void marshal( Marshaller marshaller )
     {
         marshaller.writeStruct( "range", range );
     }
-    
-    public void unmarshal( Unmarshaller unmarshaller ) 
+
+    public void unmarshal( Unmarshaller unmarshaller )
     {
-        range = new LSNRange(); unmarshaller.readStruct( "range", range );    
+        range = new LSNRange(); unmarshaller.readStruct( "range", range );
     }
-        
-    
 
-    private LSNRange range;    
-
+    private LSNRange range;
 }
-
