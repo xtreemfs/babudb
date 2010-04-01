@@ -111,6 +111,9 @@ public class DiskLogIterator implements Iterator<LogEntry> {
     }
     
     public void destroy() throws IOException {
+        LogEntry tmp = nextEntry;
+        nextEntry = null;
+        if (tmp != null) tmp.free();
         currentFile.close();
     }
     
