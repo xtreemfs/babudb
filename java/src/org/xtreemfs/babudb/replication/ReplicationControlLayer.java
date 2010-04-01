@@ -595,7 +595,7 @@ public class ReplicationControlLayer extends LifeCycleThread implements
                             entry.getKey(), this);
                     this.dispatcher = lDisp;
                 
-                    snapshot = lDisp.synchronize(state.latest, latest);
+                    snapshot = lDisp.synchronize(latest);
                     break;
                 }
             }

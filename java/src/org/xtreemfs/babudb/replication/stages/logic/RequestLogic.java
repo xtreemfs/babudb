@@ -17,6 +17,7 @@ import org.xtreemfs.babudb.clients.MasterClient;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.interfaces.LogEntries;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
+import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.log.SyncListener;
@@ -69,8 +70,7 @@ public class RequestLogic extends Logic {
         RPCResponse<LogEntries> rp = null;    
         LogEntries logEntries = null;
         
-        LSN lsnAtLeast = new LSN(stage.missing.getViewId(), 
-               stage.missing.getSequenceEnd());
+        LSN lsnAtLeast = new LSN(stage.missing.getEnd());
         MasterClient master = SharedLogic.getSynchronizationPartner(
                 stage.dispatcher.getConfig().getParticipants(), lsnAtLeast, 
                 stage.dispatcher.master);
@@ -81,9 +81,6 @@ public class RequestLogic extends Logic {
         try {
             rp = master.getReplica(stage.missing);
             logEntries = (LogEntries) rp.get();
-            assert (logEntries.size() == 
-                (stage.missing.getSequenceEnd() - 
-                 stage.missing.getSequenceStart()));
             
             final AtomicInteger count = new AtomicInteger(logEntries.size());
             // insert all logEntries
@@ -96,6 +93,21 @@ public class RequestLogic extends Logic {
                     assert (check == null || check.compareTo(lsn) < 0) : 
                         "The requested LogEntries have lost their order!";
                     check = lsn;
+                    
+                    // we have to switch the log-file
+                    if (lsn.getSequenceNo() == 1L && 
+                        stage.lastInserted.getViewId() < lsn.getViewId()) {
+                        
+                        DiskLogger logger = stage.dispatcher.dbs.getLogger();
+                        try {
+                            logger.lockLogger();
+                            logger.switchLogFile(true);
+                        } finally {
+                            logger.unlockLogger();
+                        }
+                        stage.lastInserted = logger.getLatestLSN();
+                    }
+                    
                     SharedLogic.handleLogEntry(logentry, new SyncListener() {
                     
                         @Override
@@ -134,12 +146,23 @@ public class RequestLogic extends Logic {
                 throw new LogEntryException("At least one insert could not be" +
                 		" proceeded.");
  
-            // all went fine --> back to basic
-            stage.dispatcher.updateLatestLSN(stage.lastInserted);
-            stage.missing = null;
-            stage.setLogic(BASIC, "Request went fine, we can went on with" +
-            		" the basicLogic.");
             
+            stage.dispatcher.updateLatestLSN(stage.lastInserted);
+            if (stage.lastInserted.compareTo(
+                new LSN (stage.missing.getEnd())) < 0) {
+                // we are still missing some entries (the request was too large)
+                // update the missing entries
+                stage.missing = new LSNRange(
+                        new org.xtreemfs.babudb.interfaces.LSN(
+                                stage.lastInserted.getViewId(),
+                                stage.lastInserted.getSequenceNo()), 
+                        stage.missing.getEnd());
+            } else {
+                // all went fine --> back to basic
+                stage.missing = null;
+                stage.setLogic(BASIC, "Request went fine, we can went on with" +
+                            " the basicLogic.");
+            }
             if (Thread.interrupted()) 
                 throw new InterruptedException("Replication was interrupted" +
                 		" after executing a replicaOperation.");
@@ -155,9 +178,11 @@ public class RequestLogic extends Logic {
         } catch (LogEntryException lee) {
             // decoding failed --> retry with new range
             Logging.logError(Logging.LEVEL_WARN, this, lee);
-            stage.missing = new LSNRange(stage.missing.getViewId(), 
-                    stage.lastInserted.getSequenceNo()+1L, 
-                    stage.missing.getSequenceEnd());
+            stage.missing = new LSNRange(
+                    new org.xtreemfs.babudb.interfaces.LSN(
+                            stage.lastInserted.getViewId(), 
+                            stage.lastInserted.getSequenceNo()), 
+                    stage.missing.getEnd());
         } catch (BabuDBException be) {
             // the insert failed due an DB error
             Logging.logError(Logging.LEVEL_WARN, this, be);

@@ -180,7 +180,9 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         
         long seqToRequest = 2L;
         
-        RPCResponse<LogEntries> result = client.getReplica(new LSNRange(viewID,seqToRequest,seqToRequest));
+        RPCResponse<LogEntries> result = client.getReplica(
+                new LSNRange(new org.xtreemfs.babudb.interfaces.LSN(viewID, seqToRequest-1),
+                        new org.xtreemfs.babudb.interfaces.LSN(viewID,seqToRequest)));
         LogEntries les = result.get();
         assertNotNull(les);
         assertEquals(1, les.size());
@@ -205,7 +207,9 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         
         long seqToRequest = 1L;
         
-        RPCResponse<LogEntries> result = client.getReplica(new LSNRange(viewID,seqToRequest,seqToRequest));
+        RPCResponse<LogEntries> result = client.getReplica(new LSNRange(
+                new org.xtreemfs.babudb.interfaces.LSN(viewID, seqToRequest-1),
+                new org.xtreemfs.babudb.interfaces.LSN(viewID, seqToRequest)));
         try {
             result.get();
         } catch (ONCRPCError e) {

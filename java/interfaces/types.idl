@@ -37,9 +37,8 @@ module org # 1000
 
 	struct LSNRange # 26
 	{
-	  uint32_t viewId;
-	  uint64_t sequenceStart;
-	  uint64_t sequenceEnd;
+	  LSN start;
+	  LSN end;
 	};
 
 	struct InetAddress # 27

@@ -13,10 +13,8 @@ import java.util.concurrent.BlockingQueue;
 
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBRequest;
-import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.clients.MasterClient;
 import org.xtreemfs.babudb.config.ReplicationConfig;
-import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.operations.Operation;
@@ -126,13 +124,14 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
     /**
      * Performs a load on the master to synchronize with the latest state.
      * 
-     * @param from
      * @param to
      * @throws BabuDBException if synchronization failed. 
      * 
      * @return false, if no additional snapshot has to be taken, true otherwise.
      */
-    public boolean synchronize(LSN from, LSN to) throws BabuDBException {
+    public boolean synchronize(LSN to) throws BabuDBException {
+        LSN from = getState().latest;
+        
         Logging.logMessage(Logging.LEVEL_INFO, this, "Starting synchronization" +
         		" from '%s' to '%s'.", from.toString(), to.toString());
         
@@ -140,26 +139,10 @@ public class SlaveRequestDispatcher extends RequestDispatcher {
         final BabuDBRequest<Boolean> ready = new BabuDBRequest<Boolean>();
         replication.manualLoad(ready, from, to);
         result = ready.get();
-
         
-        // workaround for missing log-file-switches after loading the DB
-        // from a newly created snapshot
-        if ((from.getViewId()+1) < to.getSequenceNo() && 
-             to.getSequenceNo() == 0L) {
-            
-            DiskLogger logger = dbs.getLogger();
-            try {
-                logger.lockLogger();
-                logger.switchLogFile(true);
-            } catch (Exception e) {
-                throw new BabuDBException(ErrorCode.IO_ERROR, e.getMessage());
-            } finally {
-                logger.unlockLogger();
-            }
-        }
-        
-        assert(to.equals(getState().latest)) : "Synchronization failed: "
-            +to.toString()+" != "+getState().latest;
+        assert(to.equals(getState().latest)) : "Synchronization failed: " +
+            "(expected=" + to.toString() + ") != (acknowledged=" + 
+            getState().latest + ")";
         
         return result;
     }

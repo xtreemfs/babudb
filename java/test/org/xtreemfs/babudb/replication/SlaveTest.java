@@ -381,8 +381,7 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
         if (opNum == heartbeatOperation) {
             heartbeatRequest request = new heartbeatRequest();
             request.unmarshal(new XDRUnmarshaller(rq.getRequestFragment()));
-            LSN lsn = new LSN(request.getLsn().getViewId(),
-                    request.getLsn().getSequenceNo());
+            LSN lsn = new LSN(request.getLsn());
             current = lsn;
             
             rq.sendResponse(new heartbeatResponse());   
@@ -390,8 +389,10 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
             replicaRequest request = new replicaRequest();
             request.unmarshal(new XDRUnmarshaller(rq.getRequestFragment()));
             LSNRange r = request.getRange();
-            assertEquals(1, r.getViewId());
-            assertEquals(replicaRangeLength, r.getSequenceEnd()-r.getSequenceStart());
+            assertEquals(1, r.getStart().getViewId());
+            assertEquals(1, r.getEnd().getViewId());
+            assertEquals(replicaRangeLength, 
+                    r.getEnd().getSequenceNo() - r.getStart().getSequenceNo());
         } else if (opNum == loadOperation) {
             loadRequest request = new loadRequest();
             request.unmarshal(new XDRUnmarshaller(rq.getRequestFragment()));
