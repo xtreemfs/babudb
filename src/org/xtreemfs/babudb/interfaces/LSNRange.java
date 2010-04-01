@@ -17,15 +17,13 @@ public class LSNRange implements Struct
 {
     public static final int TAG = 1026;
 
-    public LSNRange() {  }
-    public LSNRange( int viewId, long sequenceStart, long sequenceEnd ) { this.viewId = viewId; this.sequenceStart = sequenceStart; this.sequenceEnd = sequenceEnd; }
+    public LSNRange() { start = new LSN(); end = new LSN();  }
+    public LSNRange( LSN start, LSN end ) { this.start = start; this.end = end; }
 
-    public int getViewId() { return viewId; }
-    public long getSequenceStart() { return sequenceStart; }
-    public long getSequenceEnd() { return sequenceEnd; }
-    public void setViewId( int viewId ) { this.viewId = viewId; }
-    public void setSequenceStart( long sequenceStart ) { this.sequenceStart = sequenceStart; }
-    public void setSequenceEnd( long sequenceEnd ) { this.sequenceEnd = sequenceEnd; }
+    public LSN getStart() { return start; }
+    public LSN getEnd() { return end; }
+    public void setStart( LSN start ) { this.start = start; }
+    public void setEnd( LSN end ) { this.end = end; }
 
     // java.lang.Object
     public String toString()
@@ -48,27 +46,23 @@ public class LSNRange implements Struct
     public int getXDRSize()
     {
         int my_size = 0;
-        my_size += Integer.SIZE / 8; // viewId
-        my_size += Long.SIZE / 8; // sequenceStart
-        my_size += Long.SIZE / 8; // sequenceEnd
+        my_size += start.getXDRSize(); // start
+        my_size += end.getXDRSize(); // end
         return my_size;
     }
 
     public void marshal( Marshaller marshaller )
     {
-        marshaller.writeUint32( "viewId", viewId );
-        marshaller.writeUint64( "sequenceStart", sequenceStart );
-        marshaller.writeUint64( "sequenceEnd", sequenceEnd );
+        marshaller.writeStruct( "start", start );
+        marshaller.writeStruct( "end", end );
     }
 
     public void unmarshal( Unmarshaller unmarshaller )
     {
-        viewId = unmarshaller.readUint32( "viewId" );
-        sequenceStart = unmarshaller.readUint64( "sequenceStart" );
-        sequenceEnd = unmarshaller.readUint64( "sequenceEnd" );
+        start = new LSN(); unmarshaller.readStruct( "start", start );
+        end = new LSN(); unmarshaller.readStruct( "end", end );
     }
 
-    private int viewId;
-    private long sequenceStart;
-    private long sequenceEnd;
+    private LSN start;
+    private LSN end;
 }

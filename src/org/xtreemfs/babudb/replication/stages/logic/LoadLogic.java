@@ -66,10 +66,11 @@ public class LoadLogic extends Logic {
     public void run() throws ConnectionLostException, InterruptedException{
         LSN until = (stage.missing == null) ? 
                 new LSN(stage.lastInserted.getViewId()+1,0L) :
-                new LSN(stage.missing.getViewId(),stage.missing.getSequenceEnd());
+                new LSN(stage.missing.getEnd());
         
         if (stage.missing != null && 
-            stage.missing.getSequenceEnd() == stage.missing.getSequenceStart()) {
+            new LSN(stage.missing.getStart())
+                .equals(new LSN(stage.missing.getEnd()))) {
             stage.missing = null;
         }
                 
@@ -113,7 +114,7 @@ public class LoadLogic extends Logic {
             Logging.logMessage(Logging.LEVEL_DEBUG, this, 
             "Logfile switched at LSN %s.", stage.lastInserted.toString());
             
-            stage.lastInserted = new LSN(stage.lastInserted.getViewId()+1,0L);
+            stage.lastInserted = logger.getLatestLSN();
             loadFinished(false);
             return;
         }
@@ -160,9 +161,13 @@ public class LoadLogic extends Logic {
             }
             long fileSize = fileData.getFileSize();
             long maxChunkSize = fileData.getMaxChunkSize();
-            // if we got an empty file
+            
+            // if we got an empty file, that cannot be right, so try again
             if (!(fileSize > 0L)) return;
-            assert (maxChunkSize > 0L) : "Empty chunks are not allowed: "+fileName;
+            
+            assert (maxChunkSize > 0L) : 
+                "Empty chunks are not allowed: " + fileName;
+            
             synchronized (openChunks) {
                 if (openChunks.get() != -1)
                     openChunks.addAndGet((int) (fileSize / maxChunkSize));
@@ -187,13 +192,16 @@ public class LoadLogic extends Logic {
                             FileChannel fChannel = null;
                             try {
                                 if (buffer.remaining() == 0){
-                                    Logging.logMessage(Logging.LEVEL_ERROR, this, "CHUNK ERROR: %s", 
-                                            "Empty buffer received!");
+                                    Logging.logMessage(Logging.LEVEL_ERROR, this, 
+                                        "CHUNK ERROR: Empty buffer received!");
+                                    
                                     stage.interrupt();
                                 }
                                 // insert the file input
                                 File f = getFile(chunk);
-                                assert (f.exists()) : "File was not created properly: "+chunk.toString();
+                                assert (f.exists()) : 
+                                    "File was not created properly: " + 
+                                    chunk.toString();
                                 fChannel = new FileOutputStream(f).getChannel();
                                 fChannel.write(buffer.getBuffer());
                             } finally {
@@ -259,13 +267,17 @@ public class LoadLogic extends Logic {
      * @param loaded - induces whether the DBS had to be reload or not
      */
     private void loadFinished(boolean loaded) {
-        if (stage.missing != null && stage.missing.getSequenceEnd() > 
-            stage.lastInserted.getSequenceNo()+1L) {
-            stage.missing = new LSNRange(stage.lastInserted.getViewId(),
-            stage.lastInserted.getSequenceNo()+1L,
-            stage.missing.getSequenceEnd());
+        if (stage.missing != null && 
+            stage.lastInserted.compareTo(new LSN(stage.missing.getEnd())) < 0) {
+            
+            stage.missing = new LSNRange(
+                    new org.xtreemfs.babudb.interfaces.LSN(
+                            stage.lastInserted.getViewId(),
+                            stage.lastInserted.getSequenceNo()),
+                    stage.missing.getEnd());
+            
             stage.setLogic(REQUEST, "There are still some logEntries " +
-                    "missing after switching the logfile.");
+                    "missing after switching the log-file.");
         } else {
             String msg = (loaded) ? "Loading finished with LSN("+stage.
                     lastInserted+"), we can go on with the basicLogic." : 

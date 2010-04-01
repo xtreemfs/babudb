@@ -17,7 +17,7 @@ import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.Request;
 import org.xtreemfs.babudb.replication.SlaveRequestDispatcher;
-import org.xtreemfs.babudb.replication.stages.ReplicationStage.TooBusyException;
+import org.xtreemfs.babudb.replication.stages.ReplicationStage.BusyServerException;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
@@ -103,13 +103,13 @@ public class ReplicateOperation extends Operation {
     @Override
     public void startRequest(Request rq) {
         replicateRequest request = (replicateRequest) rq.getRequestMessage();
-        final LSN lsn = new LSN(request.getLsn().getViewId(),
-                request.getLsn().getSequenceNo());
+        final LSN lsn = new LSN(request.getLsn());
+        
         LogEntry le = (LogEntry) rq.getAttachment();
         try {
             dispatcher.replication.enqueueOperation(new Object[]{ lsn, le });
             rq.sendSuccess(request.createDefaultResponse());
-        } catch (TooBusyException e) {
+        } catch (BusyServerException e) {
             if (le!=null) le.free();
             rq.sendReplicationException(ErrNo.BUSY,e.getMessage());
         }

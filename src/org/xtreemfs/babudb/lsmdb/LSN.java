@@ -27,6 +27,11 @@ public class LSN implements Comparable<LSN> {
         this(new String(lsn));
     }
     
+    public LSN(org.xtreemfs.babudb.interfaces.LSN lsn) {
+        this.viewId = lsn.getViewId();
+        this.sequenceNo = lsn.getSequenceNo();
+    }
+    
     /**
      * <p>Gets the LSN from given string representation.</p>
      * <p>Pattern: "'viewId':'sequenceNo'"</p>

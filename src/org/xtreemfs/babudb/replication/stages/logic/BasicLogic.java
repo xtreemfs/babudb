@@ -61,29 +61,37 @@ public class BasicLogic extends Logic {
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "Replicate requested: %s", 
                 lsn.toString());
         
+        LSN expected = new LSN(stage.lastInserted.getViewId(), 
+                               stage.lastInserted.getSequenceNo() + 1L);
+        
         // check the LSN of the logEntry to write
-        if (lsn.getViewId() > stage.lastInserted.getViewId()) {
-            queue.add(op);
-            stage.setLogic(LOAD, "We had a viewID incrementation.");
-            return;
-        } else if(lsn.getViewId() < stage.lastInserted.getViewId()){
+        if (lsn.compareTo(stage.lastInserted) <= 0) {
+            // entry was already inserted
             stage.finalizeRequest(op);
             return;
-        } else {
-            if (lsn.getSequenceNo() <= stage.lastInserted.getSequenceNo()) {
-                stage.finalizeRequest(op);
-                return;
-            } else if (lsn.getSequenceNo() > stage.lastInserted.getSequenceNo()+1) {
+        } else if(!lsn.equals(expected)){
+            // we missed one or more entries
+            
+            org.xtreemfs.babudb.interfaces.LSN start = 
+                new org.xtreemfs.babudb.interfaces.LSN(
+                        stage.lastInserted.getViewId(),
+                        stage.lastInserted.getSequenceNo());
+            
+            long endSeq = 1L;
+            if (lsn.getSequenceNo() > 1L) {
                 queue.add(op);
-                stage.missing = new LSNRange(lsn.getViewId(),
-                        stage.lastInserted.getSequenceNo()+1,lsn.getSequenceNo());
-                stage.setLogic(REQUEST, "We missed some LogEntries "+
-                        stage.missing.toString()+".");
-                return;
-            } else { 
-                /* continue execution */ 
+                endSeq = lsn.getSequenceNo() - 1L;
+            } else {
+                stage.finalizeRequest(op);
             }
-        }
+            org.xtreemfs.babudb.interfaces.LSN end =
+                new org.xtreemfs.babudb.interfaces.LSN(lsn.getViewId(), endSeq);
+            
+            stage.missing = new LSNRange(start, end);
+            stage.setLogic(REQUEST, "We missed some LogEntries "+
+                    stage.missing.toString()+".");
+            return;
+        } 
         
         // try to finish the request
         try {     

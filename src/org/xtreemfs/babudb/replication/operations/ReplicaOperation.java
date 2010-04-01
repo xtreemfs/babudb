@@ -35,6 +35,8 @@ import org.xtreemfs.foundation.logging.Logging;
 
 public class ReplicaOperation extends Operation {
 
+    private final static int MAX_LOGENTRIES_PER_REQUEST = 5000;
+    
     private final int procId;
     
     private final RequestDispatcher dispatcher;
@@ -82,14 +84,16 @@ public class ReplicaOperation extends Operation {
     @Override
     public void startRequest(Request rq) {
         replicaRequest req = (replicaRequest) rq.getRequestMessage();
-        LSN start = new LSN(req.getRange().getViewId(),
-                            req.getRange().getSequenceStart());
-        int numOfLEs = (int) (req.getRange().getSequenceEnd() - 
-                              req.getRange().getSequenceStart());
+        
+        LSN start = new LSN(req.getRange().getStart());
+        LSN end = new LSN(req.getRange().getEnd());
+        assert (start.compareTo(end) < 0) : 
+            "Always request at least one LogEntry!";
+        
         LogEntries result = new LogEntries();
         
         Logging.logMessage(Logging.LEVEL_INFO, this, "REQUEST received " +
-        	"(start: %s, numOfLEs: %d) from %s", start.toString(), numOfLEs,
+        	"(start: %s, end: %s) from %s", start.toString(), end.toString(),
         	rq.getRPCRequest().getClientIdentity());
         
         CheckpointerImpl chkPntr = (CheckpointerImpl) dispatcher.dbs.getCheckpointer();
@@ -109,21 +113,30 @@ public class ReplicaOperation extends Operation {
                 });
                 
                 it = new DiskLogIterator(logFiles, start);
-                for (int i = 0;i < numOfLEs; i++) {
+                
+                // discard the first entry, because it was the last inserted
+                // entry of the requesting server
+                it.next().free();
+                
+                int counter = 0;
+                do {
                     if (!it.hasNext()) {
-                        rq.sendReplicationException(ErrNo.LOG_CUT,
+                        rq.sendReplicationException(ErrNo.LOG_REMOVED,
                                 "LogEntry unavailable.");
                         return;
                     }
-                    
                     le = it.next();
+                    
                     assert (le.getPayload().array().length > 0) : 
                         "Empty log-entries are not allowed!";
+                    
                     result.add(new org.xtreemfs.babudb.interfaces.LogEntry(
                             le.serialize(checksum)));
                     checksum.reset();
                     le.free();
-                }
+                    counter++;
+                } while (le.getLSN().compareTo(end) < 0 && 
+                        counter < MAX_LOGENTRIES_PER_REQUEST);
                 
                 // send the response, if the requested log entries are found
                 rq.sendSuccess(new replicaResponse(result));

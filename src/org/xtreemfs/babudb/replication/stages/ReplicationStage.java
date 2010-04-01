@@ -71,7 +71,7 @@ public class ReplicationStage extends LifeCycleThread {
     /** Counter for the number of tries needed to perform an operation */
     private int                                 tries = 0;
     
-    private BabuDBRequest<Boolean>               listener = null;
+    private BabuDBRequest<Boolean>              listener = null;
     
     /**
      * 
@@ -141,7 +141,7 @@ public class ReplicationStage extends LifeCycleThread {
             } catch(ConnectionLostException cle) {
                 
                 switch (cle.errNo) {
-                case LOG_CUT : 
+                case LOG_REMOVED : 
                     setLogic(LOAD, "Master said, logfile was cut off.");
                     break;
                 case BUSY :
@@ -153,7 +153,8 @@ public class ReplicationStage extends LifeCycleThread {
                     quit = true;
                     if (listener != null) {
                         listener.failed(new BabuDBException(
-                                ErrorCode.REPLICATION_FAILURE,cle.getMessage()));
+                                ErrorCode.REPLICATION_FAILURE,
+                                cle.getMessage()));
                     }
                     dispatcher.suspend();
                     break;
@@ -211,18 +212,18 @@ public class ReplicationStage extends LifeCycleThread {
      * 
      * @return 
      */
-    public void manualLoad(BabuDBRequest<Boolean> listener, LSN from, 
-            LSN to) {
+    public void manualLoad(BabuDBRequest<Boolean> listener, LSN from, LSN to) {
         this.listener = listener;
         
-        if (from.getViewId() == to.getViewId()) {
-            missing = new LSNRange(from.getViewId(),from.getSequenceNo()+1L, 
-                    to.getSequenceNo()+1L);
-            setLogic(REQUEST, "manually synchronization");
-        } else {
-            missing = new LSNRange(to.getViewId(), 1L, to.getSequenceNo()+1L);
-            setLogic(LOAD, "manually synchronization");
-        }
+        org.xtreemfs.babudb.interfaces.LSN start = 
+            new org.xtreemfs.babudb.interfaces.LSN(
+                    from.getViewId(), from.getSequenceNo());
+        org.xtreemfs.babudb.interfaces.LSN end = 
+            new org.xtreemfs.babudb.interfaces.LSN(
+                    to.getViewId(), to.getSequenceNo());
+        missing = new LSNRange(start, end);
+        setLogic(REQUEST, "manually synchronization");
+        
         // necessary to wake up the mechanism
         if (q.isEmpty()) q.add(new StageRequest(null));
     }
@@ -269,14 +270,14 @@ public class ReplicationStage extends LifeCycleThread {
      * @param the
      *            method in the stage to execute
      *            
-     * @throws TooBusyException
+     * @throws BusyServerException
      */
-    public void enqueueOperation(Object[] args) throws TooBusyException {
+    public void enqueueOperation(Object[] args) throws BusyServerException {
         if (numRequests.incrementAndGet()>MAX_Q && MAX_Q != 0){
             numRequests.decrementAndGet();
-            throw new TooBusyException(getName()+": Operation could not be performed.");
+            throw new BusyServerException(getName()+": Operation could not be performed.");
         } else if (quit) 
-            throw new TooBusyException(getName()+": Shutting down.");
+            throw new BusyServerException(getName()+": Shutting down.");
         q.add(new StageRequest(args));
     }
     
@@ -287,9 +288,9 @@ public class ReplicationStage extends LifeCycleThread {
      * @author flangner
      * @since 06/08/2009
      */
-    public static final class TooBusyException extends Exception {
+    public static final class BusyServerException extends Exception {
         private static final long serialVersionUID = 2823332601654877350L; 
-        public TooBusyException(String string) {
+        public BusyServerException(String string) {
             super("Participant is too busy at the moment: "+string);
         }
     }

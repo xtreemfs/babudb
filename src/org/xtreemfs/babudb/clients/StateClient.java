@@ -62,8 +62,8 @@ public class StateClient extends ONCRPCClient {
             public LSN getResult(ReusableBuffer data) {
                 final stateResponse rp = new stateResponse();
                 rp.unmarshal(new XDRUnmarshaller(data));
-                org.xtreemfs.babudb.interfaces.LSN result = rp.getReturnValue();
-                return new LSN(result.getViewId(),result.getSequenceNo());
+                
+                return new LSN(rp.getReturnValue());
             }
         });
         
