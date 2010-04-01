@@ -139,7 +139,7 @@ public abstract class RequestDispatcher implements RPCServerRequestListener {
         rpcServer.setLifeCycleListener(replCtl);
         
         rpcClient = new RPCNIOSocketClient(replCtl.configuration.getSSLOptions(), 
-                ReplicationConfig.REQUEST_TIMEOUT, -
+                ReplicationConfig.REQUEST_TIMEOUT,
                 ReplicationConfig.CONNECTION_TIMEOUT, 
                 new RemoteExceptionParser[]{new ReplicationInterfaceExceptionParser()});
         rpcClient.setLifeCycleListener(replCtl);
