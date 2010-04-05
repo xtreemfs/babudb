@@ -76,17 +76,13 @@ public class BasicLogic extends Logic {
                 new org.xtreemfs.babudb.interfaces.LSN(
                         stage.lastInserted.getViewId(),
                         stage.lastInserted.getSequenceNo());
-            
-            long endSeq = 1L;
-            if (lsn.getSequenceNo() > 1L) {
-                queue.add(op);
-                endSeq = lsn.getSequenceNo() - 1L;
-            } else {
-                stage.finalizeRequest(op);
-            }
+
             org.xtreemfs.babudb.interfaces.LSN end =
-                new org.xtreemfs.babudb.interfaces.LSN(lsn.getViewId(), endSeq);
+                new org.xtreemfs.babudb.interfaces.LSN(
+                        lsn.getViewId(), 
+                        lsn.getSequenceNo());
             
+            queue.add(op);
             stage.missing = new LSNRange(start, end);
             stage.setLogic(REQUEST, "We missed some LogEntries "+
                     stage.missing.toString()+".");
