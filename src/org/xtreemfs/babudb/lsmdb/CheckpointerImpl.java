@@ -82,7 +82,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
     /**
      * indicates when the current checkpoint is complete
      */
-    private boolean                            checkpointComplete = false;
+    private boolean                            checkpointComplete = true;
     
     /**
      * object used to ensure that only one checkpoint is created synchronously
@@ -98,7 +98,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
     /**
      * Flag to notify the disk-logger about a viewId incrementation.
      */
-    private boolean                            incrementViewId;
+    private boolean                            incrementViewId = false;
     
     /**
      * Creates a new database checkpointer
@@ -146,7 +146,9 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
     public void checkpoint(boolean incViewId) throws BabuDBException {
         
         incrementViewId = incViewId;
-        checkpointComplete = false;
+        synchronized (checkpointCompletionLock) {
+            checkpointComplete = false;
+        }
         
         // notify the checkpointing thread to immediately process all requests
         // in the processing queue
@@ -191,6 +193,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
                         snapIds[i++] = ((DatabaseImpl) db).proceedCreateSnapshot();
                     }
                     lastWrittenLSN = logger.switchLogFile(incrementViewId);
+                    incrementViewId = false;
                 } finally {
                     logger.unlockLogger();
                 }
@@ -389,8 +392,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
      */
     public void waitForCheckpoint() throws InterruptedException {
         synchronized (checkpointCompletionLock) {
-            if (!checkpointComplete)
-                checkpointCompletionLock.wait();
+            if (!checkpointComplete) checkpointCompletionLock.wait();
         }
     }
 }
