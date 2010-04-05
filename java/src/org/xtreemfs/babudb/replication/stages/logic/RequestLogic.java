@@ -92,6 +92,10 @@ public class RequestLogic extends Logic {
                     final LSN lsn = logentry.getLSN();
                     assert (check == null || check.compareTo(lsn) < 0) : 
                         "The requested LogEntries have lost their order!";
+                    assert (check.getViewId() == lsn.getViewId() || 
+                            lsn.getSequenceNo() == 1L) : "The first entry" +
+                            		" after a logfile-switch seems to" +
+                            		" be missing!";
                     check = lsn;
                     
                     // we have to switch the log-file

@@ -57,6 +57,9 @@ public class DiskLogFile {
     }
     
     public void close() throws IOException {
+        LogEntry tmp = next;
+        next = null;
+        if (tmp != null) tmp.free();
         channel.close();
         fis.close();
     }

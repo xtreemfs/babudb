@@ -22,6 +22,7 @@ import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.Request;
 import org.xtreemfs.babudb.replication.RequestDispatcher;
+import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.logging.Logging;
 
 /**
@@ -153,6 +154,12 @@ public class ReplicaOperation extends Operation {
                 rq.sendSuccess(new replicaResponse(result));
             } catch (Exception e) {
                 Logging.logError(Logging.LEVEL_INFO, this, e);
+                
+                // clear result
+                for (org.xtreemfs.babudb.interfaces.LogEntry entry : result) {
+                    BufferPool.free(entry.getPayload());
+                }
+                
                 rq.sendReplicationException(ErrNo.BUSY,
                         "Request not finished: "+e.getMessage(), e);
             } finally {
