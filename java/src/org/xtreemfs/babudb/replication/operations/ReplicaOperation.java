@@ -35,7 +35,7 @@ import org.xtreemfs.foundation.logging.Logging;
 
 public class ReplicaOperation extends Operation {
 
-    private final static int MAX_LOGENTRIES_PER_REQUEST = 5000;
+    private final static int MAX_LOGENTRIES_PER_REQUEST = 500;
     
     private final int procId;
     
@@ -87,14 +87,20 @@ public class ReplicaOperation extends Operation {
         
         LSN start = new LSN(req.getRange().getStart());
         LSN end = new LSN(req.getRange().getEnd());
-        assert (start.compareTo(end) < 0) : 
-            "Always request at least one LogEntry!";
-        
+       
         LogEntries result = new LogEntries();
         
+        boolean fakeStart = (start.getSequenceNo() == 0L);
+        if (fakeStart) start = new LSN(start.getViewId(), 1L);
+        boolean deadEnd = (end.getSequenceNo() == 0L);
+        
         Logging.logMessage(Logging.LEVEL_INFO, this, "REQUEST received " +
-        	"(start: %s, end: %s) from %s", start.toString(), end.toString(),
-        	rq.getRPCRequest().getClientIdentity());
+                "(start: %s, end: %s) from %s", start.toString(), end.toString(),
+                rq.getRPCRequest().getClientIdentity());
+        
+        assert (start.compareTo(end) < 0 || 
+               (fakeStart && start.compareTo(end) == 0)) : 
+            "Always request at least one LogEntry!";
         
         CheckpointerImpl chkPntr = (CheckpointerImpl) dispatcher.dbs.getCheckpointer();
         LogEntry le = null;
@@ -116,16 +122,21 @@ public class ReplicaOperation extends Operation {
                 
                 // discard the first entry, because it was the last inserted
                 // entry of the requesting server
-                it.next().free();
+                if (!fakeStart) it.next().free();
                 
                 int counter = 0;
                 do {
                     if (!it.hasNext()) {
-                        rq.sendReplicationException(ErrNo.LOG_REMOVED,
-                                "LogEntry unavailable.");
-                        return;
+                        if (result.size() > 0) {
+                            break;
+                        } else {
+                            rq.sendReplicationException(ErrNo.LOG_REMOVED,
+                            "LogEntry unavailable.");
+                            return;
+                        }
                     }
                     le = it.next();
+                    if (deadEnd && le.getLSN().compareTo(end) > 0) break;
                     
                     assert (le.getPayload().array().length > 0) : 
                         "Empty log-entries are not allowed!";

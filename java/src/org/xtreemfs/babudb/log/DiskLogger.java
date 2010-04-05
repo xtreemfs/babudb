@@ -239,7 +239,6 @@ public class DiskLogger extends Thread {
         if (!hasLock()) {
             throw new IllegalStateException("the lock is held by another thread or the logger is not locked.");
         }
-        LSN lastSyncedLSN = new LSN(this.currentViewId.get(), this.nextLogSequenceNo.get() - 1);
         final String newFileName = createLogFileName();
         channel.close();
         fos.close();   
@@ -259,14 +258,20 @@ public class DiskLogger extends Thread {
         fos.setLength(0);
         channel = fos.getChannel();
         fdes = fos.getFD();
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "switched log files... new name: " + currentLogFileName);
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "switched log files... " +
+        		"new name: " + currentLogFileName);
         
+        LSN lastSyncedLSN = null;
         if (incrementViewId){
-            this.currentViewId.incrementAndGet();
-            this.nextLogSequenceNo.set(1L);
+            int view = this.currentViewId.getAndIncrement();
+            long seq = this.nextLogSequenceNo.getAndSet(1L) - 1L;
+            lastSyncedLSN = new LSN(view, seq);
+            if (replMan != null) replMan.updateLastOnView(lastSyncedLSN);
+        } else {
+            lastSyncedLSN = new LSN(this.currentViewId.get(), 
+                                    this.nextLogSequenceNo.get() - 1L);
         }
         
-        if (replMan != null) replMan.updateLastOnView(lastSyncedLSN);
         return lastSyncedLSN;
     }
 

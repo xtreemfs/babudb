@@ -173,8 +173,8 @@ public class RequestLogic extends Logic {
             throw new ConnectionLostException(
                     e.getTypeName()+": "+e.getMessage(),errNo);
         } catch (IOException ioe) {
-            // failure on transmission (connection lost)
-            throw new ConnectionLostException(ioe.getMessage(),ErrNo.UNKNOWN);
+            // failure on transmission (connection lost or request timed out)
+            throw new ConnectionLostException(ioe.getMessage(),ErrNo.BUSY);
         } catch (LogEntryException lee) {
             // decoding failed --> retry with new range
             Logging.logError(Logging.LEVEL_WARN, this, lee);
