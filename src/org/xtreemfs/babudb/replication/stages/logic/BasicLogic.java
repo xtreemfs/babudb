@@ -84,8 +84,9 @@ public class BasicLogic extends Logic {
             
             queue.add(op);
             stage.missing = new LSNRange(start, end);
-            stage.setLogic(REQUEST, "We missed some LogEntries "+
-                    stage.missing.toString()+".");
+            stage.setLogic(REQUEST, "We missed some LogEntries from " +
+                    stage.lastInserted.toString() + " to "+ lsn.toString() + 
+                    ".");
             return;
         } 
         

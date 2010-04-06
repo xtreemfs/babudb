@@ -134,9 +134,28 @@ public class ReplicationStage extends LifeCycleThread {
     public void run() {
         notifyStarted();
         while (!quit) {
+            boolean infarcted = false;
             try {
+                // sleep if a request shall be retried 
                 if (tries != 0) Thread.sleep(RETRY_DELAY_MS*tries);
+                
+                // prevent the heartbeatThread from sending messages as long as
+                // this server is synchronizing with another server
+                if (!infarcted && !logicID.equals(BASIC)) {
+                    dispatcher.heartbeat.infarction();
+                    infarcted = true;
+                }
+                
+                // operate the request
                 logics.get(logicID).run();
+                
+                // update the heartbeatThread and re-animate it
+                if (infarcted && logicID.equals(BASIC)) { 
+                    dispatcher.updateLatestLSN(lastInserted);
+                    infarcted = false;
+                }
+                
+                // reset the number of tries
                 tries = 0;
             } catch(ConnectionLostException cle) {
                 

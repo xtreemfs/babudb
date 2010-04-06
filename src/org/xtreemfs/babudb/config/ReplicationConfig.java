@@ -179,11 +179,11 @@ public class ReplicationConfig extends BabuDBConfig {
                 if (this.address != null && !this.address.equals(addrs))
                     throw new BindException();
                 this.address = addrs;
-            } catch (BindException e) {
+            } catch (Throwable t) {
+                // even if a participant's address is not reachable, or cannot
+                // be resolved, it never will be ignored completely, because
+                // it may become available later
                 this.participants.add(addrs);
-            } catch (Exception e) {
-                System.err.println("'"+addrs+"' will be ignored, because: " + 
-                        e.getMessage());
             } finally {
                 try {
                     s.close();

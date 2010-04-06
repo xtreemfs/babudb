@@ -70,9 +70,13 @@ public class HeartbeatOperation extends Operation {
     @Override
     public void startRequest(final Request rq) {
         heartbeatRequest request = (heartbeatRequest) rq.getRequestMessage();
-        LSN lsn = new LSN(request.getLsn().getViewId(),request.getLsn().getSequenceNo());
+        LSN lsn = new LSN(request.getLsn());
         try {
-            dispatcher.heartbeat(rq.getRPCRequest().getClientIdentity(), lsn, TimeSync.getLocalSystemTime());
+            dispatcher.heartbeat(
+                    rq.getRPCRequest().getClientIdentity(), 
+                    lsn, 
+                    TimeSync.getGlobalTime());
+            
             rq.sendSuccess(request.createDefaultResponse());
         } catch (UnknownParticipantException e) {
             rq.sendReplicationException(ErrNo.SECURITY,
