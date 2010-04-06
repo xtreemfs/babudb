@@ -20,7 +20,6 @@ import org.xtreemfs.babudb.interfaces.DBFileMetaData;
 import org.xtreemfs.babudb.interfaces.DBFileMetaDataSet;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
-import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.operations.ErrNo;
@@ -100,21 +99,18 @@ public class LoadLogic extends Logic {
         // switch log file by triggering a manual checkpoint, 
         // if the response was empty
         if (result.size() == 0) {
-            DiskLogger logger = stage.dispatcher.dbs.getLogger();
+            
             try {
-                logger.lockLogger();
-                logger.switchLogFile(true);
+                stage.lastInserted = 
+                    SharedLogic.switchLogFile(stage.dispatcher.dbs.getLogger());
             } catch (IOException e) {
                 // system failure on switching the lock file --> retry
                 Logging.logError(Logging.LEVEL_WARN, this, e);
                 return;
-            } finally {
-                logger.unlockLogger();
-            }
+            } 
             Logging.logMessage(Logging.LEVEL_DEBUG, this, 
             "Logfile switched at LSN %s.", stage.lastInserted.toString());
             
-            stage.lastInserted = logger.getLatestLSN();
             loadFinished(false);
             return;
         }

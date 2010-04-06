@@ -25,6 +25,7 @@ import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.clients.MasterClient;
 import org.xtreemfs.babudb.clients.StateClient;
+import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
@@ -141,6 +142,22 @@ public final class SharedLogic {
         
         // append logEntry to the logFile
         dbs.getLogger().append(entry);  
+    }
+    
+    /**
+     * Method to synchronously switch the log file.
+     * 
+     * @throws InterruptedException 
+     * @throws IOException
+     * @return the {@link LSN} of the last synchronized {@link LogEntry}.  
+     */
+    static LSN switchLogFile(DiskLogger logger) throws InterruptedException, IOException {
+        try {
+            logger.lockLogger();
+            return new LSN(logger.switchLogFile(true).getViewId()+1, 1L);
+        } finally {
+            logger.unlockLogger();
+        }
     }
     
     /**

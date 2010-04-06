@@ -17,7 +17,6 @@ import org.xtreemfs.babudb.clients.MasterClient;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.interfaces.LogEntries;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
-import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.log.SyncListener;
@@ -85,6 +84,17 @@ public class RequestLogic extends Logic {
             rp = master.getReplica(stage.missing);
             logEntries = (LogEntries) rp.get();
             
+            // enhancement if the request had detected a master-failover
+            if (logEntries.size() == 0) {
+                assert (lsnAtLeast.getSequenceNo() == 1L && lsnAtLeast
+                        .getViewId() == stage.missing.getStart().getViewId()+1);
+                
+                stage.lastInserted = SharedLogic.switchLogFile(
+                        stage.dispatcher.dbs.getLogger());
+                finish();
+                return;
+            }
+            
             final AtomicInteger count = new AtomicInteger(logEntries.size());
             // insert all logEntries
             LSN check = null;
@@ -93,27 +103,24 @@ public class RequestLogic extends Logic {
                     final LogEntry logentry = 
                         LogEntry.deserialize(le.getPayload(), checksum);
                     final LSN lsn = logentry.getLSN();
-                    assert (check == null || check.compareTo(lsn) < 0) : 
-                        "The requested LogEntries have lost their order!";
+                    
+                    // assertion whether the received entry does match the order 
+                    // or not
                     assert (check == null || 
-                            check.getViewId() == lsn.getViewId() || 
-                            lsn.getSequenceNo() == 1L) : "The first entry" +
-                            		" after a logfile-switch seems to" +
-                            		" be missing!";
+                           (check.getViewId() == lsn.getViewId() && 
+                            check.getSequenceNo()+1L == lsn.getSequenceNo()) ||
+                            check.getViewId()+1 == lsn.getViewId() &&
+                            lsn.getSequenceNo() == 1L) : "ERROR: last LSN (" +
+                            check.toString() + ") received LSN (" + 
+                            lsn.toString() + ")!";
                     check = lsn;
                     
                     // we have to switch the log-file
                     if (lsn.getSequenceNo() == 1L && 
                         stage.lastInserted.getViewId() < lsn.getViewId()) {
                         
-                        DiskLogger logger = stage.dispatcher.dbs.getLogger();
-                        try {
-                            logger.lockLogger();
-                            logger.switchLogFile(true);
-                        } finally {
-                            logger.unlockLogger();
-                        }
-                        stage.lastInserted = logger.getLatestLSN();
+                        stage.lastInserted = SharedLogic.switchLogFile(
+                                stage.dispatcher.dbs.getLogger());
                     }
                     
                     SharedLogic.handleLogEntry(logentry, new SyncListener() {
@@ -154,21 +161,7 @@ public class RequestLogic extends Logic {
                 throw new LogEntryException("At least one insert could not be" +
                 		" proceeded.");
  
-            if (stage.lastInserted.compareTo(
-                new LSN (stage.missing.getEnd())) < 0) {
-                // we are still missing some entries (the request was too large)
-                // update the missing entries
-                stage.missing = new LSNRange(
-                        new org.xtreemfs.babudb.interfaces.LSN(
-                                stage.lastInserted.getViewId(),
-                                stage.lastInserted.getSequenceNo()), 
-                        stage.missing.getEnd());
-            } else {
-                // all went fine --> back to basic
-                stage.missing = null;
-                stage.setLogic(BASIC, "Request went fine, we can went on with" +
-                            " the basicLogic.");
-            }
+            finish();
             if (Thread.interrupted()) 
                 throw new InterruptedException("Replication was interrupted" +
                 		" after executing a replicaOperation.");
@@ -198,6 +191,27 @@ public class RequestLogic extends Logic {
             if (logEntries!=null) 
                 for (org.xtreemfs.babudb.interfaces.LogEntry le : logEntries) 
                     if (le.getPayload()!=null) BufferPool.free(le.getPayload());
+        }
+    }
+    
+    /**
+     * Method to decide which logic shall be used next.
+     */
+    private void finish() {
+        if (stage.lastInserted.compareTo(
+            new LSN (stage.missing.getEnd())) < 0) {
+            // we are still missing some entries (the request was too large)
+            // update the missing entries
+            stage.missing = new LSNRange(
+                    new org.xtreemfs.babudb.interfaces.LSN(
+                            stage.lastInserted.getViewId(),
+                            stage.lastInserted.getSequenceNo()), 
+                    stage.missing.getEnd());
+        } else {
+            // all went fine --> back to basic
+            stage.missing = null;
+            stage.setLogic(BASIC, "Request went fine, we can go on with" +
+                        " the basicLogic.");
         }
     }
 }

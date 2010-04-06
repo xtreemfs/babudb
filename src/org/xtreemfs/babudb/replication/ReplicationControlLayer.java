@@ -590,12 +590,16 @@ public class ReplicationControlLayer extends LifeCycleThread implements
                     
                     // setup a slave dispatcher to synchronize the 
                     // BabuDB with a replicated participant
-                    SlaveRequestDispatcher lDisp;
-                    lDisp = new SlaveRequestDispatcher(this.dispatcher, 
-                            entry.getKey(), this);
-                    this.dispatcher = lDisp;
-                
-                    snapshot = lDisp.synchronize(latest);
+                    SlaveRequestDispatcher lDisp = null;
+                    try {
+                        lDisp = new SlaveRequestDispatcher(this.dispatcher, 
+                                entry.getKey(), this);
+                        this.dispatcher = lDisp;
+                    
+                        snapshot = lDisp.synchronize(latest);
+                    } finally {
+                        if (lDisp != null) lDisp.suspend();
+                    }
                     break;
                 }
             }
