@@ -124,7 +124,7 @@ public class StateClient extends ONCRPCClient {
                 rp.unmarshal(new XDRUnmarshaller(data));
                 return null;
             }
-        });
+        },null,true);
         
         return r;
     }
