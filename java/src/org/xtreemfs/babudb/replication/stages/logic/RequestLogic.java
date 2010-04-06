@@ -63,14 +63,17 @@ public class RequestLogic extends Logic {
      */
     @Override
     public void run() throws InterruptedException, ConnectionLostException{
-        Logging.logMessage(Logging.LEVEL_INFO, this, "Replica-range is missing:" +
-        		" %s", stage.missing.toString());
+        LSN lsnAtLeast = new LSN(stage.missing.getEnd());
+        
+        Logging.logMessage(Logging.LEVEL_INFO, this, 
+                "Replica-range is missing: from %s to %s", 
+                new LSN(stage.missing.getStart()).toString(),
+                lsnAtLeast.toString());
         
         // get the missing logEntries
         RPCResponse<LogEntries> rp = null;    
         LogEntries logEntries = null;
         
-        LSN lsnAtLeast = new LSN(stage.missing.getEnd());
         MasterClient master = SharedLogic.getSynchronizationPartner(
                 stage.dispatcher.getConfig().getParticipants(), lsnAtLeast, 
                 stage.dispatcher.master);
@@ -92,7 +95,8 @@ public class RequestLogic extends Logic {
                     final LSN lsn = logentry.getLSN();
                     assert (check == null || check.compareTo(lsn) < 0) : 
                         "The requested LogEntries have lost their order!";
-                    assert (check.getViewId() == lsn.getViewId() || 
+                    assert (check == null || 
+                            check.getViewId() == lsn.getViewId() || 
                             lsn.getSequenceNo() == 1L) : "The first entry" +
                             		" after a logfile-switch seems to" +
                             		" be missing!";
@@ -150,8 +154,6 @@ public class RequestLogic extends Logic {
                 throw new LogEntryException("At least one insert could not be" +
                 		" proceeded.");
  
-            
-            stage.dispatcher.updateLatestLSN(stage.lastInserted);
             if (stage.lastInserted.compareTo(
                 new LSN (stage.missing.getEnd())) < 0) {
                 // we are still missing some entries (the request was too large)

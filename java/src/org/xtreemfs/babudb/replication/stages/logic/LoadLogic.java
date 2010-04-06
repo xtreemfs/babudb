@@ -119,8 +119,7 @@ public class LoadLogic extends Logic {
             return;
         }
         
-        // backup the old dbs and stop the heartBeat
-        stage.dispatcher.heartbeat.infarction();
+        // backup the old dbs
         stage.dispatcher.dbs.stop();
         try {
             backupFiles(stage.dispatcher.getConfig());
@@ -250,8 +249,7 @@ public class LoadLogic extends Logic {
         
         // reload the DBS
         try {
-            stage.dispatcher.updateLatestLSN(
-                    stage.lastInserted = stage.dispatcher.dbs.restart());
+            stage.lastInserted = stage.dispatcher.dbs.restart();
             removeBackupFiles(stage.dispatcher.getConfig());
             loadFinished(true);
         } catch (BabuDBException e) {

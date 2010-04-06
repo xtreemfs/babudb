@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.Map.Entry;
 import java.util.concurrent.PriorityBlockingQueue;
 
 import org.xtreemfs.babudb.clients.SlaveClient;
@@ -41,8 +42,8 @@ public class SlavesStates {
      * @since 05/03/2009
      * @author flangner
      */
-    private class State {
-        long lastUpdate = 0L;
+    private static final class State {
+        long lastUpdate = TimeSync.getGlobalTime();
         boolean dead = false;
         LSN lastAcknowledged = new LSN(0,0L);
         int openRequests = 0;
@@ -55,6 +56,17 @@ public class SlavesStates {
          */
         State(SlaveClient client) {
             this.client = client;
+        }
+        
+        /* (non-Javadoc)
+         * @see java.lang.Object#toString()
+         */
+        @Override
+        public String toString() {
+            return ((dead) ? "dead" : "alive") +
+                   " since '" + lastUpdate + "' with LSN (" +
+                   lastAcknowledged.toString() + ") and '" +
+                   openRequests + "' open requests;";
         }
     }
     
@@ -111,20 +123,21 @@ public class SlavesStates {
         this.slavesCount = this.availableSlaves = slaves.size();
         this.deadSlaves = 0;
         
-        for (InetSocketAddress slave : slaves) 
-            stateTable.put(slave.getAddress(), 
-                    new State(new SlaveClient(client, slave, null)));
+        synchronized (stateTable) {
+            for (InetSocketAddress slave : slaves) 
+                stateTable.put(slave.getAddress(), 
+                        new State(new SlaveClient(client, slave, null)));
+        }
     }
     
     /**
      * @param slave
      * @param acknowledgedLSN
      * @param receiveTime
-     * @return the latestCommon {@link LSN}.
      * 
      * @throws UnknownParticipantException if the slave is not registered.
      */
-    public LSN update(InetAddress slave, LSN acknowledgedLSN, long receiveTime) 
+    public void update(InetAddress slave, LSN acknowledgedLSN, long receiveTime) 
             throws UnknownParticipantException{
         
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "slave %s acknowledged %s", 
@@ -132,11 +145,14 @@ public class SlavesStates {
         
         synchronized (stateTable) {
             // the latest common LSN is >= the acknowledged one, just update the slave
-            State old;
-            if ((old = stateTable.get(slave))!=null) { 
+            final State old = stateTable.get(slave);
+            if (old != null) { 
                 // got a prove of life
                 old.lastUpdate = receiveTime;
                 if (old.dead) {
+                    Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                            "%s will be marked as alive!\n%s", 
+                            slave.toString(), toString());
                     deadSlaves--;
                     availableSlaves++;
                     old.dead = false;
@@ -166,7 +182,6 @@ public class SlavesStates {
                         "' is not registered at this master. " +
                         "Request received: " + receiveTime);            
         }
-        return latestCommon;
     }
     
     /**
@@ -196,27 +211,33 @@ public class SlavesStates {
         List<SlaveClient> result = new LinkedList<SlaveClient>();
         
         synchronized (stateTable) {
+            
             // wait until enough slaves are available, if they are ...
-            while (availableSlaves<syncN && !((slavesCount-deadSlaves)<syncN))
+            while (availableSlaves < syncN && 
+                  !((slavesCount - deadSlaves) < syncN))
                 stateTable.wait(WAIT_TILL_REFUSE);
             
-            long time = TimeSync.getLocalSystemTime();
+            long time = TimeSync.getGlobalTime();
+            
             // get all available slaves, if they are enough ...
-            if (!((slavesCount-deadSlaves)<syncN)) {
-                for (State slaveState : stateTable.values()){
-                    if (!slaveState.dead){
-                        if (slaveState.lastUpdate!=0L && time > 
-                            (slaveState.lastUpdate+DELAY_TILL_DEAD)) {
+            if (!((slavesCount - deadSlaves) < syncN)) {
+                for (final State s : stateTable.values()){
+                    if (!s.dead){
+                        if ( time > ( s.lastUpdate + DELAY_TILL_DEAD ) ) {
                             
-                            slaveState.dead = true;
+                            Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                                    "%s will be marked as dead!\n%s",
+                                    s.client.getDefaultServerAddress().toString(),
+                                    toString());
+                            s.dead = true;
                             availableSlaves--;
-                        } else if ( slaveState.openRequests < 
-                                MAX_OPEN_REQUESTS_PER_SLAVE ) {
-                            slaveState.openRequests++;
-                            if ( slaveState.openRequests == MAX_OPEN_REQUESTS_PER_SLAVE ) 
+                        } else if ( s.openRequests < 
+                                    MAX_OPEN_REQUESTS_PER_SLAVE ) {
+                            s.openRequests++;
+                            if ( s.openRequests == MAX_OPEN_REQUESTS_PER_SLAVE ) 
                                 availableSlaves--;
                             
-                            result.add(slaveState.client);
+                            result.add(s.client);
                         } 
                     }
                 }   
@@ -224,17 +245,20 @@ public class SlavesStates {
             
             // throw an exception, if they are not.
             if (result.size() < syncN) {
+                
                 // recycle the slaves from the result, before throwing an exception
                 for (SlaveClient c : result) {
-                    State s = stateTable.get(c.getDefaultServerAddress().getAddress());
+                    State s = stateTable.get(
+                            c.getDefaultServerAddress().getAddress());
                     if (s.openRequests == MAX_OPEN_REQUESTS_PER_SLAVE) 
                         availableSlaves++;
+                    
                     s.openRequests--;
                 }
                 
                 throw new NotEnoughAvailableSlavesException(        
-                    "With only '"+result.size()+"' are there not enough slaves " +
-                    "to perform the request.");
+                    "With only '"+result.size()+"' are there not enough " +
+                    "slaves to perform the request.");
             }
         }
         return result;
@@ -272,14 +296,22 @@ public class SlavesStates {
      */
     public void markAsDead(SlaveClient slave) {
         synchronized (stateTable) {
-            State s = stateTable.get(slave.getDefaultServerAddress().getAddress());
+            final State s = 
+                stateTable.get(slave.getDefaultServerAddress().getAddress());
+            s.openRequests--;
+            
+            // the slave has not been marked as dead jet
             if (!s.dead) {
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                        "%s will be marked as dead!\n%s",
+                        slave.getDefaultServerAddress().toString(), 
+                        toString());
+                
                 s.dead = true;
                 deadSlaves++;
                 availableSlaves--;
+                stateTable.notify();
             }
-            s.openRequests--;
-            stateTable.notify();
         }
     }
     
@@ -290,9 +322,12 @@ public class SlavesStates {
      */
     public void requestFinished(SlaveClient slave) {
         synchronized (stateTable) {
-            State s = stateTable.get(slave.getDefaultServerAddress()
-                    .getAddress());
+            final State s = 
+                stateTable.get(slave.getDefaultServerAddress().getAddress());
             s.openRequests--;
+            
+            // the number of open requests for this slave has fallen below the
+            // threshold of MAX_OPEN_REQUESTS_PER_SLAVE
             if (s.openRequests == (MAX_OPEN_REQUESTS_PER_SLAVE-1)) {
                 availableSlaves++;
                 stateTable.notify();
@@ -345,6 +380,29 @@ public class SlavesStates {
         
         public NotEnoughAvailableSlavesException(String string) {
             super(string);
+        }
+    }
+    
+/*
+ * Overridden methods    
+ */
+    
+    /* (non-Javadoc)
+     * @see java.lang.Object#toString()
+     */
+    @Override
+    public String toString() {
+        synchronized (stateTable) {
+            String result = "SlavesStates: slaves=" + slavesCount + 
+                            " - available=" + availableSlaves + "|dead=" + 
+                            deadSlaves + "\n";
+        
+            for (Entry<InetAddress, State> e : stateTable.entrySet()) {
+                result += e.getKey().toString() + ": " + 
+                          e.getValue().toString() + "\n";
+            }  
+            
+            return result;
         }
     }
 }
