@@ -198,7 +198,8 @@ public class LoadLogic extends Logic {
                                     "File was not created properly: " + 
                                     chunk.toString();
                                 fChannel = new FileOutputStream(f).getChannel();
-                                fChannel.write(buffer.getBuffer());
+                                fChannel.write(buffer.getBuffer(), 
+                                        chunk.getBegin());
                             } finally {
                                 if (fChannel!=null) fChannel.close();
                                 if (buffer!=null) BufferPool.free(buffer);
