@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.SlaveRequestDispatcher;
 import org.xtreemfs.foundation.LifeCycleThread;
+import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
 import org.xtreemfs.foundation.oncrpc.client.RPCResponseAvailableListener;
 
@@ -112,7 +113,18 @@ public class HeartbeatThread extends LifeCycleThread {
         
             @Override
             public void responseAvailable(RPCResponse r) { 
-                if (r!=null) r.freeBuffers(); 
+                try {
+                    r.get();
+                } catch (Throwable t) {
+                    Logging.logMessage(Logging.LEVEL_WARN, this, "Heartbeat " +
+                    		"could not be send to %s, because %s", 
+                    		dispatcher.master.getDefaultServerAddress().toString(),
+                    		t.getMessage());
+                    Logging.logError(Logging.LEVEL_DEBUG, this, t);
+                
+                } finally {
+                    if (r!=null) r.freeBuffers(); 
+                }
             }
         });
     }

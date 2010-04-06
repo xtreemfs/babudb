@@ -38,6 +38,7 @@ import org.xtreemfs.babudb.replication.operations.StateOperation;
 import org.xtreemfs.babudb.replication.stages.StageRequest;
 import org.xtreemfs.foundation.ErrNo;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.flease.Flease;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.oncrpc.client.RPCNIOSocketClient;
 import org.xtreemfs.foundation.oncrpc.client.RemoteExceptionParser;
@@ -83,11 +84,15 @@ public abstract class RequestDispatcher implements RPCServerRequestListener {
     /** the last acknowledged LSN of the last view */
     public final AtomicReference<LSN>       lastOnView;
     
-    /** initialized with false, a suspended dispatcher could not be suspended 
+    /** initialized with false, a suspended dispatcher cannot be suspended 
      *  again 
      */
-    protected final AtomicBoolean           suspended = new AtomicBoolean();
+    protected final AtomicBoolean           suspended = new AtomicBoolean(false);
 
+    /**
+     * component to ensure {@link Flease} requirement of loosely synchronized
+     * clocks
+     */
     protected final TimeDriftDetector       timeDriftDetector;
     
     /** the replication control layer */

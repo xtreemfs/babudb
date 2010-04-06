@@ -91,16 +91,37 @@ public class ReplicaOperation extends Operation {
        
         LogEntries result = new LogEntries();
         
-        boolean fakeStart = (start.getSequenceNo() == 0L);
-        if (fakeStart) start = new LSN(start.getViewId(), 1L);
         boolean deadEnd = (end.getSequenceNo() == 0L);
+        
+        // enhancement to prevent slaves from loading the db from the master un-
+        // necessarily
+        boolean enhancedStart;
+        if (start.equals(dispatcher.lastOnView.get()) && 
+            start.getViewId()+1 == end.getViewId() && 
+            end.getSequenceNo() == 0L) {
+            rq.sendSuccess(new replicaResponse(result));
+            
+            Logging.logMessage(Logging.LEVEL_INFO, this, "REQUEST answered " +
+                    "(start: %s, end: %s) from %s ... with null.", 
+                    start.toString(), end.toString(),
+                    rq.getRPCRequest().getClientIdentity());
+            return;
+            
+        } else if (enhancedStart = (start.equals(dispatcher.lastOnView.get()) && 
+                   !deadEnd)) {
+            
+            start = new LSN(start.getViewId()+1, 1L);
+        } else if (enhancedStart = (start.getSequenceNo() == 0L)) {
+            
+            start = new LSN(start.getViewId(), 1L);
+        }
         
         Logging.logMessage(Logging.LEVEL_INFO, this, "REQUEST received " +
                 "(start: %s, end: %s) from %s", start.toString(), end.toString(),
                 rq.getRPCRequest().getClientIdentity());
         
         assert (start.compareTo(end) < 0 || 
-               (fakeStart && start.compareTo(end) == 0)) : 
+               (enhancedStart && start.compareTo(end) <= 0)) : 
             "Always request at least one LogEntry!";
         
         CheckpointerImpl chkPntr = (CheckpointerImpl) dispatcher.dbs.getCheckpointer();
@@ -123,7 +144,7 @@ public class ReplicaOperation extends Operation {
                 
                 // discard the first entry, because it was the last inserted
                 // entry of the requesting server
-                if (!fakeStart) it.next().free();
+                if (!enhancedStart) it.next().free();
                 
                 int counter = 0;
                 do {
@@ -151,6 +172,10 @@ public class ReplicaOperation extends Operation {
                         counter < MAX_LOGENTRIES_PER_REQUEST);
                 
                 // send the response, if the requested log entries are found
+                Logging.logMessage(Logging.LEVEL_INFO, this, 
+                        "REQUEST: returning %d log-entries to %s.", 
+                        result.size(), rq.getRPCRequest().getClientIdentity());
+                
                 rq.sendSuccess(new replicaResponse(result));
             } catch (Exception e) {
                 Logging.logError(Logging.LEVEL_INFO, this, e);

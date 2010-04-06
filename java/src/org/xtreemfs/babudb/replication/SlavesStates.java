@@ -150,7 +150,7 @@ public class SlavesStates {
                 // got a prove of life
                 old.lastUpdate = receiveTime;
                 if (old.dead) {
-                    Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                    Logging.logMessage(Logging.LEVEL_INFO, this, 
                             "%s will be marked as alive!\n%s", 
                             slave.toString(), toString());
                     deadSlaves--;
@@ -225,7 +225,7 @@ public class SlavesStates {
                     if (!s.dead){
                         if ( time > ( s.lastUpdate + DELAY_TILL_DEAD ) ) {
                             
-                            Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                            Logging.logMessage(Logging.LEVEL_INFO, this, 
                                     "%s will be marked as dead!\n%s",
                                     s.client.getDefaultServerAddress().toString(),
                                     toString());
@@ -302,7 +302,7 @@ public class SlavesStates {
             
             // the slave has not been marked as dead jet
             if (!s.dead) {
-                Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                Logging.logMessage(Logging.LEVEL_INFO, this, 
                         "%s will be marked as dead!\n%s",
                         slave.getDefaultServerAddress().toString(), 
                         toString());
