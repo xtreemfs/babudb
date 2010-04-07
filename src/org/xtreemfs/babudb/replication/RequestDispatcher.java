@@ -137,29 +137,30 @@ public abstract class RequestDispatcher implements RPCServerRequestListener {
         // -------------------------------
         // initialize communication stages
         // -------------------------------
-        rpcServer = new RPCNIOSocketServer(replCtl.configuration.getPort(), 
-                replCtl.configuration.getInetSocketAddress().getAddress(), this, 
-                replCtl.configuration.getSSLOptions(), 
+        rpcServer = new RPCNIOSocketServer(getConfig().getPort(), 
+                getConfig().getInetSocketAddress().getAddress(), this, 
+                getConfig().getSSLOptions(), 
                 new NullAuthFlavorProvider());
         rpcServer.setLifeCycleListener(replCtl);
         
-        rpcClient = new RPCNIOSocketClient(replCtl.configuration.getSSLOptions(), 
+        rpcClient = new RPCNIOSocketClient(getConfig().getSSLOptions(), 
                 ReplicationConfig.REQUEST_TIMEOUT,
                 ReplicationConfig.CONNECTION_TIMEOUT, 
-                new RemoteExceptionParser[]{new ReplicationInterfaceExceptionParser()});
+                new RemoteExceptionParser[]{
+                    new ReplicationInterfaceExceptionParser()});
         rpcClient.setLifeCycleListener(replCtl);
         
         // -------------------------------
         // fill the permitted clients list
         // -------------------------------
-        for (InetSocketAddress participant : replCtl.configuration.getParticipants()) {
-            assert (!participant.equals(replCtl.configuration.getInetSocketAddress()));
+        for (InetSocketAddress participant : getConfig().getParticipants()) {
+            assert (!participant.equals(getConfig().getInetSocketAddress()));
             permittedClients.add(participant.getAddress());
         }
         
         this.timeDriftDetector = new TimeDriftDetector(replCtl, 
-                replCtl.configuration.getParticipants(), rpcClient, 
-                replCtl.configuration.getLocalTimeRenew());
+                getConfig().getParticipants(), rpcClient, 
+                getConfig().getLocalTimeRenew());
     }
     
     /**

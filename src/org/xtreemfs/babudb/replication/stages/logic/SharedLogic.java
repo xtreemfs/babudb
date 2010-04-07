@@ -174,11 +174,14 @@ public final class SharedLogic {
     static MasterClient getSynchronizationPartner(Set<InetSocketAddress> babuDBS, 
             LSN progressAtLeast, MasterClient master) {
         InetSocketAddress local = master.getLocalAddress();
-        babuDBS.remove(master.getDefaultServerAddress());
         
-        if (babuDBS.size() > 0) {
-            Map<InetSocketAddress, LSN> states = getStates(
-                    new LinkedList<InetSocketAddress>(babuDBS), master.getClient(), local);
+        List<InetSocketAddress> servers = 
+            new LinkedList<InetSocketAddress>(babuDBS);
+        servers.remove(master.getDefaultServerAddress());
+        
+        if (servers.size() > 0) {
+            Map<InetSocketAddress, LSN> states = getStates(servers, 
+                    master.getClient(), local);
             
             for (Entry<InetSocketAddress, LSN> e : states.entrySet()) {
                 if (e.getValue().compareTo(progressAtLeast) >= 0)

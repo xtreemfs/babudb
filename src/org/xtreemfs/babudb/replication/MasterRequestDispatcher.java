@@ -53,7 +53,7 @@ public class MasterRequestDispatcher extends RequestDispatcher {
                       replCtl.configuration.getSyncN();
                       
         this.states = new SlavesStates(this.syncN,
-                replCtl.configuration.getParticipants(), rpcClient);
+                getConfig().getParticipants(), rpcClient);
     }
     
     /**

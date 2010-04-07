@@ -127,6 +127,9 @@ public class SlavesStates {
             for (InetSocketAddress slave : slaves) 
                 stateTable.put(slave.getAddress(), 
                         new State(new SlaveClient(client, slave, null)));
+            
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                    "Initial configuration:\n%s", toString());
         }
     }
     
@@ -150,7 +153,7 @@ public class SlavesStates {
                 // got a prove of life
                 old.lastUpdate = receiveTime;
                 if (old.dead) {
-                    Logging.logMessage(Logging.LEVEL_INFO, this, 
+                    Logging.logMessage(Logging.LEVEL_DEBUG, this, 
                             "%s will be marked as alive!\n%s", 
                             slave.toString(), toString());
                     deadSlaves--;
@@ -177,10 +180,15 @@ public class SlavesStates {
                         }
                     }
                 }
-            } else 
+            } else {
+                Logging.logMessage(Logging.LEVEL_ERROR, this, "'%s' is not" +
+                        " registered at this master. Request received: %d", 
+                        slave.toString(), receiveTime);
+                
                 throw new UnknownParticipantException("'" + slave.toString() + 
                         "' is not registered at this master. " +
-                        "Request received: " + receiveTime);            
+                        "Request received: " + receiveTime);        
+            }
         }
     }
     
@@ -225,7 +233,7 @@ public class SlavesStates {
                     if (!s.dead){
                         if ( time > ( s.lastUpdate + DELAY_TILL_DEAD ) ) {
                             
-                            Logging.logMessage(Logging.LEVEL_INFO, this, 
+                            Logging.logMessage(Logging.LEVEL_DEBUG, this, 
                                     "%s will be marked as dead!\n%s",
                                     s.client.getDefaultServerAddress().toString(),
                                     toString());
@@ -302,7 +310,7 @@ public class SlavesStates {
             
             // the slave has not been marked as dead jet
             if (!s.dead) {
-                Logging.logMessage(Logging.LEVEL_INFO, this, 
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, 
                         "%s will be marked as dead!\n%s",
                         slave.getDefaultServerAddress().toString(), 
                         toString());
