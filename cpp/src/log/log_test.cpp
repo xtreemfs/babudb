@@ -19,12 +19,17 @@ using namespace babudb;
 void WriteToLog(Log* log) {
 	LogSection* tail = log->getTail();
 
-	tail->Append(DummyOperation(1)); tail->Commit();
+	ASSERT_TRUE(tail->Append(DummyOperation(1)) == 1); 
+  tail->Commit();
 
  	log->advanceTail();
 	tail = log->getTail();
-	tail->Append(DummyOperation(2)); tail->Commit();
-	tail->Append(DummyOperation(3)); tail->Commit();
+  ASSERT_TRUE(tail->StartTransaction() == 2);
+	ASSERT_TRUE(tail->Append(DummyOperation(2)) == 2); 
+  ASSERT_TRUE(tail->StartTransaction() == 2);
+  tail->Commit();
+	ASSERT_TRUE(tail->Append(DummyOperation(3)) == 3); 
+  tail->Commit();
 
 	log->advanceTail();
 	tail = log->getTail();

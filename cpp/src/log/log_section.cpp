@@ -40,7 +40,7 @@ lsn_t LogSection::getLastLSN() {
 	return next_lsn - 1;
 }
 
-lsn_t LogSection::Append(const Serializable& entry) {
+lsn_t LogSection::StartTransaction() {
 	if(!in_transaction) {
     // Write LSN frame
 		in_transaction = true;
@@ -49,12 +49,15 @@ lsn_t LogSection::Append(const Serializable& entry) {
 		frameData(write_location, sizeof(lsn_t), LSN_RECORD_TYPE);
 		next_lsn++;
 	}
+  return next_lsn - 1;
+}
 
+lsn_t LogSection::Append(const Serializable& entry) {
+  lsn_t lsn = StartTransaction();
 	void* write_location = getFreeSpace(RECORD_MAX_SIZE);
   entry.Serialize(Buffer(write_location, RECORD_MAX_SIZE));
   frameData(write_location, (unsigned int)entry.GetSize(), USER_RECORD_TYPE + entry.GetType());
-
-	return next_lsn - 1;
+	return lsn;
 }
 
 void LogSection::Commit() {

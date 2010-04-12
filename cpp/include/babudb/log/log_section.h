@@ -39,7 +39,11 @@ public:
 	lsn_t getFirstLSN();
 	lsn_t getLastLSN();
 
+  // Start a new transaction, idempotent
+  lsn_t StartTransaction();
+  // Append entry, start a new transaction if necessary
 	lsn_t Append(const Serializable& entry);
+  // Make the current transaction durable
 	void Commit();
 
 private:
