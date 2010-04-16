@@ -25,7 +25,7 @@ import java.util.zip.CRC32;
 
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.ReplicationManagerImpl;
-import org.xtreemfs.babudb.replication.ReplicateResponse;
+import org.xtreemfs.babudb.replication.service.accounting.ReplicateResponse;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
@@ -266,7 +266,6 @@ public class DiskLogger extends Thread {
             int view = this.currentViewId.getAndIncrement();
             long seq = this.nextLogSequenceNo.getAndSet(1L) - 1L;
             lastSyncedLSN = new LSN(view, seq);
-            if (replMan != null) replMan.updateLastOnView(lastSyncedLSN);
         } else {
             lastSyncedLSN = new LSN(this.currentViewId.get(), 
                                     this.nextLogSequenceNo.get() - 1L);

@@ -45,7 +45,8 @@ public class DBConfig {
     
     public DBConfig(BabuDB dbs) throws BabuDBException {
         this.dbs = dbs;
-        this.configFile = new File(this.dbs.getConfig().getBaseDir() + this.dbs.getConfig().getDbCfgFile());
+        this.configFile = new File(this.dbs.getConfig().getBaseDir() + 
+                this.dbs.getConfig().getDbCfgFile());
         load();
     }
     

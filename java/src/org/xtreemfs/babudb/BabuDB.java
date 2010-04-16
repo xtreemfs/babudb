@@ -35,10 +35,10 @@ import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSMDBWorker;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.DirectFileIO;
 import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.replication.ReplicationManagerImpl;
-import org.xtreemfs.babudb.replication.stages.logic.LoadLogic;
+import org.xtreemfs.babudb.replication.service.logic.LoadLogic;
+import org.xtreemfs.babudb.replication.transmission.FileIO;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManager;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
@@ -142,7 +142,7 @@ public class BabuDB {
         
         try {
             if (conf instanceof ReplicationConfig)
-                DirectFileIO.replayBackupFiles((ReplicationConfig) conf);
+                new FileIO((ReplicationConfig) conf).replayBackupFiles();
         } catch (IOException io) {
             Logging.logMessage(Logging.LEVEL_ERROR, this, "Could not retrieve the "
                 + "slave backup files, because: ", io.getMessage());
@@ -174,10 +174,9 @@ public class BabuDB {
         Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done, using LSN: " + nextLSN);
         
         // set up the replication service
-        LSN lastLSN = new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo() - 1);
         try {
             if (conf instanceof ReplicationConfig) {
-                this.replicationManager = new ReplicationManagerImpl(this, lastLSN);
+                this.replicationManager = new ReplicationManagerImpl(this);
                 Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB will use replication");
             } else {
                 this.replicationManager = null;

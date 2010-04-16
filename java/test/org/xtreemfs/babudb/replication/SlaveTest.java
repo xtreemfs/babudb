@@ -28,8 +28,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBFactory;
-import org.xtreemfs.babudb.clients.ReplicationInterfaceExceptionParser;
-import org.xtreemfs.babudb.clients.SlaveClient;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
@@ -41,6 +39,8 @@ import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.replication.transmission.client.Client;
+import org.xtreemfs.babudb.replication.transmission.client.InterfaceExceptionParser;
 import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
@@ -67,7 +67,7 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
     private RPCNIOSocketServer       rpcServer;
     private static ReplicationConfig conf;
     private RPCNIOSocketClient       rpcClient;
-    private SlaveClient              client;
+    private Client              client;
     private BabuDB                   db;
     public LSN                       current;  
     private long                     replicaRangeLength = new Random().nextInt(100)+1L;
@@ -111,9 +111,9 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
             assertTrue (conf.getSSLOptions() == null);
            
             rpcClient = new RPCNIOSocketClient(null,5000,10000, 
-                    new RemoteExceptionParser[]{new ReplicationInterfaceExceptionParser()});
+                    new RemoteExceptionParser[]{new InterfaceExceptionParser()});
             rpcClient.setLifeCycleListener(this);  
-            client = new SlaveClient(rpcClient,conf.getInetSocketAddress(),null);
+            client = new Client(rpcClient,conf.getInetSocketAddress(),null);
             
             List<InetSocketAddress> openAddresses = 
                 new LinkedList<InetSocketAddress>(conf.getParticipants());
