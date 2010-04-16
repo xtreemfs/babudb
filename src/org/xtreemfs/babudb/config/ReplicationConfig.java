@@ -19,7 +19,7 @@ import java.util.Properties;
 import java.util.Set;
 
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
-import org.xtreemfs.babudb.replication.ReplicationControlLayer;
+import org.xtreemfs.babudb.replication.control.FleaseHolder;
 import org.xtreemfs.foundation.SSLOptions;
 import org.xtreemfs.foundation.flease.FleaseConfig;
 
@@ -84,7 +84,7 @@ public class ReplicationConfig extends BabuDBConfig {
         
         this.fleaseConfig = new FleaseConfig(LEASE_TIMEOUT, this.localTimeRenew, 
                 MESSAGE_TIMEOUT, this.address, 
-                ReplicationControlLayer.getIdentity(this.address), MAX_RETRIES);
+                FleaseHolder.getIdentity(this.address), MAX_RETRIES);
     }
     
     public ReplicationConfig(String filename) throws IOException {
@@ -93,7 +93,7 @@ public class ReplicationConfig extends BabuDBConfig {
         
         this.fleaseConfig = new FleaseConfig(LEASE_TIMEOUT, this.localTimeRenew,
                 MESSAGE_TIMEOUT, this.address,
-                ReplicationControlLayer.getIdentity(this.address), MAX_RETRIES);
+                FleaseHolder.getIdentity(this.address), MAX_RETRIES);
     }
     
     public ReplicationConfig(String baseDir, String logDir, int numThreads, long maxLogFileSize,
@@ -132,7 +132,7 @@ public class ReplicationConfig extends BabuDBConfig {
                 
         this.fleaseConfig = new FleaseConfig(LEASE_TIMEOUT, this.localTimeRenew,
                 MESSAGE_TIMEOUT, this.address, 
-                ReplicationControlLayer.getIdentity(this.address), MAX_RETRIES);
+                FleaseHolder.getIdentity(this.address), MAX_RETRIES);
     }
     
     public void read() throws IOException {

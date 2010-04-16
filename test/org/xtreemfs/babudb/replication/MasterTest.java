@@ -28,8 +28,6 @@ import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.BabuDBRequestListener;
 import org.xtreemfs.babudb.BabuDBRequestResult;
-import org.xtreemfs.babudb.clients.MasterClient;
-import org.xtreemfs.babudb.clients.ReplicationInterfaceExceptionParser;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.interfaces.LogEntries;
@@ -43,6 +41,8 @@ import org.xtreemfs.babudb.lsmdb.Database;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
+import org.xtreemfs.babudb.replication.transmission.client.Client;
+import org.xtreemfs.babudb.replication.transmission.client.InterfaceExceptionParser;
 import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.logging.Logging.Category;
@@ -66,7 +66,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
     private RPCNIOSocketServer  rpcServer;
     private static ReplicationConfig conf;
     private RPCNIOSocketClient  rpcClient;
-    private MasterClient        client;
+    private Client        client;
     private BabuDB              db;
     private final AtomicInteger response = new AtomicInteger(-1);
     
@@ -95,9 +95,9 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
             db = BabuDBFactory.createReplicatedBabuDB(conf,null);
             assertTrue (conf.getSSLOptions() == null);
             rpcClient = new RPCNIOSocketClient(null,5000,10000, 
-                    new RemoteExceptionParser[]{new ReplicationInterfaceExceptionParser()});
+                    new RemoteExceptionParser[]{new InterfaceExceptionParser()});
             rpcClient.setLifeCycleListener(this);
-            client = new MasterClient(rpcClient,conf.getInetSocketAddress(),null);
+            client = new Client(rpcClient,conf.getInetSocketAddress(),null);
             
             int port = 35666;
             InetAddress address = InetAddress.getByAddress(new byte[]{127,0,0,1});
@@ -180,7 +180,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         
         long seqToRequest = 2L;
         
-        RPCResponse<LogEntries> result = client.getReplica(
+        RPCResponse<LogEntries> result = client.replica(
                 new LSNRange(new org.xtreemfs.babudb.interfaces.LSN(viewID, seqToRequest-1),
                         new org.xtreemfs.babudb.interfaces.LSN(viewID,seqToRequest)));
         LogEntries les = result.get();
@@ -207,7 +207,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         
         long seqToRequest = 1L;
         
-        RPCResponse<LogEntries> result = client.getReplica(new LSNRange(
+        RPCResponse<LogEntries> result = client.replica(new LSNRange(
                 new org.xtreemfs.babudb.interfaces.LSN(viewID, seqToRequest-1),
                 new org.xtreemfs.babudb.interfaces.LSN(viewID, seqToRequest)));
         try {

@@ -7,11 +7,8 @@
  */
 package org.xtreemfs.babudb.replication;
 
-import java.net.InetSocketAddress;
-import java.util.List;
-import java.util.Map;
+import java.net.InetAddress;
 
-import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.foundation.LifeCycleListener;
 
 /**
@@ -26,22 +23,13 @@ import org.xtreemfs.foundation.LifeCycleListener;
 public interface ReplicationManager extends LifeCycleListener{
 
     /**
-     * <p>Performs a network broadcast to get the latest LSN from every available DB.</p>
-     * 
-     * @param babuDBs
-     * @return the LSNs of the latest written LogEntries for all given <code>babuDBs</code>.
-     */
-    public abstract Map<InetSocketAddress, LSN> getStates(
-            List<InetSocketAddress> babuDBs);
-
-    /**
      * <p>
      * Changes the database replication master. Uses this, if
      * your {@link BabuDBRequestListener} recognizes an failure due
      * the replication and want to help BabuDB to recognize it.
      * </p>
      */
-    public abstract void manualFailover();
+    public void manualFailover();
     
     /**
      * <p>
@@ -49,13 +37,13 @@ public interface ReplicationManager extends LifeCycleListener{
      * And resetting the its state.
      * </p>
      */
-    public abstract void shutdown() throws Exception;
+    public void shutdown() throws Exception;
 
     /**
      * @return the currently designated master, or null, if BabuDB is 
      *         suspended at the moment.
      */
-    public abstract InetSocketAddress getMaster();
+    public InetAddress getMaster();
     
     /**
      * @return true, if the replication is running in master mode. false, otherwise.

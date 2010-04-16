@@ -20,9 +20,9 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.xtreemfs.babudb.config.ReplicationConfig;
+import org.xtreemfs.babudb.replication.transmission.FileIO;
+import org.xtreemfs.babudb.replication.transmission.FileIOInterface;
 import org.xtreemfs.foundation.util.FSUtils;
-
-import static org.xtreemfs.babudb.replication.DirectFileIO.*;
 
 /**
  * 
@@ -33,6 +33,7 @@ import static org.xtreemfs.babudb.replication.DirectFileIO.*;
 public class DirectFileIOTest {
 
     private static ReplicationConfig conf;
+    private static FileIOInterface fileIO;
     
     // define the test data
     String baseFile = "base.file";
@@ -44,10 +45,11 @@ public class DirectFileIOTest {
     String logDir = "logDir";
     String logDirFile = "logDir.file";
     String logTestString = "log";
-    
+        
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
         conf = new ReplicationConfig("config/replication.properties");
+        fileIO = new FileIO(conf);
     }
     
     @Before
@@ -71,7 +73,7 @@ public class DirectFileIOTest {
         String baseDirName = new File(conf.getBaseDir()).getName();
         String logDirName = new File(conf.getDbLogDir()).getName();
         
-        backupFiles(conf);
+        fileIO.backupFiles();
         
         File testFile = new File(conf.getBackupDir() + baseDirName);
         assertTrue(testFile.exists());
@@ -119,8 +121,8 @@ public class DirectFileIOTest {
     @Test
     public void testRemoveBackupFiles() throws IOException, InterruptedException {
         setupTestdata();
-        backupFiles(conf);
-        removeBackupFiles(conf);
+        fileIO.backupFiles();
+        fileIO.removeBackupFiles();
         
         File backup = new File(conf.getBackupDir());
         
@@ -133,10 +135,10 @@ public class DirectFileIOTest {
         
         // make a backup
         setupTestdata();
-        backupFiles(conf);
+        fileIO.backupFiles();
         
         // replay it
-        replayBackupFiles(conf);
+        fileIO.replayBackupFiles();
         
         // check, if everything went fine
         File base = new File(conf.getBaseDir());
