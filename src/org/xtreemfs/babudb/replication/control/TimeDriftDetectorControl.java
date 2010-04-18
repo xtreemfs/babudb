@@ -30,41 +30,26 @@
 /*
  * AUTHORS: Felix Langner (ZIB)
  */
-package org.xtreemfs.babudb.replication.service.accounting;
-
-import java.net.InetAddress;
-import java.util.List;
-
-import org.xtreemfs.babudb.replication.service.clients.ConditionClient;
-import org.xtreemfs.babudb.replication.service.clients.MasterClient;
+package org.xtreemfs.babudb.replication.control;
 
 /**
- * Interface to the {@link ConditionClient}s of servers participating at the
- * replication.
+ * Methods to control whether the detector should search actively for drifts
+ * or not.
  * 
  * @author flangner
- * @since 04/13/2010
+ * @since 04/18/2010
  */
-public interface ParticipantsOverview {
-
-    /**
-     * This set will not change after {@link ParticipantsStates} 
-     * has been initialized.
-     * 
-     * @return a set of all available {@link ConditionClient}s.
-     */
-    public List<ConditionClient> getConditionClients();
-
-    /**
-     * @param address
-     * @return a {@link ConditionClient} retrieved by the address of the server
-     *         it connects to.
-     */
-    public ConditionClient getByAddress(InetAddress address);
+interface TimeDriftDetectorControl {
     
     /**
-     * @return the master client currently registered by the replication 
-     *         mechanism. May be null.
+     * Schedules the detection task.
+     * 
+     * @throws IllegalStateException if this has been shut down jet.
      */
-    public MasterClient getMaster();
+    void start() throws IllegalStateException;
+    
+    /**
+     * Removes the detection task.
+     */
+    void stop();
 }

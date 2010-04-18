@@ -9,7 +9,6 @@ package org.xtreemfs.babudb.replication.service.logic;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
@@ -47,11 +46,8 @@ public class RequestLogic extends Logic {
     
     /** checksum algorithm used to deserialize logEntries */
     private final Checksum              checksum = new CRC32();
-    
-    private final AtomicReference<LSN>  lastOnView;
 
     /**
-     * @param lastOnView
      * @param stage
      * @param pacemaker
      * @param slaveView
@@ -60,10 +56,8 @@ public class RequestLogic extends Logic {
      */
     public RequestLogic(ReplicationStage stage, Pacemaker pacemaker, 
             SlaveView slaveView, FileIOInterface fileIO, 
-            BabuDBInterface babuInterface, AtomicReference<LSN> lastOnView) {
+            BabuDBInterface babuInterface) {
         super(stage, pacemaker, slaveView, fileIO, babuInterface);
-        
-        this.lastOnView = lastOnView;
     }
     
     /*
@@ -108,7 +102,7 @@ public class RequestLogic extends Logic {
                 assert (lsnAtLeast.getSequenceNo() == 1L && lsnAtLeast
                         .getViewId() == stage.missing.getStart().getViewId()+1);
                 
-                this.lastOnView.set(this.babuInterface.switchLogFile());
+                this.babuInterface.switchLogFile();
                 stage.lastInserted = this.babuInterface.getState();
                 finish();
                 return;
@@ -138,7 +132,7 @@ public class RequestLogic extends Logic {
                     if (lsn.getSequenceNo() == 1L && 
                         stage.lastInserted.getViewId() < lsn.getViewId()) {
                         
-                        this.lastOnView.set(this.babuInterface.switchLogFile());
+                        this.babuInterface.switchLogFile();
                         stage.lastInserted = this.babuInterface.getState();
                     }
                     

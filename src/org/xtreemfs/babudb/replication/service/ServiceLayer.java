@@ -143,15 +143,14 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
         // ----------------------------------
         // initialize the heartbeat
         // ----------------------------------
-        this.heartbeatThread = new HeartbeatThread(
-                this.participantsStates.getConditionClients());
+        this.heartbeatThread = new HeartbeatThread(this.participantsStates);
         
         // ----------------------------------
         // initialize replication stage
         // ----------------------------------
         this.replicationStage = new ReplicationStage(config.getMaxQueueLength(), 
                 this.heartbeatThread, this, transLayer.getFileIOInterface(), 
-                this.babuDBInterface, this.lastOnView);
+                this.babuDBInterface);
     }
     
 /*
@@ -284,7 +283,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
             // since the last log-file-switch
         } else if (latest.getSequenceNo() > 0L){
             Logging.logMessage(Logging.LEVEL_DEBUG, this, "switching the logfile only");
-            this.lastOnView.set(this.babuDBInterface.switchLogFile());
+            this.babuDBInterface.switchLogFile();
         }
     
         // wait for the slaves to recognize the master-change, 

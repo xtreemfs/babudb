@@ -25,7 +25,7 @@ import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
  * @author flangner
  * @since 03/30/2010
  */
- class TimeDriftDetector {
+ class TimeDriftDetector implements TimeDriftDetectorControl{
     
     /** listener to inform about an illegal time-drift */
     private final TimeDriftListener     listener;
@@ -69,39 +69,14 @@ import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
         
         this.maxDrift = dMax;
     }
-    
+   
+    /**
+     * Sets a {@link LifeCycleListener} for this thread.
+     * @param listener
+     */
     void setLifeCycleListener(LifeCycleListener listener) {
         assert (listener != null);
         this.lifeCyclelistener = listener;
-    }
-    
-    /**
-     * Schedules the detection task.
-     * 
-     * @throws IllegalStateException if this has been shut down jet.
-     */
-    void start() throws IllegalStateException{
-        synchronized (this) {
-            if (this.task == null) { 
-                this.task = new CheckTask();
-                this.timer.schedule(this.task, DELAY_BETWEEN_CHECKS);
-            }
-        }
-        if (this.lifeCyclelistener != null) 
-            this.lifeCyclelistener.startupPerformed(); 
-    }
-    
-    /**
-     * Removes the detection task.
-     */
-    void stop() {
-        synchronized (this) {
-            if (this.task != null) {
-                this.task.cancel();
-                this.task = null;
-                this.timer.purge();
-            }
-        }
     }
 
     /**
@@ -113,7 +88,40 @@ import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
             this.lifeCyclelistener.shutdownPerformed();
     }
     
+/*
+ * Overridden methods
+ */
     
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.control.TimeDriftDetectorControl#start()
+     */
+    @Override
+    public void start() throws IllegalStateException {
+        synchronized (this) {
+            if (this.task == null) { 
+                this.task = new CheckTask();
+                this.timer.schedule(this.task, DELAY_BETWEEN_CHECKS);
+            }
+        }
+        if (this.lifeCyclelistener != null) 
+            this.lifeCyclelistener.startupPerformed(); 
+    }
+    
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.control.TimeDriftDetectorControl#stop()
+     */
+    @Override
+    public void stop() {
+        synchronized (this) {
+            if (this.task != null) {
+                this.task.cancel();
+                this.task = null;
+                this.timer.purge();
+            }
+        }
+    }
     
     /**
      * Listener to be informed about the detection of an illegal time-drift.
@@ -162,7 +170,7 @@ import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
                         break;
                     }
                 } catch (Throwable e) {
-                    Logging.logMessage(Logging.LEVEL_INFO, timer, 
+                    Logging.logMessage(Logging.LEVEL_DEBUG, timer, 
                             "Local time of '%s' could not be fetched.", 
                             client.toString());
                 } finally {
