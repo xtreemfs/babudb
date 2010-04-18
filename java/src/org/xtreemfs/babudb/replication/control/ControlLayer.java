@@ -126,6 +126,13 @@ public class ControlLayer extends TopLayer implements RoleChangeListener,
         this.fleaseStage.closeCell(REPLICATION_CELL);
     }
     
+    /**
+     * @return a controller for the {@link TimeDriftDetector}.
+     */
+    TimeDriftDetectorControl getTimeDriftDetectorControl() {
+        return this.timeDriftDetector;
+    }
+    
 /*
  * Overridden methods
  */

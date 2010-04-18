@@ -47,7 +47,7 @@ import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
  * @author flangner
  * @since 04/12/2010
  */
-public interface MasterClient extends ClientInterface {
+public interface MasterClient extends ConditionClient {
 
     /**
      * Requests a list of {@link LogEntry}s inclusive between the given 

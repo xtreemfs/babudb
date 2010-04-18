@@ -82,7 +82,7 @@ public class ReplicationController extends LifeCycleThread
     
     /** the parent layer, needed to exclude temporarily from {@link Flease} */
     private final ControlLayer              ctrlLayer;
-    
+        
     public ReplicationController(FleaseHolder leaseStatus,
             ServiceToControlInterface serviceInterface, InetAddress own, 
             ControlLayer ctrlLayer) {
@@ -302,6 +302,7 @@ public class ReplicationController extends LifeCycleThread
         Logging.logMessage(Logging.LEVEL_INFO, this, 
                 "Becoming the replication master.");
         this.serviceInterface.synchronize();
+        this.ctrlLayer.getTimeDriftDetectorControl().start();
     }
     
     /**
@@ -320,7 +321,9 @@ public class ReplicationController extends LifeCycleThread
      * penetrated by replication requests until the next failover.
      */
     private synchronized void suspendReplication() {
-        this.suspended.set(true);
-        this.serviceInterface.reset();
+        if (this.suspended.compareAndSet(false, true)) {
+            this.serviceInterface.reset();
+            this.ctrlLayer.getTimeDriftDetectorControl().stop();
+        }
     }
 }

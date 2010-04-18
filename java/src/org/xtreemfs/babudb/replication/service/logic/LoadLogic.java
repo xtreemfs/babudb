@@ -12,7 +12,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.interfaces.Chunk;
@@ -47,11 +46,8 @@ import static org.xtreemfs.babudb.replication.service.logic.LogicID.*;
  */
 
 public class LoadLogic extends Logic {
-
-    private final AtomicReference<LSN> lastOnView;
     
     /**
-     * @param lastOnView
      * @param stage
      * @param pacemaker
      * @param slaveView
@@ -60,10 +56,8 @@ public class LoadLogic extends Logic {
      */
     public LoadLogic(ReplicationStage stage, Pacemaker pacemaker, 
             SlaveView slaveView, FileIOInterface fileIO, 
-            BabuDBInterface babuInterface, AtomicReference<LSN> lastOnView) {
+            BabuDBInterface babuInterface) {
         super(stage, pacemaker, slaveView, fileIO, babuInterface);
-        
-        this.lastOnView = lastOnView;
     }
 
     /*
@@ -117,7 +111,7 @@ public class LoadLogic extends Logic {
         if (result.size() == 0) {
             
             try {
-                this.lastOnView.set(this.babuInterface.switchLogFile());
+                this.babuInterface.switchLogFile();
                 stage.lastInserted = this.babuInterface.getState();
             } catch (IOException e) {
                 // system failure on switching the lock file --> retry

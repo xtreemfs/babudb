@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBRequest;
@@ -90,8 +89,7 @@ public class ReplicationStage extends LifeCycleThread
      * @param max_q - 0 means infinite.
      */
     public ReplicationStage(int max_q, Pacemaker pacemaker, SlaveView slaveView, 
-            FileIOInterface fileIO, BabuDBInterface babuInterface, 
-            AtomicReference<LSN> lastOnView) {
+            FileIOInterface fileIO, BabuDBInterface babuInterface) {
         
         super("ReplicationStage");
 
@@ -112,11 +110,10 @@ public class ReplicationStage extends LifeCycleThread
         logics.put(lg.getId(), lg);
         
         lg = new RequestLogic(this, pacemaker, slaveView, fileIO, 
-                babuInterface, lastOnView);
+                babuInterface);
         logics.put(lg.getId(), lg);
         
-        lg = new LoadLogic(this, pacemaker, slaveView, fileIO, babuInterface,
-                lastOnView);
+        lg = new LoadLogic(this, pacemaker, slaveView, fileIO, babuInterface);
         logics.put(lg.getId(), lg);
     }
 

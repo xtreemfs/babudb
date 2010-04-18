@@ -7,10 +7,10 @@
  */
 package org.xtreemfs.babudb.replication.service;
 
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview;
 import org.xtreemfs.babudb.replication.service.clients.ConditionClient;
 import org.xtreemfs.foundation.LifeCycleThread;
 import org.xtreemfs.foundation.logging.Logging;
@@ -29,8 +29,8 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
     /** 10 seconds */
     public final static long            MAX_DELAY_BETWEEN_HEARTBEATS = 10*1000; 
     
-    /** list of participants that should receive heartbeat-messages */
-    private final List<ConditionClient> participants;
+    /** approach to get the master to send the heartbeat messages to */
+    private final ParticipantsOverview  pOverview;
     
     /** holds the identifier of the last written LogEntry. */
     private volatile LSN                latestLSN;
@@ -44,11 +44,11 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
     /**
      * Default constructor with the initial values.
      * 
-     * @param clients
+     * @param pOverview
      */
-    public HeartbeatThread(List<ConditionClient> clients) {
+    public HeartbeatThread(ParticipantsOverview pOverview) {
         super("HeartbeatThread");
-        this.participants = clients;
+        this.pOverview = pOverview;
     }
     
     /* (non-Javadoc)
@@ -111,7 +111,8 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
      */
     @SuppressWarnings("unchecked")
     private void processHeartbeat() {
-        for (final ConditionClient c : participants) {
+        final ConditionClient c = this.pOverview.getMaster();
+        if (c != null) {
             c.heartbeat(latestLSN).registerListener(
                     new RPCResponseAvailableListener() {
             
