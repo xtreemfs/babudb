@@ -167,7 +167,7 @@ public class ReplicaOperation extends Operation {
                             counter == 0) {
                             rq.sendReplicationException(ErrNo.LOG_REMOVED,
                                     "LogEntry unavailable.");
-                                    return;
+                            return;
                         }
                         
                         // we skip the last entry, because the client already

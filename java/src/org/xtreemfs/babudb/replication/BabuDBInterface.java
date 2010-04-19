@@ -32,7 +32,6 @@
  */
 package org.xtreemfs.babudb.replication;
 
-import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Vector;
@@ -187,25 +186,6 @@ public class BabuDBInterface {
      */
     public void waitForCheckpoint() throws InterruptedException {
         getChckPtr().waitForCheckpoint();
-    }
-    
-    /**
-     * Method to synchronously switches the log file.
-     * 
-     * @throws InterruptedException 
-     * @throws IOException
-     * @return the {@link LSN} of the last synchronized {@link LogEntry}, before
-     *         the switch.  
-     */
-    public LSN switchLogFile() throws InterruptedException, IOException {
-        DiskLogger logger = this.dbs.getLogger();
-        
-        try {
-            logger.lockLogger();
-            return logger.switchLogFile(true);
-        } finally {
-            logger.unlockLogger();
-        }
     }
     
     /**
