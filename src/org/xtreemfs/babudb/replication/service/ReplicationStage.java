@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBRequest;
@@ -49,6 +50,8 @@ public class ReplicationStage extends LifeCycleThread
     private final static int                    RETRY_DELAY_MS = 500;
         
     public  LSN                                 lastInserted;
+    
+    public final AtomicReference<LSN>           lastOnView;
         
     /** missingRange shared between PLAIN and REQUEST {@link Logic} */
     public LSNRange                             missing = null;
@@ -87,12 +90,15 @@ public class ReplicationStage extends LifeCycleThread
      *                             change.
      * @param pacemaker - for the hearbeat.
      * @param max_q - 0 means infinite.
+     * @param lastOnView - reference for the compare-variable lastOnView.
      */
     public ReplicationStage(int max_q, Pacemaker pacemaker, SlaveView slaveView, 
-            FileIOInterface fileIO, BabuDBInterface babuInterface) {
+            FileIOInterface fileIO, BabuDBInterface babuInterface, 
+            AtomicReference<LSN> lastOnView) {
         
         super("ReplicationStage");
 
+        this.lastOnView = lastOnView;
         this.pacemaker = pacemaker;
         this.q = new PriorityBlockingQueue<StageRequest>();
         this.numRequests = new AtomicInteger(0);

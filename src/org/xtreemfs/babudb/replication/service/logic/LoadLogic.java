@@ -111,9 +111,10 @@ public class LoadLogic extends Logic {
         if (result.size() == 0) {
             
             try {
-                this.babuInterface.switchLogFile();
-                stage.lastInserted = this.babuInterface.getState();
-            } catch (IOException e) {
+                this.stage.lastOnView.set(this.babuInterface.getState());
+                this.babuInterface.checkpoint();
+                this.stage.lastInserted = this.babuInterface.getState();
+            } catch (BabuDBException e) {
                 // system failure on switching the lock file --> retry
                 Logging.logError(Logging.LEVEL_WARN, this, e);
                 return;

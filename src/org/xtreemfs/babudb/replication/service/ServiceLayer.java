@@ -150,7 +150,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
         // ----------------------------------
         this.replicationStage = new ReplicationStage(config.getMaxQueueLength(), 
                 this.heartbeatThread, this, transLayer.getFileIOInterface(), 
-                this.babuDBInterface);
+                this.babuDBInterface, this.lastOnView);
     }
     
 /*
@@ -247,7 +247,6 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
         }
     
         // synchronize with the most up-to-date slave, if necessary
-        boolean snapshot = true;
         LSN localState = this.babuDBInterface.getState();
         if (latest != null && latest.compareTo(localState) > 0) {
             for (Entry<ClientInterface, LSN> entry : states.entrySet()) {
@@ -260,7 +259,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
                 
                     BabuDBRequest<Boolean> ready = new BabuDBRequest<Boolean>();
                     this.replicationStage.manualLoad(ready, localState, latest);
-                    snapshot = ready.get();
+                    ready.get();
                 
                     assert(latest.equals(babuDBInterface.getState())) : 
                         "Synchronization failed: (expected=" + 
@@ -271,20 +270,12 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
             }
         }
     
-        // make a snapshot
-        if (snapshot && (latest.getSequenceNo() > 0L)) {
-            Logging.logMessage(Logging.LEVEL_DEBUG, this, "taking a new checkpoint");
-            this.lastOnView.set(this.babuDBInterface.getState());
-            // TODO maybe there are still some inserts on the DiskLogger-queue,
-            // which might increment the lastOnView LSN.
-            this.babuDBInterface.checkpoint();
-    
-            // switch the log-file only if there was have been replicated operations
-            // since the last log-file-switch
-        } else if (latest.getSequenceNo() > 0L){
-            Logging.logMessage(Logging.LEVEL_DEBUG, this, "switching the logfile only");
-            this.babuDBInterface.switchLogFile();
-        }
+        // always take a checkpoint on master-failover (incl. viewId inc.)
+        this.lastOnView.set(this.babuDBInterface.getState());
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "taking a checkpoint");
+        // TODO maybe there are still some inserts on the DiskLogger-queue,
+        // which might increment the lastOnView LSN.
+        this.babuDBInterface.checkpoint();
     
         // wait for the slaves to recognize the master-change, 
         // before setting up the masterDispatcher (asynchronous)

@@ -102,8 +102,9 @@ public class RequestLogic extends Logic {
                 assert (lsnAtLeast.getSequenceNo() == 1L && lsnAtLeast
                         .getViewId() == stage.missing.getStart().getViewId()+1);
                 
-                this.babuInterface.switchLogFile();
-                stage.lastInserted = this.babuInterface.getState();
+                this.stage.lastOnView.set(this.babuInterface.getState());
+                this.babuInterface.checkpoint();
+                this.stage.lastInserted = this.babuInterface.getState();
                 finish();
                 return;
             }
@@ -132,7 +133,8 @@ public class RequestLogic extends Logic {
                     if (lsn.getSequenceNo() == 1L && 
                         stage.lastInserted.getViewId() < lsn.getViewId()) {
                         
-                        this.babuInterface.switchLogFile();
+                        this.stage.lastOnView.set(this.babuInterface.getState());
+                        this.babuInterface.checkpoint();
                         stage.lastInserted = this.babuInterface.getState();
                     }
                     
@@ -186,7 +188,7 @@ public class RequestLogic extends Logic {
                     e.getTypeName()+": "+e.getMessage(),errNo);
         } catch (IOException ioe) {
             // failure on transmission (connection lost or request timed out)
-            throw new ConnectionLostException(ioe.getMessage(),ErrNo.BUSY);
+            throw new ConnectionLostException(ioe.getMessage(), ErrNo.BUSY);
         } catch (LogEntryException lee) {
             // decoding failed --> retry with new range
             Logging.logError(Logging.LEVEL_WARN, this, lee);
