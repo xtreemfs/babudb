@@ -7,6 +7,7 @@
 package org.xtreemfs.babudb.config;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Properties;
 
@@ -130,6 +131,24 @@ public class BabuDBConfig extends Config {
         read();
     }
     
+    public BabuDBConfig copy() {
+    	return new BabuDBConfig(baseDir, dbLogDir, numThreads, 
+    							maxLogfileSize, checkInterval, 
+    							syncMode, pseudoSyncWait, maxQueueLength, 
+    							compression, maxNumRecordsPerBlock, 
+    							maxBlockFileSize);
+    }
+
+    /**
+     * Writes out the config to the given filename.
+     * @param filename
+     * @throws IOException 
+     * @throws FileNotFoundException 
+     */
+    public void dump(String filename) throws FileNotFoundException, IOException {
+    	this.write(filename);
+    }
+        
     public void read() throws IOException {
         
         this.debugLevel = readDebugLevel();

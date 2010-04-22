@@ -701,6 +701,27 @@ public class DatabaseImpl implements Database {
         }
     }
     
+    /**
+     * Dumps a snapshot of the database with the given directory as base dir. 
+     * The database snapshot is in base dir + database name
+     * 
+     * @param baseDir
+     * @throws BabuDBException 
+     */
+    public void dumpSnapshot(String baseDir) throws BabuDBException {
+    	// destination directory of this
+    	baseDir = baseDir.endsWith(File.separator) ? baseDir : baseDir + File.separator;
+    	String destDir = baseDir + lsmDB.getDatabaseName();
+    	
+        try {
+        	int ids[] = lsmDB.createSnapshot();
+            LSN lsn = lsmDB.getOndiskLSN();
+            lsmDB.writeSnapshot(destDir, ids, lsn
+                    .getViewId(), lsn.getSequenceNo());
+        } catch (IOException ex) {
+            throw new BabuDBException(ErrorCode.IO_ERROR, "cannot write snapshot: " + ex, ex);
+        }
+    }
     /*
      * getter/setter
      */
