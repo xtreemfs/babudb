@@ -92,4 +92,27 @@ public interface DatabaseManager {
     public void copyDatabase(String sourceDB, String destDB) throws BabuDBException, IOException,
         InterruptedException;
     
+    /**
+     * Creates a dump of all databases registered with this DatabaseManager. 
+     * The dump is stored in the given destination path and is suitable for backup.
+     * Creating a dump does not influence the original database. The procedure 
+     * is as follows:
+     * 
+     * <ul>
+     * <li>Create snapshots of all databases within this BabuDB instance</li>
+     * <li> Write out a copy of the database config</li>
+     * <li> Materialize the snapshots in the backup directory</li>
+     * </ul>
+     * 
+     * A backup can be recovered by creating a new BabuDB instance configured 
+     * to use the dump's destination path.
+     * 
+     * @param destPath
+     * 			  the destination path of the dumped data
+     * @throws BabuDBException
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    public void dumpAllDatabases(String destPath) throws BabuDBException, IOException, 
+    	InterruptedException;    
 }

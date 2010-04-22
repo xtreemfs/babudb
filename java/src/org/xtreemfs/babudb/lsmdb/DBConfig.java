@@ -225,15 +225,16 @@ public class DBConfig {
     /**
      * saves the current database config to disk
      * 
+     * @param filename
+     * path to the config file location
      * @throws BabuDBException
      */
-    public void save() throws BabuDBException {
+    public void save(String filename) throws BabuDBException {
         DatabaseManagerImpl dbman = (DatabaseManagerImpl) dbs.getDatabaseManager();
         
         synchronized (dbman.getDBModificationLock()) {
             try {
-                FileOutputStream fos = new FileOutputStream(dbs.getConfig().getBaseDir()
-                    + dbs.getConfig().getDbCfgFile() + ".in_progress");
+                FileOutputStream fos = new FileOutputStream(filename + ".in_progress");
                 ObjectOutputStream oos = new ObjectOutputStream(fos);
                 oos.writeInt(BabuDB.BABUDB_DB_FORMAT_VERSION);
                 oos.writeInt(dbman.dbsById.size());
@@ -253,14 +254,17 @@ public class DBConfig {
                 fos.flush();
                 fos.getFD().sync();
                 oos.close();
-                File f = new File(dbs.getConfig().getBaseDir() + dbs.getConfig().getDbCfgFile()
-                    + ".in_progress");
-                f.renameTo(new File(dbs.getConfig().getBaseDir() + dbs.getConfig().getDbCfgFile()));
+                File f = new File(filename + ".in_progress");
+                f.renameTo(new File(filename));
             } catch (IOException ex) {
                 throw new BabuDBException(ErrorCode.IO_ERROR, "unable to save database configuration", ex);
             }
             
         }
+    }
+    
+    public void save() throws BabuDBException {
+    	save(dbs.getConfig().getBaseDir() + dbs.getConfig().getDbCfgFile());
     }
     
     public boolean isConversionRequired() {

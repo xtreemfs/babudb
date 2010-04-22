@@ -47,7 +47,7 @@ public class LSMDatabase {
     private final List<LSMTree>         trees;
     
     /**
-     * The directori in which the database stores the LSMTree snapshots
+     * The directory in which the database stores the LSMTree snapshots
      */
     private final String                databaseDir;
     
@@ -337,7 +337,7 @@ public class LSMDatabase {
             
             File dir = new File(directory);
             if (!dir.exists() && !dir.mkdirs())
-                throw new IOException("could not create directory '" + directory + "'");
+                throw new IOException("Directory doesnt exist and cannot be created:'" + directory + "'");
             
             tree.materializeSnapshot(newFileName, snapIds[i], index, cfg);
         }

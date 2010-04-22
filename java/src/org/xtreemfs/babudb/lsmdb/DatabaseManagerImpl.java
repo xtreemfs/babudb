@@ -13,6 +13,7 @@ import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_CREATE;
 import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_DELETE;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -23,6 +24,7 @@ import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBRequest;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
@@ -373,5 +375,21 @@ public class DatabaseManagerImpl implements DatabaseManager {
     
     public Object getDBModificationLock() {
         return dbModificationLock;
+    }
+    
+    public void dumpAllDatabases(String destPath) throws BabuDBException, InterruptedException, IOException {
+    	// create a snapshot of each database materialized with the destPath as baseDir
+    	destPath = destPath.endsWith(File.separator) ? destPath : destPath + File.separator;
+    	
+        File dir = new File(destPath);
+        if (!dir.exists() && !dir.mkdirs())
+            throw new IOException("Directory doesnt exist and cannot be created:'" + destPath + "'");
+
+   		BabuDBConfig cfg = dbs.getConfig();
+   		dbs.getDBConfigFile().save(destPath + cfg.getDbCfgFile());
+        
+		for(Database db: dbsByName.values()) {
+    		((DatabaseImpl) db).dumpSnapshot(destPath);
+    	}
     }
 }
