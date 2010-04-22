@@ -20,6 +20,7 @@ import org.xtreemfs.babudb.index.overlay.MultiOverlayBufferTree;
 import org.xtreemfs.babudb.index.reader.DiskIndex;
 import org.xtreemfs.babudb.index.writer.DiskIndexWriter;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
+import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.OutputUtils;
 
 public class LSMTree {
@@ -421,7 +422,7 @@ public class LSMTree {
     
     private boolean useMmap(long currentFileSize) {
         final long maxSize = 500 * 1024 * 1024;
-        System.out.println("DB size: " + OutputUtils.formatBytes(totalOnDiskSize + currentFileSize));
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "DB size: " + OutputUtils.formatBytes(totalOnDiskSize + currentFileSize));
         return "x86_64".equals(System.getProperty("os.arch")) || totalOnDiskSize + currentFileSize < maxSize;
     }
     
