@@ -103,9 +103,9 @@ public class LSMDatabase {
      *             if on-disk data cannot be read or DB directory cannot be
      *             created
      */
-    public LSMDatabase(String databaseName, int databaseId, String databaseDir, int numIndices,
-        boolean readFromDisk, ByteRangeComparator[] comparators, boolean compression, int maxEntriesPerBlock,
-        int maxBlockFileSize) throws BabuDBException {
+    public LSMDatabase(String databaseName, int databaseId, String databaseDir, int numIndices, boolean readFromDisk,
+            ByteRangeComparator[] comparators, boolean compression, int maxEntriesPerBlock, int maxBlockFileSize)
+            throws BabuDBException {
         
         this.numIndices = numIndices;
         this.databaseId = databaseId;
@@ -126,8 +126,9 @@ public class LSMDatabase {
             try {
                 for (int i = 0; i < numIndices; i++) {
                     assert (comparators[i] != null);
-                    trees.add(new LSMTree(null, comparators[i], this.compression, maxEntriesPerBlock,
-                        maxBlockFileSize));
+                    trees
+                            .add(new LSMTree(null, comparators[i], this.compression, maxEntriesPerBlock,
+                                    maxBlockFileSize));
                 }
                 ondiskLSN = NO_DB_LSN;
             } catch (IOException ex) {
@@ -157,8 +158,7 @@ public class LSMDatabase {
      *             if the on-disk data cannot be read
      */
     private void loadFromDisk(int numIndices) throws BabuDBException {
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "loading database " + this.databaseName
-            + " from disk...");
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "loading database " + this.databaseName + " from disk...");
         for (int index = 0; index < numIndices; index++) {
             trees.add(null);
         }
@@ -172,8 +172,7 @@ public class LSMDatabase {
                 }
             });
             if (files == null)
-                throw new BabuDBException(ErrorCode.IO_ERROR, "database directory '" + databaseDir
-                    + "' does not exist");
+                throw new BabuDBException(ErrorCode.IO_ERROR, "database directory '" + databaseDir + "' does not exist");
             
             int maxView = -1;
             int maxSeq = -1;
@@ -197,22 +196,17 @@ public class LSMDatabase {
             try {
                 if (maxView > -1) {
                     Logging.logMessage(Logging.LEVEL_DEBUG, this, "loading database " + this.databaseName
-                        + " from latest snapshot:" + databaseDir + "IX" + index + "V" + maxView + "SEQ"
-                        + maxSeq);
+                            + " from latest snapshot:" + databaseDir + "IX" + index + "V" + maxView + "SEQ" + maxSeq);
                     assert (comparators[index] != null);
-                    trees
-                            .set(index, new LSMTree(
-                                databaseDir + getSnapshotFilename(index, maxView, maxSeq),
-                                comparators[index], this.compression, this.maxEntriesPerBlock,
-                                this.maxBlockFileSize));
+                    trees.set(index, new LSMTree(databaseDir + getSnapshotFilename(index, maxView, maxSeq),
+                            comparators[index], this.compression, this.maxEntriesPerBlock, this.maxBlockFileSize));
                     ondiskLSN = new LSN(maxView, maxSeq);
                 } else {
                     ondiskLSN = NO_DB_LSN;
-                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "no snapshot for database "
-                        + this.databaseName);
+                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "no snapshot for database " + this.databaseName);
                     assert (comparators[index] != null);
-                    trees.set(index, new LSMTree(null, comparators[index], this.compression,
-                        this.maxEntriesPerBlock, this.maxBlockFileSize));
+                    trees.set(index, new LSMTree(null, comparators[index], this.compression, this.maxEntriesPerBlock,
+                            this.maxBlockFileSize));
                 }
             } catch (IOException ex) {
                 Logging.logError(Logging.LEVEL_ERROR, this, ex);
@@ -299,8 +293,9 @@ public class LSMDatabase {
             
             final LSMTree tree = trees.get(index);
             
-            Logging.logMessage(Logging.LEVEL_INFO, this, "snapshotting index " + index + "(dbName = "
-                + databaseName + ")...");
+            if (Logging.isInfo())
+                Logging.logMessage(Logging.LEVEL_INFO, this, "snapshotting index " + index + "(dbName = "
+                        + databaseName + ")...");
             
             File tmpDir = new File(databaseDir + "/.currentSnapshot");
             if (tmpDir.exists())
@@ -308,16 +303,20 @@ public class LSMDatabase {
             
             tree.materializeSnapshot(tmpDir.getAbsolutePath(), snapIds[index]);
             
-            tmpDir.renameTo(new File(databaseDir + getSnapshotFilename(index, viewId, sequenceNo)));
+            if (!tmpDir.renameTo(new File(databaseDir + getSnapshotFilename(index, viewId, sequenceNo))))
+                Logging.logMessage(Logging.LEVEL_ERROR, this,
+                        "could not complete snapshot writing: renaming to '%s' failed", getSnapshotFilename(index,
+                                viewId, sequenceNo));
             
-            Logging.logMessage(Logging.LEVEL_INFO, this, "... done (index = " + index + ", dbName = "
-                + databaseName + ")");
+            if (Logging.isInfo())
+                Logging.logMessage(Logging.LEVEL_INFO, this, "... done (index = " + index + ", dbName = "
+                        + databaseName + ")");
         }
-        Logging.logMessage(Logging.LEVEL_INFO, this, "snapshot written, database = " + databaseName);
+        if (Logging.isInfo())
+            Logging.logMessage(Logging.LEVEL_INFO, this, "snapshot written, database = " + databaseName);
     }
     
-    public void writeSnapshot(String directory, int[] snapIds, int viewId, long sequenceNumber)
-        throws IOException {
+    public void writeSnapshot(String directory, int[] snapIds, int viewId, long sequenceNumber) throws IOException {
         
         for (int index = 0; index < trees.size(); index++) {
             final LSMTree tree = trees.get(index);
@@ -361,8 +360,7 @@ public class LSMDatabase {
             final LSMTree tree = trees.get(index);
             
             Logging.logMessage(Logging.LEVEL_INFO, this, "linking to snapshot " + databaseDir
-                + getSnapshotFilename(index, viewId, sequenceNo) + ", dbName=" + databaseName + ", index="
-                + index);
+                    + getSnapshotFilename(index, viewId, sequenceNo) + ", dbName=" + databaseName + ", index=" + index);
             
             // catch any I/O exception that may occur while re-linking the
             // snapshot; this is done to ensure that old checkpoints are
@@ -425,8 +423,7 @@ public class LSMDatabase {
      * @return the {@link LSN} retrieved from the filename.
      */
     public static LSN getSnapshotLSNbyFilename(String fname) {
-        Matcher m = Pattern.compile(SNAPSHOT_FILENAME_REGEXP)
-                           .matcher(new File(fname).getName());
+        Matcher m = Pattern.compile(SNAPSHOT_FILENAME_REGEXP).matcher(new File(fname).getName());
         m.matches();
         
         return new LSN(Integer.valueOf(m.group(2)), Integer.valueOf(m.group(3)));
@@ -466,8 +463,7 @@ public class LSMDatabase {
             for (String fname : files) {
                 Matcher m = p.matcher(fname);
                 m.matches();
-                Logging.logMessage(Logging.LEVEL_DEBUG, this, 
-                        "inspecting snapshot: " + fname);
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, "inspecting snapshot: " + fname);
                 
                 int view = Integer.valueOf(m.group(2));
                 int seq = Integer.valueOf(m.group(3));
@@ -485,14 +481,12 @@ public class LSMDatabase {
                     
                     if (snapshotDir.isDirectory()) {
                         for (File file : snapshotDir.listFiles()) {
-                            result.add(new DBFileMetaData(databaseDir + fName +
-                                    File.separator + file.getName(), 
-                                    file.length(), chunkSize));
+                            result.add(new DBFileMetaData(databaseDir + fName + File.separator + file.getName(), file
+                                    .length(), chunkSize));
                         }
                     } else {
                         // for compatibility with older versions of BabuDB
-                        result.add(new DBFileMetaData(databaseDir + fName, 
-                                snapshotDir.length(), chunkSize));
+                        result.add(new DBFileMetaData(databaseDir + fName, snapshotDir.length(), chunkSize));
                     }
                 }
             }
