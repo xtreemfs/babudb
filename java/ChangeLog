@@ -13,6 +13,7 @@
   * enabled support for huge databases on 32-bit systems
   * improved robustness when errors occur while a checkpoint is created
 
-2010-05-11: release 0.3.4
+2010-05-11: release 0.4.0
   * added backup functionality for databases
   * fixed checkpointing issues on Windows machines
+  * changed modularization: Foundation.jar, Flease.jar and yidl.jar now need to be added to the classpath in order to run BabuDB 
