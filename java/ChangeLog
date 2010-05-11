@@ -12,3 +12,7 @@
 2010-03-02: release 0.3.3
   * enabled support for huge databases on 32-bit systems
   * improved robustness when errors occur while a checkpoint is created
+
+2010-05-11: release 0.3.4
+  * added backup functionality for databases
+  * fixed checkpointing issues on Windows machines

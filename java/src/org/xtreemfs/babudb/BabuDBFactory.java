@@ -15,33 +15,47 @@ import org.xtreemfs.babudb.config.ReplicationConfig;
  * A factory for the creation of BabuDB instances.
  * 
  * @author stenjan
- *
+ * 
  */
 public class BabuDBFactory {
-
+    
     /**
      * Initializes a new BabuDB instance.
      * 
-     * @param configuration the configuration
+     * @param configuration
+     *            the configuration
      * @throws BabuDBException
      */
-    public static BabuDB createBabuDB(BabuDBConfig configuration, 
-        StaticInitialization staticInit) throws BabuDBException {
+    public static BabuDB createBabuDB(BabuDBConfig configuration) throws BabuDBException {
+        
+        return new BabuDB(configuration, null);
+    }
+    
+    /**
+     * Initializes a new BabuDB instance.
+     * 
+     * @param configuration
+     *            the configuration
+     * @param staticInit
+     * @throws BabuDBException
+     */
+    public static BabuDB createBabuDB(BabuDBConfig configuration, StaticInitialization staticInit)
+        throws BabuDBException {
         
         return new BabuDB(configuration, staticInit);
     }
     
     /**
-     * Initializes a BabuDB instance with replication.
-     * Replication will be suspended until one BabuDB instance
-     * will be declared to master.
+     * Initializes a BabuDB instance with replication. Replication will be
+     * suspended until one BabuDB instance will be declared to master.
      * 
-     * @param configuration the {@link ReplicationConfig}
-     * @throws BabuDBException 
+     * @param configuration
+     *            the {@link ReplicationConfig}
+     * @param staticInit
+     * @throws BabuDBException
      */
     public static BabuDB createReplicatedBabuDB(ReplicationConfig configuration,
-            StaticInitialization staticInit) 
-        throws BabuDBException {
+        StaticInitialization staticInit) throws BabuDBException {
         
         return new BabuDB(configuration, staticInit);
     }
