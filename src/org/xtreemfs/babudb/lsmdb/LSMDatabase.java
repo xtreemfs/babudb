@@ -109,10 +109,11 @@ public class LSMDatabase {
         
         this.numIndices = numIndices;
         this.databaseId = databaseId;
-        this.databaseDir = databaseDir;
-        File f = new File(this.databaseDir);
+        File f = new File(databaseDir);
         if (!f.exists())
             f.mkdirs();
+        this.databaseDir = f.getAbsolutePath();
+        
         this.databaseName = databaseName;
         this.trees = new ArrayList<LSMTree>(numIndices);
         this.comparators = comparators;
@@ -196,10 +197,12 @@ public class LSMDatabase {
             try {
                 if (maxView > -1) {
                     Logging.logMessage(Logging.LEVEL_DEBUG, this, "loading database " + this.databaseName
-                            + " from latest snapshot:" + databaseDir + "IX" + index + "V" + maxView + "SEQ" + maxSeq);
+                        + " from latest snapshot:" + databaseDir + File.separator + "IX" + index + "V"
+                        + maxView + "SEQ" + maxSeq);
                     assert (comparators[index] != null);
-                    trees.set(index, new LSMTree(databaseDir + getSnapshotFilename(index, maxView, maxSeq),
-                            comparators[index], this.compression, this.maxEntriesPerBlock, this.maxBlockFileSize));
+                    trees.set(index, new LSMTree(databaseDir + File.separator
+                        + getSnapshotFilename(index, maxView, maxSeq), comparators[index], this.compression,
+                        this.maxEntriesPerBlock, this.maxBlockFileSize));
                     ondiskLSN = new LSN(maxView, maxSeq);
                 } else {
                     ondiskLSN = NO_DB_LSN;
@@ -297,16 +300,15 @@ public class LSMDatabase {
                 Logging.logMessage(Logging.LEVEL_INFO, this, "snapshotting index " + index + "(dbName = "
                         + databaseName + ")...");
             
-            File tmpDir = new File(databaseDir + "/.currentSnapshot");
+            File tmpDir = new File(databaseDir, ".currentSnapshot");
+            
+            // clean up incomplete old checkpoints if necessary
             if (tmpDir.exists())
                 FSUtils.delTree(tmpDir);
             
             tree.materializeSnapshot(tmpDir.getAbsolutePath(), snapIds[index]);
             
-            if (!tmpDir.renameTo(new File(databaseDir + getSnapshotFilename(index, viewId, sequenceNo))))
-                Logging.logMessage(Logging.LEVEL_ERROR, this,
-                        "could not complete snapshot writing: renaming to '%s' failed", getSnapshotFilename(index,
-                                viewId, sequenceNo));
+            tmpDir.renameTo(new File(databaseDir, getSnapshotFilename(index, viewId, sequenceNo)));
             
             if (Logging.isInfo())
                 Logging.logMessage(Logging.LEVEL_INFO, this, "... done (index = " + index + ", dbName = "
@@ -360,7 +362,8 @@ public class LSMDatabase {
             final LSMTree tree = trees.get(index);
             
             Logging.logMessage(Logging.LEVEL_INFO, this, "linking to snapshot " + databaseDir
-                    + getSnapshotFilename(index, viewId, sequenceNo) + ", dbName=" + databaseName + ", index=" + index);
+                + File.separator + getSnapshotFilename(index, viewId, sequenceNo) + ", dbName="
+                + databaseName + ", index=" + index);
             
             // catch any I/O exception that may occur while re-linking the
             // snapshot; this is done to ensure that old checkpoints are
@@ -368,7 +371,8 @@ public class LSMDatabase {
             // state
             IOException exception = null;
             try {
-                tree.linkToSnapshot(databaseDir + getSnapshotFilename(index, viewId, sequenceNo));
+                tree.linkToSnapshot(databaseDir + File.separator
+                    + getSnapshotFilename(index, viewId, sequenceNo));
             } catch (IOException exc) {
                 Logging.logError(Logging.LEVEL_ERROR, this, exc);
                 exception = exc;
@@ -388,7 +392,7 @@ public class LSMDatabase {
                     // delete snapshot if it is older (smaller LSN)
                     // than current
                     if ((fView < viewId) || ((fView == viewId) && (fSeq < sequenceNo))) {
-                        File snap = new File(databaseDir + fname);
+                        File snap = new File(databaseDir + File.separator + fname);
                         if (snap.isDirectory())
                             FSUtils.delTree(snap);
                         else
@@ -477,16 +481,16 @@ public class LSMDatabase {
                 
                 if (maxView > -1) {
                     String fName = getSnapshotFilename(index, maxView, maxSeq);
-                    File snapshotDir = new File(databaseDir + fName);
+                    File snapshotDir = new File(databaseDir + File.separator + fName);
                     
                     if (snapshotDir.isDirectory()) {
                         for (File file : snapshotDir.listFiles()) {
-                            result.add(new DBFileMetaData(databaseDir + fName + File.separator + file.getName(), file
-                                    .length(), chunkSize));
+                            result.add(new DBFileMetaData(databaseDir + File.separator + fName + File.separator
+                                + file.getName(), file.length(), chunkSize));
                         }
                     } else {
                         // for compatibility with older versions of BabuDB
-                        result.add(new DBFileMetaData(databaseDir + fName, snapshotDir.length(), chunkSize));
+                        result.add(new DBFileMetaData(databaseDir + File.separator + fName, snapshotDir.length(), chunkSize));
                     }
                 }
             }
