@@ -74,6 +74,6 @@ protected:
 	bool is_forward_iterator;
 };
 
-};
+}
 
 #endif

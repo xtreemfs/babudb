@@ -80,6 +80,6 @@ protected:
 	auto_ptr<yield::MemoryMappedFile> memory;
 };
 
-};  // namespace babudb
+}  // namespace babudb
 
 #endif  // BABUDB_LOGSTORAGE_H

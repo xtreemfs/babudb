@@ -49,6 +49,6 @@ private:
   string name;
 };
 
-};
+}
 
 #endif

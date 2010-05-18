@@ -33,4 +33,4 @@ bool matchFilename(const YIELD::Path& fullpath, const string& desired_prefix, co
 	return ext == desired_ext && name == desired_prefix;
 }
 
-};
+}

@@ -80,6 +80,5 @@ public:
 	string db, key, value;
 };
 
-};
-
+}
 #endif

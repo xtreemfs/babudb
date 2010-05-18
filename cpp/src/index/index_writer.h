@@ -70,6 +70,6 @@ private:
 	int key_no;		 			  // the ordinal number of the current key
 };
 
-};
+}
 
 #endif

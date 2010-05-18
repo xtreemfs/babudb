@@ -99,7 +99,6 @@ private:
 	unsigned short database_version;
 };
 
-
-};
+}
 
 #endif

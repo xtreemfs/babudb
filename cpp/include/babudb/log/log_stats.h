@@ -132,6 +132,6 @@ public:
 	double update_rate;
 };
 
-};
+}
 
 #endif

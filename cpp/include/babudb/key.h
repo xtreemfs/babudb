@@ -56,7 +56,7 @@ private:
 	KeyOrder& order;
 };
 
-};
+}
 
 #endif
 

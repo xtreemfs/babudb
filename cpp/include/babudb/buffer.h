@@ -181,6 +181,6 @@ public:
 #define MAX_LSN 0xFFFFffff
 typedef unsigned int lsn_t;
 
-};
+}
 
 #endif

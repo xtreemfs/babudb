@@ -57,6 +57,6 @@ private:
 	string name_prefix;
 };
 
-};
+}
 
 #endif

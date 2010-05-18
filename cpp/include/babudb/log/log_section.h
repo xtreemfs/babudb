@@ -52,6 +52,6 @@ private:
 	lsn_t next_lsn;  // the next lsn to write
 };
 
-};
+}
 
 #endif

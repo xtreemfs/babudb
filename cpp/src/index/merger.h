@@ -55,6 +55,6 @@ protected:
 	std::auto_ptr<ImmutableIndexWriter> destination;
 };
 
-};
+}
 
 #endif
