@@ -1,5 +1,8 @@
 // Copyright (c) 2008, Felix Hupfeld, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist, Zuse Institute Berlin.
+// Copyright (c) 2009, 2010 Felix Hupfeld
 // Licensed under the BSD License, see LICENSE file for details.
+//
+// Author: Felix Hupfeld (felix@storagebox.org)
 
 #include <utility>
 using std::pair;
@@ -16,6 +19,35 @@ using namespace YIELD;
 using namespace babudb;
 
 #include "babudb/test.h"
+
+void EXPECT_KEY_ADVANCE(
+    LookupIterator& it,
+    const babudb::Buffer& key, const babudb::Buffer& value) {
+  EXPECT_TRUE(it.hasMore());
+  if (!((*it).first == key)) {
+    string found((char*)(*it).first.data, (*it).first.size);
+    string expected((char*)key.data ,key.size);
+    EXPECT_TRUE(false);
+  }
+  if (!((*it).second == value)) {
+    string found((char*)(*it).second.data, (*it).second.size);
+    string expected((char*)value.data, value.size);
+    EXPECT_TRUE(false);
+  }
+	++it;
+}
+
+TEST_TMPDIR(LookupIteratorEmptyDb,babudb)
+{
+  StringOrder sorder;
+  vector<LogIndex*> logi;
+  
+	DataHolder lower("no0");
+	DataHolder upper("no1");
+	LookupIterator it_empty(logi, NULL, sorder, lower, upper);
+  
+	LookupIterator it_empty2(logi, NULL, sorder);
+}
 
 TEST_TMPDIR(LookupIterator,babudb)
 {
@@ -43,19 +75,29 @@ TEST_TMPDIR(LookupIterator,babudb)
 
 	vector<LogIndex*> logi; logi.push_back(&li1); logi.push_back(&li2); logi.push_back(&li3);
 
-	// now we have 1 pers + 3 overlays
-
 	DataHolder ovalue("overlayvalue");
 	DataHolder k0("key0"), k5("key5");
 
-	li1.Add(k1,ovalue);
+	li1.Add(k1, ovalue);
 
-	li2.Add(k0,ovalue);
-	li2.Add(k4,Buffer::Deleted());
-	li2.Add(k5,ovalue);
+	li2.Add(k0, Buffer::Deleted());
+	li2.Add(k1, Buffer::Deleted());
+	li2.Add(k4, Buffer::Deleted());
+	li2.Add(k5, ovalue);
 
-	li3.Add(k0,Buffer::Deleted());
-	li3.Add(k3,ovalue);
+	li3.Add(k0, ovalue);
+	li3.Add(k3, ovalue);
+
+	// Now we have 1 immutable + 3 overlay indices
+  //
+  //      ImmutableIndex  li3        li2        li1
+  //                      (2)        (1)        (0)
+  // key0                 ovalue     XXX
+  // key1 value1                     XXX        ovalue                   
+  // key2 value2                  
+  // key3 value3          ovalue
+  // key4 value4                     XXX
+  // key5                            ovalue
 
 	{	// try empty iterator
 		DataHolder lower("no0");
@@ -65,36 +107,46 @@ TEST_TMPDIR(LookupIterator,babudb)
 		EXPECT_FALSE(it_empty.hasMore());
 	}
 
-	{	// now for a range query
-		DataHolder lower("key1x");
-		DataHolder upper("key4x");
-
-		LookupIterator it(logi, loadedindex, sorder, lower, upper);
-
-		EXPECT_TRUE(it.hasMore());
-		EXPECT_EQUAL((*it).first, k2);
-		EXPECT_EQUAL((*it).second, v2);
-		++it;
-		EXPECT_TRUE(it.hasMore());
-		EXPECT_EQUAL((*it).first, k3);
-		EXPECT_EQUAL((*it).second, ovalue);
-		++it;
+	{	// only load ImmutableIndex
+		LookupIterator it(vector<LogIndex*>(), loadedindex, sorder);
+    
+    EXPECT_KEY_ADVANCE(it, k1, v1);
+    EXPECT_KEY_ADVANCE(it, k2, v2);
+    EXPECT_KEY_ADVANCE(it, k3, v3);
+    EXPECT_KEY_ADVANCE(it, k4, v4);
 		EXPECT_FALSE(it.hasMore());
 	}
 
-	{	// and another one
+	{	// now for a range query
+		DataHolder lower("key1x");
+		DataHolder upper("key4x");
+		LookupIterator it(logi, loadedindex, sorder, lower, upper);
+
+    EXPECT_KEY_ADVANCE(it, k2, v2);
+    EXPECT_KEY_ADVANCE(it, k3, ovalue);
+		EXPECT_FALSE(it.hasMore());
+	}
+
+	{	// and another one that equals the whole range
 		DataHolder lower2("key");
 		DataHolder upper2("key5x");
-		LookupIterator it2(logi, loadedindex, sorder, lower2, upper2);
+		LookupIterator it(logi, loadedindex, sorder, lower2, upper2);
+    
+    EXPECT_KEY_ADVANCE(it, k1, ovalue);
+    EXPECT_KEY_ADVANCE(it, k2, v2);
+    EXPECT_KEY_ADVANCE(it, k3, ovalue);
+    EXPECT_KEY_ADVANCE(it, k5, ovalue);
+		EXPECT_FALSE(it.hasMore());
+	}
 
-		EXPECT_TRUE(it2.hasMore());
-		EXPECT_EQUAL((*it2).first, k0);
-		EXPECT_EQUAL((*it2).second, ovalue);
-		++it2;
-		EXPECT_TRUE(it2.hasMore());
-		EXPECT_EQUAL((*it2).first, k1);
-		EXPECT_EQUAL((*it2).second, ovalue);
-		++it2;
+	{	// and as a full sweep
+		LookupIterator it(logi, loadedindex, sorder);
+
+    EXPECT_KEY_ADVANCE(it, k1, ovalue);
+    EXPECT_KEY_ADVANCE(it, k2, v2);
+    EXPECT_KEY_ADVANCE(it, k3, ovalue);
+    EXPECT_KEY_ADVANCE(it, k5, ovalue);
+		EXPECT_FALSE(it.hasMore());
 	}
 
 	{
