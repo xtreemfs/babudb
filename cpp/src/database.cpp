@@ -50,10 +50,22 @@ Database* Database::Open(const string& name, const vector<IndexDescriptor>& inde
   return database;
 }
 
-IndexMerger* Database::GetMerger(const string& index) {
-  return new IndexMerger(name + "-" + index,
-                         indices[index]->getOrder(),
-                         indices[index]->GetBase());
+void Database::Snapshot(const string& index_name) {
+  MergedIndex* index = indices[index_name];
+  index->Snapshot(latest_lsn);
+}
+
+void Database::CompactIndex(const string& index_name, lsn_t snapshot_lsn) {
+  LookupIterator snapshot = indices[index_name]->GetSnapshot(snapshot_lsn);
+  ImmutableIndexWriter* writer = ImmutableIndex::Create(
+      name + "-" + index_name, snapshot_lsn - 1, 64*1024);
+
+  while (snapshot.hasMore()) {
+    writer->Add((*snapshot).first, (*snapshot).second);
+    ++snapshot;
+  }
+
+  writer->Finalize();
 }
 
 void Database::Cleanup(const string& obsolete_prefix) {
@@ -70,7 +82,8 @@ lsn_t Database::GetMinimalPersistentLSN() {
   return minimal_persistent_lsn;
 }
 
-void Database::Add(const string& index_name, lsn_t change_lsn, const Buffer& key, const Buffer& value) {
+void Database::Add(const string& index_name, lsn_t change_lsn,
+                   const Buffer& key, const Buffer& value) {
   // Operations can affect multiple indices, plus we can have LSNs that do not affect indices at all.
   EXPECT_TRUE(change_lsn >= latest_lsn);
   MergedIndex* index = indices[index_name];
@@ -91,4 +104,20 @@ Buffer Database::Lookup(const string& index, const Buffer& key) {
 
 LookupIterator Database::Lookup(const string& index, const Buffer& lower, const Buffer& upper) {
   return indices[index]->Lookup(lower, upper);
+}
+
+vector<pair<string, lsn_t> > Database::GetIndexVersions() {
+  vector<pair<string, lsn_t> > result;
+  for(map<string,MergedIndex*>::iterator i = indices.begin(); i != indices.end(); ++i) {
+    result.push_back(std::make_pair(i->first, i->second->GetLastPersistentLSN()));
+  }
+  return result;
+}
+
+int Database::ReadIndex(const string& index_name, lsn_t version,
+                        int offset, char* buffer, int bytes) {
+  ImmutableIndex* index = indices[index_name]->GetBase();
+  if (index->GetLastLSN() != version)
+    return -1;
+  return index->Read(offset, buffer, bytes);
 }

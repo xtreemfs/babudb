@@ -23,10 +23,12 @@ class LogIndex;
 
 class LogIndex {
 public:
-	LogIndex(const KeyOrder& order, lsn_t first) : order(order), latest_value(MapCompare(order)), first_lsn(first) {}
+	LogIndex(const KeyOrder& order, lsn_t first)
+      : order(order), latest_value(MapCompare(order)), first_lsn(first) {}
 
 	Buffer lookup(const Buffer& key);
-//	vector<std::pair<Buffer,Buffer> > search(Buffer value); // needs value comp. operator
+  // not implemented, needs value comp. operator
+  //	vector<std::pair<Buffer,Buffer> > search(Buffer value);
 
 	bool Add(const Buffer&, const Buffer&);
 

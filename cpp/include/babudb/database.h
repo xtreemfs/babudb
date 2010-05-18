@@ -68,9 +68,19 @@ class Database {
   // Also any log merges need to start from here.
   lsn_t GetMinimalPersistentLSN();
 
-  // TODO: get merger from here, maybe even multi-index merger
-  IndexMerger* GetMerger(const string& name);
+  // Snapshot index at current lsn, for later merging
+  void Snapshot(const string& index_name);
+  // Compact the index snapshot. It is thread-safe in the sense that normal database
+  // operations can continue concurrently.
+  void CompactIndex(const string& name, lsn_t snapshot_lsn);
+  // Cleanup obsolete indicees by moving them to a directory from which they can
+  // be later deleted
   void Cleanup(const string& obsolete_prefix);
+
+  // Get latest versions (characterized by their lsn) of all immutable indices
+  std::vector<std::pair<string, lsn_t> > GetIndexVersions();
+  // Read a certain index version
+  int ReadIndex(const string& name, lsn_t version, int offset, char* buffer, int bytes);
 
 private:
   Database(const string& name);
@@ -82,6 +92,6 @@ private:
   lsn_t minimal_persistent_lsn;  // the minimum persistent LSN in all indices
 };
 
-};  // namespace babudb
+}  // namespace babudb
 
 #endif

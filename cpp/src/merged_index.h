@@ -35,9 +35,10 @@ public:
 	~MergedIndex();
 
   lsn_t GetLastPersistentLSN();
-
   // Rename obsolete immutable indices
 	void Cleanup(const string& to);
+  void Snapshot(lsn_t current_lsn);
+  LookupIterator GetSnapshot(lsn_t snapshot_lsn);
 
 	typedef map<Buffer,Buffer,SimpleMapCompare> ResultMap;
 	Buffer Lookup(const Buffer& key);

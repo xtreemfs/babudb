@@ -77,3 +77,31 @@ void MergedIndex::Cleanup(const string& to) {
   if (immutable_index)
     immutable_index->CleanupObsolete(name_prefix, to);
 }
+
+void MergedIndex::Snapshot(lsn_t current_lsn) {
+  tail = new LogIndex(order, current_lsn);
+  log_indices.insert(log_indices.begin(), tail);
+}
+
+LookupIterator MergedIndex::GetSnapshot(lsn_t snapshot_lsn) {
+  // Find and keep all indices up to the snapshot_lsn. Make sure that
+  // there is actually a snapshot at lsn.
+  bool found_snapshot = false;
+  vector<LogIndex*> indices_up_to_snapshot;
+	for(vector<LogIndex*>::iterator i = log_indices.begin();
+		i != log_indices.end(); ++i) {
+      if ((*i)->getFirstLSN() == snapshot_lsn) {
+        found_snapshot = true;
+      }
+      
+      if ((*i)->getFirstLSN() < snapshot_lsn) {
+         ASSERT_TRUE(found_snapshot);
+        indices_up_to_snapshot.push_back(*i);
+      }
+  }
+
+  ASSERT_TRUE(found_snapshot);
+
+  return LookupIterator(
+      indices_up_to_snapshot, immutable_index, order);
+}

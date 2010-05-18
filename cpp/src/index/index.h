@@ -1,7 +1,7 @@
 // This file is part of babudb/cpp
 //
 // Copyright (c) 2008, Felix Hupfeld, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist, Zuse Institute Berlin.
-// Copyright (c) 2009, Felix Hupfeld
+// Copyright (c) 2009, 2010 Felix Hupfeld
 // Licensed under the BSD License, see LICENSE file for details.
 //
 // Author: Felix Hupfeld (felix@storagebox.org)
@@ -55,6 +55,8 @@ public:
   void CleanupObsolete(const string& file_name, 
                        const string& obsolete_prefix); 
 
+  int Read(int offset, char* buffer, int bytes);
+
 private:
 	ImmutableIndex(auto_ptr<LogStorage> mm, const KeyOrder& order, lsn_t);
   bool LoadRoot();
@@ -69,6 +71,6 @@ private:
 	lsn_t latest_lsn;
 };
 
-};
+}
 
 #endif

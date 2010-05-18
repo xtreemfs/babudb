@@ -1,7 +1,7 @@
 // This file is part of babudb/cpp
 //
 // Copyright (c) 2008, Felix Hupfeld, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist, Zuse Institute Berlin.
-// Copyright (c) 2009, Felix Hupfeld
+// Copyright (c) 2009, 2010 Felix Hupfeld
 // Licensed under the BSD License, see LICENSE file for details.
 //
 // Author: Felix Hupfeld (felix@storagebox.org)
@@ -142,25 +142,28 @@ bool ImmutableIndex::LoadRoot() {
 			break;
 	}
 
-	offset_t* offsets = (offset_t*)cursor.getRecord()->getPayload();
-	size_t no_offsets = cursor.getRecord()->getPayloadSize()/sizeof(offset_t);
+  // If they index file is not empty...
+  if (cursor.getRecord()->getPayloadSize() > 0) {
+	  offset_t* offsets = (offset_t*)cursor.getRecord()->getPayload();
+	  size_t no_offsets = cursor.getRecord()->getPayloadSize()/sizeof(offset_t);
 
-	cursor.reverse();
-	++cursor;
-	ASSERT_TRUE(cursor.getRecord()->getType() == RECORD_TYPE_INDEX_KEY);
+	  cursor.reverse();
+	  ++cursor;
+	  ASSERT_TRUE(cursor.getRecord()->getType() == RECORD_TYPE_INDEX_KEY);
 
-	size_t record_count = 0;
-	for(; cursor != storage.end(); ++cursor) {	
-		if(cursor.getRecord()->getType() != RECORD_TYPE_FILE_FOOTER) {
-			Buffer key(cursor.getRecord()->getPayload(),
-					 cursor.getRecord()->getPayloadSize());
+	  size_t record_count = 0;
+	  for(; cursor != storage.end(); ++cursor) {	
+		  if(cursor.getRecord()->getType() != RECORD_TYPE_FILE_FOOTER) {
+			  Buffer key(cursor.getRecord()->getPayload(),
+					   cursor.getRecord()->getPayloadSize());
 
-			ASSERT_TRUE(record_count < no_offsets);
+			  ASSERT_TRUE(record_count < no_offsets);
 
-			index.insert(pair<Buffer,offset_t>(key,offsets[record_count]));
-			record_count++;
-		}
-	}
+			  index.insert(pair<Buffer,offset_t>(key, offsets[record_count]));
+			  record_count++;
+		  }
+	  }
+  }
 
 	return true;
 }
@@ -184,7 +187,7 @@ ImmutableIndex::DiskIndices ImmutableIndex::FindIndices(const string& name_prefi
 }
 
 static bool MoreRecent(const std::pair<YIELD::Path,lsn_t>& one,
-                const std::pair<YIELD::Path,lsn_t> two) {
+                       const std::pair<YIELD::Path,lsn_t> two) {
   return one.second > two.second;
 }
 
@@ -212,4 +215,10 @@ void ImmutableIndex::CleanupObsolete(const string& file_name, const string& to) 
       YIELD::DiskOperations::rename(i->first, to + parts.second.getHostCharsetPath());
 		}
 	}
+}
+
+int ImmutableIndex::Read(int offset, char* buffer, int bytes) {
+  int remaining_bytes = min(bytes, (int)storage.GetLogStorage()->Size() - offset);
+  memcpy(buffer, storage.GetLogStorage()->Start(), remaining_bytes);
+  return remaining_bytes;
 }

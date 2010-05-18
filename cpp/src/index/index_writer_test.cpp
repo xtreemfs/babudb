@@ -1,7 +1,7 @@
 // This file is part of babudb/cpp
 //
 // Copyright (c) 2008, Felix Hupfeld, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist, Zuse Institute Berlin.
-// Copyright (c) 2009, Felix Hupfeld
+// Copyright (c) 2009, 2010 Felix Hupfeld
 // Licensed under the BSD License, see LICENSE file for details.
 //
 // Author: Felix Hupfeld (felix@storagebox.org)
@@ -68,4 +68,19 @@ TEST_TMPDIR(ImmutableIndexWriter,babudb)
 	EXPECT_TRUE(!loadedindex->Lookup(DataHolder("key12")).isEmpty());
 	EXPECT_TRUE(!loadedindex->Lookup(DataHolder("key22")).isEmpty());
 	EXPECT_TRUE(!loadedindex->Lookup(DataHolder("key32")).isEmpty());
+}
+
+TEST_TMPDIR(ImmutableIndexWriterEmpty,babudb)
+{
+  // Create an empty index
+  ImmutableIndexWriter* writer = ImmutableIndex::Create(testPath("testdb-empty"), 9, 64*1024);
+  writer->Finalize();
+  delete writer;
+  
+  // And load it again
+	StringOrder sorder;
+  ImmutableIndex* loadedindex = ImmutableIndex::LoadLatestIntactIndex(
+      ImmutableIndex::FindIndices(testPath("testdb-empty")), sorder);
+  EXPECT_EQUAL(loadedindex->GetLastLSN(), 9);
+	EXPECT_TRUE(loadedindex->Lookup(DataHolder("key123")).isEmpty());
 }

@@ -86,20 +86,9 @@ LookupIterator StringDB::Lookup(const string& index, const string& lower, const 
 
 void StringDB::Compact(const string& to) {
   for (vector<string>::iterator name = index_names.begin();
-    name != index_names.end(); ++name) {
-    IndexMerger* merger = db->GetMerger(*name);
-
-    lsn_t min_persistent_lsn = db->GetMinimalPersistentLSN();
-    for (Log::iterator i = log->begin(); i != log->end(); ++i) {
-      StringSetOperation op;
-      op.Deserialize(i.asData());
-      if (i.GetLSN() > min_persistent_lsn) {
-        merger->Add(i.GetLSN(), DataHolder(op.key), DataHolder(op.value));
-      }
-    }
-    
-    merger->Run();
-    delete merger;
+       name != index_names.end(); ++name) {
+    db->Snapshot(*name);
+    db->CompactIndex(*name, db->GetCurrentLSN());
   }
 
   log->cleanup(db->GetCurrentLSN(), to);

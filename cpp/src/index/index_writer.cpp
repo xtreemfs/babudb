@@ -1,7 +1,7 @@
 // This file is part of babudb/cpp
 //
 // Copyright (c) 2008, Felix Hupfeld, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist, Zuse Institute Berlin.
-// Copyright (c) 2009, Felix Hupfeld
+// Copyright (c) 2009, 2010 Felix Hupfeld
 // Licensed under the BSD License, see LICENSE file for details.
 //
 // Author: Felix Hupfeld (felix@storagebox.org)
@@ -86,12 +86,16 @@ void* ImmutableIndexWriter::WriteData(Buffer data, char type) {
 void ImmutableIndexWriter::Finalize() {
 	FlushBuffer();
 
-	WriteData(Buffer(&index_offsets[0],
-			index_offsets.size() * sizeof(offset_t)), RECORD_TYPE_INDEX_OFFSETS);
+  if (index_offsets.size() > 0) {
+	  WriteData(Buffer(&index_offsets[0],
+			  index_offsets.size() * sizeof(offset_t)), RECORD_TYPE_INDEX_OFFSETS);
 
-	for(vector<Buffer>::iterator i = index_keys.begin(); i != index_keys.end(); i++) {
-		WriteData(*i, RECORD_TYPE_INDEX_KEY);
-	}
+	  for(vector<Buffer>::iterator i = index_keys.begin(); i != index_keys.end(); i++) {
+		  WriteData(*i, RECORD_TYPE_INDEX_KEY);
+	  }
+  } else {
+    WriteData(Buffer::Empty(), RECORD_TYPE_INDEX_OFFSETS);
+  }
 
 	WriteData(Buffer::Empty(), RECORD_TYPE_FILE_FOOTER);
 
