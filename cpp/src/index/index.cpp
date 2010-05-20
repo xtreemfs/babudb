@@ -22,6 +22,7 @@
 #define POSIX  // for O_ definitions from fcntl.h
 #include <fcntl.h>
 
+using namespace std;
 using namespace babudb;
 
 ImmutableIndex::ImmutableIndex(auto_ptr<LogStorage> mm,
@@ -43,12 +44,16 @@ ImmutableIndex* ImmutableIndex::Load(const string& name, lsn_t lsn,
   return result;
 }
 
-ImmutableIndexWriter* ImmutableIndex::Create(
-    const string& name, lsn_t lsn, size_t chunk_size) {
+string ImmutableIndex::GetIndexName(const string& name, lsn_t lsn) {
 	std::ostringstream file_name;
 	file_name << name << "_" << lsn << ".idx";
+  return file_name.str();
+}
+
+ImmutableIndexWriter* ImmutableIndex::Create(
+    const string& name, lsn_t lsn, size_t chunk_size) {
 	auto_ptr<LogStorage> mfile;
-  mfile.reset(PersistentLogStorage::Open(file_name.str()));
+  mfile.reset(PersistentLogStorage::Open(GetIndexName(name, lsn)));
   if (!mfile.get()) {
     return NULL;
   }

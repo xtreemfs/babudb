@@ -18,7 +18,6 @@
 #include <utility>
 #include <vector>
 #include <memory>
-using namespace std;
 
 #include "babudb/key.h"
 #include "babudb/log/sequential_file.h"
@@ -35,9 +34,9 @@ class ImmutableIndexWriter;
 class ImmutableIndex {
 public:
 	static ImmutableIndex* Load(
-      const string& file_name, lsn_t lsn, const KeyOrder& order);
+      const std::string& file_name, lsn_t lsn, const KeyOrder& order);
   static ImmutableIndexWriter* Create(
-      const string& name, lsn_t lsn, size_t chunk_size);
+      const std::string& name, lsn_t lsn, size_t chunk_size);
 
 	typedef class ImmutableIndexIterator iterator;
 	Buffer Lookup(Buffer search_key);
@@ -48,17 +47,18 @@ public:
 
 	lsn_t GetLastLSN() { return latest_lsn; }
 
-  typedef vector<pair<YIELD::Path,lsn_t> > DiskIndices;
-  static DiskIndices FindIndices(const string& name_prefix);
+  typedef std::vector<std::pair<YIELD::Path,lsn_t> > DiskIndices;
+  static DiskIndices FindIndices(const std::string& name_prefix);
   static ImmutableIndex* LoadLatestIntactIndex(DiskIndices& on_disk, 
                                                const KeyOrder& order);
-  void CleanupObsolete(const string& file_name, 
-                       const string& obsolete_prefix); 
+  static std::string GetIndexName(const std::string& name, lsn_t lsn);
+  void CleanupObsolete(const std::string& file_name, 
+                       const std::string& obsolete_prefix); 
 
   int Read(int offset, char* buffer, int bytes);
 
 private:
-	ImmutableIndex(auto_ptr<LogStorage> mm, const KeyOrder& order, lsn_t);
+	ImmutableIndex(std::auto_ptr<LogStorage> mm, const KeyOrder& order, lsn_t);
   bool LoadRoot();
 	typedef std::map<Buffer,offset_t,MapCompare> Tree;
 

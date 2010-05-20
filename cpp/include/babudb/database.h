@@ -81,6 +81,8 @@ class Database {
   std::vector<std::pair<string, lsn_t> > GetIndexVersions();
   // Read a certain index version
   int ReadIndex(const string& name, lsn_t version, int offset, char* buffer, int bytes);
+  // Get paths of used indices
+  std::vector<std::pair<string, string> > GetIndexPaths();
 
 private:
   Database(const string& name);

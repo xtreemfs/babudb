@@ -56,6 +56,10 @@ void Database::Snapshot(const string& index_name) {
 }
 
 void Database::CompactIndex(const string& index_name, lsn_t snapshot_lsn) {
+  if (snapshot_lsn == indices[index_name]->GetLastPersistentLSN()) {
+    return;  // nothing to do
+  }
+
   LookupIterator snapshot = indices[index_name]->GetSnapshot(snapshot_lsn);
   ImmutableIndexWriter* writer = ImmutableIndex::Create(
       name + "-" + index_name, snapshot_lsn - 1, 64*1024);
@@ -110,6 +114,17 @@ vector<pair<string, lsn_t> > Database::GetIndexVersions() {
   vector<pair<string, lsn_t> > result;
   for(map<string,MergedIndex*>::iterator i = indices.begin(); i != indices.end(); ++i) {
     result.push_back(std::make_pair(i->first, i->second->GetLastPersistentLSN()));
+  }
+  return result;
+}
+
+std::vector<std::pair<string, string> > Database::GetIndexPaths() {
+  vector<pair<string, string> > result;
+  vector<pair<string, lsn_t> > versions = Database::GetIndexVersions();
+  for (vector<pair<string, lsn_t> >::iterator i = versions.begin();
+       i != versions.end(); ++i) {
+    result.push_back(std::make_pair(i->first,
+        ImmutableIndex::GetIndexName(name + "-" + i->first, i->second)));
   }
   return result;
 }
