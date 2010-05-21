@@ -299,10 +299,15 @@ public class ParticipantsStates implements ParticipantsOverview,
      * states of all participants.
      * </p>
      * 
-     * @param address
+     * @param address - may be null, if master is unknown or the local babuDB
+     *                  instance is owner of the master privilege
      */
     public void setMaster(InetAddress address) {
-        this.masterClient.set(this.stateTable.get(address).client);
+        if (address != null)
+            this.masterClient.set(this.stateTable.get(address).client);
+        else
+            this.masterClient.set(null);
+        
         this.reset();
     }
     

@@ -78,12 +78,6 @@ public class LoadLogic extends Logic {
         LSN until = (stage.missing == null) ? 
                 new LSN(stage.lastInserted.getViewId()+1,0L) :
                 new LSN(stage.missing.getEnd());
-        
-        if (stage.missing != null && 
-            new LSN(stage.missing.getStart())
-                .equals(new LSN(stage.missing.getEnd()))) {
-            stage.missing = null;
-        }
                 
         MasterClient master = this.slaveView.getSynchronizationPartner(until);
         
@@ -122,7 +116,7 @@ public class LoadLogic extends Logic {
             Logging.logMessage(Logging.LEVEL_DEBUG, this, 
             "Logfile switched at LSN %s.", stage.lastInserted.toString());
             
-            loadFinished(false);
+            finished(false);
             return;
         }
         
@@ -205,6 +199,10 @@ public class LoadLogic extends Logic {
                                 }
                                 // insert the file input
                                 File f = fileIO.getFile(chunk);
+                                Logging.logMessage(Logging.LEVEL_INFO, this, 
+                                        "SAVING %s to %s.", chunk.toString(), 
+                                        f.getPath());
+                                
                                 assert (f.exists()) : 
                                     "File was not created properly: " + 
                                     chunk.toString();
@@ -229,10 +227,11 @@ public class LoadLogic extends Logic {
                                        "Chunk request (%s) failed: (%d) %s", 
                                        chunk.toString(), err.getError_code(), 
                                        err.getError_message());
-                            } else
+                            } else {
                                 Logging.logMessage(Logging.LEVEL_ERROR, this, 
                                     "Chunk request (%s) failed: %s", 
                                     chunk.toString(), e.getMessage());
+                            }
                             
                             synchronized (openChunks) {
                                 openChunks.set(-1);
@@ -259,7 +258,7 @@ public class LoadLogic extends Logic {
         try {
             stage.lastInserted = this.babuInterface.startBabuDB();
             this.fileIO.removeBackupFiles();
-            loadFinished(true);
+            finished(true);
         } catch (BabuDBException e) {
             // resetting the DBS failed --> retry
             Logging.logMessage(Logging.LEVEL_WARN, this, "Loading failed, because the " +
@@ -272,18 +271,21 @@ public class LoadLogic extends Logic {
      * 
      * @param loaded - induces whether the DBS had to be reload or not
      */
-    private void loadFinished(boolean loaded) {
+    private void finished(boolean loaded) {
+        LSN next = new LSN (stage.lastInserted.getViewId(),
+                stage.lastInserted.getSequenceNo() + 1L);
+
         if (stage.missing != null && 
-            stage.lastInserted.compareTo(new LSN(stage.missing.getEnd())) < 0) {
+            next.compareTo(new LSN(stage.missing.getEnd())) < 0) {
             
             stage.missing = new LSNRange(
                     new org.xtreemfs.babudb.interfaces.LSN(
                             stage.lastInserted.getViewId(),
-                            stage.lastInserted.getSequenceNo()),
+                            stage.lastInserted.getSequenceNo()), 
                     stage.missing.getEnd());
             
             stage.setLogic(REQUEST, "There are still some logEntries " +
-                    "missing after switching the log-file.");
+                    "missing after loading the database.");
         } else {
             String msg = (loaded) ? "Loading finished with LSN("+stage.
                     lastInserted+"), we can go on with the basicLogic." : 

@@ -80,7 +80,8 @@ public interface ServiceToControlInterface extends
      * Registers a new master given by its address, valid for all replication
      * components.
      * 
-     * @param address - may be null, if no master is available at the moment.
+     * @param address - may be null, if no master is available at the moment, or
+     *                  the local instance is owner of the master privilege.
      */
     public void changeMaster(InetAddress address);
     

@@ -19,6 +19,7 @@ import org.xtreemfs.babudb.BabuDBRequest;
 import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.interfaces.LSNRange;
+import org.xtreemfs.babudb.interfaces.LogEntries;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
@@ -53,7 +54,12 @@ public class ReplicationStage extends LifeCycleThread
     
     public final AtomicReference<LSN>           lastOnView;
         
-    /** missingRange shared between PLAIN and REQUEST {@link Logic} */
+    /** 
+     * {@link LSN} range of missing {@link LogEntries} shared between the 
+     * {@link Logic} and requested at the other server.
+     * Start of the range will always be the LSN of the last inserted 
+     * {@link LogEntry}. End the last entry that was requested to be replicated.
+     */
     public LSNRange                             missing = null;
     
     /** {@link LogicID} of the {@link Logic} currently used. */
@@ -181,8 +187,9 @@ public class ReplicationStage extends LifeCycleThread
             } catch(ConnectionLostException cle) {
                 
                 switch (cle.errNo) {
-                case LOG_REMOVED : 
-                    setLogic(LOAD, "Master said, logfile was cut off.");
+                case LOG_UNAVAILABLE : 
+                    setLogic(LOAD, "Master said, logfile was cut off: " +
+                            cle.getMessage());
                     break;
                 case BUSY :
                     if (++tries < ReplicationConfig.MAX_RETRIES) break;
@@ -253,14 +260,21 @@ public class ReplicationStage extends LifeCycleThread
      * @return 
      */
     public void manualLoad(BabuDBRequest<Boolean> listener, LSN from, LSN to) {
+        assert (from.compareTo(to) < 0);
+        
         this.listener = listener;
         
         org.xtreemfs.babudb.interfaces.LSN start = 
             new org.xtreemfs.babudb.interfaces.LSN(
                     from.getViewId(), from.getSequenceNo());
+        
         org.xtreemfs.babudb.interfaces.LSN end = 
             new org.xtreemfs.babudb.interfaces.LSN(
-                    to.getViewId(), to.getSequenceNo());
+                    // we have to assume, that there is an entry following the
+                    // state we would like to establish, because the request
+                    // logic will always exclude the 'end' of this range
+                    to.getViewId(), to.getSequenceNo() + 1L);
+        
         missing = new LSNRange(start, end);
         setLogic(REQUEST, "manually synchronization");
         
@@ -338,7 +352,7 @@ public class ReplicationStage extends LifeCycleThread
         int errNo;
         
         public ConnectionLostException(String string, int errorNumber) {
-            super("Connection to the participant is lost: "+string);
+            super("Connection to the participant is lost: " + string);
             this.errNo = errorNumber;
         }
     }

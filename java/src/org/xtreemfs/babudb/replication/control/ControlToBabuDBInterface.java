@@ -64,11 +64,10 @@ public interface ControlToBabuDBInterface extends RoleChangeListener{
     public void subscribeListener(ReplicateResponse rp);
 
     /**
-     * Delays the request if there is a failover in progress.
-     * 
-     * @return true, if this server has the lease, false otherwise.
+     * @return true, if this server has the lease and is not suspended, 
+     *         false otherwise.
      */
-    public boolean hasLease() throws InterruptedException;
+    public boolean hasLease();
 
     /**
      * @return the address of the current lease holder, or null if the lease is 

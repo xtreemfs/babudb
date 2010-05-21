@@ -17,7 +17,10 @@ import java.nio.channels.FileChannel;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.interfaces.Chunk;
 import org.xtreemfs.babudb.interfaces.DBFileMetaData;
+import org.xtreemfs.babudb.log.DiskLogIterator;
+import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
+import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.foundation.util.FSUtils;
 
 /**
@@ -81,8 +84,7 @@ public class FileIO implements FileIOInterface {
         
         if (LSMDatabase.isSnapshotFilename(pName)) {
             // create the db-name directory, if necessary
-            new File(baseDir + chnk.getParentFile().getName() + 
-                    File.separatorChar).mkdirs();
+            new File(baseDir + pName + File.separatorChar).mkdirs();
             // create the file if necessary
             result = new File(baseDir + 
                          chnk.getParentFile().getParentFile().getName() +
@@ -90,33 +92,22 @@ public class FileIO implements FileIOInterface {
                          File.separator + fName);
             result.getParentFile().mkdirs();
             result.createNewFile();
-        } else if (chnk.getParent() == null) {
+        } else {
             // create the file if necessary
             result = new File(baseDir + this.configuration.getDbCfgFile());
             result.getParentFile().mkdirs();
             result.createNewFile();
-        } else {
-            // create the file if necessary
-            result = new File(this.configuration.getDbLogDir() + fName);
-            result.getParentFile().mkdirs();
-            result.createNewFile();
-        }
+        } 
         return result;
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.transmission.FileIOInterface#getLogFiles()
+     * @see org.xtreemfs.babudb.replication.transmission.FileIOInterface#getLogEntryIterator(org.xtreemfs.babudb.lsmdb.LSN)
      */
     @Override
-    public File[] getLogFiles() {
-        File f = new File(this.configuration.getDbLogDir());
-        File[] result = f.listFiles(new FilenameFilter() {
-            public boolean accept(File dir, String name) {
-                return name.endsWith(".dbl");
-            }
-        });
-        
-        return result;
+    public DiskLogIterator getLogEntryIterator(LSN from) 
+            throws LogEntryException, IOException {        
+        return new DiskLogIterator(getLogFiles(), from);
     }
     
     /* (non-Javadoc)
@@ -226,8 +217,9 @@ public class FileIO implements FileIOInterface {
                 newFile.mkdir();
                 
                 copyDir(f, newFile);
-            } else
+            } else {
                 assert(false);
+            }
         }
     }
     
@@ -274,5 +266,19 @@ public class FileIO implements FileIOInterface {
                 }
             }
         }
+    }
+    
+    /**
+     * @return an array of log-files found in the database log-directory.
+     */
+    private File[] getLogFiles() {
+        File f = new File(this.configuration.getDbLogDir());
+        File[] result = f.listFiles(new FilenameFilter() {
+            public boolean accept(File dir, String name) {
+                return name.endsWith(".dbl");
+            }
+        });
+        
+        return result;
     }
 }
