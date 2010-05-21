@@ -38,6 +38,13 @@ public class DiskLogIterator implements Iterator<LogEntry> {
     
     private LogEntry      nextEntry;
     
+    /**
+     * @param logFiles
+     * @param from - inclusive, if everything went fine, next() will return the
+     *               log entry identified by LSN <code>from</code>.
+     * @throws LogEntryException
+     * @throws IOException
+     */
     public DiskLogIterator(File[] logFiles, LSN from) 
         throws LogEntryException, IOException {
         
@@ -64,19 +71,27 @@ public class DiskLogIterator implements Iterator<LogEntry> {
             }
             LSN[] copy = orderedLogList.toArray(new LSN[orderedLogList.size()]);
             LSN last = null;
+            LSN lastRemoved = null;
             for (LSN lsn : copy) {
                 if (last == null)
                     last = lsn;
                 else {
-                    if (from != null && lsn.compareTo(from) <= 0) {
+                    if (from != null && lsn.compareTo(from) < 0) {
                         orderedLogList.remove(last);
+                        lastRemoved = last;
                         last = lsn;
                     } else
                         break;
                 }
             }
             
+            // re-add the last removed log file, if there is a chance, that 
+            // from is located there
+            if (lastRemoved != null && from.compareTo(last) < 0) {
+                orderedLogList.add(lastRemoved);
+            }
             logList = orderedLogList.iterator();
+                        
             findFirstEntry();
         }
     }

@@ -268,8 +268,9 @@ public class ControlLayer extends TopLayer implements RoleChangeListener,
      * @see org.xtreemfs.babudb.replication.control.ControlToBabuDBInterface#hasLease()
      */
     @Override
-    public boolean hasLease() throws InterruptedException {
-        return this.leaseHolder.amIOwner();
+    public boolean hasLease() {
+        return !this.replicationController.isSuspended() && 
+                this.leaseHolder.amIOwner();
     }
 
     /* (non-Javadoc)

@@ -15,8 +15,8 @@ package org.xtreemfs.babudb.replication.transmission.dispatcher;
  */
 
 public final class ErrNo {
-    public static final int SECURITY            = 1;
-    public static final int LOG_REMOVED         = 2;
+    public static final int NO_ACCESS           = 1;
+    public static final int LOG_UNAVAILABLE     = 2;
     public static final int FILE_UNAVAILABLE    = 3;
     public static final int BUSY                = 4;
     public static final int INTERNAL_ERROR      = 5;

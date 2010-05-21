@@ -99,9 +99,6 @@ public class RequestLogic extends Logic {
             
             // enhancement if the request had detected a master-failover
             if (logEntries.size() == 0) {
-                assert (lsnAtLeast.getSequenceNo() == 1L && lsnAtLeast
-                        .getViewId() == stage.missing.getStart().getViewId()+1);
-                
                 this.stage.lastOnView.set(this.babuInterface.getState());
                 this.babuInterface.checkpoint();
                 this.stage.lastInserted = this.babuInterface.getState();
@@ -180,26 +177,29 @@ public class RequestLogic extends Logic {
             if (Thread.interrupted()) 
                 throw new InterruptedException("Replication was interrupted" +
                 		" after executing a replicaOperation.");
+        } catch (errnoException e) {
+            // server-side error
+            throw new ConnectionLostException(e.getError_message(), 
+                                              e.getError_code());
         } catch (ONCRPCException e) {
             // remote failure (connection lost)
-            int errNo = (e != null && e instanceof errnoException) ? 
-                    ((errnoException) e).getError_code() : ErrNo.UNKNOWN;
-            throw new ConnectionLostException(
-                    e.getTypeName()+": "+e.getMessage(),errNo);
+            throw new ConnectionLostException(e.getTypeName() + ": " + 
+                                              e.getMessage(), ErrNo.UNKNOWN);
         } catch (IOException ioe) {
             // failure on transmission (connection lost or request timed out)
             throw new ConnectionLostException(ioe.getMessage(), ErrNo.BUSY);
         } catch (LogEntryException lee) {
             // decoding failed --> retry with new range
             Logging.logError(Logging.LEVEL_WARN, this, lee);
-            stage.missing = new LSNRange(
-                    new org.xtreemfs.babudb.interfaces.LSN(
-                            stage.lastInserted.getViewId(), 
-                            stage.lastInserted.getSequenceNo()), 
-                    stage.missing.getEnd());
+            finish();
         } catch (BabuDBException be) {
             // the insert failed due an DB error
             Logging.logError(Logging.LEVEL_WARN, this, be);
+            stage.missing = new LSNRange(
+                    new org.xtreemfs.babudb.interfaces.LSN(
+                            stage.lastInserted.getViewId(),
+                            stage.lastInserted.getSequenceNo()), 
+                    stage.missing.getEnd());
             stage.setLogic(LOAD, be.getMessage());
         } finally {
             if (rp!=null) rp.freeBuffers();
@@ -213,17 +213,19 @@ public class RequestLogic extends Logic {
      * Method to decide which logic shall be used next.
      */
     private void finish() {
-        if (stage.lastInserted.compareTo(
-            new LSN (stage.missing.getEnd())) < 0) {
-            // we are still missing some entries (the request was too large)
-            // update the missing entries
+        LSN next = new LSN (stage.lastInserted.getViewId(),
+                            stage.lastInserted.getSequenceNo() + 1L);
+        
+        // we are still missing some entries (the request was too large)
+        // update the missing entries
+        if (next.compareTo(new LSN (stage.missing.getEnd())) < 0) {
             stage.missing = new LSNRange(
                     new org.xtreemfs.babudb.interfaces.LSN(
                             stage.lastInserted.getViewId(),
                             stage.lastInserted.getSequenceNo()), 
                     stage.missing.getEnd());
+         // all went fine --> back to basic
         } else {
-            // all went fine --> back to basic
             stage.missing = null;
             stage.setLogic(BASIC, "Request went fine, we can go on with" +
                         " the basicLogic.");

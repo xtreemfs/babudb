@@ -82,7 +82,7 @@ public class HeartbeatOperation extends Operation {
             
             rq.sendSuccess(request.createDefaultResponse());
         } catch (UnknownParticipantException e) {
-            rq.sendReplicationException(ErrNo.SECURITY, "You are not allowed" +
+            rq.sendReplicationException(ErrNo.NO_ACCESS, "You are not allowed" +
             		" to request that!");
         } 
     }

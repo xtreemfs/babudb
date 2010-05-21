@@ -95,105 +95,81 @@ public class ReplicaOperation extends Operation {
     public void startRequest(Request rq) {
         replicaRequest req = (replicaRequest) rq.getRequestMessage();
         
-        LSN start = new LSN(req.getRange().getStart());
-        LSN end = new LSN(req.getRange().getEnd());
-       
+        final LSN start = new LSN(req.getRange().getStart());
+        final LSN end = new LSN(req.getRange().getEnd());
+        
         LogEntries result = new LogEntries();
-        
-        boolean deadEnd = (end.getSequenceNo() == 0L);
-        
-        // enhancement to prevent slaves from loading the db from the master un-
-        // necessarily
-        boolean enhancedStart;
-        LSN lastOnView = this.lastOnView.get();
-        if (start.equals(lastOnView) && 
-            start.getViewId()+1 == end.getViewId() && 
-            end.getSequenceNo() == 0L) {
-            rq.sendSuccess(new replicaResponse(result));
-            
-            Logging.logMessage(Logging.LEVEL_INFO, this, "REQUEST answered " +
-                    "(start: %s, end: %s) from %s ... with null.", 
-                    start.toString(), end.toString(),
-                    rq.getRPCRequest().getClientIdentity());
-            return;
-            
-        } else if (enhancedStart = (start.equals(lastOnView) && !deadEnd)) {
-            
-            start = new LSN(start.getViewId()+1, 1L);
-        } else if (enhancedStart = (start.getSequenceNo() == 0L)) {
-            
-            start = new LSN(start.getViewId(), 1L);
-        }
         
         Logging.logMessage(Logging.LEVEL_INFO, this, "REQUEST received " +
                 "(start: %s, end: %s) from %s", start.toString(), 
                 end.toString(), rq.getRPCRequest().getClientIdentity());
         
-        assert (start.compareTo(end) < 0 || 
-               (enhancedStart && start.compareTo(end) <= 0)) : 
-            "Always request at least one LogEntry!";
+        // enhancement to prevent slaves from loading the db from the master un-
+        // necessarily
+        if (start.equals(lastOnView.get())) {
+            
+            Logging.logMessage(Logging.LEVEL_INFO, this, 
+                   "REQUEST answer is empty (there has been a failover only).");
+            
+            rq.sendSuccess(new replicaResponse(result));
+            return;  
+        }
         
-        LogEntry le = null;
+        final LSN firstEntry = new LSN(start.getViewId(), 
+                start.getSequenceNo() + 1L);
+        
+        assert (firstEntry.compareTo(end) < 0) : 
+            "At least one LogEntry has to be requested!";
+        
         DiskLogIterator it = null;
-        
+        LogEntry le = null;
         synchronized (babuInterface.getCheckpointerLock()) {
             try {   
+                // wait, if there is a checkpoint in proceeding
                 babuInterface.waitForCheckpoint();
                 
-                it = new DiskLogIterator(fileIO.getLogFiles(), start);
+                it = fileIO.getLogEntryIterator(start);
                 
-                // discard the first entry, because it was the last inserted
-                // entry of the requesting server
-                if (!enhancedStart) it.next().free();
-                
-                int counter = 0;
-                do {
+                while (it.hasNext() &&
+                       result.size() < MAX_LOGENTRIES_PER_REQUEST &&
+                       (le = it.next()).getLSN().compareTo(end) < 0) {
+                    
                     try {
-                        if (!it.hasNext()) {
-                            if (result.size() > 0) {
-                                break;
-                            } else {
-                                rq.sendReplicationException(ErrNo.LOG_REMOVED,
-                                "LogEntry unavailable.");
-                                return;
-                            }
+                        // we are not at the right position yet -> skip
+                        if (le.getLSN().compareTo(firstEntry) < 0) continue;
+                    
+                        // the first entry was not available ... bad
+                        if (le.getLSN().compareTo(firstEntry) > 0 &&
+                            result.size() == 0) {
+                            break;
                         }
-                        le = it.next();
-                        // we are not at the right position yet
-                        if (le.getLSN().compareTo(start) < 0) continue;
-                        
-                        // the start entry is not available ... bad
-                        if (le.getLSN().compareTo(start) > 0 &&
-                            counter == 0) {
-                            rq.sendReplicationException(ErrNo.LOG_REMOVED,
-                                    "LogEntry unavailable.");
-                            return;
-                        }
-                        
-                        // we skip the last entry, because the client already
-                        // has it
-                        if (deadEnd && le.getLSN().compareTo(end) > 0) break;
-                        
+                          
+                        // add the logEntry to result list
                         assert (le.getPayload().array().length > 0) : 
                             "Empty log-entries are not allowed!";
-                        
                         result.add(new org.xtreemfs.babudb.interfaces.LogEntry(
                                 le.serialize(this.checksum)));
-    
-                        counter++;
                     } finally {
                         this.checksum.reset();
-                        if (le != null) le.free();
+                        if (le != null) {
+                            le.free();
+                            le = null;
+                        }
                     }
-                } while (le.getLSN().compareTo(end) < 0 && 
-                        counter < MAX_LOGENTRIES_PER_REQUEST);
+                } 
                 
-                // send the response, if the requested log entries are found
-                Logging.logMessage(Logging.LEVEL_INFO, this, 
-                        "REQUEST: returning %d log-entries to %s.", 
-                        result.size(), rq.getRPCRequest().getClientIdentity());
-                
-                rq.sendSuccess(new replicaResponse(result));
+                if (result.size() > 0) {
+                    // send the response, if the requested log entries are found
+                    Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                            "REQUEST: returning %d log-entries to %s.", 
+                            result.size(), rq.getRPCRequest().getClientIdentity());
+                    
+                    rq.sendSuccess(new replicaResponse(result));
+                } else {
+                    rq.sendReplicationException(ErrNo.LOG_UNAVAILABLE,
+                            "No entries left within the log files, and " +
+                            "there was no entry added yet.");
+                }
             } catch (Exception e) {
                 Logging.logError(Logging.LEVEL_INFO, this, e);
                 
@@ -205,6 +181,8 @@ public class ReplicaOperation extends Operation {
                 rq.sendReplicationException(ErrNo.BUSY,
                         "Request not finished: "+e.getMessage(), e);
             } finally {
+                if (le != null) le.free();
+                
                 if (it != null) {
                     try {
                         it.destroy();

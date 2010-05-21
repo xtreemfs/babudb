@@ -38,6 +38,10 @@ import java.io.IOException;
 import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.interfaces.Chunk;
 import org.xtreemfs.babudb.interfaces.DBFileMetaData;
+import org.xtreemfs.babudb.log.DiskLogIterator;
+import org.xtreemfs.babudb.log.LogEntry;
+import org.xtreemfs.babudb.log.LogEntryException;
+import org.xtreemfs.babudb.lsmdb.LSN;
 
 /**
  * Interface for accessing files provided by {@link BabuDB}.
@@ -61,11 +65,17 @@ public interface FileIOInterface {
      * @throws IOException
      */
     public File getFile(Chunk chunk) throws IOException;
-
+    
     /**
-     * @return an array of logFiles found in the database log-directory.
+     * @param from - {@link LSN} of the first {@link LogEntry} of this iterator.
+     * 
+     * @throws LogEntryException
+     * @throws IOException
+     * 
+     * @return an iterator for all locally available {@link LogEntry}s.
      */
-    public File[] getLogFiles();
+    public DiskLogIterator getLogEntryIterator(LSN from) 
+            throws LogEntryException, IOException ;
 
     /**
      * <p>
@@ -93,5 +103,4 @@ public interface FileIOInterface {
      * @throws IOException
      */
     public void backupFiles() throws IOException;
-
 }

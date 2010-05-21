@@ -134,14 +134,7 @@ public class ReplicationManagerImpl implements ReplicationManager {
      */
     @Override
     public boolean isMaster() {
-        try {
-            return this.controlLayer.hasLease();
-        } catch (InterruptedException e) {
-            Logging.logMessage(Logging.LEVEL_INFO, this, "IsMaster-method has" +
-            		" been interrupted, a failover may be still in progress" +
-            		", because: %s", e.getMessage());
-            return false;
-        }
+        return this.controlLayer.hasLease();
     }
 
     /* (non-Javadoc)

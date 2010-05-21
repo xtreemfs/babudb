@@ -303,6 +303,7 @@ public class ReplicationController extends LifeCycleThread
                 "Becoming the replication master.");
         this.serviceInterface.synchronize();
         this.ctrlLayer.getTimeDriftDetectorControl().start();
+        this.serviceInterface.changeMaster(null);
     }
     
     /**
