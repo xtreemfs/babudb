@@ -393,7 +393,7 @@ public class ParticipantsStates implements ParticipantsOverview,
         synchronized (stateTable) {
             final State s = 
                 stateTable.get(slave.getDefaultServerAddress().getAddress());
-            s.openRequests--;
+            s.openRequests = 0;
             
             // the slave has not been marked as dead jet
             if (!s.dead) {
@@ -418,7 +418,7 @@ public class ParticipantsStates implements ParticipantsOverview,
         synchronized (stateTable) {
             final State s = 
                 stateTable.get(slave.getDefaultServerAddress().getAddress());
-            s.openRequests--;
+            if (s.openRequests > 0) s.openRequests--;
             
             // the number of open requests for this slave has fallen below the
             // threshold of MAX_OPEN_REQUESTS_PER_SLAVE
