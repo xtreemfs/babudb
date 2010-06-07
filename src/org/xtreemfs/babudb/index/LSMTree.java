@@ -56,7 +56,7 @@ public class LSMTree {
      *             if an I/O error occurs when accessing the on-disk index file
      */
     public LSMTree(String indexFile, ByteRangeComparator comp, boolean compressed, int maxEntriesPerBlock,
-        int maxBlockFileSize) throws IOException {
+            int maxBlockFileSize) throws IOException {
         
         this.comp = comp;
         this.compressed = compressed;
@@ -64,8 +64,8 @@ public class LSMTree {
         this.maxBlockFileSize = maxBlockFileSize;
         
         overlay = new MultiOverlayBufferTree(NULL_ELEMENT, comp);
-        index = indexFile == null ? null : new DiskIndex(indexFile, comp, compressed, useMmap(new File(
-            indexFile).length()));
+        totalOnDiskSize += indexFile == null ? 0 : getTotalDirSize(new File(indexFile));
+        index = indexFile == null ? null : new DiskIndex(indexFile, comp, compressed, useMmap());
         lock = new Object();
     }
     
@@ -286,8 +286,7 @@ public class LSMTree {
      *             if an I/O error occurs while writing the snapshot
      */
     public void materializeSnapshot(String targetFile, int snapId) throws IOException {
-        DiskIndexWriter writer = new DiskIndexWriter(targetFile, maxEntriesPerBlock, compressed,
-            maxBlockFileSize);
+        DiskIndexWriter writer = new DiskIndexWriter(targetFile, maxEntriesPerBlock, compressed, maxBlockFileSize);
         writer.writeIndex(prefixLookup(null, snapId, true));
     }
     
@@ -305,10 +304,9 @@ public class LSMTree {
      * @throws IOException
      *             if an I/O error occurs while writing the snapshot
      */
-    public void materializeSnapshot(String targetFile, final int snapId, final int indexId,
-        final SnapshotConfig snap) throws IOException {
-        DiskIndexWriter writer = new DiskIndexWriter(targetFile, maxEntriesPerBlock, compressed,
-            maxBlockFileSize);
+    public void materializeSnapshot(String targetFile, final int snapId, final int indexId, final SnapshotConfig snap)
+            throws IOException {
+        DiskIndexWriter writer = new DiskIndexWriter(targetFile, maxEntriesPerBlock, compressed, maxBlockFileSize);
         writer.writeIndex(new Iterator<Entry<byte[], byte[]>>() {
             
             private Iterator<Entry<byte[], byte[]>>[] iterators;
@@ -396,9 +394,8 @@ public class LSMTree {
     public void linkToSnapshot(String snapshotFile) throws IOException {
         final DiskIndex oldIndex = index;
         synchronized (lock) {
-            totalOnDiskSize -= index == null? 0: index.getSize();
-            index = new DiskIndex(snapshotFile, comp, this.compressed, useMmap(new File(snapshotFile)
-                    .length()));
+            totalOnDiskSize -= index == null ? 0 : index.getSize();
+            index = new DiskIndex(snapshotFile, comp, this.compressed, useMmap());
             totalOnDiskSize += index.getSize();
             if (oldIndex != null)
                 oldIndex.destroy();
@@ -420,10 +417,26 @@ public class LSMTree {
         }
     }
     
-    private boolean useMmap(long currentFileSize) {
-        final long maxSize = 500 * 1024 * 1024;
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "DB size: " + OutputUtils.formatBytes(totalOnDiskSize + currentFileSize));
-        return "x86_64".equals(System.getProperty("os.arch")) || totalOnDiskSize + currentFileSize < maxSize;
+    private boolean useMmap() {
+        final long maxSize = 200 * 1024 * 1024;
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "DB size: " + OutputUtils.formatBytes(totalOnDiskSize));
+        boolean mmap = "x86_64".equals(System.getProperty("os.arch")) || totalOnDiskSize < maxSize;
+        return mmap;
+    }
+    
+    private static long getTotalDirSize(File dir) {
+        
+        if (!dir.exists())
+            return 0;
+        
+        long size = 0;
+        if (dir.isDirectory()) {
+            for (File child : dir.listFiles())
+                size += getTotalDirSize(child);
+        } else
+            size += dir.length();
+        
+        return size;
     }
     
 }

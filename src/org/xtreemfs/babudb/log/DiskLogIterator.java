@@ -17,7 +17,9 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.foundation.logging.Logging;
 
 /**
  * An iterator that returns log entries from multiple log files.
@@ -40,16 +42,16 @@ public class DiskLogIterator implements Iterator<LogEntry> {
     
     /**
      * @param logFiles
-     * @param from - inclusive, if everything went fine, next() will return the
-     *               log entry identified by LSN <code>from</code>.
+     * @param from
+     *            - inclusive, if everything went fine, next() will return the
+     *            log entry identified by LSN <code>from</code>.
      * @throws LogEntryException
      * @throws IOException
      */
-    public DiskLogIterator(File[] logFiles, LSN from) 
-        throws LogEntryException, IOException {
+    public DiskLogIterator(File[] logFiles, LSN from) throws LogEntryException, IOException {
         
         this.from = from;
-            
+        
         if (logFiles != null && logFiles.length > 0) {
             
             dbLogDir = logFiles[0].getParent() + "/";
@@ -85,13 +87,18 @@ public class DiskLogIterator implements Iterator<LogEntry> {
                 }
             }
             
-            // re-add the last removed log file, if there is a chance, that 
+            // check if log entries are missing
+            if (!LSMDatabase.NO_DB_LSN.equals(from) && last.compareTo(from) > 0)
+                throw new LogEntryException("missing log entries: database ends at LSN " + from.toString()
+                        + ", first log entry LSN is " + last.toString());
+            
+            // re-add the last removed log file, if there is a chance, that
             // from is located there
             if (lastRemoved != null && from.compareTo(last) < 0) {
                 orderedLogList.add(lastRemoved);
             }
             logList = orderedLogList.iterator();
-                        
+            
             findFirstEntry();
         }
     }
@@ -128,7 +135,8 @@ public class DiskLogIterator implements Iterator<LogEntry> {
     public void destroy() throws IOException {
         LogEntry tmp = nextEntry;
         nextEntry = null;
-        if (tmp != null) tmp.free();
+        if (tmp != null)
+            tmp.free();
         currentFile.close();
     }
     
