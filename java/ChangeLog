@@ -16,4 +16,8 @@
 2010-05-11: release 0.4.0
   * added backup functionality for databases
   * fixed checkpointing issues on Windows machines
-  * changed modularization: Foundation.jar, Flease.jar and yidl.jar now need to be added to the classpath in order to run BabuDB 
+  * changed modularization: Foundation.jar, Flease.jar and yidl.jar now need to be added to the classpath in order to run BabuDB
+  
+2010-06-08: release 0.4.1
+  * improved crash resilience if the database system is forcefully shut down during a checkpoint
+  * fixed a bug that could cause memory shortage on 32bit machines if the system is restarted with a large database
