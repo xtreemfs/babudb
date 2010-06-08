@@ -227,7 +227,8 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
                         if (logLSN.compareTo(lastWrittenLSN) <= 0) {
                             Logging.logMessage(Logging.LEVEL_DEBUG, this, "deleting old db log file: " + log);
                             f = new File(dbs.getConfig().getDbLogDir() + log);
-                            f.delete();
+                            if(!f.delete())
+                                Logging.logMessage(Logging.LEVEL_WARN, this, "could not delete log file: %s", f.getAbsolutePath());
                         }
                     }
                 }
