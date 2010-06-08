@@ -88,7 +88,7 @@ public class DiskLogIterator implements Iterator<LogEntry> {
             }
             
             // check if log entries are missing
-            if (!LSMDatabase.NO_DB_LSN.equals(from) && last.compareTo(from) > 0)
+            if (from != null && !LSMDatabase.NO_DB_LSN.equals(from) && last.compareTo(from) > 0)
                 throw new LogEntryException("missing log entries: database ends at LSN " + from.toString()
                         + ", first log entry LSN is " + last.toString());
             

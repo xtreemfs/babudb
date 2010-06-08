@@ -130,9 +130,9 @@ public class BabuDB {
         if (dbConfigFile.isConversionRequired()) {
             
             Logging.logMessage(Logging.LEVEL_WARN, Category.storage, this, "The "
-                    + "database version is outdated. The database will be "
-                    + "automatically converted to the latest version if "
-                    + "possible. This may take some time, depending on " + "the size.");
+                + "database version is outdated. The database will be "
+                + "automatically converted to the latest version if "
+                + "possible. This may take some time, depending on " + "the size.");
             
             AutoConverter.initiateConversion(dbConfigFile.getDBFormatVersion(), conf);
         }
@@ -143,8 +143,8 @@ public class BabuDB {
             if (conf instanceof ReplicationConfig)
                 new FileIO((ReplicationConfig) conf).replayBackupFiles();
         } catch (IOException io) {
-            Logging.logMessage(Logging.LEVEL_ERROR, this, "Could not retrieve the " + "slave backup files, because: ",
-                    io.getMessage());
+            Logging.logMessage(Logging.LEVEL_ERROR, this, "Could not retrieve the "
+                + "slave backup files, because: ", io.getMessage());
         }
         // determine the LSN from which to start the log replay
         
@@ -165,7 +165,7 @@ public class BabuDB {
             dbLsn = new LSN(0, 0);
         } else {
             // need next LSN which is onDisk + 1
-            dbLsn = new LSN(dbLsn.getViewId(), dbLsn.getSequenceNo() + 1);
+            dbLsn = new LSN(dbLsn.getViewId() == 0 ? 1 : dbLsn.getViewId(), dbLsn.getSequenceNo() + 1);
         }
         
         Logging.logMessage(Logging.LEVEL_INFO, this, "starting log replay at LSN %s", dbLsn);
@@ -191,9 +191,9 @@ public class BabuDB {
         
         // set up and start the disk logger
         try {
-            this.logger = new DiskLogger(conf.getDbLogDir(), nextLSN.getViewId(), nextLSN.getSequenceNo(), conf
-                    .getSyncMode(), conf.getPseudoSyncWait(), conf.getMaxQueueLength() * conf.getNumThreads(),
-                    replicationManager);
+            this.logger = new DiskLogger(conf.getDbLogDir(), nextLSN.getViewId(), nextLSN.getSequenceNo(),
+                conf.getSyncMode(), conf.getPseudoSyncWait(),
+                conf.getMaxQueueLength() * conf.getNumThreads(), replicationManager);
             this.logger.start();
         } catch (IOException ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot start database operations logger", ex);
@@ -202,7 +202,8 @@ public class BabuDB {
         if (conf.getNumThreads() > 0) {
             worker = new LSMDBWorker[conf.getNumThreads()];
             for (int i = 0; i < conf.getNumThreads(); i++) {
-                worker[i] = new LSMDBWorker(logger, i, (conf.getPseudoSyncWait() > 0), conf.getMaxQueueLength());
+                worker[i] = new LSMDBWorker(logger, i, (conf.getPseudoSyncWait() > 0), conf
+                        .getMaxQueueLength());
                 worker[i].start();
             }
         } else {
@@ -229,9 +230,8 @@ public class BabuDB {
         if (replicationManager != null)
             replicationManager.initialize();
         
-        Logging
-                .logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running " + "(version " + BABUDB_VERSION
-                        + ")");
+        Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running " + "(version "
+            + BABUDB_VERSION + ")");
     }
     
     /**
@@ -312,10 +312,9 @@ public class BabuDB {
             Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done, using LSN: " + nextLSN);
             
             try {
-                logger = new DiskLogger(configuration.getDbLogDir(), nextLSN.getViewId(), nextLSN.getSequenceNo(),
-                        configuration.getSyncMode(), configuration.getPseudoSyncWait(), configuration
-                                .getMaxQueueLength()
-                                * configuration.getNumThreads(), replicationManager);
+                logger = new DiskLogger(configuration.getDbLogDir(), nextLSN.getViewId(), nextLSN
+                        .getSequenceNo(), configuration.getSyncMode(), configuration.getPseudoSyncWait(),
+                    configuration.getMaxQueueLength() * configuration.getNumThreads(), replicationManager);
                 logger.start();
             } catch (IOException ex) {
                 throw new BabuDBException(ErrorCode.IO_ERROR, "cannot start database operations logger", ex);
@@ -324,8 +323,8 @@ public class BabuDB {
             if (configuration.getNumThreads() > 0) {
                 worker = new LSMDBWorker[configuration.getNumThreads()];
                 for (int i = 0; i < configuration.getNumThreads(); i++) {
-                    worker[i] = new LSMDBWorker(logger, i, (configuration.getPseudoSyncWait() > 0), configuration
-                            .getMaxQueueLength());
+                    worker[i] = new LSMDBWorker(logger, i, (configuration.getPseudoSyncWait() > 0),
+                        configuration.getMaxQueueLength());
                     worker[i].start();
                 }
             } else {
@@ -339,8 +338,8 @@ public class BabuDB {
             dbCheckptr.init(logger, configuration.getCheckInterval(), configuration.getMaxLogfileSize());
             dbCheckptr.start();
             
-            Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is " + "running (version " + BABUDB_VERSION
-                    + ")");
+            Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is " + "running (version "
+                + BABUDB_VERSION + ")");
             
             this.stopped.set(false);
             return new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo() - 1L);
@@ -363,7 +362,7 @@ public class BabuDB {
                 replicationManager.shutdown();
             } catch (Exception e) {
                 Logging.logMessage(Logging.LEVEL_ERROR, this, "Replication "
-                        + "mechanism could not be shut down gracefully, " + "because: %s", e.getMessage());
+                    + "mechanism could not be shut down gracefully, " + "because: %s", e.getMessage());
             }
         }
         
@@ -480,8 +479,8 @@ public class BabuDB {
                             
                             snapshotManager.createPersistentSnapshot(db.getName(), snap, false);
                         } catch (Exception e) {
-                            throw new BabuDBException(ErrorCode.IO_ERROR, "Snapshot could not be recovered because: "
-                                    + e.getMessage(), e);
+                            throw new BabuDBException(ErrorCode.IO_ERROR,
+                                "Snapshot could not be recovered because: " + e.getMessage(), e);
                         } finally {
                             if (oin != null)
                                 oin.close();
@@ -519,14 +518,14 @@ public class BabuDB {
             
         } catch (IOException ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR,
-                    "cannot load database operations log, file might be corrupted", ex);
+                "cannot load database operations log, file might be corrupted", ex);
         } catch (Exception ex) {
             if (ex.getCause() instanceof LogEntryException) {
                 throw new BabuDBException(ErrorCode.IO_ERROR,
-                        "corrupted/incomplete log entry in database operations log", ex.getCause());
+                    "corrupted/incomplete log entry in database operations log", ex.getCause());
             } else
                 throw new BabuDBException(ErrorCode.IO_ERROR,
-                        "corrupted/incomplete log entry in database operations log", ex);
+                    "corrupted/incomplete log entry in database operations log", ex);
         }
     }
     
@@ -565,7 +564,8 @@ public class BabuDB {
      * @return true, if replication runs in slave-mode, false otherwise.
      */
     public void slaveCheck() throws BabuDBException {
-        if (replicationManager != null && replicationManager.isInitialized() && !replicationManager.isMaster()) {
+        if (replicationManager != null && replicationManager.isInitialized()
+            && !replicationManager.isMaster()) {
             throw new BabuDBException(ErrorCode.NO_ACCESS, slaveProtectionMsg);
         }
     }
