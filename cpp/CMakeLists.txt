@@ -29,6 +29,10 @@ list(APPEND TEST_FILES "src/test_main.cpp")
 add_executable(babudb_tests ${TEST_FILES})
 target_link_libraries(babudb_tests babudb yield_platform)
 
+set_target_properties(babudb PROPERTIES COMPILE_FLAGS "/MTd")
+set_target_properties(babudb_tests PROPERTIES COMPILE_FLAGS "/MTd")
+set_target_properties(yield_platform PROPERTIES COMPILE_FLAGS "/MTd")
+
 install(TARGETS babudb babudb_tests
         RUNTIME DESTINATION "${SRC_DIR}/bin"
         LIBRARY DESTINATION "${SRC_DIR}/lib"
