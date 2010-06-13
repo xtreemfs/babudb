@@ -29,7 +29,7 @@ list(APPEND TEST_FILES "src/test_main.cpp")
 add_executable(babudb_tests ${TEST_FILES})
 target_link_libraries(babudb_tests babudb yield_platform)
 
-install(TARGETS babudb
+install(TARGETS babudb babudb_tests
         RUNTIME DESTINATION "${SRC_DIR}/bin"
         LIBRARY DESTINATION "${SRC_DIR}/lib"
         ARCHIVE DESTINATION "${SRC_DIR}/lib")
