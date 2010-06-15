@@ -153,6 +153,9 @@ public class DiskLogger extends Thread {
 
         this.pseudoSyncWait = pseudoSyncWait;
 
+        if(pseudoSyncWait > 0 && syncMode == SyncMode.ASYNC) 
+        	Logging.logMessage(Logging.LEVEL_WARN, this,"When pseudoSyncWait is enabled (> 0) make sure that SyncMode is not ASYNC");
+        
         this.currentViewId = new AtomicInteger(viewId);
 
         assert (nextLSN > 0);
