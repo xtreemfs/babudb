@@ -49,7 +49,7 @@ public class ReplicationConfig extends BabuDBConfig {
     private static final int         MESSAGE_TIMEOUT        = 10 * 1000;
     
     /** longest duration a connection can be established without getting closed */
-    public static final int          LEASE_TIMEOUT          = 3 * 60 * 1000;
+    public static final int          LEASE_TIMEOUT          = 60 * 1000;
         
     /** longest duration before an RPC-Call is timed out */
     public static final int          REQUEST_TIMEOUT        = 30 * 1000;
@@ -145,7 +145,7 @@ public class ReplicationConfig extends BabuDBConfig {
         
         this.backupDir = (backupDir.endsWith(File.separator)) ? backupDir : backupDir + File.separator;
         
-        this.localTimeRenew = this.readOptionalInt("babudb.localTimeRenew", 100);
+        this.localTimeRenew = this.readOptionalInt("babudb.localTimeRenew", 3000);
         this.timeSyncInterval = this.readOptionalInt("babudb.timeSync", 20000);
         
         if (this.readRequiredBoolean("babudb.ssl.enabled")) {
