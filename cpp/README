@@ -1,25 +1,12 @@
-Prerequisites/Dependencies
---------------------------
-babudb depends on the platform classes of the Yield application server.
+General
+------------
 
-- checkout yield_platform next to the babudb trunk directory
-  svn checkout http://yield.googlecode.com/svn/trunk/yield_platform yield_platform
+babudb/cpp's build system is based on CMake (http://www.cmake.com). With CMake
+you can generate build or project files for your favorite build environment
+and platform.
 
-You should have the following layout now:
-  dir/yield_platform/src/..
-  dir/yield_platform/..
-  dir/babudb/src/..
-  dir/babudb/..  
+babudb's only dependency, the platform classes of yield are part of the
+repository (third_party/yield_platform) and are part of the CMake build files.
 
-Building with Visual Studio
----------------------------
-Create a .sln with yield_platform.vcproj and babudb.vcproj. Compile.
-
-Building on Linux
-------------------
-- build babudb from its trunk with
-  scons 
-
-- Run unit tests with
-  bin/babudb_tests
-
+CMake exports two targets: a library for linking with your applications and a
+unit test executable.
