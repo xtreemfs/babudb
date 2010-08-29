@@ -49,6 +49,13 @@ TEST_TMPDIR(LookupIteratorEmptyDb,babudb)
 	LookupIterator it_empty2(logi, NULL, sorder);
 }
 
+TEST_TMPDIR(LookupIteratorEmptyIterator,babudb)
+{
+  StringOrder sorder;
+	LookupIterator it_empty(sorder);
+  EXPECT_FALSE(it_empty.hasMore());
+}
+
 TEST_TMPDIR(LookupIterator,babudb)
 {
   StringOrder sorder;

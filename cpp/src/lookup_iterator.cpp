@@ -104,6 +104,8 @@ LookupIterator::LookupIterator(
   
   DebugPrint();
 }
+
+LookupIterator::LookupIterator(const KeyOrder& order) : iidx(NULL), iidx_it(NULL), order(order) {}
  
 
 LookupIterator::~LookupIterator() {
