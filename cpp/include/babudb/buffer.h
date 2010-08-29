@@ -58,20 +58,20 @@ public:
 
 	// Buffer::wrap only wrap data without allocation and copying
 
-	static Buffer wrap(int& data) {
-		return Buffer(&data,sizeof(int));
+	static Buffer wrap(const int& data) {
+		return Buffer((void*)&data,sizeof(int));
 	}
 
-	static Buffer wrap(unsigned int& data) {
-		return Buffer(&data,sizeof(unsigned int));
+	static Buffer wrap(const unsigned int& data) {
+		return Buffer((void*)&data,sizeof(unsigned int));
 	}
 
-	static Buffer wrap(long long& data) {
-		return Buffer(&data,sizeof(long long));
+	static Buffer wrap(const long long& data) {
+		return Buffer((void*)&data,sizeof(long long));
 	}
 
-	static Buffer wrap(unsigned long long& data) {
-		return Buffer(&data,sizeof(long long));
+	static Buffer wrap(const unsigned long long& data) {
+		return Buffer((void*)&data,sizeof(unsigned long long));
 	}
 
 	static Buffer wrap(const string& str) {
