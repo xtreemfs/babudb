@@ -147,6 +147,8 @@ public class DiskLogIterator implements Iterator<LogEntry> {
         
         do {
             currentLog = logList.next();
+            if(currentFile != null)
+                currentFile.close();
             currentFile = new DiskLogFile(dbLogDir, currentLog);
         } while (!currentFile.hasNext() && logList.hasNext());
         
@@ -168,10 +170,6 @@ public class DiskLogIterator implements Iterator<LogEntry> {
         // if there is another log entry in the current file, return it
         if (currentFile.hasNext())
             return currentFile.next();
-        
-        // otherwise, check if there is another log file; if not, return 'null'
-        if (!logList.hasNext())
-            return null;
         
         // if all entries have been read from the current file, close it
         currentFile.close();

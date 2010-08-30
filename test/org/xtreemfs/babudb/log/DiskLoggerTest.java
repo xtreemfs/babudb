@@ -9,6 +9,8 @@
 package org.xtreemfs.babudb.log;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -58,8 +60,14 @@ public class DiskLoggerTest extends TestCase {
     }
     
     @After
-    public void tearDown() {
+    public void tearDown() throws Exception {
         l.shutdown();
+        l.waitForShutdown();
+        try {
+            l.finalize();
+        } catch(Throwable th) {
+            throw new Exception(th);
+        }
     }
     
     @Test
@@ -223,7 +231,7 @@ public class DiskLoggerTest extends TestCase {
         }
         
         File tmpFile = new File(testdir + "log.dbl");
-        FSUtils.copyTree(logFile, tmpFile);
+        copyFile(logFile, tmpFile);
         
         // write incorrect data in the first entr...
         RandomAccessFile raf = new RandomAccessFile(tmpFile.getAbsolutePath(), "rw");
@@ -233,9 +241,10 @@ public class DiskLoggerTest extends TestCase {
         
         DiskLogFile f = new DiskLogFile(tmpFile.getAbsolutePath());
         assertFalse(f.hasNext());
+        f.close();
         
-        tmpFile.delete();
-        FSUtils.copyTree(logFile, tmpFile);
+        assertTrue(tmpFile.delete());
+        copyFile(logFile, tmpFile);
         
         // write an incorrect size in the first entry...
         raf = new RandomAccessFile(tmpFile.getAbsoluteFile(), "rw");
@@ -244,9 +253,10 @@ public class DiskLoggerTest extends TestCase {
         
         f = new DiskLogFile(tmpFile.getAbsolutePath());
         assertFalse(f.hasNext());
+        f.close();
         
-        tmpFile.delete();
-        FSUtils.copyTree(logFile, tmpFile);
+        assertTrue(tmpFile.delete());
+        copyFile(logFile, tmpFile);
         
         // write a corrupted entry in the middle of the log file...
         raf = new RandomAccessFile(tmpFile.getAbsolutePath(), "rw");
@@ -261,9 +271,10 @@ public class DiskLoggerTest extends TestCase {
             next.free();
         }
         assertFalse(f.hasNext());
+        f.close();
         
-        tmpFile.delete();
-        FSUtils.copyTree(logFile, tmpFile);
+        assertTrue(tmpFile.delete());
+        copyFile(logFile, tmpFile);
         
         // write a negative-length entry in the middle of the log file...
         raf = new RandomAccessFile(tmpFile.getAbsolutePath(), "rw");
@@ -278,9 +289,10 @@ public class DiskLoggerTest extends TestCase {
             next.free();
         }
         assertFalse(f.hasNext());
+        f.close();
         
-        tmpFile.delete();
-        FSUtils.copyTree(logFile, tmpFile);
+        assertTrue(tmpFile.delete());
+        copyFile(logFile, tmpFile);
         
         // write a truncated entry at the end of the log file...
         raf = new RandomAccessFile(tmpFile.getAbsolutePath(), "rw");
@@ -294,10 +306,11 @@ public class DiskLoggerTest extends TestCase {
             next.free();
         }
         assertFalse(f.hasNext());
+        f.close();
         
         // replace the old log file with the corrected log file
         logFile.delete();
-        FSUtils.copyTree(tmpFile, logFile);
+        copyFile(tmpFile, logFile);
         tmpFile.delete();
         
         // restart the disk logger and append new log entries
@@ -408,6 +421,17 @@ public class DiskLoggerTest extends TestCase {
             it.destroy();
         }
         
+    }
+    
+    private static void copyFile(File src, File dst) throws Exception {
+        FileInputStream in = new FileInputStream(src);
+        FileOutputStream out = new FileOutputStream(dst);
+        while(in.available() > 0) {
+            int b = in.read();
+            out.write(b);
+        }
+        in.close();
+        out.close();
     }
     
     public static void main(String[] args) {
