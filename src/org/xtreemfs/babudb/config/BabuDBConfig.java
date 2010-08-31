@@ -96,14 +96,51 @@ public class BabuDBConfig extends Config {
      */
     protected int      maxBlockFileSize;
     
-    public BabuDBConfig(String baseDir, String dbLogDir, int numThreads, long maxLogFileSize,
+    /**
+     * Crates a new BabuDB configuration.
+     * 
+     * @param dbDir
+     *            the directory in which persistent checkpoints are stored
+     * @param dbLogDir
+     *            the directory in which the database log resides
+     * @param numThreads
+     *            the number of worker threads for request processing; if set to
+     *            0, requests are processed in the context of the invoking
+     *            thread
+     * @param maxLogFileSize
+     *            the maximum file size for the log; if exceeded, a new
+     *            checkpoint will be created and the log will be truncated
+     * @param checkInterval
+     *            the frequency at which checks are performed if the log file
+     *            size is exceeded
+     * @param syncMode
+     *            the synchronization mode for log append writes
+     * @param pseudoSyncWait
+     *            the time for batching requests before writing them to disk
+     *            (only relevant if SyncMode = SyncMode.ASYNC)
+     * @param maxQ
+     *            the maximum queue length for each worker thread as well as
+     *            replication-related requests; if set to 0, no limit will be
+     *            enforced on the queue length
+     * @param compression
+     *            specifies whether simple data compression is enabled
+     * @param maxNumRecordsPerBlock
+     *            defines the maximum number of records per block in the
+     *            persistent block file of an index
+     * @param maxBlockFileSize
+     *            defines the maximum size of the persistent block file of an
+     *            index; if exceeded, a new block file will be added
+     */
+    public BabuDBConfig(String dbDir, String dbLogDir, int numThreads, long maxLogFileSize,
         int checkInterval, SyncMode syncMode, int pseudoSyncWait, int maxQ, boolean compression,
         int maxNumRecordsPerBlock, int maxBlockFileSize) {
         
-        super();
+        checkArgs(dbDir, dbLogDir, numThreads, maxLogFileSize, checkInterval, syncMode, pseudoSyncWait, maxQ,
+            compression, maxNumRecordsPerBlock, maxBlockFileSize);
+        
         this.debugLevel = Logging.LEVEL_WARN;
         this.debugCategory = "all";
-        this.baseDir = (baseDir.endsWith(File.separator)) ? baseDir : baseDir + File.separator;
+        this.baseDir = (dbDir.endsWith(File.separator)) ? dbDir : dbDir + File.separator;
         this.dbCfgFile = "config.db";
         this.dbLogDir = (dbLogDir.endsWith(File.separator)) ? dbLogDir : dbLogDir + File.separator;
         this.syncMode = syncMode;
@@ -117,10 +154,6 @@ public class BabuDBConfig extends Config {
         this.maxBlockFileSize = maxBlockFileSize;
     }
     
-    public BabuDBConfig() {
-        super();
-    }
-    
     public BabuDBConfig(Properties prop) throws IOException {
         super(prop);
         read();
@@ -132,23 +165,21 @@ public class BabuDBConfig extends Config {
     }
     
     public BabuDBConfig copy() {
-    	return new BabuDBConfig(baseDir, dbLogDir, numThreads, 
-    							maxLogfileSize, checkInterval, 
-    							syncMode, pseudoSyncWait, maxQueueLength, 
-    							compression, maxNumRecordsPerBlock, 
-    							maxBlockFileSize);
+        return new BabuDBConfig(baseDir, dbLogDir, numThreads, maxLogfileSize, checkInterval, syncMode,
+            pseudoSyncWait, maxQueueLength, compression, maxNumRecordsPerBlock, maxBlockFileSize);
     }
-
+    
     /**
      * Writes out the config to the given filename.
+     * 
      * @param filename
-     * @throws IOException 
-     * @throws FileNotFoundException 
+     * @throws IOException
+     * @throws FileNotFoundException
      */
     public void dump(String filename) throws FileNotFoundException, IOException {
-    	this.write(filename);
+        this.write(filename);
     }
-        
+    
     public void read() throws IOException {
         
         this.debugLevel = readDebugLevel();
@@ -276,4 +307,38 @@ public class BabuDBConfig extends Config {
     public int getMaxBlockFileSize() {
         return maxBlockFileSize;
     }
+    
+    private void checkArgs(String dbDir, String dbLogDir, int numThreads, long maxLogFileSize,
+        int checkInterval, SyncMode syncMode, int pseudoSyncWait, int maxQ, boolean compression,
+        int maxNumRecordsPerBlock, int maxBlockFileSize) {
+        
+        if (dbDir == null)
+            throw new IllegalArgumentException("database directory needs to be specified!");
+        
+        if (dbLogDir == null)
+            throw new IllegalArgumentException("database log directory needs to be specified!");
+        
+        if (numThreads < 0)
+            throw new IllegalArgumentException("number of threads must be >= 0!");
+        
+        if (maxLogFileSize < 0)
+            throw new IllegalArgumentException("max. log file size must be be >= 0!");
+        
+        if (checkInterval < 0)
+            throw new IllegalArgumentException("check interval for log file size must be >= 0!");
+        
+        if (syncMode == null)
+            throw new IllegalArgumentException("log append synchronization mode needs to be specified!");
+        
+        if (maxQ < 0)
+            throw new IllegalArgumentException("max. request queue length must be >= 0!");
+        
+        if (maxNumRecordsPerBlock <= 0)
+            throw new IllegalArgumentException("number of records per block must be > 0!");
+        
+        if (maxBlockFileSize <= 0)
+            throw new IllegalArgumentException("maximum block file size must be > 0!");
+        
+    }
+    
 }

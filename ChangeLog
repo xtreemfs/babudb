@@ -21,3 +21,7 @@
 2010-06-08: release 0.4.1
   * improved crash resilience if the database system is forcefully shut down during a checkpoint
   * fixed a bug that could cause memory shortage on 32bit machines if the system is restarted with a large database
+  
+2010-08-31: release 0.4.2
+  * added configuration builder to simplify the configuration of BabuDB
+  * fixed issues #6, #7, #10
