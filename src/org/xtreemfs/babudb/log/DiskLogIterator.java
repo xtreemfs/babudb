@@ -137,7 +137,8 @@ public class DiskLogIterator implements Iterator<LogEntry> {
         nextEntry = null;
         if (tmp != null)
             tmp.free();
-        currentFile.close();
+        if(currentFile != null)
+            currentFile.close();
     }
     
     protected void findFirstEntry() throws IOException, LogEntryException {

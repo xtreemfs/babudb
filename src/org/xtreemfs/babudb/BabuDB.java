@@ -510,6 +510,8 @@ public class BabuDB {
                 
             }
             
+            it.destroy();
+            
             if (nextLSN != null) {
                 return nextLSN;
             } else {
