@@ -12,6 +12,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.nio.channels.ClosedByInterruptException;
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -208,11 +209,13 @@ public class DatabaseImpl implements Database {
                 }
             }
             
-            // if an exception occurred while writing the log, respond with an error message
+            // if an exception occurred while writing the log, respond with an
+            // error message
             if (exc[0] != null) {
-                listener.failed((exc[0] != null && exc[0] instanceof BabuDBException) ? (BabuDBException) exc[0]
-                    : new BabuDBException(ErrorCode.IO_ERROR, "could not execute insert "
-                        + "because of IO problem", exc[0]));
+                listener
+                        .failed((exc[0] != null && exc[0] instanceof BabuDBException) ? (BabuDBException) exc[0]
+                            : new BabuDBException(ErrorCode.IO_ERROR, "could not execute insert "
+                                + "because of IO problem", exc[0]));
                 return;
             }
         }
@@ -696,32 +699,34 @@ public class DatabaseImpl implements Database {
     public void proceedCleanupSnapshot(final int viewId, final long sequenceNo) throws BabuDBException {
         try {
             lsmDB.cleanupSnapshot(viewId, sequenceNo);
+        } catch (ClosedByInterruptException ex) {
+            Logging.logError(Logging.LEVEL_DEBUG, this, ex);
         } catch (IOException ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot clean up: " + ex, ex);
         }
     }
     
     /**
-     * Dumps a snapshot of the database with the given directory as base dir. 
+     * Dumps a snapshot of the database with the given directory as base dir.
      * The database snapshot is in base dir + database name
      * 
      * @param baseDir
-     * @throws BabuDBException 
+     * @throws BabuDBException
      */
     public void dumpSnapshot(String baseDir) throws BabuDBException {
-    	// destination directory of this
-    	baseDir = baseDir.endsWith(File.separator) ? baseDir : baseDir + File.separator;
-    	String destDir = baseDir + lsmDB.getDatabaseName();
-    	
+        // destination directory of this
+        baseDir = baseDir.endsWith(File.separator) ? baseDir : baseDir + File.separator;
+        String destDir = baseDir + lsmDB.getDatabaseName();
+        
         try {
-        	int ids[] = lsmDB.createSnapshot();
+            int ids[] = lsmDB.createSnapshot();
             LSN lsn = lsmDB.getOndiskLSN();
-            lsmDB.writeSnapshot(destDir, ids, lsn
-                    .getViewId(), lsn.getSequenceNo());
+            lsmDB.writeSnapshot(destDir, ids, lsn.getViewId(), lsn.getSequenceNo());
         } catch (IOException ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot write snapshot: " + ex, ex);
         }
     }
+    
     /*
      * getter/setter
      */

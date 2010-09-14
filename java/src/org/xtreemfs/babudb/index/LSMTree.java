@@ -43,6 +43,10 @@ public class LSMTree {
     
     private final int                 maxBlockFileSize;
     
+    private final boolean             useMMap;
+    
+    private final int                 mmapLimitBytes;
+    
     /**
      * Creates a new LSM tree.
      * 
@@ -56,12 +60,14 @@ public class LSMTree {
      *             if an I/O error occurs when accessing the on-disk index file
      */
     public LSMTree(String indexFile, ByteRangeComparator comp, boolean compressed, int maxEntriesPerBlock,
-            int maxBlockFileSize) throws IOException {
+        int maxBlockFileSize, boolean useMMap, int mmapLimit) throws IOException {
         
         this.comp = comp;
         this.compressed = compressed;
         this.maxEntriesPerBlock = maxEntriesPerBlock;
         this.maxBlockFileSize = maxBlockFileSize;
+        this.useMMap = useMMap;
+        this.mmapLimitBytes = mmapLimit * 1024 * 1024;
         
         overlay = new MultiOverlayBufferTree(NULL_ELEMENT, comp);
         totalOnDiskSize += indexFile == null ? 0 : getTotalDirSize(new File(indexFile));
@@ -286,7 +292,8 @@ public class LSMTree {
      *             if an I/O error occurs while writing the snapshot
      */
     public void materializeSnapshot(String targetFile, int snapId) throws IOException {
-        DiskIndexWriter writer = new DiskIndexWriter(targetFile, maxEntriesPerBlock, compressed, maxBlockFileSize);
+        DiskIndexWriter writer = new DiskIndexWriter(targetFile, maxEntriesPerBlock, compressed,
+            maxBlockFileSize);
         writer.writeIndex(prefixLookup(null, snapId, true));
     }
     
@@ -304,9 +311,10 @@ public class LSMTree {
      * @throws IOException
      *             if an I/O error occurs while writing the snapshot
      */
-    public void materializeSnapshot(String targetFile, final int snapId, final int indexId, final SnapshotConfig snap)
-            throws IOException {
-        DiskIndexWriter writer = new DiskIndexWriter(targetFile, maxEntriesPerBlock, compressed, maxBlockFileSize);
+    public void materializeSnapshot(String targetFile, final int snapId, final int indexId,
+        final SnapshotConfig snap) throws IOException {
+        DiskIndexWriter writer = new DiskIndexWriter(targetFile, maxEntriesPerBlock, compressed,
+            maxBlockFileSize);
         writer.writeIndex(new Iterator<Entry<byte[], byte[]>>() {
             
             private Iterator<Entry<byte[], byte[]>>[] iterators;
@@ -418,10 +426,8 @@ public class LSMTree {
     }
     
     private boolean useMmap() {
-        final long maxSize = 200 * 1024 * 1024;
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "DB size: " + OutputUtils.formatBytes(totalOnDiskSize));
-        boolean mmap = "x86_64".equals(System.getProperty("os.arch")) || totalOnDiskSize < maxSize;
-        return mmap;
+        return useMMap && totalOnDiskSize < mmapLimitBytes;
     }
     
     private static long getTotalDirSize(File dir) {

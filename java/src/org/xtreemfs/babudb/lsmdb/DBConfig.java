@@ -67,8 +67,8 @@ public class DBConfig {
                 final int dbFormatVer = ois.readInt();
                 if (dbFormatVer != BabuDB.BABUDB_DB_FORMAT_VERSION) {
                     throw new BabuDBException(ErrorCode.IO_ERROR, "on-disk format (version " + dbFormatVer
-                            + ") is incompatible with this BabuDB release " + "(uses on-disk format version "
-                            + BabuDB.BABUDB_DB_FORMAT_VERSION + ")");
+                        + ") is incompatible with this BabuDB release " + "(uses on-disk format version "
+                        + BabuDB.BABUDB_DB_FORMAT_VERSION + ")");
                 }
                 final int numDB = ois.readInt();
                 dbman.nextDbId = ois.readInt();
@@ -98,19 +98,22 @@ public class DBConfig {
                     // reset existing DBs
                     if (db != null) {
                         db.setLSMDB(new LSMDatabase(dbName, dbId, this.dbs.getConfig().getBaseDir() + dbName
-                                + File.separatorChar, numIndex, true, comps, this.dbs.getConfig().getCompression(),
-                                this.dbs.getConfig().getMaxNumRecordsPerBlock(), this.dbs.getConfig()
-                                        .getMaxBlockFileSize()));
-                    } else {
-                        db = new DatabaseImpl(this.dbs, new LSMDatabase(dbName, dbId, this.dbs.getConfig().getBaseDir()
-                                + dbName + File.separatorChar, numIndex, true, comps, this.dbs.getConfig()
+                            + File.separatorChar, numIndex, true, comps, this.dbs.getConfig()
                                 .getCompression(), this.dbs.getConfig().getMaxNumRecordsPerBlock(), this.dbs
-                                .getConfig().getMaxBlockFileSize()));
+                                .getConfig().getMaxBlockFileSize(), this.dbs.getConfig().getDisableMMap(),
+                            this.dbs.getConfig().getMMapLimit()));
+                    } else {
+                        db = new DatabaseImpl(this.dbs, new LSMDatabase(dbName, dbId, this.dbs.getConfig()
+                                .getBaseDir()
+                            + dbName + File.separatorChar, numIndex, true, comps, this.dbs.getConfig()
+                                .getCompression(), this.dbs.getConfig().getMaxNumRecordsPerBlock(), this.dbs
+                                .getConfig().getMaxBlockFileSize(), this.dbs.getConfig().getDisableMMap(),
+                            this.dbs.getConfig().getMMapLimit()));
                         dbman.dbsById.put(dbId, db);
                         dbman.dbsByName.put(dbName, db);
                     }
-                    Logging.logMessage(Logging.LEVEL_INFO, this, "loaded DB %s" + " successfully. [LSN %s]", dbName, db
-                            .getLSMDB().getOndiskLSN());
+                    Logging.logMessage(Logging.LEVEL_INFO, this, "loaded DB %s" + " successfully. [LSN %s]",
+                        dbName, db.getLSMDB().getOndiskLSN());
                 }
             }
             
@@ -128,14 +131,14 @@ public class DBConfig {
         } catch (IllegalAccessException ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot instantiate comparator", ex);
         } catch (IOException ex) {
-            throw new BabuDBException(ErrorCode.IO_ERROR, "cannot load database config, check path and access rights",
-                    ex);
+            throw new BabuDBException(ErrorCode.IO_ERROR,
+                "cannot load database config, check path and access rights", ex);
         } catch (ClassNotFoundException ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR,
-                    "cannot load database config, config file might be corrupted", ex);
+                "cannot load database config, config file might be corrupted", ex);
         } catch (ClassCastException ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR,
-                    "cannot load database config, config file might be corrupted", ex);
+                "cannot load database config, config file might be corrupted", ex);
         } finally {
             if (ois != null)
                 try {
@@ -184,14 +187,16 @@ public class DBConfig {
                     }
                     
                     if (!conversionRequired) {
-                        Database db = new DatabaseImpl(this.dbs, new LSMDatabase(dbName, dbId, this.dbs.getConfig()
-                                .getBaseDir()
-                                + dbName + File.separatorChar, numIndex, true, comps, this.dbs.getConfig()
+                        Database db = new DatabaseImpl(this.dbs, new LSMDatabase(dbName, dbId, this.dbs
+                                .getConfig().getBaseDir()
+                            + dbName + File.separatorChar, numIndex, true, comps, this.dbs.getConfig()
                                 .getCompression(), this.dbs.getConfig().getMaxNumRecordsPerBlock(), this.dbs
-                                .getConfig().getMaxBlockFileSize()));
+                                .getConfig().getMaxBlockFileSize(), this.dbs.getConfig().getDisableMMap(),
+                            this.dbs.getConfig().getMMapLimit()));
                         dbman.dbsById.put(dbId, db);
                         dbman.dbsByName.put(dbName, db);
-                        Logging.logMessage(Logging.LEVEL_DEBUG, this, "loaded DB " + dbName + " successfully.");
+                        Logging.logMessage(Logging.LEVEL_DEBUG, this, "loaded DB " + dbName
+                            + " successfully.");
                     }
                 }
             }
@@ -201,14 +206,14 @@ public class DBConfig {
         } catch (IllegalAccessException ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot instantiate comparator", ex);
         } catch (IOException ex) {
-            throw new BabuDBException(ErrorCode.IO_ERROR, "cannot load database config, check path and access rights",
-                    ex);
+            throw new BabuDBException(ErrorCode.IO_ERROR,
+                "cannot load database config, check path and access rights", ex);
         } catch (ClassNotFoundException ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR,
-                    "cannot load database config, config file might be corrupted", ex);
+                "cannot load database config, config file might be corrupted", ex);
         } catch (ClassCastException ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR,
-                    "cannot load database config, config file might be corrupted", ex);
+                "cannot load database config, config file might be corrupted", ex);
         } finally {
             if (ois != null)
                 try {

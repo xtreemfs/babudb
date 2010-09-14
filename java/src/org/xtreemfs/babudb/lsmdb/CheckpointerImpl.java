@@ -11,6 +11,7 @@ package org.xtreemfs.babudb.lsmdb;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.nio.channels.ClosedByInterruptException;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -98,7 +99,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
     /**
      * Flag to notify the disk-logger about a viewId incrementation.
      */
-    private boolean                            incrementViewId = false;
+    private boolean                            incrementViewId    = false;
     
     /**
      * Creates a new database checkpointer
@@ -128,7 +129,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
         this.checkInterval = 1000l * checkInterval;
         this.maxLogLength = maxLogLength;
     }
-       
+    
     /**
      * Triggers the creation of a new checkpoint. This causes the checkpointer
      * to run its checkpointing mechanism, which causes all outstanding snapshot
@@ -167,6 +168,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
     
     /*
      * (non-Javadoc)
+     * 
      * @see org.xtreemfs.babudb.lsmdb.Checkpointer#checkpoint()
      */
     @Override
@@ -176,6 +178,24 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
         checkpoint(false);
     }
     
+    /**
+     * Internal method for creating a new database checkpoint. This involves the
+     * following steps:
+     * <ol>
+     * <li>snapshot all indices of all databases
+     * <li>create new log file for subsequent insertions
+     * <li>write index snapshots to new on-disk index files
+     * <li>link new on-disk files to index structures
+     * <li>delete any obsolete on-disk files
+     * <li>delete any obsolete log files
+     * </ol>
+     * The first two steps need to be sync'ed with new insertions but should be
+     * very fast. The following steps are performed in a fully asynchronous
+     * manner.
+     * 
+     * @throws BabuDBException
+     * @throws InterruptedException
+     */
     private void createCheckpoint() throws BabuDBException, InterruptedException {
         
         Collection<Database> databases = ((DatabaseManagerImpl) dbs.getDatabaseManager()).getDatabaseList();
@@ -227,8 +247,9 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
                         if (logLSN.compareTo(lastWrittenLSN) <= 0) {
                             Logging.logMessage(Logging.LEVEL_DEBUG, this, "deleting old db log file: " + log);
                             f = new File(dbs.getConfig().getDbLogDir() + log);
-                            if(!f.delete())
-                                Logging.logMessage(Logging.LEVEL_WARN, this, "could not delete log file: %s", f.getAbsolutePath());
+                            if (!f.delete())
+                                Logging.logMessage(Logging.LEVEL_WARN, this, "could not delete log file: %s",
+                                    f.getAbsolutePath());
                         }
                     }
                 }
@@ -275,6 +296,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
     
     /*
      * (non-Javadoc)
+     * 
      * @see java.lang.Thread#start()
      */
     @Override
@@ -290,14 +312,14 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
         boolean manualCheckpoint = false;
         while (!quit) {
             synchronized (this) {
-                if (!forceCheckpoint) { 
+                if (!forceCheckpoint) {
                     try {
                         this.wait(checkInterval);
                     } catch (InterruptedException ex) {
                         if (quit)
                             break;
                     }
-                } 
+                }
                 manualCheckpoint = forceCheckpoint;
                 forceCheckpoint = false;
             }
@@ -316,8 +338,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
                     synchronized (((DatabaseManagerImpl) dbs.getDatabaseManager()).getDBModificationLock()) {
                         
                         // materialize all snapshots in the queue before
-                        // creating
-                        // the checkpoint
+                        // creating the checkpoint
                         for (;;) {
                             MaterializationRequest rq = null;
                             
@@ -341,8 +362,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
                                         rq.snap.getName()), rq.snap);
                             
                             // notify the snapshot manager about the completion
-                            // of
-                            // the snapshot
+                            // of the snapshot
                             snapMan.snapshotComplete(rq.dbName, rq.snap);
                             
                             Logging
@@ -362,8 +382,15 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
             } catch (InterruptedException ex) {
                 Logging.logMessage(Logging.LEVEL_DEBUG, this, "CHECKPOINT WAS ABORTED!");
             } catch (Throwable ex) {
-                Logging.logMessage(Logging.LEVEL_ERROR, this, "DATABASE CHECKPOINT CREATION FAILURE!");
-                Logging.logMessage(Logging.LEVEL_ERROR, this, OutputUtils.stackTraceToString(ex));
+                
+                if (ex instanceof BabuDBException && ((BabuDBException) ex).getCause() instanceof ClosedByInterruptException) {
+                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "CHECKPOINT WAS ABORTED!");
+                }
+
+                else {
+                    Logging.logMessage(Logging.LEVEL_ERROR, this, "DATABASE CHECKPOINT CREATION FAILURE!");
+                    Logging.logMessage(Logging.LEVEL_ERROR, this, OutputUtils.stackTraceToString(ex));
+                }
             } finally {
                 synchronized (checkpointCompletionLock) {
                     checkpointComplete = true;
@@ -371,7 +398,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
                 }
             }
         }
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "shutdown complete");
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "checkpointer shut down successfully");
         synchronized (down) {
             down.set(true);
             down.notifyAll();
@@ -393,7 +420,8 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
      */
     public void waitForCheckpoint() throws InterruptedException {
         synchronized (checkpointCompletionLock) {
-            if (!checkpointComplete) checkpointCompletionLock.wait();
+            if (!checkpointComplete)
+                checkpointCompletionLock.wait();
         }
     }
 }

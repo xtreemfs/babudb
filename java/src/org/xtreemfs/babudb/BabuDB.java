@@ -118,8 +118,7 @@ public class BabuDB {
     BabuDB(BabuDBConfig conf, final StaticInitialization staticInit) throws BabuDBException {
         Logging.start(conf.getDebugLevel());
         
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "base dir: " + conf.getBaseDir());
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "db log dir: " + conf.getDbLogDir());
+        Logging.logMessage(Logging.LEVEL_INFO, this, "\n" + conf.toString());
         
         this.configuration = conf;
         this.databaseManager = new DatabaseManagerImpl(this);
@@ -352,6 +351,9 @@ public class BabuDB {
      * @see org.xtreemfs.babudb.BabuDBInterface#shutdown()
      */
     public void shutdown() throws BabuDBException {
+        
+        Logging.logMessage(Logging.LEVEL_INFO, this, "shutting down BabuDB ...");
+        
         if (worker != null)
             for (LSMDBWorker w : worker)
                 w.shutdown();
@@ -366,18 +368,26 @@ public class BabuDB {
             }
         }
         
-        logger.shutdown();
-        dbCheckptr.shutdown();
-        databaseManager.shutdown();
-        snapshotManager.shutdown();
-        
         try {
+            
+            // shut down the logger; this keeps insertions from being completed
+            logger.shutdown();
             logger.waitForShutdown();
-            if (worker != null)
+            
+            // complete checkpoint before shutdown
+            dbCheckptr.shutdown();
+            dbCheckptr.waitForShutdown();
+            
+            databaseManager.shutdown();
+            snapshotManager.shutdown();
+                        
+            if (worker != null) {
                 for (LSMDBWorker w : worker)
                     w.waitForShutdown();
+                
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, "%d worker threads shut down successfully", worker.length);
+            }
             
-            dbCheckptr.waitForShutdown();
         } catch (InterruptedException ex) {
         }
         Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB shutdown complete.");
