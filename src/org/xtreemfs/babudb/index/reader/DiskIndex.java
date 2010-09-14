@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
+import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.util.Iterator;
@@ -344,6 +345,8 @@ public class DiskIndex {
                 try {
                     currentBlock = mmaped ? getBlock(startOffset, endOffset, map[fileId]) : getBlock(
                         startOffset, endOffset, dbFileChannels[fileId]);
+                } catch(ClosedByInterruptException exc) {
+                    Logging.logError(Logging.LEVEL_DEBUG, this, exc);
                 } catch (IOException exc) {
                     Logging.logError(Logging.LEVEL_ERROR, this, exc);
                 }

@@ -166,10 +166,11 @@ public class DatabaseManagerImpl implements DatabaseManager {
                     + "' already exists");
             }
             final int dbId = nextDbId++;
-            db = new DatabaseImpl(dbs, new LSMDatabase(databaseName, dbId, dbs.getConfig().getBaseDir()
-                + databaseName + File.separatorChar, numIndices, false, comparators, dbs.getConfig()
-                    .getCompression(), dbs.getConfig().getMaxNumRecordsPerBlock(), dbs.getConfig()
-                    .getMaxBlockFileSize()));
+            db = new DatabaseImpl(dbs,
+                new LSMDatabase(databaseName, dbId, dbs.getConfig().getBaseDir() + databaseName
+                    + File.separatorChar, numIndices, false, comparators, dbs.getConfig().getCompression(),
+                    dbs.getConfig().getMaxNumRecordsPerBlock(), dbs.getConfig().getMaxBlockFileSize(), dbs
+                            .getConfig().getDisableMMap(), dbs.getConfig().getMMapLimit()));
             dbsById.put(dbId, db);
             dbsByName.put(databaseName, db);
             dbs.getDBConfigFile().save();
@@ -279,7 +280,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
         Database newDB = new DatabaseImpl(dbs, new LSMDatabase(destDB, dbId, dbs.getConfig().getBaseDir()
             + destDB + File.separatorChar, sDB.getLSMDB().getIndexCount(), true, sDB.getComparators(), dbs
                 .getConfig().getCompression(), dbs.getConfig().getMaxNumRecordsPerBlock(), dbs.getConfig()
-                .getMaxBlockFileSize()));
+                .getMaxBlockFileSize(), dbs.getConfig().getDisableMMap(), this.dbs.getConfig().getMMapLimit()));
         
         // insert real database
         synchronized (dbModificationLock) {
@@ -303,6 +304,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
     public void shutdown() throws BabuDBException {
         for (Database db : dbsById.values())
             db.shutdown();
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "DB manager shut down successfully");
     }
     
     /**
@@ -365,9 +367,9 @@ public class DatabaseManagerImpl implements DatabaseManager {
         
         for (InsertRecord ir : ins.getInserts()) {
             LSMTree tree = db.getIndex(ir.getIndexId());
-            Logging.logMessage(Logging.LEVEL_DEBUG, this, "insert %s=%s into %s  %d",
-                new String(ir.getKey()), (ir.getValue() == null ? "null" : new String(ir.getValue())), db
-                        .getDatabaseName(), ir.getIndexId());
+//            Logging.logMessage(Logging.LEVEL_DEBUG, this, "insert %s=%s into %s  %d",
+//                new String(ir.getKey()), (ir.getValue() == null ? "null" : new String(ir.getValue())), db
+//                        .getDatabaseName(), ir.getIndexId());
             tree.insert(ir.getKey(), ir.getValue());
         }
         
@@ -378,18 +380,19 @@ public class DatabaseManagerImpl implements DatabaseManager {
     }
     
     public void dumpAllDatabases(String destPath) throws BabuDBException, InterruptedException, IOException {
-    	// create a snapshot of each database materialized with the destPath as baseDir
-    	destPath = destPath.endsWith(File.separator) ? destPath : destPath + File.separator;
-    	
+        // create a snapshot of each database materialized with the destPath as
+        // baseDir
+        destPath = destPath.endsWith(File.separator) ? destPath : destPath + File.separator;
+        
         File dir = new File(destPath);
         if (!dir.exists() && !dir.mkdirs())
             throw new IOException("Directory doesnt exist and cannot be created:'" + destPath + "'");
-
-   		BabuDBConfig cfg = dbs.getConfig();
-   		dbs.getDBConfigFile().save(destPath + cfg.getDbCfgFile());
         
-		for(Database db: dbsByName.values()) {
-    		((DatabaseImpl) db).dumpSnapshot(destPath);
-    	}
+        BabuDBConfig cfg = dbs.getConfig();
+        dbs.getDBConfigFile().save(destPath + cfg.getDbCfgFile());
+        
+        for (Database db : dbsByName.values()) {
+            ((DatabaseImpl) db).dumpSnapshot(destPath);
+        }
     }
 }

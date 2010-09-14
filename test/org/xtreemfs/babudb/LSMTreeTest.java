@@ -58,7 +58,7 @@ public class LSMTreeTest extends TestCase {
             "5".getBytes() };
         
         LSMTree tree = new LSMTree(null, DefaultByteRangeComparator.getInstance(), false, 16,
-            1024 * 1024 * 512);
+            1024 * 1024 * 512, true, -1);
         TreeMap<byte[], byte[]> map = new TreeMap<byte[], byte[]>(new DefaultByteRangeComparator());
         
         // insert some key-value pairs
@@ -176,7 +176,7 @@ public class LSMTreeTest extends TestCase {
         final int numElements = 200;
         final DefaultByteRangeComparator comp = DefaultByteRangeComparator.getInstance();
         
-        LSMTree tree = new LSMTree(null, comp, false, 16, 1024 * 1024 * 512);
+        LSMTree tree = new LSMTree(null, comp, false, 16, 1024 * 1024 * 512, true, -1);
         
         final TreeMap<byte[], byte[]> map1 = new TreeMap<byte[], byte[]>(comp);
         for (int i = 0x10; i < numElements; i++) {
@@ -314,7 +314,7 @@ public class LSMTreeTest extends TestCase {
         final byte[] value = "value".getBytes();
         final String[] keys = { "a", "v", "blub", "blubber", "ertz", "yagga", "zwum", "x" };
         
-        LSMTree tree = new LSMTree(null, comp, false, 16, 1024 * 1024 * 512);
+        LSMTree tree = new LSMTree(null, comp, false, 16, 1024 * 1024 * 512, true, -1);
         for (String k : keys)
             tree.insert(k.getBytes(), value);
         

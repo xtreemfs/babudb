@@ -24,6 +24,7 @@ import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
 import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
 import org.xtreemfs.babudb.lsmdb.DatabaseRO;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.FSUtils;
 
 public class SnapshotManagerImpl implements SnapshotManager {
@@ -65,6 +66,7 @@ public class SnapshotManagerImpl implements SnapshotManager {
         for (Map<String, Snapshot> snapshots : snapshotDBs.values())
             for (Snapshot snapshot : snapshots.values())
                 snapshot.shutdown();
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "snapshot manager shut down successfully");
     }
     
     @Override

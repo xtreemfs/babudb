@@ -97,6 +97,18 @@ public class BabuDBConfig extends Config {
     protected int      maxBlockFileSize;
     
     /**
+     * Specifies whether <code>mmap</code> is used in order to read database
+     * files.
+     */
+    protected boolean  disableMMap;
+    
+    /**
+     * Specifies a limit for the total size of all databases after which no
+     * <code>mmap</code> will be used anymore.
+     */
+    protected int      mmapLimit;
+    
+    /**
      * Crates a new BabuDB configuration.
      * 
      * @param dbDir
@@ -117,7 +129,7 @@ public class BabuDBConfig extends Config {
      *            the synchronization mode for log append writes
      * @param pseudoSyncWait
      *            the time for batching requests before writing them to disk
-     *            (only relevant if SyncMode = SyncMode.ASYNC)
+     *            (only relevant if SyncMode != SyncMode.ASYNC)
      * @param maxQ
      *            the maximum queue length for each worker thread as well as
      *            replication-related requests; if set to 0, no limit will be
@@ -130,15 +142,26 @@ public class BabuDBConfig extends Config {
      * @param maxBlockFileSize
      *            defines the maximum size of the persistent block file of an
      *            index; if exceeded, a new block file will be added
+     * @param disableMMap
+     *            Disables memory-mapping of database files. Disabling mmap'ing
+     *            may reduce memory shortage at the cost of a slightly decreased
+     *            read performance.
+     * @param mmapLimit
+     *            Sets a high watermark for the size of all databases after
+     *            which block files will no longer be mmap'ed. On 32-bit VMs,
+     *            setting such a limit is necessary to deal with databases in GB
+     *            size. If set to -1, no limit will be enforced.
+     * @param debugLevel
+     *            the debug level (see <code>org.xtreemfs.foundation.Logging</code>)
      */
     public BabuDBConfig(String dbDir, String dbLogDir, int numThreads, long maxLogFileSize,
         int checkInterval, SyncMode syncMode, int pseudoSyncWait, int maxQ, boolean compression,
-        int maxNumRecordsPerBlock, int maxBlockFileSize) {
+        int maxNumRecordsPerBlock, int maxBlockFileSize, boolean disableMMap, int mmapLimit, int debugLevel) {
         
         checkArgs(dbDir, dbLogDir, numThreads, maxLogFileSize, checkInterval, syncMode, pseudoSyncWait, maxQ,
-            compression, maxNumRecordsPerBlock, maxBlockFileSize);
+            compression, maxNumRecordsPerBlock, maxBlockFileSize, mmapLimit);
         
-        this.debugLevel = Logging.LEVEL_WARN;
+        this.debugLevel = debugLevel;
         this.debugCategory = "all";
         this.baseDir = (dbDir.endsWith(File.separator)) ? dbDir : dbDir + File.separator;
         this.dbCfgFile = "config.db";
@@ -152,6 +175,53 @@ public class BabuDBConfig extends Config {
         this.compression = compression;
         this.maxNumRecordsPerBlock = maxNumRecordsPerBlock;
         this.maxBlockFileSize = maxBlockFileSize;
+        this.disableMMap = disableMMap;
+        this.mmapLimit = mmapLimit;
+    }
+    
+    /**
+     * Crates a new BabuDB configuration.
+     * 
+     * @param dbDir
+     *            the directory in which persistent checkpoints are stored
+     * @param dbLogDir
+     *            the directory in which the database log resides
+     * @param numThreads
+     *            the number of worker threads for request processing; if set to
+     *            0, requests are processed in the context of the invoking
+     *            thread
+     * @param maxLogFileSize
+     *            the maximum file size for the log; if exceeded, a new
+     *            checkpoint will be created and the log will be truncated
+     * @param checkInterval
+     *            the frequency at which checks are performed if the log file
+     *            size is exceeded
+     * @param syncMode
+     *            the synchronization mode for log append writes
+     * @param pseudoSyncWait
+     *            the time for batching requests before writing them to disk
+     *            (only relevant if SyncMode != SyncMode.ASYNC)
+     * @param maxQ
+     *            the maximum queue length for each worker thread as well as
+     *            replication-related requests; if set to 0, no limit will be
+     *            enforced on the queue length
+     * @param compression
+     *            specifies whether simple data compression is enabled
+     * @param maxNumRecordsPerBlock
+     *            defines the maximum number of records per block in the
+     *            persistent block file of an index
+     * @param maxBlockFileSize
+     *            defines the maximum size of the persistent block file of an
+     *            index; if exceeded, a new block file will be added
+     * 
+     */
+    public BabuDBConfig(String dbDir, String dbLogDir, int numThreads, long maxLogFileSize,
+        int checkInterval, SyncMode syncMode, int pseudoSyncWait, int maxQ, boolean compression,
+        int maxNumRecordsPerBlock, int maxBlockFileSize) {
+        
+        this(dbDir, dbLogDir, numThreads, maxLogFileSize, checkInterval, syncMode, pseudoSyncWait, maxQ,
+            compression, maxNumRecordsPerBlock, maxBlockFileSize, !"x86_64".equals(System
+                    .getProperty("os.arch")), -1, Logging.LEVEL_WARN);
     }
     
     public BabuDBConfig(Properties prop) throws IOException {
@@ -211,6 +281,11 @@ public class BabuDBConfig extends Config {
         this.maxNumRecordsPerBlock = this.readOptionalInt("babudb.maxNumRecordsPerBlock", 16);
         
         this.maxBlockFileSize = this.readOptionalInt("babudb.maxBlockFileSize", 1024 * 1024 * 512);
+        
+        this.disableMMap = this.readOptionalBoolean("babudb.disableMmap", !"x86_64".equals(System
+                .getProperty("os.arch")));
+        
+        this.mmapLimit = this.readOptionalInt("babudb.mmapLimit", -1);
     }
     
     protected int readDebugLevel() {
@@ -308,9 +383,39 @@ public class BabuDBConfig extends Config {
         return maxBlockFileSize;
     }
     
-    private void checkArgs(String dbDir, String dbLogDir, int numThreads, long maxLogFileSize,
+    public boolean getDisableMMap() {
+        return disableMMap;
+    }
+    
+    public int getMMapLimit() {
+        return this.mmapLimit;
+    }
+    
+    public String toString() {
+        StringBuffer buf = new StringBuffer();
+        buf.append("############# CONFIGURATION #############\n");
+        buf.append("#             database dir: " + baseDir + "\n");
+        buf.append("#         database log dir: " + dbLogDir + "\n");
+        buf.append("#                sync mode: " + syncMode + "\n");
+        if (syncMode != SyncMode.ASYNC)
+            buf.append("#     pseudo sync interval: " + pseudoSyncWait + "\n");
+        buf.append("#        max. queue length: " + maxQueueLength + "\n");
+        buf.append("#             num. threads: " + numThreads + "\n");
+        buf.append("#   checkpointing interval: " + checkInterval + "\n");
+        buf.append("#       max. log file size: " + maxLogfileSize + "\n");
+        buf.append("#   num. records per block: " + maxNumRecordsPerBlock + "\n");
+        buf.append("#     max. block file size: " + maxBlockFileSize + "\n");
+        buf.append("#      compression enabled: " + compression + "\n");
+        buf.append("#            mmap disabled: " + disableMMap + "\n");
+        if (!disableMMap)
+            buf.append("#               mmap limit: " + mmapLimit + "\n");
+        
+        return buf.toString();
+    }
+    
+    private static void checkArgs(String dbDir, String dbLogDir, int numThreads, long maxLogFileSize,
         int checkInterval, SyncMode syncMode, int pseudoSyncWait, int maxQ, boolean compression,
-        int maxNumRecordsPerBlock, int maxBlockFileSize) {
+        int maxNumRecordsPerBlock, int maxBlockFileSize, int mmapLimit) {
         
         if (dbDir == null)
             throw new IllegalArgumentException("database directory needs to be specified!");
@@ -338,6 +443,9 @@ public class BabuDBConfig extends Config {
         
         if (maxBlockFileSize <= 0)
             throw new IllegalArgumentException("maximum block file size must be > 0!");
+        
+        if (mmapLimit < -1)
+            throw new IllegalArgumentException("mmap limit must be >= -1!");
         
     }
     

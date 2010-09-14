@@ -134,6 +134,8 @@ public class ConfigBuilder {
         BabuDBConfig cfg = null;
         try {
             props.load(ConfigBuilder.class.getResourceAsStream("default-config.properties"));
+            props.put("babudb.disableMmap", !"x86_64".equals(System.getProperty("os.arch")));
+            props.put("babudb.mmapLimit", "x86_64".equals(System.getProperty("os.arch")) ? -1 : 200);
             
             props.putAll(changes);
             

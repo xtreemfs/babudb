@@ -395,7 +395,7 @@ public class DiskLogger extends Thread {
                 /* ignored */
             }
         }
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "shutdown %s","complete");
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "disk logger shut down successfully");
         synchronized (down) {
             down.set(true);
             down.notifyAll();
