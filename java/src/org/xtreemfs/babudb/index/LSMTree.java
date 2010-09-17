@@ -17,7 +17,9 @@ import java.util.NoSuchElementException;
 import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.index.overlay.MultiOverlayBufferTree;
+import org.xtreemfs.babudb.index.reader.InternalBufferUtil;
 import org.xtreemfs.babudb.index.reader.DiskIndex;
+import org.xtreemfs.babudb.index.reader.InternalMergeIterator;
 import org.xtreemfs.babudb.index.writer.DiskIndexWriter;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.foundation.logging.Logging;
@@ -294,7 +296,7 @@ public class LSMTree {
     public void materializeSnapshot(String targetFile, int snapId) throws IOException {
         DiskIndexWriter writer = new DiskIndexWriter(targetFile, maxEntriesPerBlock, compressed,
             maxBlockFileSize);
-        writer.writeIndex(prefixLookup(null, snapId, true));
+        writer.writeIndex(internalPrefixLookup(null, snapId, true));
     }
     
     /**
@@ -315,11 +317,11 @@ public class LSMTree {
         final SnapshotConfig snap) throws IOException {
         DiskIndexWriter writer = new DiskIndexWriter(targetFile, maxEntriesPerBlock, compressed,
             maxBlockFileSize);
-        writer.writeIndex(new Iterator<Entry<byte[], byte[]>>() {
+        writer.writeIndex(new Iterator<Entry<Object, Object>>() {
             
-            private Iterator<Entry<byte[], byte[]>>[] iterators;
+            private Iterator<Entry<Object, Object>>[] iterators;
             
-            private Entry<byte[], byte[]>             next;
+            private Entry<Object, Object>             next;
             
             private int                               currentIt;
             
@@ -331,7 +333,7 @@ public class LSMTree {
                 if (prefixes != null) {
                     iterators = new Iterator[prefixes.length];
                     for (int i = 0; i < prefixes.length; i++)
-                        iterators[i] = prefixLookup(prefixes[i], snapId, true);
+                        iterators[i] = internalPrefixLookup(prefixes[i], snapId, true);
                 } else {
                     iterators = new Iterator[] { prefixLookup(null, snapId, true) };
                 }
@@ -346,12 +348,12 @@ public class LSMTree {
             }
             
             @Override
-            public Entry<byte[], byte[]> next() {
+            public Entry<Object, Object> next() {
                 
                 if (next == null)
                     throw new NoSuchElementException();
                 
-                Entry<byte[], byte[]> tmp = next;
+                Entry<Object, Object> tmp = next;
                 getNextElement();
                 
                 return tmp;
@@ -381,7 +383,8 @@ public class LSMTree {
                     next = iterators[currentIt].next();
                     
                     // if this element is explicitly excluded, skip it
-                    if (snap.containsKey(indexId, next.getKey()))
+                    byte[] tmp = InternalBufferUtil.toBuffer(next.getKey());
+                    if (snap.containsKey(indexId, tmp))
                         break;
                 }
             }
@@ -428,6 +431,40 @@ public class LSMTree {
     private boolean useMmap() {
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "DB size: " + OutputUtils.formatBytes(totalOnDiskSize));
         return useMMap && totalOnDiskSize < mmapLimitBytes;
+    }
+    
+    /**
+     * Performs a prefix lookup. Key-value paris are returned in an iterator in
+     * the given key order, where only such keys are returned with a matching
+     * prefix according to the comparator. <br/>
+     * 
+     * <b>WARNING:</b> This method should only be accessed internally, as it
+     * provides access to internal index buffers that have to remain immutable.
+     * 
+     * @param prefix
+     *            the prefix
+     * @param snapId
+     *            the snapshot ID
+     * @param ascending
+     *            if <code>true</code>, entries will be returned in ascending
+     *            order; otherwise, they will be returned in descending order
+     * @return an iterator with references to internally used buffers
+     */
+    protected Iterator<Entry<Object, Object>> internalPrefixLookup(byte[] prefix, int snapId,
+        boolean ascending) {
+        
+        if (prefix != null && prefix.length == 0)
+            prefix = null;
+        
+        Iterator<Entry<byte[], byte[]>> overlayIterator = overlay.prefixLookup(prefix, snapId, true,
+            ascending);
+        Iterator<Entry<ByteRange, ByteRange>> diskIndexIterator = null;
+        if (index != null) {
+            byte[][] rng = comp.prefixToRange(prefix, ascending);
+            diskIndexIterator = index.internalRangeLookup(rng[0], rng[1], ascending);
+        }
+        
+        return new InternalMergeIterator(overlayIterator, diskIndexIterator, comp, NULL_ELEMENT, ascending);
     }
     
     private static long getTotalDirSize(File dir) {

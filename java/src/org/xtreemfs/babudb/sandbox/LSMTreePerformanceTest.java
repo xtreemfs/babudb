@@ -14,6 +14,7 @@ import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
+import org.xtreemfs.babudb.index.reader.InternalBufferUtil;
 import org.xtreemfs.babudb.index.writer.DiskIndexWriter;
 
 public class LSMTreePerformanceTest {
@@ -49,7 +50,7 @@ public class LSMTreePerformanceTest {
             
             // write the map to a disk index
             DiskIndexWriter index = new DiskIndexWriter(path, entriesPerBlock, false, blockFileSize);
-            index.writeIndex(new Iterator<Entry<byte[], byte[]>>() {
+            index.writeIndex(new Iterator<Entry<Object, Object>>() {
                 
                 private int    count;
                 
@@ -61,27 +62,25 @@ public class LSMTreePerformanceTest {
                 }
                 
                 @Override
-                public Entry<byte[], byte[]> next() {
+                public Entry<Object, Object> next() {
                     
                     count++;
                     next = createNextString(next, minStrLen, maxStrLen, minChar, maxChar);
                     
-                    return new Entry<byte[], byte[]>() {
-                        
-                        final byte[] nextBytes = next.getBytes();
-                        
+                    return new Entry<Object, Object>() {
+
                         @Override
-                        public byte[] getKey() {
-                            return nextBytes;
+                        public Object getKey() {
+                            return next.getBytes();
                         }
                         
                         @Override
-                        public byte[] getValue() {
-                            return nextBytes;
+                        public Object getValue() {
+                            return next.getBytes();
                         }
                         
                         @Override
-                        public byte[] setValue(byte[] value) {
+                        public Object setValue(Object value) {
                             throw new UnsupportedOperationException();
                         }
                         
@@ -97,7 +96,7 @@ public class LSMTreePerformanceTest {
         }
         
         // read the LSM tree
-        LSMTree tree = new LSMTree(path, new DefaultByteRangeComparator(), false, 16, 1024 * 1024 * 512);
+        LSMTree tree = new LSMTree(path, new DefaultByteRangeComparator(), false, 16, 1024 * 1024 * 512, true, -1);
         
         System.out.println("inserting " + inserts + " random elements ...");
         for (int i = 0; i < inserts; i++) {

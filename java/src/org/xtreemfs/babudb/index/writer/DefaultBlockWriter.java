@@ -4,114 +4,123 @@
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
-*/
+ */
 
 package org.xtreemfs.babudb.index.writer;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
 import org.xtreemfs.babudb.index.reader.DefaultBlockReader;
-import org.xtreemfs.foundation.buffer.BufferPool;
-import org.xtreemfs.foundation.buffer.ReusableBuffer;
+import org.xtreemfs.babudb.index.reader.InternalBufferUtil;
 
 public class DefaultBlockWriter implements BlockWriter {
     
-    private List<byte[]> keys;
+    private List<Object> keys;
     
-    private List<byte[]> values;
+    private List<Object> values;
     
     private boolean      varLenKeys;
     
     private boolean      varLenVals;
     
+    private boolean      serialized;
+    
     public DefaultBlockWriter(boolean varLenKeys, boolean varLenVals) {
         
-        keys = new LinkedList<byte[]>();
-        values = new LinkedList<byte[]>();
+        keys = new LinkedList<Object>();
+        values = new LinkedList<Object>();
         
         this.varLenKeys = varLenKeys;
         this.varLenVals = varLenVals;
     }
     
-    /* (non-Javadoc)
-	 * @see org.xtreemfs.babudb.index.writer.BlockWriter#add(byte[], byte[])
-	 */
-    public void add(byte[] key, byte[] value) {
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.xtreemfs.babudb.index.writer.BlockWriter#add(byte[], byte[])
+     */
+    public void add(Object key, Object value) {
+        
+        if (serialized)
+            throw new UnsupportedOperationException("already serialized");
+        
         keys.add(key);
         values.add(value);
     }
     
-    /* (non-Javadoc)
-	 * @see org.xtreemfs.babudb.index.writer.BlockWriter#serialize()
-	 */
-    public ReusableBuffer serialize() {
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.xtreemfs.babudb.index.writer.BlockWriter#serialize()
+     */
+    public SerializedBlock serialize() {
         
-        ReusableBuffer keyBuf = varLenKeys ? serializeVarLenPage(keys)
-            : serializeFixedLenPage(keys);
-        ReusableBuffer valBuf = varLenVals ? serializeVarLenPage(values)
-            : serializeFixedLenPage(values);
+        if (serialized)
+            throw new UnsupportedOperationException("already serialized");
+        
+        serialized = true;
+        
+        SerializedPage keyPage = varLenKeys ? serializeVarLenPage(keys) : serializeFixedLenPage(keys);
+        SerializedPage valPage = varLenVals ? serializeVarLenPage(values) : serializeFixedLenPage(values);
         
         int entries = keys.size();
-        int valsOffset = DefaultBlockReader.KEYS_OFFSET + keyBuf.limit();
+        int valsOffset = DefaultBlockReader.KEYS_OFFSET + keyPage.size;
         
-        ReusableBuffer returnBuf = BufferPool.allocate(valsOffset + valBuf.limit());
-        returnBuf.putInt(valsOffset);
-        returnBuf.putInt(entries);
-        returnBuf.putInt(varLenKeys ? -1 : entries == 0 ? 0 : (keyBuf.limit() / entries));
-        returnBuf.putInt(varLenVals ? -1 : entries == 0 ? 0 : (valBuf.limit() / entries));
-        returnBuf.put(keyBuf);
-        returnBuf.put(valBuf);
+        // header: [offset of value page, #entries, entry size]
+        ByteBuffer tmp = ByteBuffer.wrap(new byte[4 * Integer.SIZE / 8]);
+        tmp.putInt(valsOffset);
+        tmp.putInt(entries);
+        tmp.putInt(varLenKeys ? -1 : entries == 0 ? 0 : (keyPage.size / entries));
+        tmp.putInt(varLenVals ? -1 : entries == 0 ? 0 : (valPage.size / entries));
         
-        BufferPool.free(keyBuf);
-        BufferPool.free(valBuf);
+        List<Object> header = new ArrayList<Object>(1);
+        header.add(tmp.array());
         
-        returnBuf.position(0);
+        SerializedBlock result = new SerializedBlock();
+        result.addBuffers(tmp.limit(), header);
+        result.addBuffers(keyPage.size, keyPage.entries);
+        result.addBuffers(valPage.size, valPage.entries);
         
-        return returnBuf;
+        return result;
     }
     
-    /* (non-Javadoc)
-	 * @see org.xtreemfs.babudb.index.writer.BlockWriter#getBlockKey()
-	 */
-    public byte[] getBlockKey() {
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.xtreemfs.babudb.index.writer.BlockWriter#getBlockKey()
+     */
+    public Object getBlockKey() {
         return keys.get(0);
     }
     
-    private static ReusableBuffer serializeVarLenPage(List<byte[]> list) {
+    private static SerializedPage serializeVarLenPage(List<Object> list) {
         
-        List<Integer> offsets = new LinkedList<Integer>();
+        List<Object> offsetList = new LinkedList<Object>();
+        
+        // append buffers containing all offsets at the end of the list
         int size = 0;
-        for (byte[] buf : list) {
-            size += buf.length;
-            offsets.add(size);
+        for (Object buf : list) {
+            size += InternalBufferUtil.size(buf);
+            final ByteBuffer tmp = ByteBuffer.wrap(new byte[Integer.SIZE / 8]);
+            tmp.putInt(size);
+            offsetList.add(tmp.array());
         }
         
-        size += offsets.size() * Integer.SIZE / 8;
+        size += list.size() * Integer.SIZE / 8;
         
-        ReusableBuffer newBuf = BufferPool.allocate(size);
-        for (byte[] buf : list)
-            newBuf.put(buf);
-        
-        for (int offs : offsets)
-            newBuf.putInt(offs);
-        
-        newBuf.position(0);
-        
-        return newBuf;
+        return new SerializedPage(size, list, offsetList);
     }
     
-    private static ReusableBuffer serializeFixedLenPage(List<byte[]> list) {
+    private static SerializedPage serializeFixedLenPage(List<Object> list) {
         
-        final int size = list.size() == 0 ? 0 : list.get(0).length * list.size();
+        int size = 0;
+        for (Object buf : list)
+            size += InternalBufferUtil.size(buf);
         
-        ReusableBuffer newBuf = BufferPool.allocate(size);
-        for (byte[] buf : list)
-            newBuf.put(buf);
-        
-        newBuf.position(0);
-        
-        return newBuf;
+        return new SerializedPage(size, list);
     }
     
 }
