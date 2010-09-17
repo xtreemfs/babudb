@@ -17,26 +17,27 @@ import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.index.ByteRange;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
+import org.xtreemfs.foundation.buffer.BufferPool;
 
-public class DefaultBlockReader implements BlockReader {
+public class DefaultBlockReader extends BlockReader {
     
-    public static final int     KEYS_OFFSET = 4 * Integer.SIZE / 8;
+    public static final int KEYS_OFFSET = 4 * Integer.SIZE / 8;
     
-    private ByteBuffer          buffer;
-    
-    private int                 position;
-    
-    private int                 limit;
-    
-    private ByteRangeComparator comp;
-    
-    private MiniPage            keys;
-    
-    private MiniPage            values;
-    
-    private int                 numEntries;
-    
+    /**
+     * Creates a reader for a buffered block.
+     * 
+     * @param buf
+     *            the buffer
+     * @param position
+     *            the position of the block in the buffer
+     * @param limit
+     *            the limit of the block in the buffer
+     * @param comp
+     *            the byte range comparator
+     */
     public DefaultBlockReader(ByteBuffer buf, int position, int limit, ByteRangeComparator comp) {
+        
+        super(true);
         
         this.buffer = buf;
         this.position = position;
@@ -62,38 +63,49 @@ public class DefaultBlockReader implements BlockReader {
         
     }
     
-    public DefaultBlockReader(FileChannel channel, int position, int limit, ByteRangeComparator comp) throws IOException {
+    /**
+     * Creates a reader for a streamed block.
+     * 
+     * @param channel
+     *            the channel to the block file
+     * @param position
+     *            the position of the block
+     * @param limit
+     *            the limit of the block
+     * @param comp
+     *            the byte range comparator
+     */
+    public DefaultBlockReader(FileChannel channel, int position, int limit, ByteRangeComparator comp)
+        throws IOException {
         
-        ByteBuffer buf = ByteBuffer.allocate(limit - position);
-        channel.read(buf, position);
+        super(false);
         
         this.position = position;
         this.limit = limit;
         this.comp = comp;
+
+        this.readBuffer = BufferPool.allocate(limit - position);
+        channel.read(readBuffer.getBuffer(), position);
         
         // with limit <= 0 there are no entries in the buffer
         if (limit > 0) {
             int keysOffset = KEYS_OFFSET;
-            int valsOffset = buf.getInt(0);
-            numEntries = buf.getInt(4);
-            int keyEntrySize = buf.getInt(8);
-            int valEntrySize = buf.getInt(12);
-            keys = keyEntrySize == -1 ? new VarLenMiniPage(numEntries, buf, keysOffset, valsOffset, comp)
-                : new FixedLenMiniPage(keyEntrySize, numEntries, buf, keysOffset, valsOffset, comp);
-            values = valEntrySize == -1 ? new VarLenMiniPage(numEntries, buf, valsOffset, limit - position,
-                comp) : new FixedLenMiniPage(valEntrySize, numEntries, buf, valsOffset, limit - position,
-                comp);
+            int valsOffset = readBuffer.getBuffer().getInt(0);
+            numEntries = readBuffer.getBuffer().getInt(4);
+            int keyEntrySize = readBuffer.getBuffer().getInt(8);
+            int valEntrySize = readBuffer.getBuffer().getInt(12);
+            keys = keyEntrySize == -1 ? new VarLenMiniPage(numEntries, readBuffer.getBuffer(), keysOffset,
+                valsOffset, comp) : new FixedLenMiniPage(keyEntrySize, numEntries, readBuffer.getBuffer(),
+                keysOffset, valsOffset, comp);
+            values = valEntrySize == -1 ? new VarLenMiniPage(numEntries, readBuffer.getBuffer(), valsOffset,
+                limit - position, comp) : new FixedLenMiniPage(valEntrySize, numEntries, readBuffer
+                    .getBuffer(), valsOffset, limit - position, comp);
         } else {
             numEntries = 0;
             keys = new FixedLenMiniPage(0, 0, null, 0, 0, comp);
             values = new FixedLenMiniPage(0, 0, null, 0, 0, comp);
         }
         
-    }
-    
-    public BlockReader clone() {
-        buffer.position(0);
-        return new DefaultBlockReader(buffer.slice(), position, limit, comp);
     }
     
     /*
@@ -180,33 +192,6 @@ public class DefaultBlockReader implements BlockReader {
             }
             
         };
-    }
-    
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.xtreemfs.babudb.index.reader.BlockReader#getKeys()
-     */
-    public MiniPage getKeys() {
-        return keys;
-    }
-    
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.xtreemfs.babudb.index.reader.BlockReader#getValues()
-     */
-    public MiniPage getValues() {
-        return values;
-    }
-    
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.xtreemfs.babudb.index.reader.BlockReader#getNumEntries()
-     */
-    public int getNumEntries() {
-        return numEntries;
     }
     
 }

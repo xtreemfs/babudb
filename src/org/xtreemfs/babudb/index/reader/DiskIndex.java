@@ -149,6 +149,7 @@ public class DiskIndex {
         
         // search for the key in the target block and return the result
         ByteRange val = targetBlock.lookup(key);
+        targetBlock.free();
         return val == null ? null : val.toBuffer();
     }
     
@@ -171,6 +172,7 @@ public class DiskIndex {
             Logging.logError(Logging.LEVEL_ERROR, this, e);
         }
         long lastBlockEntryCount = lastBlock.getNumEntries();
+        lastBlock.free();
         
         if (numBlocks == 1)
             return lastBlockEntryCount;
@@ -191,6 +193,7 @@ public class DiskIndex {
             Logging.logError(Logging.LEVEL_ERROR, this, e);
         }
         long firstBlocksEntryCount = (long) firstBlock.getNumEntries() * (numBlocks - 1);
+        firstBlock.free();
         
         return firstBlocksEntryCount + lastBlockEntryCount;
     }
@@ -198,164 +201,39 @@ public class DiskIndex {
     public Iterator<Entry<byte[], byte[]>> rangeLookup(final byte[] from, final byte[] to,
         final boolean ascending) {
         
-        final BlockReader itBlockIndex = blockIndex.clone();
-        
-        final ByteBuffer[] map = mmaped ? new ByteBuffer[dbFiles.length] : null;
+        // return iterator for mmap'ed indices
         if (mmaped) {
+            final ByteBuffer[] map = new ByteBuffer[dbFiles.length];
             for (int i = 0; i < dbFiles.length; i++) {
                 dbFiles[i].position(0);
                 map[i] = dbFiles[i].slice();
             }
+            
+            return new DiskIndexIterator(this, blockIndex, from, to, ascending, map);
         }
         
-        // determine the first potential block containing entries with keys in
-        // the range
-        int tmp = from == null ? 0 : getBlockIndexPosition(from, itBlockIndex);
-        if (tmp < 0)
-            tmp = 0;
-        final int blockIndexStart = tmp;
+        // return iterator for non-mmap'ed indices
+        else
+            return new DiskIndexIterator(this, blockIndex, from, to, ascending, dbFileChannels);
+    }
+    
+    public Iterator<Entry<ByteRange, ByteRange>> internalRangeLookup(final byte[] from, final byte[] to,
+        final boolean ascending) {
         
-        // determine the last potential block containing entries with keys in
-        // the range
-        tmp = to == null ? itBlockIndex.getNumEntries() - 1 : getBlockIndexPosition(to, itBlockIndex);
-        if (tmp > itBlockIndex.getNumEntries() - 1)
-            tmp = itBlockIndex.getNumEntries() - 1;
-        final int blockIndexEnd = tmp;
+        // return iterator for mmap'ed indices
+        if (mmaped) {
+            final ByteBuffer[] map = new ByteBuffer[dbFiles.length];
+            for (int i = 0; i < dbFiles.length; i++) {
+                dbFiles[i].position(0);
+                map[i] = dbFiles[i].slice();
+            }
+            
+            return new InternalDiskIndexIterator(this, blockIndex, from, to, ascending, map);
+        }
         
-        return new Iterator<Entry<byte[], byte[]>>() {
-            
-            private int                                   currentBlockIndex;
-            
-            private Iterator<Entry<ByteRange, ByteRange>> currentBlockIterator;
-            
-            private BlockReader                           currentBlock;
-            
-            {
-                currentBlockIndex = ascending ? blockIndexStart : blockIndexEnd;
-                getNextBlockData();
-            }
-            
-            @Override
-            public boolean hasNext() {
-                
-                while (currentBlockIterator != null) {
-                    
-                    if (currentBlockIterator.hasNext())
-                        return true;
-                    
-                    if (ascending)
-                        currentBlockIndex++;
-                    else
-                        currentBlockIndex--;
-                    
-                    getNextBlockData();
-                }
-                
-                return false;
-            }
-            
-            @Override
-            public Entry<byte[], byte[]> next() {
-                
-                if (!hasNext())
-                    throw new NoSuchElementException();
-                
-                final Entry<ByteRange, ByteRange> entry = currentBlockIterator.next();
-                return new Entry<byte[], byte[]>() {
-                    
-                    private byte[] key;
-                    
-                    private byte[] value;
-                    
-                    {
-                        key = entry.getKey().toBuffer();
-                        value = entry.getValue().toBuffer();
-                    }
-                    
-                    @Override
-                    public byte[] getKey() {
-                        return key;
-                    }
-                    
-                    @Override
-                    public byte[] getValue() {
-                        return value;
-                    }
-                    
-                    @Override
-                    public byte[] setValue(byte[] value) {
-                        throw new UnsupportedOperationException();
-                    }
-                    
-                };
-            }
-            
-            @Override
-            public void remove() {
-                throw new UnsupportedOperationException();
-            }
-            
-            private void getNextBlockData() {
-                
-                if (blockIndexStart == -1 && blockIndexEnd == -1)
-                    return;
-                
-                if (ascending) {
-                    if (currentBlockIndex > blockIndexEnd) {
-                        currentBlock = null;
-                        currentBlockIterator = null;
-                        return;
-                    }
-                    
-                } else {
-                    if (currentBlockIndex < blockIndexStart) {
-                        currentBlock = null;
-                        currentBlockIterator = null;
-                        return;
-                    }
-                }
-                
-                int startOffset = getBlockOffset(currentBlockIndex, itBlockIndex);
-                // when last block or a single block the offset should be the
-                // size of the block
-                // int endOffset = currentBlockIndex ==
-                // itBlockIndex.getNumEntries() - 1 ? -1
-                // : getBlockOffset(currentBlockIndex + 1, itBlockIndex);
-                
-                int fileId = getBlockFileId(currentBlockIndex, itBlockIndex);
-                int endOffset;
-                if (currentBlockIndex == blockIndex.getNumEntries() - 1)
-                    // the last block in the block index
-                    endOffset = -1;
-                else {
-                    ByteRange indexPos = getBlockEntry(currentBlockIndex + 1, blockIndex);
-                    ByteBuffer indexPosBuf = indexPos.getBuf();
-                    endOffset = getBlockIndexOffset(indexPosBuf, indexPos.getStartOffset());
-                    
-                    // is this the last block of the current block file?
-                    // then the endBlockOffset should be set to the end of the
-                    // file
-                    if (getBlockIndexFileId(indexPosBuf, indexPos.getStartOffset()) > fileId)
-                        endOffset = -1;
-                    
-                    // endBlockOffset = getBlockOffset(indexPosition + 1,
-                    // blockIndex);
-                }
-                
-                try {
-                    currentBlock = mmaped ? getBlock(startOffset, endOffset, map[fileId]) : getBlock(
-                        startOffset, endOffset, dbFileChannels[fileId]);
-                } catch(ClosedByInterruptException exc) {
-                    Logging.logError(Logging.LEVEL_DEBUG, this, exc);
-                } catch (IOException exc) {
-                    Logging.logError(Logging.LEVEL_ERROR, this, exc);
-                }
-                
-                currentBlockIterator = currentBlock == null ? null : currentBlock.rangeLookup(
-                    from == null ? null : from, to == null ? null : to, ascending);
-            }
-            
-        };
+        // return iterator for non-mmap'ed indices
+        else
+            return new InternalDiskIndexIterator(this, blockIndex, from, to, ascending, dbFileChannels);
     }
     
     public ByteRangeComparator getComparator() {
@@ -382,7 +260,7 @@ public class DiskIndex {
         }
     }
     
-    private BlockReader getBlock(int startBlockOffset, int endBlockOffset, ByteBuffer map) {
+    protected BlockReader getBlock(int startBlockOffset, int endBlockOffset, ByteBuffer map) {
         
         if (startBlockOffset > map.limit())
             return null;
@@ -401,7 +279,7 @@ public class DiskIndex {
         return targetBlock;
     }
     
-    private BlockReader getBlock(int startBlockOffset, int endBlockOffset, FileChannel channel)
+    protected BlockReader getBlock(int startBlockOffset, int endBlockOffset, FileChannel channel)
         throws IOException {
         
         if (startBlockOffset > channel.size())
@@ -430,7 +308,7 @@ public class DiskIndex {
      *            the block index
      * @return the block index
      */
-    private int getBlockIndexPosition(byte[] key, BlockReader index) {
+    protected int getBlockIndexPosition(byte[] key, BlockReader index) {
         return SearchUtil.getInclBottomOffset(index.getKeys(), key, comp);
     }
     
@@ -444,7 +322,7 @@ public class DiskIndex {
      *            the block index
      * @return the offset
      */
-    private static int getBlockOffset(int indexPosition, BlockReader index) {
+    protected static int getBlockOffset(int indexPosition, BlockReader index) {
         ByteRange range = index.getValues().getEntry(indexPosition);
         return range.getBuf().getInt(range.getStartOffset());
     }
@@ -458,25 +336,25 @@ public class DiskIndex {
      *            the block index
      * @return the block file id
      */
-    private static short getBlockFileId(int indexPosition, BlockReader index) {
+    protected static short getBlockFileId(int indexPosition, BlockReader index) {
         ByteRange range = index.getValues().getEntry(indexPosition);
         // block file index is after the int indicating the offset in the index
         // file
         return range.getBuf().getShort(range.getStartOffset() + (Integer.SIZE / 8));
     }
     
-    private static ByteRange getBlockEntry(int indexPosition, BlockReader index) {
+    protected static ByteRange getBlockEntry(int indexPosition, BlockReader index) {
         ByteRange range = index.getValues().getEntry(indexPosition);
         // block file index is after the int indicating the offset in the index
         // file
         return range;
     }
     
-    private static int getBlockIndexOffset(ByteBuffer buf, int startOffset) {
+    protected static int getBlockIndexOffset(ByteBuffer buf, int startOffset) {
         return buf.getInt(startOffset);
     }
     
-    private static short getBlockIndexFileId(ByteBuffer buf, int startOffset) {
+    protected static short getBlockIndexFileId(ByteBuffer buf, int startOffset) {
         return buf.getShort(startOffset + (Integer.SIZE / 8));
     }
 }

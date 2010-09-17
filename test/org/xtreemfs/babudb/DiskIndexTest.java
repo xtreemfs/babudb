@@ -127,10 +127,11 @@ public class DiskIndexTest extends TestCase {
         
         // write the map to a disk index
         DiskIndexWriter index = new DiskIndexWriter(PATH1, MAX_BLOCK_ENTRIES, COMPRESSED, MAX_BLOCK_FILE_SIZE);
-        index.writeIndex(map.entrySet().iterator());
+        index.writeIndex(getBufferIterator(map.entrySet().iterator()));
         
         // read the disk index
-        DiskIndex diskIndex = new DiskIndex(PATH1, DefaultByteRangeComparator.getInstance(), COMPRESSED, MMAPED);
+        DiskIndex diskIndex = new DiskIndex(PATH1, DefaultByteRangeComparator.getInstance(), COMPRESSED,
+            MMAPED);
         
         // look up each element
         Iterator<Entry<byte[], byte[]>> it = map.entrySet().iterator();
@@ -163,10 +164,11 @@ public class DiskIndexTest extends TestCase {
         // write the map to a disk index
         FSUtils.delTree(new File(PATH2));
         DiskIndexWriter index = new DiskIndexWriter(PATH2, 4, COMPRESSED, MAX_BLOCK_FILE_SIZE);
-        index.writeIndex(testMap.entrySet().iterator());
+        index.writeIndex(getBufferIterator(testMap.entrySet().iterator()));
         
         // read the disk index
-        DiskIndex diskIndex = new DiskIndex(PATH2, DefaultByteRangeComparator.getInstance(), COMPRESSED, MMAPED);
+        DiskIndex diskIndex = new DiskIndex(PATH2, DefaultByteRangeComparator.getInstance(), COMPRESSED,
+            MMAPED);
         
         // create an iterator w/ matching start and end buffers
         Iterator<Entry<byte[], byte[]>> it = diskIndex.rangeLookup("brabbel".getBytes(), "yagga".getBytes(),
@@ -232,10 +234,11 @@ public class DiskIndexTest extends TestCase {
         // write the map to a disk index
         FSUtils.delTree(new File(PATH2));
         DiskIndexWriter index = new DiskIndexWriter(PATH2, 4, COMPRESSED, MAX_BLOCK_FILE_SIZE);
-        index.writeIndex(testMap.entrySet().iterator());
+        index.writeIndex(getBufferIterator(testMap.entrySet().iterator()));
         
         // read the disk index
-        DiskIndex diskIndex = new DiskIndex(PATH2, DefaultByteRangeComparator.getInstance(), COMPRESSED, MMAPED);
+        DiskIndex diskIndex = new DiskIndex(PATH2, DefaultByteRangeComparator.getInstance(), COMPRESSED,
+            MMAPED);
         
         // create an iterator w/ matching start and end buffers
         Iterator<Entry<byte[], byte[]>> it = diskIndex.rangeLookup("brabbel".getBytes(), "yagga".getBytes(),
@@ -251,6 +254,15 @@ public class DiskIndexTest extends TestCase {
         // create an iterator w/o matching start and end buffers
         it = diskIndex.rangeLookup("blu".getBytes(), "yyz".getBytes(), false);
         for (int i = 6; i > 0; i--) {
+            Entry<byte[], byte[]> entry = it.next();
+            assertEquals(keys[i], new String(entry.getKey()));
+            assertEquals(vals[i], new String(entry.getValue()));
+        }
+        
+        assertFalse(it.hasNext());
+        
+        it = diskIndex.rangeLookup("foo".getBytes(), "yyy".getBytes(), false);
+        for (int i = 6; i >= 2; i--) {
             Entry<byte[], byte[]> entry = it.next();
             assertEquals(keys[i], new String(entry.getKey()));
             assertEquals(vals[i], new String(entry.getValue()));
@@ -301,10 +313,11 @@ public class DiskIndexTest extends TestCase {
         
         // write the map to a disk index
         DiskIndexWriter index = new DiskIndexWriter(PATH1, MAX_BLOCK_ENTRIES, COMPRESSED, MAX_BLOCK_FILE_SIZE);
-        index.writeIndex(map.entrySet().iterator());
+        index.writeIndex(getBufferIterator(map.entrySet().iterator()));
         
         // read the disk index
-        DiskIndex diskIndex = new DiskIndex(PATH1, DefaultByteRangeComparator.getInstance(), COMPRESSED, MMAPED);
+        DiskIndex diskIndex = new DiskIndex(PATH1, DefaultByteRangeComparator.getInstance(), COMPRESSED,
+            MMAPED);
         
         {
             // look up the complete list of elements
@@ -386,10 +399,11 @@ public class DiskIndexTest extends TestCase {
         
         // write the map to a disk index
         DiskIndexWriter index = new DiskIndexWriter(PATH1, MAX_BLOCK_ENTRIES, COMPRESSED, MAX_BLOCK_FILE_SIZE);
-        index.writeIndex(map.entrySet().iterator());
+        index.writeIndex(getBufferIterator(map.entrySet().iterator()));
         
         // read the disk index
-        DiskIndex diskIndex = new DiskIndex(PATH1, DefaultByteRangeComparator.getInstance(), COMPRESSED, MMAPED);
+        DiskIndex diskIndex = new DiskIndex(PATH1, DefaultByteRangeComparator.getInstance(), COMPRESSED,
+            MMAPED);
         
         {
             // look up the complete list of elements
@@ -421,6 +435,8 @@ public class DiskIndexTest extends TestCase {
             Iterator<Entry<byte[], byte[]>> indexIt = diskIndex.rangeLookup(from, to, false);
             
             while (indexIt.hasNext() || mapIt.hasNext()) {
+                
+                assertTrue((indexIt.hasNext() && mapIt.hasNext()) || (!indexIt.hasNext() && !mapIt.hasNext()));
                 
                 Entry<byte[], byte[]> next = indexIt.next();
                 String indexKey = new String(next.getKey());
@@ -479,7 +495,7 @@ public class DiskIndexTest extends TestCase {
         // write the map to a disk index
         FSUtils.delTree(new File(PATH2));
         DiskIndexWriter index = new DiskIndexWriter(PATH2, 2, COMPRESSED, MAX_BLOCK_FILE_SIZE);
-        index.writeIndex(testMap.entrySet().iterator());
+        index.writeIndex(getBufferIterator(testMap.entrySet().iterator()));
     }
     
     private static byte[][] createRandomByteArrays(int num) {
@@ -498,6 +514,47 @@ public class DiskIndexTest extends TestCase {
         }
         
         return result;
+    }
+    
+    private static Iterator<Entry<Object, Object>> getBufferIterator(
+        final Iterator<Entry<byte[], byte[]>> byteArrayIterator) {
+        
+        return new Iterator<Entry<Object, Object>>() {
+            
+            @Override
+            public boolean hasNext() {
+                return byteArrayIterator.hasNext();
+            }
+            
+            @Override
+            public Entry<Object, Object> next() {
+                final Entry<byte[], byte[]> next = byteArrayIterator.next();
+                return new Entry<Object, Object>() {
+                    
+                    @Override
+                    public Object getKey() {
+                        return next.getKey();
+                    }
+                    
+                    @Override
+                    public Object getValue() {
+                        return next.getValue();
+                    }
+                    
+                    @Override
+                    public Object setValue(Object value) {
+                        throw new UnsupportedOperationException();
+                    }
+                    
+                };
+            }
+            
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException();
+            }
+        };
+        
     }
     
     public static void main(String[] args) {

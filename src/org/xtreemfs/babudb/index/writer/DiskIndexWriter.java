@@ -11,13 +11,12 @@ package org.xtreemfs.babudb.index.writer;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.channels.FileChannel;
+import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import org.xtreemfs.foundation.buffer.BufferPool;
+import org.xtreemfs.babudb.index.ByteRange;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
-import org.xtreemfs.foundation.logging.Logging;
 
 /**
  * Writes an index to a set of files on disk. A file will not be larger than the
@@ -41,7 +40,7 @@ public class DiskIndexWriter {
     
     private int     maxFileSize;
     
-    private short   blockFileId = 0;
+    private short   blockFileId;
     
     /**
      * Creates a new DiskIndexWriter
@@ -91,11 +90,10 @@ public class DiskIndexWriter {
      * @param iterator
      * @throws IOException
      */
-    private void writeIndex(String path, BlockWriter blockIndex, Iterator<Entry<byte[], byte[]>> iterator)
+    private void writeIndex(String path, BlockWriter blockIndex, Iterator<Entry<Object, Object>> iterator)
         throws IOException {
-        FileOutputStream fout = new FileOutputStream(path);
-        FileChannel channel = fout.getChannel();
-        channel.truncate(0);
+        
+        FileOutputStream out = new FileOutputStream(path);
         
         BlockWriter block;
         
@@ -114,10 +112,8 @@ public class DiskIndexWriter {
         while (iterator.hasNext() && !newBlockFile) {
             
             // add the next key-value pair to the current block
-            Entry<byte[], byte[]> keyValuePair = iterator.next();
-            byte[] key = keyValuePair.getKey();
-            byte[] val = keyValuePair.getValue();
-            block.add(key, val);
+            Entry<Object, Object> next = iterator.next();
+            block.add(next.getKey(), next.getValue());
             
             entryCount++;
             
@@ -133,24 +129,25 @@ public class DiskIndexWriter {
                 // add the key-offset mapping to the block index
                 blockIndex.add(block.getBlockKey(), buf.array());
                 
-                // serialize the block
-                ReusableBuffer serializedBlock = block.serialize();
-                blockOffset += serializedBlock.limit();
-                
-                // provide for robustness, as channels sometimes seem to be
-                // closed by previous writes
-                if (!channel.isOpen()) {
-                    Logging.logMessage(Logging.LEVEL_WARN, this,
-                        "channel was closed while writing checkpoint, re-opening channel");
-                    fout.close();
-                    fout = new FileOutputStream(path, true);
-                    channel = fout.getChannel();
-                }
+                // serialize the block and calculate the next block offset
+                SerializedBlock serializedBlock = block.serialize();
+                blockOffset += serializedBlock.size();
                 
                 // write the block
-                int count = channel.write(serializedBlock.getBuffer());
-                assert (count == serializedBlock.limit());
-                BufferPool.free(serializedBlock);
+                int writtenBytes = 0;
+                Iterator<Object> it = serializedBlock.iterator();
+                while (it.hasNext()) {
+                    
+                    // for robustness: check if the file descriptor is still valid,
+                    // re-open the file if necessary
+                    if(!out.getFD().valid()) {
+                        out.close();
+                        out = new FileOutputStream(path, true);
+                    }
+                    
+                    writtenBytes += writeBuffer(out, it.next());
+                }
+                assert (writtenBytes == serializedBlock.size());
                 
                 if (blockOffset >= maxFileSize) {
                     newBlockFile = true;
@@ -165,8 +162,7 @@ public class DiskIndexWriter {
             
         }
         
-        channel.close();
-        fout.close();
+        out.close();
     }
     
     /**
@@ -179,33 +175,51 @@ public class DiskIndexWriter {
      * @throws IOException
      *             if an I/O error occurs
      */
-    public void writeIndex(Iterator<Entry<byte[], byte[]>> iterator) throws IOException {
+    public void writeIndex(Iterator<Entry<Object, Object>> iterator) throws IOException {
         
-        new File(path + "blockindex.idx").createNewFile();
-        FileChannel channel = new FileOutputStream(path + "blockindex.idx").getChannel();
-        channel.truncate(0);
         BlockWriter blockIndex = new DefaultBlockWriter(true, false);
         
+        // write all index files
         while (iterator.hasNext()) {
             String indexPath = path + "blockfile_" + new Short(blockFileId).toString() + ".idx";
             writeIndex(indexPath, blockIndex, iterator);
             
-            blockFileId += 1;
-            
-            // write the block index offset
-            // ReusableBuffer buf = BufferPool.allocate(Integer.SIZE / 8);
-            // buf.putInt(blockOffset);
-            // buf.position(0);
-            // channel.write(buf.getBuffer());
-            // BufferPool.free(buf);
+            blockFileId++;
         }
         
-        // write the block index to disk
-        ReusableBuffer serializedBuf = blockIndex.serialize();
-        channel.write(serializedBuf.getBuffer());
-        BufferPool.free(serializedBuf);
+        // write the block index
+        new File(path + "blockindex.idx").createNewFile();
+        FileOutputStream out = new FileOutputStream(path + "blockindex.idx", false);
         
-        channel.close();
+        SerializedBlock serializedBuf = blockIndex.serialize();
+        
+        int bytesWritten = 0;
+        Iterator<Object> it = serializedBuf.iterator();
+        while (it.hasNext())
+            bytesWritten += writeBuffer(out, it.next());
+        assert (bytesWritten == serializedBuf.size());
+    }
+    
+    private int writeBuffer(FileOutputStream out, Object buf) throws IOException {
+        
+        if (buf instanceof byte[]) {
+            byte[] bytes = (byte[]) buf;
+            out.write(bytes);
+            return bytes.length;
+        }
+
+        else {
+            
+            ByteRange range = (ByteRange) buf;
+            
+            // crate a slice from the range's buffer that only contains the data
+            // in the range
+            range.getBuf().position(range.getStartOffset());
+            ByteBuffer slice = range.getBuf().slice();
+            slice.limit(range.getSize());
+            return out.getChannel().write(slice);
+        }
+        
     }
     
 }

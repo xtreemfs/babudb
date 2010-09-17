@@ -17,28 +17,29 @@ import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.index.ByteRange;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
+import org.xtreemfs.foundation.buffer.BufferPool;
 
-public class CompressedBlockReader implements BlockReader {
+public class CompressedBlockReader extends BlockReader {
     
-    public static final int     PREFIX_OFFSET = 5 * Integer.SIZE / 8;
+    public static final int PREFIX_OFFSET = 5 * Integer.SIZE / 8;
     
-    private ByteBuffer          buffer;
+    private byte[]          prefix;
     
-    private int                 position;
-    
-    private int                 limit;
-    
-    private ByteRangeComparator comp;
-    
-    private MiniPage            keys;
-    
-    private MiniPage            values;
-    
-    private int                 numEntries;
-    
-    private byte[]              prefix;
-    
+    /**
+     * Creates a reader for a compressed buffered block.
+     * 
+     * @param buf
+     *            the buffer
+     * @param position
+     *            the position of the block in the buffer
+     * @param limit
+     *            the limit of the block in the buffer
+     * @param comp
+     *            the byte range comparator
+     */
     public CompressedBlockReader(ByteBuffer buf, int position, int limit, ByteRangeComparator comp) {
+        
+        super(true);
         
         this.buffer = buf;
         this.position = position;
@@ -69,20 +70,35 @@ public class CompressedBlockReader implements BlockReader {
             : new FixedLenMiniPage(valEntrySize, numEntries, buf, valsOffset, limit, comp);
     }
     
-    public CompressedBlockReader(FileChannel channel, int position, int limit, ByteRangeComparator comp) throws IOException {
+    /**
+     * Creates a reader for a compressed streamed block.
+     * 
+     * @param channel
+     *            the channel to the block file
+     * @param position
+     *            the position of the block
+     * @param limit
+     *            the limit of the block
+     * @param comp
+     *            the byte range comparator
+     */
+    public CompressedBlockReader(FileChannel channel, int position, int limit, ByteRangeComparator comp)
+        throws IOException {
         
-        ByteBuffer buf = ByteBuffer.allocate(limit - position);
-        channel.read(buf, position);
+        super(false);
+        
+        this.readBuffer = BufferPool.allocate(limit - position);
+        channel.read(readBuffer.getBuffer(), position);
         
         this.position = position;
         this.limit = limit;
         this.comp = comp;
         
-        int valsOffset = buf.getInt(0);
-        int keysOffset = buf.getInt(4);
-        numEntries = buf.getInt(8);
-        int keyEntrySize = buf.getInt(12);
-        int valEntrySize = buf.getInt(16);
+        int valsOffset = readBuffer.getBuffer().getInt(0);
+        int keysOffset = readBuffer.getBuffer().getInt(4);
+        numEntries = readBuffer.getBuffer().getInt(8);
+        int keyEntrySize = readBuffer.getBuffer().getInt(12);
+        int valEntrySize = readBuffer.getBuffer().getInt(16);
         
         // read in the prefix string
         int prefixSize = keysOffset - PREFIX_OFFSET;
@@ -90,22 +106,19 @@ public class CompressedBlockReader implements BlockReader {
         
         if (prefixSize > 0) {
             // move to the position to perform the read
-            buf.position(PREFIX_OFFSET);
-            buf.get(prefix);
+            readBuffer.getBuffer().position(PREFIX_OFFSET);
+            readBuffer.getBuffer().get(prefix);
             // reset to original position
-            buf.position(0);
+            readBuffer.getBuffer().position(0);
         }
         
-        keys = keyEntrySize == -1 ? new VarLenMiniPage(numEntries, buf, keysOffset, valsOffset, comp)
-            : new FixedLenMiniPage(keyEntrySize, numEntries, buf, keysOffset, valsOffset, comp);
-        values = valEntrySize == -1 ? new VarLenMiniPage(numEntries, buf, valsOffset, limit - position, comp)
-            : new FixedLenMiniPage(valEntrySize, numEntries, buf, valsOffset, limit - position, comp);
+        keys = keyEntrySize == -1 ? new VarLenMiniPage(numEntries, readBuffer.getBuffer(), keysOffset,
+            valsOffset, comp) : new FixedLenMiniPage(keyEntrySize, numEntries, readBuffer.getBuffer(),
+            keysOffset, valsOffset, comp);
+        values = valEntrySize == -1 ? new VarLenMiniPage(numEntries, readBuffer.getBuffer(), valsOffset,
+            limit - position, comp) : new FixedLenMiniPage(valEntrySize, numEntries, readBuffer.getBuffer(),
+            valsOffset, limit - position, comp);
         
-    }
-    
-    public CompressedBlockReader clone() {
-        buffer.position(0);
-        return new CompressedBlockReader(buffer.slice(), position, limit, comp);
     }
     
     /**
@@ -221,18 +234,6 @@ public class CompressedBlockReader implements BlockReader {
             }
             
         };
-    }
-    
-    public MiniPage getKeys() {
-        return keys;
-    }
-    
-    public MiniPage getValues() {
-        return values;
-    }
-    
-    public int getNumEntries() {
-        return numEntries;
     }
     
 }

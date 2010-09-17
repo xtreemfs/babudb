@@ -28,7 +28,7 @@ public class ByteRange {
     
     private int        size;
     
-    private byte[]	   prefix;
+    private byte[]     prefix;
     
     public ByteRange(ByteBuffer buf, int startOffset, int endOffset) {
         
@@ -38,10 +38,10 @@ public class ByteRange {
         this.size = endOffset - startOffset;
         this.prefix = null;
         
-        assert (endOffset < buf.limit()) : "buf.limit() == " + buf.limit() + ", endOffset == "
-            + endOffset + ", startOffset == " + startOffset + ", buf.capacity == " + buf.capacity();
+        assert (endOffset < buf.limit()) : "buf.limit() == " + buf.limit() + ", endOffset == " + endOffset
+            + ", startOffset == " + startOffset + ", buf.capacity == " + buf.capacity();
     }
-        
+    
     public ByteBuffer getBuf() {
         return buf;
     }
@@ -59,23 +59,23 @@ public class ByteRange {
     }
     
     public void addPrefix(byte[] prefix) {
-    	this.prefix = prefix;
+        this.prefix = prefix;
     }
     
     public byte[] toBuffer() {
-    	byte[] tmp;
-
+        byte[] tmp;
+        
         buf.position(startOffset);
-
-    	if(prefix == null) {
-    		tmp = new byte[size];
-    		buf.get(tmp);
-    	} else {
-    		tmp = new byte[prefix.length + size];
-    		System.arraycopy(prefix, 0, tmp, 0, prefix.length);
+        
+        if (prefix == null) {
+            tmp = new byte[size];
+            buf.get(tmp);
+        } else {
+            tmp = new byte[prefix.length + size];
+            System.arraycopy(prefix, 0, tmp, 0, prefix.length);
             buf.get(tmp, prefix.length, size);
-    	}
-    	
+        }
+        
         return tmp;
         
         // for (int i = startOffset; i < startOffset + size; i++)
