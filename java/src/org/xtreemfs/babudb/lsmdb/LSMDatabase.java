@@ -339,7 +339,9 @@ public class LSMDatabase {
             
             tree.materializeSnapshot(tmpDir.getAbsolutePath(), snapIds[index]);
             
-            tmpDir.renameTo(new File(databaseDir, getSnapshotFilename(index, viewId, sequenceNo)));
+            File targetDir = new File(databaseDir, getSnapshotFilename(index, viewId, sequenceNo));
+            if (!tmpDir.renameTo(targetDir))
+                throw new IOException("could not rename '" + tmpDir + "' to " + targetDir);
             
             if (Logging.isInfo())
                 Logging.logMessage(Logging.LEVEL_INFO, this, "... done (index = " + index + ", dbName = "
