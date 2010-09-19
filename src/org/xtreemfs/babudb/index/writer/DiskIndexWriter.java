@@ -198,6 +198,8 @@ public class DiskIndexWriter {
         while (it.hasNext())
             bytesWritten += writeBuffer(out, it.next());
         assert (bytesWritten == serializedBuf.size());
+        
+        out.close();
     }
     
     private int writeBuffer(FileOutputStream out, Object buf) throws IOException {
