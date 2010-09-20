@@ -251,6 +251,17 @@ public class DiskIndexTest extends TestCase {
         
         assertFalse(it.hasNext());
         
+        // create an iterator w/ matching start and end buffers
+        it = diskIndex.rangeLookup("ouuou".getBytes(), "oz".getBytes(),
+            false);
+        for (int i = 4; i >= 4; i--) {
+            Entry<byte[], byte[]> entry = it.next();
+            assertEquals(keys[i], new String(entry.getKey()));
+            assertEquals(vals[i], new String(entry.getValue()));
+        }
+        
+        assertFalse(it.hasNext());
+        
         // create an iterator w/o matching start and end buffers
         it = diskIndex.rangeLookup("blu".getBytes(), "yyz".getBytes(), false);
         for (int i = 6; i > 0; i--) {
