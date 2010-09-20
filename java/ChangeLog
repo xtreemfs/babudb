@@ -25,3 +25,8 @@
 2010-08-31: release 0.4.2
   * added configuration builder to simplify the configuration of BabuDB
   * fixed issues #6, #7, #10
+  
+2010-09-20: release 0.4.3
+  * substantially reduced the memory footprint of checkpoint operations
+  * added configuration options to disable and control memory-mapping of database files
+  * improved robustness when shutting down databases while checkpoints are being created
