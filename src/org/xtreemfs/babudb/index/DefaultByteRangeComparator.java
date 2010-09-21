@@ -8,6 +8,7 @@
 
 package org.xtreemfs.babudb.index;
 
+
 public class DefaultByteRangeComparator implements ByteRangeComparator {
     
     private static DefaultByteRangeComparator instance;

@@ -112,6 +112,61 @@ public class InMemoryView implements BabuDBView {
     }
     
     @Override
+    public Iterator<Entry<byte[], byte[]>> directRangeLookup(final int indexId, final byte[] from,
+        final byte[] to, final boolean ascending) throws BabuDBException {
+        
+        final Integer snapId = snapIDMap.get(indexId);
+        if (snapId == null)
+            throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + indexId + " does not exist");
+        
+        return new Iterator<Entry<byte[], byte[]>>() {
+            
+            private Iterator<Entry<byte[], byte[]>> it;
+            
+            private Entry<byte[], byte[]>           next;
+            
+            {
+                it = db.directRangeLookup(indexId, snapId, from, to, ascending);
+                getNextEntry();
+            }
+            
+            @Override
+            public boolean hasNext() {
+                return next != null;
+            }
+            
+            @Override
+            public Entry<byte[], byte[]> next() {
+                
+                if (next == null)
+                    throw new NoSuchElementException();
+                
+                Entry<byte[], byte[]> tmp = next;
+                getNextEntry();
+                
+                return tmp;
+            }
+            
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException();
+            }
+            
+            private void getNextEntry() {
+                
+                while (it.hasNext()) {
+                    next = it.next();
+                    if (isCovered(indexId, next.getKey()) && snap.containsKey(indexId, next.getKey()))
+                        return;
+                }
+                
+                next = null;
+            }
+            
+        };
+    }
+    
+    @Override
     public void shutdown() throws BabuDBException {
         // nothing to do
     }

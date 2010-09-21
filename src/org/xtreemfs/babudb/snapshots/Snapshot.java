@@ -66,6 +66,7 @@ public class Snapshot implements DatabaseRO {
     @Override
     public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> prefixLookup(int indexId, byte[] key,
             Object context) {
+        
         BabuDBRequest<Iterator<Entry<byte[], byte[]>>> result = 
             new BabuDBRequest<Iterator<Entry<byte[], byte[]>>>(context);
         Iterator<Entry<byte[], byte[]>> r;
@@ -82,11 +83,46 @@ public class Snapshot implements DatabaseRO {
     @Override
     public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> reversePrefixLookup(int indexId, byte[] key,
             Object context) {
+        
         BabuDBRequest<Iterator<Entry<byte[], byte[]>>> result = 
             new BabuDBRequest<Iterator<Entry<byte[], byte[]>>>(context);
         Iterator<Entry<byte[], byte[]>> r;
         try {
             r = view.directPrefixLookup(indexId, key, false);
+            result.finished(r);
+        } catch (BabuDBException e) {
+            result.failed(e);
+        }
+        
+        return result;
+    }
+    
+    @Override
+    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> rangeLookup(int indexId, byte[] from,
+        byte[] to, Object context) {
+        
+        BabuDBRequest<Iterator<Entry<byte[], byte[]>>> result = 
+            new BabuDBRequest<Iterator<Entry<byte[], byte[]>>>(context);
+        Iterator<Entry<byte[], byte[]>> r;
+        try {
+            r = view.directRangeLookup(indexId, from, to, true);
+            result.finished(r);
+        } catch (BabuDBException e) {
+            result.failed(e);
+        }
+        
+        return result;
+    }
+
+    @Override
+    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> reverseRangeLookup(int indexId, byte[] from,
+        byte[] to, Object context) {
+
+        BabuDBRequest<Iterator<Entry<byte[], byte[]>>> result = 
+            new BabuDBRequest<Iterator<Entry<byte[], byte[]>>>(context);
+        Iterator<Entry<byte[], byte[]>> r;
+        try {
+            r = view.directRangeLookup(indexId, from, to, false);
             result.finished(r);
         } catch (BabuDBException e) {
             result.failed(e);
@@ -103,4 +139,5 @@ public class Snapshot implements DatabaseRO {
     public BabuDBRequestResult<Object> userDefinedLookup(UserDefinedLookup udl, Object context) {
         throw new UnsupportedOperationException();
     }
+
 }

@@ -32,13 +32,13 @@ import org.xtreemfs.foundation.util.FSUtils;
  */
 public class BabuDBTest extends TestCase {
     
-    public static final String  baseDir     = "/tmp/lsmdb-test/";
+    public static final String  baseDir          = "/tmp/lsmdb-test/";
     
-    public static final boolean compression = false;
+    public static final boolean compression      = false;
     
-    private static final int maxNumRecs = 16;
+    private static final int    maxNumRecs       = 16;
     
-    private static final int maxBlockFileSize = 1024 * 1024 * 512;
+    private static final int    maxBlockFileSize = 1024 * 1024 * 512;
     
     private BabuDB              database;
     
@@ -63,7 +63,7 @@ public class BabuDBTest extends TestCase {
     @Test
     public void testReplayAfterCrash() throws Exception {
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
+            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize), null);
         Database db = database.getDatabaseManager().createDatabase("test", 2);
         db.singleInsert(0, "Yagga".getBytes(), "Brabbel".getBytes(), null).get();
         database.getCheckpointer().checkpoint();
@@ -85,7 +85,7 @@ public class BabuDBTest extends TestCase {
         Thread.sleep(500);
         
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 2, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
+            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize), null);
         db = database.getDatabaseManager().getDatabase("test");
         result = db.lookup(0, "Yagga".getBytes(), null).get();
         assertNotNull(result);
@@ -110,7 +110,7 @@ public class BabuDBTest extends TestCase {
     @Test
     public void testShutdownAfterCheckpoint() throws Exception {
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
+            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize), null);
         Database db = database.getDatabaseManager().createDatabase("test", 2);
         db.singleInsert(0, "Yagga".getBytes(), "Brabbel".getBytes(), null).get();
         
@@ -132,7 +132,7 @@ public class BabuDBTest extends TestCase {
         database.shutdown();
         
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 2, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
+            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize), null);
         db = database.getDatabaseManager().getDatabase("test");
         result = db.lookup(0, "Yagga".getBytes(), null).get();
         assertNotNull(result);
@@ -157,7 +157,7 @@ public class BabuDBTest extends TestCase {
     @Test
     public void testMultipleIndices() throws Exception {
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
+            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize), null);
         Database db = database.getDatabaseManager().createDatabase("test", 3);
         
         BabuDBInsertGroup ir = db.createInsertGroup();
@@ -170,7 +170,7 @@ public class BabuDBTest extends TestCase {
         database.shutdown();
         
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 2, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
+            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize), null);
         db = database.getDatabaseManager().getDatabase("test");
         
         byte[] result = db.lookup(0, "Key1".getBytes(), null).get();
@@ -196,7 +196,7 @@ public class BabuDBTest extends TestCase {
     @Test
     public void testMultipleIndicesAndCheckpoint() throws Exception {
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
+            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize), null);
         Database db = database.getDatabaseManager().createDatabase("test", 4);
         
         BabuDBInsertGroup ir = db.createInsertGroup();
@@ -243,7 +243,7 @@ public class BabuDBTest extends TestCase {
     public void testUserDefinedLookup() throws Exception {
         
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
+            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize), null);
         Database db = database.getDatabaseManager().createDatabase("test", 3);
         
         BabuDBInsertGroup ir = db.createInsertGroup();
@@ -277,7 +277,7 @@ public class BabuDBTest extends TestCase {
     public void testDirectAccess() throws Exception {
         
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0,
-            SyncMode.ASYNC, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
+            SyncMode.ASYNC, 0, 0, compression, maxNumRecs, maxBlockFileSize), null);
         Database db = database.getDatabaseManager().createDatabase("test", 2);
         
         for (int i = 0; i < 100000; i++) {
@@ -303,7 +303,7 @@ public class BabuDBTest extends TestCase {
     public void testInsDelGet() throws Exception {
         
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0,
-            SyncMode.ASYNC, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
+            SyncMode.ASYNC, 0, 0, compression, maxNumRecs, maxBlockFileSize), null);
         Database db = database.getDatabaseManager().createDatabase("test", 3);
         
         for (int i = 0; i < 1000; i++) {
@@ -360,20 +360,67 @@ public class BabuDBTest extends TestCase {
     public void testInsPrefLookup() throws Exception {
         
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0,
-            SyncMode.ASYNC, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
+            SyncMode.ASYNC, 0, 0, compression, maxNumRecs, maxBlockFileSize), null);
         Database db = database.getDatabaseManager().createDatabase("test", 3);
         
-        for (int i = 0; i < 2000; i++) {
+        for (int i = 1000; i < 2000; i++) {
             BabuDBInsertGroup ir = db.createInsertGroup();
-            ir.addInsert(0, (i + "").getBytes(), "bla".getBytes());
-            ir.addInsert(1, (i + "").getBytes(), "bla".getBytes());
-            ir.addInsert(2, (i + "").getBytes(), "bla".getBytes());
+            ir.addInsert(0, (i + "").getBytes(), (i + "").getBytes());
+            ir.addInsert(1, (i + "").getBytes(), (i + "").getBytes());
+            ir.addInsert(2, (i + "").getBytes(), (i + "").getBytes());
             db.insert(ir, null);
         }
         
         Iterator<Entry<byte[], byte[]>> it = db.prefixLookup(0, new byte[0], null).get();
-        for (int i = 0; i < 2000; i++)
-            assertEquals("bla", new String(it.next().getValue()));
+        for (int i = 1000; i < 2000; i++)
+            assertEquals(i + "", new String(it.next().getValue()));
+        assertFalse(it.hasNext());
+        
+        it = db.prefixLookup(0, "15".getBytes(), null).get();
+        for (int i = 1500; i < 1600; i++)
+            assertEquals(i + "", new String(it.next().getValue()));
+        assertFalse(it.hasNext());
+        
+        database.getCheckpointer().checkpoint();
+        
+        it = db.prefixLookup(0, "15".getBytes(), null).get();
+        for (int i = 1500; i < 1600; i++)
+            assertEquals(i + "", new String(it.next().getValue()));
+        assertFalse(it.hasNext());
+        
+        database.shutdown();
+    }
+    
+    @Test
+    public void testInsRangeLookup() throws Exception {
+        
+        database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0,
+            SyncMode.ASYNC, 0, 0, compression, maxNumRecs, maxBlockFileSize), null);
+        Database db = database.getDatabaseManager().createDatabase("test", 3);
+        
+        for (int i = 1000; i < 2000; i++) {
+            BabuDBInsertGroup ir = db.createInsertGroup();
+            ir.addInsert(0, (i + "").getBytes(), (i + "").getBytes());
+            ir.addInsert(1, (i + "").getBytes(), (i + "").getBytes());
+            ir.addInsert(2, (i + "").getBytes(), (i + "").getBytes());
+            db.insert(ir, null);
+        }
+        
+        Iterator<Entry<byte[], byte[]>> it = db.rangeLookup(0, new byte[0], new byte[0], null).get();
+        for (int i = 1000; i < 2000; i++)
+            assertEquals(i + "", new String(it.next().getValue()));
+        assertFalse(it.hasNext());
+        
+        it = db.rangeLookup(0, "1500".getBytes(), "1600".getBytes(), null).get();
+        for (int i = 1500; i < 1600; i++)
+            assertEquals(i + "", new String(it.next().getValue()));
+        assertFalse(it.hasNext());
+        
+        database.getCheckpointer().checkpoint();
+        
+        it = db.rangeLookup(0, "1500".getBytes(), "1600".getBytes(), null).get();
+        for (int i = 1500; i < 1600; i++)
+            assertEquals(i + "", new String(it.next().getValue()));
         assertFalse(it.hasNext());
         
         database.shutdown();

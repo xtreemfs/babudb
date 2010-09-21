@@ -17,8 +17,8 @@ import java.util.NoSuchElementException;
 import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.index.overlay.MultiOverlayBufferTree;
-import org.xtreemfs.babudb.index.reader.InternalBufferUtil;
 import org.xtreemfs.babudb.index.reader.DiskIndex;
+import org.xtreemfs.babudb.index.reader.InternalBufferUtil;
 import org.xtreemfs.babudb.index.reader.InternalMergeIterator;
 import org.xtreemfs.babudb.index.writer.DiskIndexWriter;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
@@ -243,6 +243,104 @@ public class LSMTree {
             byte[][] rng = comp.prefixToRange(prefix, ascending);
             list.add(index.rangeLookup(rng[0], rng[1], ascending));
         }
+        
+        return new OverlayMergeIterator<byte[], byte[]>(list, comp, NULL_ELEMENT, ascending);
+    }
+    
+    /**
+     * Performs a range lookup. Key-value paris are returned in an iterator in
+     * ascending key order, where only such keys are returned between
+     * <code>from</code> (inclusively) and <code>to</code> (inclusively),
+     * according to the comparator.
+     * 
+     * @param from
+     *            the first key (inclusively)
+     * @param to
+     *            the last key (exclusively)
+     * @return an iterator with key-value pairs
+     */
+    public Iterator<Entry<byte[], byte[]>> rangeLookup(byte[] from, byte[] to) {
+        return rangeLookup(from, to, true);
+    }
+    
+    /**
+     * Performs a range lookup. Key-value paris are returned in an iterator in
+     * the given key order, where only such keys are returned between
+     * <code>from</code> (inclusively) and <code>to</code> (inclusively),
+     * according to the comparator.
+     * 
+     * @param from
+     *            the first key (inclusively)
+     * @param to
+     *            the last key (exclusively)
+     * @param ascending
+     *            if <code>true</code>, entries will be returned in ascending
+     *            order; otherwise, they will be returned in descending order
+     * @return an iterator with key-value pairs
+     */
+    public Iterator<Entry<byte[], byte[]>> rangeLookup(byte[] from, byte[] to, boolean ascending) {
+        
+        if (from.length == 0)
+            from = null;
+        
+        if (to.length == 0)
+            to = null;
+        
+        List<Iterator<Entry<byte[], byte[]>>> list = new ArrayList<Iterator<Entry<byte[], byte[]>>>(2);
+        list.add(overlay.rangeLookup(from, to, true, ascending));
+        if (index != null)
+            list.add(index.rangeLookup(from, to, ascending));
+        
+        return new OverlayMergeIterator<byte[], byte[]>(list, comp, NULL_ELEMENT, ascending);
+    }
+    
+    /**
+     * Performs a range lookup in a given snapshot. Key-value paris are returned
+     * in an iterator in ascending key order, where only such keys are returned between
+     * <code>from</code> (inclusively) and <code>to</code> (inclusively),
+     * according to the comparator.
+     * 
+     * @param from
+     *            the first key (inclusively)
+     * @param to
+     *            the last key (exclusively)
+     * @param snapId
+     *            the snapshot ID
+     * @return an iterator with key-value pairs
+     */
+    public Iterator<Entry<byte[], byte[]>> rangeLookup(byte[] from, byte[] to, int snapId) {
+        return rangeLookup(from, to, snapId, true);
+    }
+    
+    /**
+     * Performs a range lookup in a given snapshot. Key-value pairs are returned
+     * in an iterator in the given key order, where only such keys are returned between
+     * <code>from</code> (inclusively) and <code>to</code> (inclusively),
+     * according to the comparator.
+     * 
+     * @param from
+     *            the first key (inclusively)
+     * @param to
+     *            the last key (exclusively)
+     * @param snapId
+     *            the snapshot ID
+     * @param ascending
+     *            if <code>true</code>, entries will be returned in ascending
+     *            order; otherwise, they will be returned in descending order
+     * @return an iterator with key-value pairs
+     */
+    public Iterator<Entry<byte[], byte[]>> rangeLookup(byte[] from, byte[] to, int snapId, boolean ascending) {
+        
+        if (from.length == 0)
+            from = null;
+        
+        if (to.length == 0)
+            to = null;
+        
+        List<Iterator<Entry<byte[], byte[]>>> list = new ArrayList<Iterator<Entry<byte[], byte[]>>>(2);
+        list.add(overlay.rangeLookup(from, to, snapId, true, ascending));
+        if (index != null)
+            list.add(index.rangeLookup(from, to, ascending));
         
         return new OverlayMergeIterator<byte[], byte[]>(list, comp, NULL_ELEMENT, ascending);
     }

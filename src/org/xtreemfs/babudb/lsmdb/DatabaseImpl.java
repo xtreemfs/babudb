@@ -256,7 +256,7 @@ public class DatabaseImpl implements Database {
             }
             
             try {
-                w.addRequest(new LSMDBRequest<byte[]>(lsmDB, indexId, result, key, false));
+                w.addRequest(new LSMDBRequest<byte[]>(lsmDB, indexId, result, key));
             } catch (InterruptedException ex) {
                 result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, "operation was interrupted", ex));
             }
@@ -291,53 +291,7 @@ public class DatabaseImpl implements Database {
     @Override
     public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> prefixLookup(int indexId, byte[] key,
         Object context) {
-        
-        BabuDBRequest<Iterator<Entry<byte[], byte[]>>> result = new BabuDBRequest<Iterator<Entry<byte[], byte[]>>>(
-            context);
-        
-        try {
-            dbs.slaveCheck();
-        } catch (BabuDBException e) {
-            result.failed(e);
-            return result;
-        }
-        
-        LSMDBWorker w = dbs.getWorker(lsmDB.getDatabaseId());
-        if (w != null) {
-            if (Logging.isNotice() && w != null) {
-                Logging.logMessage(Logging.LEVEL_NOTICE, this, "lookup request" + " is sent to worker #"
-                    + lsmDB.getDatabaseId() % dbs.getWorkerCount());
-            }
-            
-            try {
-                w.addRequest(new LSMDBRequest<Iterator<Entry<byte[], byte[]>>>(lsmDB, indexId, result, key,
-                    true));
-            } catch (InterruptedException ex) {
-                result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, "operation was interrupted", ex));
-            }
-        } else
-            directPrefixLookup(indexId, key, result);
-        
-        return result;
-    }
-    
-    /**
-     * Executes a prefix lookup, without using a worker thread.
-     * 
-     * @param indexId
-     *            index id (0..NumIndices-1)
-     * @param key
-     *            the key to start the iterator at
-     * @param listener
-     *            the result listener.
-     */
-    private void directPrefixLookup(int indexId, byte[] key,
-        BabuDBRequest<Iterator<Entry<byte[], byte[]>>> listener) {
-        
-        if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0))
-            listener.failed(new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist"));
-        else
-            listener.finished(lsmDB.getIndex(indexId).prefixLookup(key));
+        return prefixLookup(indexId, key, context, true);
     }
     
     /*
@@ -349,6 +303,20 @@ public class DatabaseImpl implements Database {
     @Override
     public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> reversePrefixLookup(int indexId, byte[] key,
         Object context) {
+        return prefixLookup(indexId, key, context, false);
+    }
+    
+    /**
+     * Performs a prefix lookup.
+     * 
+     * @param indexId
+     * @param key
+     * @param context
+     * @param ascending
+     * @return
+     */
+    private BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> prefixLookup(int indexId, byte[] key,
+        Object context, boolean ascending) {
         
         BabuDBRequest<Iterator<Entry<byte[], byte[]>>> result = new BabuDBRequest<Iterator<Entry<byte[], byte[]>>>(
             context);
@@ -360,28 +328,109 @@ public class DatabaseImpl implements Database {
             return result;
         }
         
-        directReversePrefixLookup(indexId, key, result);
+        // if there are worker threads, delegate the prefix lookup to the
+        // responsible worker thread
+        LSMDBWorker w = dbs.getWorker(lsmDB.getDatabaseId());
+        if (w != null) {
+            if (Logging.isNotice() && w != null) {
+                Logging.logMessage(Logging.LEVEL_NOTICE, this, "lookup request" + " is sent to worker #"
+                    + lsmDB.getDatabaseId() % dbs.getWorkerCount());
+            }
+            
+            try {
+                w.addRequest(new LSMDBRequest<Iterator<Entry<byte[], byte[]>>>(lsmDB, indexId, result, key,
+                    ascending));
+            } catch (InterruptedException ex) {
+                result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, "operation was interrupted", ex));
+            }
+        }
+
+        // otherwise, perform a direct prefix lookup
+        else {
+            
+            if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0))
+                result.failed(new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist"));
+            else
+                result.finished(lsmDB.getIndex(indexId).prefixLookup(key, ascending));
+        }
         
         return result;
     }
     
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#rangeLookup(int, byte[],
+     * byte[], java.lang.Object)
+     */
+    @Override
+    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> rangeLookup(int indexId, byte[] from,
+        byte[] to, Object context) {
+        return rangeLookup(indexId, from, to, context, true);
+    }
+    
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#rangeLookup(int, byte[],
+     * byte[], java.lang.Object)
+     */
+    @Override
+    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> reverseRangeLookup(int indexId, byte[] from,
+        byte[] to, Object context) {
+        return rangeLookup(indexId, from, to, context, false);
+    }
+    
     /**
-     * Executes a prefix lookup, without using a worker thread.
+     * Performs a range lookup.
      * 
      * @param indexId
-     *            index id (0..NumIndices-1)
-     * @param key
-     *            the key to start the iterator at
-     * @param listener
-     *            the result listener.
+     * @param from
+     * @param to
+     * @param context
+     * @param ascending
+     * @return
      */
-    private void directReversePrefixLookup(int indexId, byte[] key,
-        BabuDBRequest<Iterator<Entry<byte[], byte[]>>> listener) {
+    private BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> rangeLookup(int indexId, byte[] from,
+        byte[] to, Object context, boolean ascending) {
         
-        if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0))
-            listener.failed(new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist"));
-        else
-            listener.finished(lsmDB.getIndex(indexId).prefixLookup(key, false));
+        BabuDBRequest<Iterator<Entry<byte[], byte[]>>> result = new BabuDBRequest<Iterator<Entry<byte[], byte[]>>>(
+            context);
+        
+        try {
+            dbs.slaveCheck();
+        } catch (BabuDBException e) {
+            result.failed(e);
+            return result;
+        }
+        
+        // if there are worker threads, delegate the range lookup to the
+        // responsible worker thread
+        LSMDBWorker w = dbs.getWorker(lsmDB.getDatabaseId());
+        if (w != null) {
+            if (Logging.isNotice() && w != null) {
+                Logging.logMessage(Logging.LEVEL_NOTICE, this, "lookup request" + " is sent to worker #"
+                    + lsmDB.getDatabaseId() % dbs.getWorkerCount());
+            }
+            
+            try {
+                w.addRequest(new LSMDBRequest<Iterator<Entry<byte[], byte[]>>>(lsmDB, indexId, result, from,
+                    to, ascending));
+            } catch (InterruptedException ex) {
+                result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, "operation was interrupted", ex));
+            }
+        }
+
+        // otherwise, perform a direct range lookup
+        else {
+            
+            if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0))
+                result.failed(new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist"));
+            else
+                result.finished(lsmDB.getIndex(indexId).rangeLookup(from, to, ascending));
+        }
+        
+        return result;
     }
     
     /*
@@ -457,6 +506,16 @@ public class DatabaseImpl implements Database {
             throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
         }
         return lsmDB.getIndex(indexId).prefixLookup(key, snapId, ascending);
+    }
+    
+    public Iterator<Entry<byte[], byte[]>> directRangeLookup(int indexId, int snapId, byte[] from, byte[] to,
+        boolean ascending) throws BabuDBException {
+        dbs.slaveCheck();
+        
+        if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
+            throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
+        }
+        return lsmDB.getIndex(indexId).rangeLookup(from, to, snapId, ascending);
     }
     
     /**
@@ -772,4 +831,5 @@ public class DatabaseImpl implements Database {
     public String getName() {
         return lsmDB.getDatabaseName();
     }
+    
 }

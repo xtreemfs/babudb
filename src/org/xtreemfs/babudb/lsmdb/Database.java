@@ -55,7 +55,7 @@ public interface Database extends DatabaseRO {
             byte[] value, Object context);
     
     /**
-     * Inserts a group of key value pair.
+     * Inserts a group of key value pairs.
      * 
      * @param irg
      *            the insert record group to execute

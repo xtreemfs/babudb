@@ -88,6 +88,16 @@ public class DiskIndexView implements BabuDBView {
     }
     
     @Override
+    public Iterator<Entry<byte[], byte[]>> directRangeLookup(int indexId, byte[] from, byte[] to, boolean ascending) throws BabuDBException {
+        
+        DiskIndex index = indexMap.get(indexId);
+        if (index == null)
+            throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + indexId + " does not exist");
+        
+        return index.rangeLookup(from, to, ascending);
+    }
+    
+    @Override
     public void shutdown() throws BabuDBException {
         try {
             for (DiskIndex index : indexMap.values())
