@@ -109,10 +109,10 @@ public abstract class MiniPage {
     }
     
     /**
-     * Returns the position of the entry that is next smaller or equal entry
-     * compared to the given entry. If the next smaller entry is smaller than
-     * the first entry in the page, -1 is returned. If the given entry is null,
-     * the last index position is returned.
+     * Returns the position of the entry that is next smaller or equal compared
+     * to the given entry. If the next smaller entry is smaller than the first
+     * entry in the page, -1 is returned. If the given entry is null, the last
+     * index position is returned.
      * 
      * @param entry
      *            the entry for which to find the next smaller entry

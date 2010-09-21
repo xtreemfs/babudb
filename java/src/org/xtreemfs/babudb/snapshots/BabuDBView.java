@@ -16,7 +16,11 @@ public interface BabuDBView {
     
     public byte[] directLookup(int indexId, byte[] key) throws BabuDBException;
     
-    public Iterator<Entry<byte[], byte[]>> directPrefixLookup(int indexId, byte[] key, boolean ascending) throws BabuDBException;
+    public Iterator<Entry<byte[], byte[]>> directPrefixLookup(int indexId, byte[] key, boolean ascending)
+        throws BabuDBException;
+    
+    public Iterator<Entry<byte[], byte[]>> directRangeLookup(int indexId, byte[] from, byte[] to,
+        boolean ascending) throws BabuDBException;
     
     public void shutdown() throws BabuDBException;
     

@@ -278,7 +278,7 @@ public class BabuDBConfig extends Config {
         
         this.compression = this.readOptionalBoolean("babudb.compression", false);
         
-        this.maxNumRecordsPerBlock = this.readOptionalInt("babudb.maxNumRecordsPerBlock", 16);
+        this.maxNumRecordsPerBlock = this.readOptionalInt("babudb.maxNumRecordsPerBlock", 64);
         
         this.maxBlockFileSize = this.readOptionalInt("babudb.maxBlockFileSize", 1024 * 1024 * 512);
         

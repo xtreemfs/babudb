@@ -306,6 +306,137 @@ public class LSMTreeTest extends TestCase {
         
     }
     
+    public void testRangeLookups() throws Exception {
+        
+        // randomly insert 200 elements in a map
+        
+        final int numElements = 200;
+        final DefaultByteRangeComparator comp = DefaultByteRangeComparator.getInstance();
+        
+        LSMTree tree = new LSMTree(null, comp, false, 16, 1024 * 1024 * 512, true, -1);
+        
+        // insert all 200 keys
+        final TreeMap<byte[], byte[]> map1 = new TreeMap<byte[], byte[]>(comp);
+        for (int i = 0x10; i < numElements; i++) {
+            byte[] key = Integer.toHexString(i).getBytes();
+            byte[] val = Integer.toHexString((int) (Math.random() * Integer.MAX_VALUE)).getBytes();
+            map1.put(key, val);
+            tree.insert(key, val);
+        }
+        
+        // take a snapshot
+        int snap1 = tree.createSnapshot();
+        final TreeMap<byte[], byte[]> map2 = new TreeMap<byte[], byte[]>(map1);
+        
+        // delete every second key
+        for (int i = 0x10; i < numElements; i += 2) {
+            byte[] key = Integer.toHexString(i).getBytes();
+            tree.insert(key, null);
+            map2.remove(key);
+        }
+        
+        // take a snapshot
+        int snap2 = tree.createSnapshot();
+        final TreeMap<byte[], byte[]> map3 = new TreeMap<byte[], byte[]>(map2);
+        
+        // overwrite every 5th key
+        for (int i = 0x10; i < numElements; i += 5) {
+            byte[] key = Integer.toHexString(i).getBytes();
+            byte[] val = Integer.toHexString((int) (Math.random() * Integer.MAX_VALUE)).getBytes();
+            tree.insert(key, val);
+            map3.put(key, val);
+        }
+        
+        // peform range lookups
+        
+        // current tree, ascending
+        Iterator<Entry<byte[], byte[]>> it = tree.rangeLookup(new byte[0], new byte[0], true);
+        Iterator<byte[]> itExpected = map3.values().iterator();
+        while (it.hasNext())
+            assertEquals(itExpected.next(), it.next().getValue());
+        assertFalse(itExpected.hasNext());
+        
+        // current tree, descending
+        it = tree.rangeLookup(new byte[0], new byte[0], false);
+        itExpected = map3.descendingMap().values().iterator();
+        while (it.hasNext())
+            assertEquals(itExpected.next(), it.next().getValue());
+        assertFalse(itExpected.hasNext());
+        
+        // snapshot 2, ascending
+        it = tree.rangeLookup(new byte[0], new byte[0], snap2, true);
+        itExpected = map2.values().iterator();
+        while (it.hasNext())
+            assertEquals(itExpected.next(), it.next().getValue());
+        assertFalse(itExpected.hasNext());
+        
+        // snapshot 2, descending
+        it = tree.rangeLookup(new byte[0], new byte[0], snap2, false);
+        itExpected = map2.descendingMap().values().iterator();
+        while (it.hasNext())
+            assertEquals(itExpected.next(), it.next().getValue());
+        assertFalse(itExpected.hasNext());
+        
+        // snapshot 1, ascending
+        it = tree.rangeLookup(new byte[0], new byte[0], snap1, true);
+        itExpected = map1.values().iterator();
+        while (it.hasNext())
+            assertEquals(itExpected.next(), it.next().getValue());
+        assertFalse(itExpected.hasNext());
+        
+        // snapshot 1, descending
+        it = tree.rangeLookup(new byte[0], new byte[0], snap1, false);
+        itExpected = map1.descendingMap().values().iterator();
+        while (it.hasNext())
+            assertEquals(itExpected.next(), it.next().getValue());
+        assertFalse(itExpected.hasNext());
+        
+        // real range lookup, current tree, ascending
+        it = tree.rangeLookup("2".getBytes(), "5".getBytes(), true);
+        itExpected = map3.subMap("2".getBytes(), "5".getBytes()).values().iterator();
+        while (it.hasNext())
+            assertEquals(itExpected.next(), it.next().getValue());
+        assertFalse(itExpected.hasNext());
+        
+        // real range lookup, current tree, descending
+        it = tree.rangeLookup("5".getBytes(), "2".getBytes(), false);
+        itExpected = map3.descendingMap().subMap("5".getBytes(), "2".getBytes()).values().iterator();
+        while (it.hasNext())
+            assertEquals(itExpected.next(), it.next().getValue());
+        assertFalse(itExpected.hasNext());
+        
+        // real (empty) range lookup, current tree, ascending
+        it = tree.rangeLookup("XXXXXXXX".getBytes(), "XXXXXXXY".getBytes(), true);
+        itExpected = map3.subMap("XXXXXXXX".getBytes(), true, "XXXXXXXY".getBytes(), true).values()
+                .iterator();
+        while (it.hasNext())
+            assertEquals(itExpected.next(), it.next().getValue());
+        assertFalse(itExpected.hasNext());
+        
+        // real (empty) range lookup, current tree, descending
+        it = tree.rangeLookup("XXXXXXXY".getBytes(), "XXXXXXXX".getBytes(), false);
+        itExpected = map3.descendingMap().subMap("XXXXXXXY".getBytes(), true, "XXXXXXXX".getBytes(), true)
+                .values().iterator();
+        while (it.hasNext())
+            assertEquals(itExpected.next(), it.next().getValue());
+        assertFalse(itExpected.hasNext());
+        
+        // real range lookup, snapshot 1, ascending
+        it = tree.rangeLookup("2".getBytes(), "5".getBytes(), snap1, true);
+        itExpected = map1.subMap("2".getBytes(), "5".getBytes()).values().iterator();
+        while (it.hasNext())
+            assertEquals(itExpected.next(), it.next().getValue());
+        assertFalse(itExpected.hasNext());
+        
+        // real range lookup, snapshot 1, descending
+        it = tree.rangeLookup("5".getBytes(), "2".getBytes(), snap1, false);
+        itExpected = map1.descendingMap().subMap("5".getBytes(), "2".getBytes()).values().iterator();
+        while (it.hasNext())
+            assertEquals(itExpected.next(), it.next().getValue());
+        assertFalse(itExpected.hasNext());
+        
+    }
+    
     public void testSnapshotMaterialization() throws Exception {
         
         // randomly insert 200 elements in a map

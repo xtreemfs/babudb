@@ -46,13 +46,16 @@ import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.logging.Logging.Category;
 
 /**
+ * BabuDB main class.
+ * 
  * <p>
- * <b>Please use the {@link BabuDBFactory} for retrieving an instance of
+ * <b>Please use the {@link BabuDBFactory} to generate instances of
  * {@link BabuDB}.</b>
  * </p>
  * 
  * @author bjko
  * @author flangner
+ * @author stenjan
  * 
  */
 public class BabuDB {
@@ -345,10 +348,12 @@ public class BabuDB {
         }
     }
     
-    /*
-     * (non-Javadoc)
+    /**
+     * Terminates BabuDB. All threads will be terminated and all resources will
+     * be freed. Note that ongoing checkpoint operations may be interrupted, but
+     * the database will remain in a consistent state.
      * 
-     * @see org.xtreemfs.babudb.BabuDBInterface#shutdown()
+     * @throws BabuDBException
      */
     public void shutdown() throws BabuDBException {
         
@@ -380,12 +385,13 @@ public class BabuDB {
             
             databaseManager.shutdown();
             snapshotManager.shutdown();
-                        
+            
             if (worker != null) {
                 for (LSMDBWorker w : worker)
                     w.waitForShutdown();
                 
-                Logging.logMessage(Logging.LEVEL_DEBUG, this, "%d worker threads shut down successfully", worker.length);
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, "%d worker threads shut down successfully",
+                    worker.length);
             }
             
         } catch (InterruptedException ex) {
@@ -410,29 +416,61 @@ public class BabuDB {
         }
     }
     
+    /**
+     * Returns a reference to the BabuDB checkpointer. The checkpointer can be
+     * used by applications to enforce the creation of a database checkpoint.
+     * 
+     * @return a reference to the checkpointer
+     */
     public Checkpointer getCheckpointer() {
         return dbCheckptr;
     }
     
+    /**
+     * Returns a reference to the disk logger. The disk logger should not be
+     * accessed by applications.
+     * 
+     * @return a reference to the disk logger
+     */
     public DiskLogger getLogger() {
         return logger;
     }
     
+    /**
+     * Returns a reference to the replication manager. The replication manager
+     * gives applications the possiblility to control the behavior of a
+     * replicated BabuDB setup.
+     * 
+     * @return a reference to the replication manager
+     */
     public ReplicationManager getReplicationManager() {
         return replicationManager;
     }
     
+    /**
+     * Returns a reference to the database manager. The database manager gives
+     * applications access to single databases.
+     * 
+     * @return a reference to the database manager
+     */
     public DatabaseManager getDatabaseManager() {
         return databaseManager;
     }
     
+    /**
+     * Returns the configuration associated with this BabuDB instance.
+     * 
+     * @return the configuration
+     */
     public BabuDBConfig getConfig() {
         return configuration;
     }
     
     /**
-     * @return the path to the DB-configuration-file, if available, null
-     *         otherwise.
+     * Returns the complete path to the database configuration file.
+     * 
+     * @return the path to the DB-configuration-file, if available,
+     *         <code>null</code> otherwise.
      */
     public String getDBConfigPath() {
         String result = configuration.getBaseDir() + configuration.getDbCfgFile();
@@ -443,7 +481,7 @@ public class BabuDB {
     }
     
     /**
-     * Replay the database operations log.
+     * Replays the database operations log.
      * 
      * @param from
      *            - LSN to replay the logs from.
@@ -541,6 +579,12 @@ public class BabuDB {
         }
     }
     
+    /**
+     * Returns a reference to the snapshot manager. The snapshot manager offers
+     * applications the possibility to manage snapshots of single databases.
+     * 
+     * @return a reference to the snapshot manager
+     */
     public SnapshotManager getSnapshotManager() {
         return snapshotManager;
     }

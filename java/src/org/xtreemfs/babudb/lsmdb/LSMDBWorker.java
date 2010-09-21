@@ -29,36 +29,32 @@ import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
 
 /**
- *
+ * 
  * @author bjko
  */
 public class LSMDBWorker extends Thread implements SyncListener {
-
+    
     public static enum RequestOperation {
-        INSERT,
-        LOOKUP,
-        PREFIX_LOOKUP,
-        USER_DEFINED_LOOKUP
+        INSERT, LOOKUP, PREFIX_LOOKUP, RANGE_LOOKUP, USER_DEFINED_LOOKUP
     };
     
     private final BlockingQueue<LSMDBRequest<?>> requests;
     
-    private transient boolean quit;
+    private transient boolean                    quit;
     
-    private final AtomicBoolean down;
+    private final AtomicBoolean                  down;
     
-    private final DiskLogger    logger;
-
-    private final boolean       pseudoSync;
-        
-    public LSMDBWorker(DiskLogger logger, int id, boolean pseudoSync, 
-            int maxQ) {
-        super("LSMDBWrkr#"+id);  
-        this.down = new AtomicBoolean(false);       
+    private final DiskLogger                     logger;
+    
+    private final boolean                        pseudoSync;
+    
+    public LSMDBWorker(DiskLogger logger, int id, boolean pseudoSync, int maxQ) {
+        super("LSMDBWrkr#" + id);
+        this.down = new AtomicBoolean(false);
         if (maxQ > 0)
             requests = new LinkedBlockingQueue<LSMDBRequest<?>>(maxQ);
         else
-            requests = new LinkedBlockingQueue<LSMDBRequest<?>>();       
+            requests = new LinkedBlockingQueue<LSMDBRequest<?>>();
         this.logger = logger;
         this.pseudoSync = pseudoSync;
     }
@@ -73,14 +69,14 @@ public class LSMDBWorker extends Thread implements SyncListener {
             this.interrupt();
         }
     }
-
+    
     public boolean isDown() {
         return down.get();
     }
     
     public void waitForShutdown() throws InterruptedException {
         synchronized (down) {
-            if (!down.get()){
+            if (!down.get()) {
                 down.wait();
             }
         }
@@ -91,47 +87,61 @@ public class LSMDBWorker extends Thread implements SyncListener {
      */
     /*
      * (non-Javadoc)
+     * 
      * @see java.lang.Thread#start()
      */
     @Override
     public synchronized void start() {
         quit = false;
         down.set(false);
-    	super.start();
+        super.start();
     }
     
     /*
      * (non-Javadoc)
+     * 
      * @see java.lang.Thread#run()
      */
     @SuppressWarnings("unchecked")
     @Override
-    public void run() {       
+    public void run() {
         while (!quit) {
             try {
                 final LSMDBRequest<?> r = requests.take();
                 
                 switch (r.getOperation()) {
-                    case INSERT : doInsert(r); break;
-                    case LOOKUP : doLookup((LSMDBRequest<byte[]>) r); break;
-                    case PREFIX_LOOKUP : doPrefixLookup((LSMDBRequest<Iterator<Entry<byte[], byte[]>>>) r); break;
-                    case USER_DEFINED_LOOKUP : doUserLookup((LSMDBRequest<Object>) r); break;
-                    default : {
-                        Logging.logMessage(Logging.LEVEL_ERROR, this,"UNKNOWN OPERATION REQUESTED! PROGRAMMATIC ERROR!!!! PANIC!");
-                        System.exit(1);
-                    }
+                case INSERT:
+                    doInsert(r);
+                    break;
+                case LOOKUP:
+                    doLookup((LSMDBRequest<byte[]>) r);
+                    break;
+                case PREFIX_LOOKUP:
+                    doPrefixLookup((LSMDBRequest<Iterator<Entry<byte[], byte[]>>>) r);
+                    break;
+                case RANGE_LOOKUP:
+                    doRangeLookup((LSMDBRequest<Iterator<Entry<byte[], byte[]>>>) r);
+                    break;
+                case USER_DEFINED_LOOKUP:
+                    doUserLookup((LSMDBRequest<Object>) r);
+                    break;
+                default: {
+                    Logging.logMessage(Logging.LEVEL_ERROR, this,
+                        "UNKNOWN OPERATION REQUESTED! PROGRAMMATIC ERROR!!!! PANIC!");
+                    System.exit(1);
+                }
                 }
             } catch (InterruptedException ex) {
             }
-                
+            
         }
-        Logging.logMessage(Logging.LEVEL_DEBUG,this,"shutdown complete");
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "shutdown complete");
         synchronized (down) {
             down.set(true);
             down.notifyAll();
         }
     }
-
+    
     private void doUserLookup(final LSMDBRequest<Object> r) {
         final UserDefinedLookup l = r.getUserDefinedLookup();
         final LSMLookupInterface lif = new LSMLookupInterface(r.getDatabase());
@@ -149,10 +159,10 @@ public class LSMDBWorker extends Thread implements SyncListener {
         ReusableBuffer buf = BufferPool.allocate(size);
         irec.serialize(buf);
         buf.flip();
-        LogEntry e = new LogEntry(buf,this,LogEntry.PAYLOAD_TYPE_INSERT);
+        LogEntry e = new LogEntry(buf, this, LogEntry.PAYLOAD_TYPE_INSERT);
         e.setAttachment(r);
         logger.append(e);
-
+        
         if (pseudoSync) {
             insertIntoIndex(r);
             finish(e);
@@ -164,26 +174,35 @@ public class LSMDBWorker extends Thread implements SyncListener {
         final int numIndices = db.getIndexCount();
         
         if ((r.getIndexId() >= numIndices) || (r.getIndexId() < 0))
-            r.getListener().failed(new BabuDBException(ErrorCode.NO_SUCH_INDEX, 
-                    "index "+r.getIndexId()+" does not exist"));                 
+            r.getListener().failed(
+                new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + r.getIndexId() + " does not exist"));
         else
-            r.getListener().finished(db.getIndex(r.getIndexId()).lookup(
-                r.getLookupKey()));
+            r.getListener().finished(db.getIndex(r.getIndexId()).lookup(r.getLookupKey()));
     }
     
-    private void doPrefixLookup(final LSMDBRequest<Iterator<Map.Entry<byte[],byte[]>>> r) {
+    private void doPrefixLookup(final LSMDBRequest<Iterator<Map.Entry<byte[], byte[]>>> r) {
         final LSMDatabase db = r.getDatabase();
         final int numIndices = db.getIndexCount();
         
         if ((r.getIndexId() >= numIndices) || (r.getIndexId() < 0))
-            r.getListener().failed(new BabuDBException(ErrorCode.NO_SUCH_INDEX, 
-                    "index "+r.getIndexId()+" does not exist"));
+            r.getListener().failed(
+                new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + r.getIndexId() + " does not exist"));
         else
-            r.getListener().finished(db.getIndex(r.getIndexId()).prefixLookup(
-                    r.getLookupKey()));
+            r.getListener().finished(db.getIndex(r.getIndexId()).prefixLookup(r.getLookupKey()));
     }
-
-    public void synced(LogEntry entry) {       
+    
+    private void doRangeLookup(final LSMDBRequest<Iterator<Map.Entry<byte[], byte[]>>> r) {
+        final LSMDatabase db = r.getDatabase();
+        final int numIndices = db.getIndexCount();
+        
+        if ((r.getIndexId() >= numIndices) || (r.getIndexId() < 0))
+            r.getListener().failed(
+                new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + r.getIndexId() + " does not exist"));
+        else
+            r.getListener().finished(db.getIndex(r.getIndexId()).rangeLookup(r.getFrom(), r.getTo()));
+    }
+    
+    public void synced(LogEntry entry) {
         
         if (!pseudoSync) {
             final LSMDBRequest<?> r = entry.getAttachment();
@@ -193,7 +212,7 @@ public class LSMDBWorker extends Thread implements SyncListener {
         
         entry.free();
     }
-
+    
     private void insertIntoIndex(final LSMDBRequest<?> r) {
         final InsertRecordGroup irg = r.getInsertData();
         final LSMDatabase db = r.getDatabase();
@@ -201,9 +220,9 @@ public class LSMDBWorker extends Thread implements SyncListener {
         try {
             for (InsertRecord ir : irg.getInserts()) {
                 if ((ir.getIndexId() >= numIndices) || (ir.getIndexId() < 0))
-                    r.getListener().failed(new BabuDBException(
-                            ErrorCode.NO_SUCH_INDEX, "index "+r.getIndexId()+
-                            " does not exist"));
+                    r.getListener().failed(
+                        new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + r.getIndexId()
+                            + " does not exist"));
                 final LSMTree index = db.getIndex(ir.getIndexId());
                 if (ir.getValue() != null)
                     index.insert(ir.getKey(), ir.getValue());
@@ -211,19 +230,20 @@ public class LSMDBWorker extends Thread implements SyncListener {
                     index.delete(ir.getKey());
             }
         } catch (Exception ex) {
-            r.getListener().failed(new BabuDBException(ErrorCode.NO_SUCH_INDEX, 
-                    "cannot insert, because of unexpected error",ex));
+            r.getListener()
+                    .failed(
+                        new BabuDBException(ErrorCode.NO_SUCH_INDEX,
+                            "cannot insert, because of unexpected error", ex));
         }
     }
     
-    private void finish(LogEntry le){
+    private void finish(LogEntry le) {
         final LSMDBRequest<?> r = le.getAttachment();
-        r.getListener().finished();     
+        r.getListener().finished();
     }
-
+    
     public void failed(LogEntry entry, Exception ex) {
-        ((BabuDBRequest<?>)entry.getAttachment().getListener()).failed( 
-                new BabuDBException(ErrorCode.IO_ERROR, "could not execute " +
-                		"insert because of IO problem",ex));
-    }   
+        ((BabuDBRequest<?>) entry.getAttachment().getListener()).failed(new BabuDBException(
+            ErrorCode.IO_ERROR, "could not execute " + "insert because of IO problem", ex));
+    }
 }

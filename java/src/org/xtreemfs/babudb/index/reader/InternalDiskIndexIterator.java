@@ -26,9 +26,9 @@ public class InternalDiskIndexIterator extends DiskIndexIteratorBase implements 
      * @param blockIndexReader
      *            reference to the block index reader
      * @param from
-     *            smallest key
+     *            smallest key (inclusively)
      * @param to
-     *            largest key
+     *            largest key (exclusively)
      * @param ascending
      *            defines the iteration order
      * @param maps
@@ -47,9 +47,9 @@ public class InternalDiskIndexIterator extends DiskIndexIteratorBase implements 
      * @param blockIndexReader
      *            reference to the block index reader
      * @param from
-     *            smallest key
+     *            smallest key (inclusively)
      * @param to
-     *            largest key
+     *            largest key (exclusively)
      * @param ascending
      *            defines the iteration order
      * @param dbFileChannels
