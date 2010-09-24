@@ -9,6 +9,7 @@
 package org.xtreemfs.babudb.index.overlay;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -100,7 +101,7 @@ public class MultiOverlayTree<K, V> {
             this.comparator = comparator;
         
         treeList = new OverlayTreeList<K, V>(new TreeMap<K, V>(comparator), null);
-        overlayMap = new HashMap<Integer, OverlayTreeList<K, V>>();
+        overlayMap = Collections.synchronizedMap(new HashMap<Integer, OverlayTreeList<K, V>>());
         
         this.nullValue = nullValue;
     }

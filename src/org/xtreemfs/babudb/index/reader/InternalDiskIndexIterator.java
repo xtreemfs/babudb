@@ -16,7 +16,8 @@ import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.index.ByteRange;
 
-public class InternalDiskIndexIterator extends DiskIndexIteratorBase implements Iterator<Entry<ByteRange, ByteRange>> {
+public class InternalDiskIndexIterator extends DiskIndexIteratorBase implements
+    Iterator<Entry<ByteRange, ByteRange>> {
     
     /**
      * Disk index iterator for mmap'ed index files.
@@ -67,6 +68,7 @@ public class InternalDiskIndexIterator extends DiskIndexIteratorBase implements 
             throw new NoSuchElementException();
         
         final Entry<ByteRange, ByteRange> entry = currentBlockIterator.next();
+        
         return new Entry<ByteRange, ByteRange>() {
             
             private ByteRange key;

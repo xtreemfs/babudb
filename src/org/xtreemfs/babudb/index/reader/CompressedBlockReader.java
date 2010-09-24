@@ -203,6 +203,12 @@ public class CompressedBlockReader extends BlockReader {
                     
                     final ByteRange value = values.getEntry(currentIndex);
                     
+                    {
+                        boolean last = !(ascending ? currentIndex < endIndex : currentIndex > startIndex);
+                        if(last)
+                            value.setReusableBuf(readBuffer);
+                    }
+                    
                     @Override
                     public ByteRange getValue() {
                         return value;

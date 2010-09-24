@@ -41,7 +41,7 @@ public abstract class DiskIndexIteratorBase {
     private int                                     currentBlockIndex;
     
     private BlockReader                             currentBlock;
-    
+        
     protected Iterator<Entry<ByteRange, ByteRange>> currentBlockIterator;
     
     protected DiskIndexIteratorBase(DiskIndex index, BlockReader blockIndexReader, byte[] from, byte[] to,
@@ -102,27 +102,18 @@ public abstract class DiskIndexIteratorBase {
         if (blockIndexStart == -1 && blockIndexEnd == -1)
             return;
         
-        if (ascending) {
-            if (currentBlockIndex > blockIndexEnd) {
-                
-                if (currentBlock != null)
-                    currentBlock.free();
-                
-                currentBlock = null;
-                currentBlockIterator = null;
-                return;
-            }
-            
-        } else {
-            if (currentBlockIndex < blockIndexStart) {
-                
-                if (currentBlock != null)
-                    currentBlock.free();
-                
-                currentBlock = null;
-                currentBlockIterator = null;
-                return;
-            }
+        // ascending
+        if (ascending && currentBlockIndex > blockIndexEnd) {
+            currentBlock = null;
+            currentBlockIterator = null;
+            return;
+        }
+
+        // descending
+        else if (!ascending && currentBlockIndex < blockIndexStart) {
+            currentBlock = null;
+            currentBlockIterator = null;
+            return;
         }
         
         int startOffset = DiskIndex.getBlockOffset(currentBlockIndex, blockIndexReader);
@@ -153,8 +144,6 @@ public abstract class DiskIndexIteratorBase {
         }
         
         try {
-            if(currentBlock != null)
-                currentBlock.free();
             currentBlock = maps != null ? index.getBlock(startOffset, endOffset, maps[fileId]) : index
                     .getBlock(startOffset, endOffset, dbFileChannels[fileId]);
         } catch (ClosedByInterruptException exc) {

@@ -16,6 +16,8 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.index.ByteRange;
+import org.xtreemfs.babudb.index.reader.InternalBufferUtil;
+import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
 /**
@@ -127,7 +129,7 @@ public class DiskIndexWriter {
                 buf.putShort(blockFileId);
                 
                 // add the key-offset mapping to the block index
-                blockIndex.add(block.getBlockKey(), buf.array());
+                blockIndex.add(InternalBufferUtil.toBuffer(block.getBlockKey()), buf.array());
                 
                 // serialize the block and calculate the next block offset
                 SerializedBlock serializedBlock = block.serialize();
@@ -145,7 +147,16 @@ public class DiskIndexWriter {
                         out = new FileOutputStream(path, true);
                     }
                     
-                    writtenBytes += writeBuffer(out, it.next());
+                    Object nextBuffer = it.next();
+                    
+                    // check if the entry is the last from the buffer; if so, free it
+                    if(nextBuffer instanceof ByteRange) {
+                        ByteRange rng = (ByteRange) nextBuffer;
+                        if(rng.getReusableBuf() != null)
+                            BufferPool.free(rng.getReusableBuf());
+                    }
+                    
+                    writtenBytes += writeBuffer(out, nextBuffer);
                 }
                 assert (writtenBytes == serializedBlock.size());
                 

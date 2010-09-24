@@ -15,6 +15,7 @@ import java.util.NoSuchElementException;
 import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.index.ByteRange;
+import org.xtreemfs.foundation.buffer.BufferPool;
 
 public class DiskIndexIterator extends DiskIndexIteratorBase implements Iterator<Entry<byte[], byte[]>> {
     
@@ -59,7 +60,7 @@ public class DiskIndexIterator extends DiskIndexIteratorBase implements Iterator
         boolean ascending, FileChannel[] dbFileChannels) {
         super(index, blockIndexReader, from, to, ascending, null, dbFileChannels);
     }
-       
+    
     @Override
     public Entry<byte[], byte[]> next() {
         
@@ -76,6 +77,9 @@ public class DiskIndexIterator extends DiskIndexIteratorBase implements Iterator
             {
                 key = entry.getKey().toBuffer();
                 value = entry.getValue().toBuffer();
+                
+                if(entry.getValue().getReusableBuf() != null)
+                    BufferPool.free(entry.getValue().getReusableBuf());
             }
             
             @Override
