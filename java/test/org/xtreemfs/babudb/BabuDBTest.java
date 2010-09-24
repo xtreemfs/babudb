@@ -28,7 +28,7 @@ import org.xtreemfs.foundation.util.FSUtils;
 
 /**
  * 
- * @author bjko
+ * @author bjko, stenjan
  */
 public class BabuDBTest extends TestCase {
     
@@ -49,17 +49,14 @@ public class BabuDBTest extends TestCase {
     @Before
     public void setUp() throws Exception {
         FSUtils.delTree(new File(baseDir));
+        
+        System.out.println("=== " + getName() + " ===");
     }
     
     @After
     public void tearDown() throws Exception {
     }
     
-    // TODO add test methods here.
-    // The methods must be annotated with annotation @Test. For example:
-    //
-    // @Test
-    // public void hello() {}
     @Test
     public void testReplayAfterCrash() throws Exception {
         database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
@@ -213,17 +210,14 @@ public class BabuDBTest extends TestCase {
         assertEquals(value, "Value1");
         
         result = db.lookup(1, "Key2".getBytes(), null).get();
-        assertNotNull(result);
-        value = new String(result);
-        assertEquals(value, "Value2");
+        assertEquals("Value2", new String(result));
         
         result = db.lookup(2, "Key3".getBytes(), null).get();
-        assertNotNull(result);
-        value = new String(result);
-        assertEquals(value, "Value3");
+        assertEquals("Value3", new String(result));
         
         Iterator<Entry<byte[], byte[]>> iter = db.prefixLookup(3, "Key3".getBytes(), null).get();
-        assertNotNull(iter);
+        assertFalse(iter.hasNext());
+        
         ir = db.createInsertGroup();
         ir.addDelete(0, "Key1".getBytes());
         ir.addInsert(1, "Key2".getBytes(), "Value2.2".getBytes());
@@ -231,8 +225,12 @@ public class BabuDBTest extends TestCase {
         db.insert(ir, null).get();
         database.getCheckpointer().checkpoint();
         
-        iter = db.prefixLookup(0, "Key3".getBytes(), null).get();
-        assertNotNull(iter);
+        iter = db.prefixLookup(2, "Key3".getBytes(), null).get();
+        assertTrue(iter.hasNext());
+        Entry<byte[], byte[]> next = iter.next();
+        assertEquals("Key3", new String(next.getKey()));
+        assertEquals("Value2.3", new String(next.getValue()));
+        assertTrue(!iter.hasNext());
         
         System.out.println("shutting down database...");
         

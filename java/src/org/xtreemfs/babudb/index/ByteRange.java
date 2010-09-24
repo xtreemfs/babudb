@@ -20,15 +20,17 @@ import org.xtreemfs.foundation.util.OutputUtils;
  */
 public class ByteRange {
     
-    private ByteBuffer buf;
+    private final ByteBuffer buf;
     
-    private int        startOffset;
+    private final int        startOffset;
     
-    private int        endOffset;
+    private final int        endOffset;
     
-    private int        size;
+    private final int        size;
     
-    private byte[]     prefix;
+    private byte[]           prefix;
+    
+    private ReusableBuffer   rBuf;
     
     public ByteRange(ByteBuffer buf, int startOffset, int endOffset) {
         
@@ -81,6 +83,14 @@ public class ByteRange {
         // for (int i = startOffset; i < startOffset + size; i++)
         // tmp[i - startOffset] = buf.get(i);
         // return tmp;
+    }
+    
+    public void setReusableBuf(ReusableBuffer rBuf) {
+        this.rBuf = rBuf;
+    }
+    
+    public ReusableBuffer getReusableBuf() {
+        return rBuf;
     }
     
     public String toString() {

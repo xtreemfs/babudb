@@ -149,8 +149,10 @@ public class DiskIndex {
         
         // search for the key in the target block and return the result
         ByteRange val = targetBlock.lookup(key);
+        byte[] result = val == null ? null : val.toBuffer();
         targetBlock.free();
-        return val == null ? null : val.toBuffer();
+        
+        return result;
     }
     
     public long numKeys() {

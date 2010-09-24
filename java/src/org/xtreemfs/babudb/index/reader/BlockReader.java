@@ -55,12 +55,6 @@ public abstract class BlockReader {
         return new DefaultBlockReader(buffer.slice(), position, limit, comp);
     }
     
-    public void free() {
-        
-        if (!isBuffered)
-            BufferPool.free(readBuffer);
-    }
-    
     public abstract ByteRange lookup(byte[] key);
     
     public abstract Iterator<Entry<ByteRange, ByteRange>> rangeLookup(byte[] from, byte[] to,
@@ -76,6 +70,11 @@ public abstract class BlockReader {
     
     public int getNumEntries() {
         return numEntries;
+    }
+    
+    public void free() {
+        if (readBuffer != null)
+            BufferPool.free(readBuffer);
     }
     
 }
