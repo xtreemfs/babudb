@@ -19,6 +19,8 @@ import junit.textui.TestRunner;
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.snapshots.DefaultSnapshotConfig;
+import org.xtreemfs.foundation.buffer.BufferPool;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.FSUtils;
 
@@ -31,6 +33,11 @@ public class LSMTreeTest extends TestCase {
     private static final String SNAP_FILE3 = "/tmp/snap3.bin";
     
     private static final String SNAP_FILE4 = "/tmp/snap4.bin";
+    
+    static {
+        ReusableBuffer.enableAutoFree(true);
+        BufferPool.enableStacktraceRecording(false);
+    }
     
     public LSMTreeTest() throws Exception {
     }
