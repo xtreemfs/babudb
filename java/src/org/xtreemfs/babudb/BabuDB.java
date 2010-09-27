@@ -42,6 +42,8 @@ import org.xtreemfs.babudb.replication.transmission.FileIO;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManager;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
+import org.xtreemfs.foundation.buffer.BufferPool;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.logging.Logging.Category;
 
@@ -63,7 +65,7 @@ public class BabuDB {
     /**
      * Version (name)
      */
-    public static final String           BABUDB_VERSION           = "0.4.3";
+    public static final String           BABUDB_VERSION           = "0.4.4";
     
     /**
      * Version of the DB on-disk format (to detect incompatibilities).
@@ -109,6 +111,11 @@ public class BabuDB {
      */
     private final AtomicBoolean          stopped;
     
+    static {
+        ReusableBuffer.enableAutoFree(true);
+        BufferPool.enableStacktraceRecording(false);
+    }
+    
     /**
      * Starts the BabuDB database. If conf is instance of MasterConfig it comes
      * with replication in master-mode. If conf is instance of SlaveConfig it
@@ -121,7 +128,8 @@ public class BabuDB {
     BabuDB(BabuDBConfig conf, final StaticInitialization staticInit) throws BabuDBException {
         Logging.start(conf.getDebugLevel());
         
-        Logging.logMessage(Logging.LEVEL_INFO, this, "\n" + conf.toString());
+        Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB %s", BABUDB_VERSION);
+        Logging.logMessage(Logging.LEVEL_INFO, this, "\n%s", conf.toString());
         
         this.configuration = conf;
         this.databaseManager = new DatabaseManagerImpl(this);
@@ -409,6 +417,7 @@ public class BabuDB {
             if (worker != null)
                 for (LSMDBWorker w : worker)
                     w.stop();
+            dbCheckptr.stop();
             
         } catch (IllegalMonitorStateException ex) {
             // we will probably get that when we kill a thread because we do
