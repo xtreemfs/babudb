@@ -152,7 +152,8 @@ public class BabuDBConfig extends Config {
      *            setting such a limit is necessary to deal with databases in GB
      *            size. If set to -1, no limit will be enforced.
      * @param debugLevel
-     *            the debug level (see <code>org.xtreemfs.foundation.Logging</code>)
+     *            the debug level (see
+     *            <code>org.xtreemfs.foundation.Logging</code>)
      */
     public BabuDBConfig(String dbDir, String dbLogDir, int numThreads, long maxLogFileSize,
         int checkInterval, SyncMode syncMode, int pseudoSyncWait, int maxQ, boolean compression,
@@ -282,8 +283,8 @@ public class BabuDBConfig extends Config {
         
         this.maxBlockFileSize = this.readOptionalInt("babudb.maxBlockFileSize", 1024 * 1024 * 512);
         
-        this.disableMMap = this.readOptionalBoolean("babudb.disableMmap", !"x86_64".equals(System
-                .getProperty("os.arch")));
+        this.disableMMap = this.readOptionalBoolean("babudb.disableMmap",
+            System.getProperty("os.arch") != null && !System.getProperty("os.arch").endsWith("64"));
         
         this.mmapLimit = this.readOptionalInt("babudb.mmapLimit", -1);
     }
