@@ -17,6 +17,7 @@
 #include "yield/platform/memory_mapped_file.h"
 using YIELD::MemoryMappedFile;
 using namespace babudb;
+using namespace std;
 
 TEST_TMPDIR(Database,babudb)
 {
@@ -61,5 +62,46 @@ TEST_TMPDIR(Database_Migration,babudb)
 	EXPECT_FALSE(db->Lookup("testidx",DataHolder("Key2")).isEmpty());
 	EXPECT_TRUE(db->Lookup("testidx",DataHolder("Key3")).isEmpty());
 	EXPECT_TRUE(db->Lookup("testidx",DataHolder("Key4")).isEmpty());
+  delete db;
+}
+
+TEST_TMPDIR(Database_Snapshot,babudb)
+{
+  StringOrder myorder;
+  std::vector<babudb::IndexDescriptor> indices;
+  indices.push_back(std::make_pair("testidx", &myorder));
+  indices.push_back(std::make_pair("testidx2", &myorder));
+
+  Database* db = Database::Open(testPath("test").getHostCharsetPath(), indices);
+  
+  EXPECT_EQUAL(0, db->GetMinimalPersistentLSN());
+  EXPECT_EQUAL(0, db->GetCurrentLSN());
+
+  StringSetOperation("testidx", "Key1","data1").ApplyTo(*db, 1);
+  StringSetOperation("testidx", "Key2","data2").ApplyTo(*db, 2);
+  StringSetOperation("testidx2", "Key1","data1").ApplyTo(*db, 3);
+  EXPECT_EQUAL(0, db->GetMinimalPersistentLSN());
+  EXPECT_EQUAL(3, db->GetCurrentLSN());
+
+  vector<pair<string, babudb::lsn_t> > index_versions = db->GetIndexVersions();
+  for (vector<pair<string, babudb::lsn_t> >::iterator i = index_versions.begin(); i != index_versions.end(); ++i) {
+    db->Snapshot(i->first);
+    db->CompactIndex(i->first, db->GetCurrentLSN());
+  }
+  
+  index_versions = db->GetIndexVersions();
+  for (vector<pair<string, babudb::lsn_t> >::iterator i = index_versions.begin(); i != index_versions.end(); ++i) {
+    EXPECT_EQUAL(3, i->second);
+  }
+  delete db;
+  
+  db = Database::Open(testPath("test").getHostCharsetPath(), indices);
+  EXPECT_EQUAL(3, db->GetMinimalPersistentLSN());
+  EXPECT_EQUAL(3, db->GetCurrentLSN());
+
+  index_versions = db->GetIndexVersions();
+  for (vector<pair<string, babudb::lsn_t> >::iterator i = index_versions.begin(); i != index_versions.end(); ++i) {
+    EXPECT_EQUAL(3, i->second);
+  }
   delete db;
 }

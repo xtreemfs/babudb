@@ -62,7 +62,7 @@ void Database::CompactIndex(const string& index_name, lsn_t snapshot_lsn) {
 
   LookupIterator snapshot = indices[index_name]->GetSnapshot(snapshot_lsn);
   ImmutableIndexWriter* writer = ImmutableIndex::Create(
-      name + "-" + index_name, snapshot_lsn - 1, 64*1024);
+      name + "-" + index_name, snapshot_lsn, 64*1024);
 
   while (snapshot.hasMore()) {
     writer->Add((*snapshot).first, (*snapshot).second);
@@ -78,11 +78,11 @@ void Database::Cleanup(const string& obsolete_prefix) {
   }
 }
 
-lsn_t Database::GetCurrentLSN() {
+lsn_t Database::GetCurrentLSN() const {
   return latest_lsn;
 }
 
-lsn_t Database::GetMinimalPersistentLSN() {
+lsn_t Database::GetMinimalPersistentLSN() const {
   return minimal_persistent_lsn;
 }
 

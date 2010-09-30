@@ -63,10 +63,10 @@ class Database {
   LookupIterator Lookup(const string& index, const Buffer& lower, const Buffer& upper);
 
   // The next Add or Remove call needs to have change_lsn = GetCurrentlLSN() + 1
-  lsn_t GetCurrentLSN();
+  lsn_t GetCurrentLSN() const;
   // Called after Open to find out from where on to replay the log.
   // Also any log merges need to start from here.
-  lsn_t GetMinimalPersistentLSN();
+  lsn_t GetMinimalPersistentLSN() const;
 
   // Snapshot index at current lsn, for later merging
   void Snapshot(const string& index_name);
