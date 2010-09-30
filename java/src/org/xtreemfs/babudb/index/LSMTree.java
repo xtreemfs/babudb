@@ -528,7 +528,7 @@ public class LSMTree {
     
     private boolean useMmap() {
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "DB size: " + OutputUtils.formatBytes(totalOnDiskSize));
-        return useMMap && totalOnDiskSize < mmapLimitBytes;
+        return useMMap && (mmapLimitBytes < 0 || totalOnDiskSize < mmapLimitBytes);
     }
     
     /**
