@@ -6,14 +6,10 @@
 using namespace YIELD;
 
 
-TEST_SUITE( SharedLibrary )
-
-TEST( SharedLibrary, SharedLibrary )
+TEST( SharedLibrary, babudb )
 {
 #ifdef _WIN32
 	SharedLibrary winsock( "ws2_32.dll" );
 	ASSERT_TRUE( winsock.getFunction( "gethostbyname" ) != NULL );
 #endif
 }
-
-TEST_MAIN( SharedLibrary )

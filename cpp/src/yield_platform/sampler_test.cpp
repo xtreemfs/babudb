@@ -5,14 +5,13 @@
 #include "yield/platform/sampler.h"
 using namespace YIELD;
 
-
-TEST_SUITE( Sampler )
+DECLARE_TEST_SUITE(babudb)
 
 template <class LockType>
 class SamplerTest : public TestCase
 {
 public:
-	SamplerTest( const char* short_description ) : TestCase( short_description, SamplerTestSuite() )
+	SamplerTest( const char* short_description ) : TestCase( short_description,  babudbTestSuite() )
 	{ }
 
 	void runTest()
@@ -68,5 +67,3 @@ public:
 
 SamplerTest<NOPLock> SamplerTestNOPLock_inst( "SamplerTestNOPLock" );
 SamplerTest<Mutex> SamplerTestMutex_inst( "SamplerTestMutex" );
-
-TEST_MAIN( Sampler )

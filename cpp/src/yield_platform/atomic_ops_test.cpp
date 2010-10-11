@@ -8,7 +8,7 @@ using namespace YIELD;
 
 TEST_SUITE( AtomicOps )
 
-TEST( atomic_cas, AtomicOps )
+TEST( atomic_cas, babudb )
 {
 	volatile uint32_t current_value = 0;
 	uint32_t old_value = atomic_cas( &current_value, 1, 0 );
@@ -21,7 +21,7 @@ TEST( atomic_cas, AtomicOps )
 #endif
 }
 
-TEST( atomic_inc, AtomicOps )
+TEST( atomic_inc, babudb )
 {
 	volatile uint32_t current_value = 0;
 	uint32_t new_current_value = atomic_inc( &current_value );
@@ -29,11 +29,9 @@ TEST( atomic_inc, AtomicOps )
 	ASSERT_EQUAL( new_current_value, 1 );
 }
 
-TEST( atomic_dec, AtomicOps )
+TEST( atomic_dec, babudb )
 {
 	volatile uint32_t current_value = 1;
 	uint32_t new_current_value = atomic_dec( &current_value );
 	ASSERT_EQUAL( new_current_value, 0 );
 }
-
-TEST_MAIN( AtomicOps )

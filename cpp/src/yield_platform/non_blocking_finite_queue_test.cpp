@@ -7,9 +7,7 @@ using namespace YIELD;
 
 #define NBFQ_LENGTH 8
 
-TEST_SUITE( NonBlockingFiniteQueue )
-
-TEST( NonBlockingFiniteQueue_normal, NonBlockingFiniteQueue )
+TEST( NonBlockingFiniteQueue_normal, babudb )
 {
 	unsigned long in_value = 1;
 	NonBlockingFiniteQueue<void*, NBFQ_LENGTH> nbfq;
@@ -20,7 +18,7 @@ TEST( NonBlockingFiniteQueue_normal, NonBlockingFiniteQueue )
 	ASSERT_TRUE( nbfq.try_dequeue() == NULL );
 }
 
-TEST( NonBlockingFiniteQueue_full, NonBlockingFiniteQueue )
+TEST( NonBlockingFiniteQueue_full, babudb )
 {
 	unsigned long in_values[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
 	NonBlockingFiniteQueue<void*, NBFQ_LENGTH> nbfq;
@@ -38,4 +36,3 @@ TEST( NonBlockingFiniteQueue_full, NonBlockingFiniteQueue )
 	}
 }
 
-TEST_MAIN( NonBlockingFiniteQueue )

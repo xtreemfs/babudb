@@ -11,9 +11,7 @@ using namespace YIELD;
 #define TEST_DIR_NAME "DiskOperations_test"
 
 
-TEST_SUITE( DiskOperations )
-
-TEST( DiskOperations, DiskOperations )
+TEST( DiskOperations, babudb )
 {
 	try
 	{
@@ -45,6 +43,3 @@ TEST( DiskOperations, DiskOperations )
 		throw exc;
 	}
 };
-
-TEST_MAIN( DiskOperations )
-

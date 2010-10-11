@@ -9,9 +9,7 @@ using namespace YIELD;
 using std::strlen;
 
 
-TEST_SUITE( string_hash )
-
-TEST( string_hash, string_hash )
+TEST( string_hash, babudb )
 {
 	uint32_t test_string_hash_nt1 = string_hash( "test string" );
 	uint32_t test_string_hash_nt2 = string_hash( "test string" );
@@ -28,5 +26,3 @@ TEST( string_hash, string_hash )
 	test_string_hash_partial_len = string_hash( "string", strlen( "string" ), test_string_hash_partial_len );
 	ASSERT_EQUAL( test_string_hash_nt1, test_string_hash_partial_len );
 }
-
-TEST_MAIN( string_hash )

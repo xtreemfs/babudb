@@ -9,10 +9,7 @@ using namespace YIELD;
 
 #define TEST_FILE_NAME "File_test.txt"
 
-
-TEST_SUITE( File )
-
-TEST( FileConstructors, File )
+TEST( FileConstructors, babudb )
 {
 	try
 	{
@@ -36,7 +33,7 @@ TEST( FileConstructors, File )
 	}
 };
 
-TEST( FileReadWrite, File )
+TEST( FileReadWrite, babudb )
 {
 	try
 	{
@@ -59,7 +56,3 @@ TEST( FileReadWrite, File )
 		throw exc;
 	}
 };
-
-
-TEST_MAIN( File )
-

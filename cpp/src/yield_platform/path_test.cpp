@@ -12,9 +12,8 @@ using namespace YIELD;
 #endif
 */
 
-TEST_SUITE( Path )
 
-TEST( PathASCII, Path )
+TEST( PathASCII, babudb )
 {
 	Path path( TEST_FILE_NAME_ASCII );
 	ASSERT_TRUE( path.getHostCharsetPath() == TEST_FILE_NAME_ASCII );
@@ -25,7 +24,7 @@ TEST( PathASCII, Path )
 
 /*
 #ifdef _WIN32
-TEST( PathUnicode, Path )
+TEST( PathUnicode, babudb )
 {
 	Path path( TEST_FILE_NAME_UNICODE );
 	ASSERT_TRUE( path.getUTF8Path() == TEST_FILE_NAME_UNICODE, "input path does not match output path" );
@@ -34,7 +33,7 @@ TEST( PathUnicode, Path )
 #endif
 */
 
-TEST( PathCast, Path )
+TEST( PathCast, babudb )
 {
 	Path path( TEST_FILE_NAME_ASCII );
 	std::string path_str = ( std::string )path;
@@ -45,7 +44,7 @@ TEST( PathCast, Path )
 #endif
 }
 
-TEST( PathCat, Path )
+TEST( PathCat, babudb )
 {
 	Path path1( "hello" ), path2( TEST_FILE_NAME_ASCII );
 	Path path3 = path1 + path2;
@@ -56,7 +55,7 @@ TEST( PathCat, Path )
 #endif
 }
 
-TEST( PathSplit, Path )
+TEST( PathSplit, babudb )
 {
 	{
 		Path path( "head" );
@@ -84,5 +83,3 @@ TEST( PathSplit, Path )
 		ASSERT_TRUE( ( std::string )split_path.second == "tail" );
 	}
 }
-
-TEST_MAIN( Path )

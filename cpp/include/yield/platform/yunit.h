@@ -92,6 +92,9 @@ YIELD::TestSuite& TestSuiteName##TestSuite() { static YIELD::TestSuite* ts = new
 class TestSuiteName##TestSuiteDest { public: ~TestSuiteName##TestSuiteDest() { delete &TestSuiteName##TestSuite(); }}; \
 TestSuiteName##TestSuiteDest TestSuiteName##TestSuiteDestObj;
 
+#define DECLARE_TEST_SUITE( TestSuiteName ) \
+extern YIELD::TestSuite& TestSuiteName##TestSuite();
+
 #define TESTEX( TestCaseName, TestCaseParentClassName, TestSuiteName ) \
 extern YIELD::TestSuite& TestSuiteName##TestSuite(); \
 class TestCaseName##Test : public TestCaseParentClassName \

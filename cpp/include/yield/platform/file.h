@@ -54,6 +54,8 @@ namespace YIELD
 		virtual bool close();
 		bool isOpen();
 
+		static bool CopyFile(const std::string& from, const std::string& to);
+
 	protected:
 		unsigned long flags;
 

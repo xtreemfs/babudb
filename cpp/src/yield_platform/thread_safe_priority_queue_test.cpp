@@ -6,8 +6,6 @@
 using namespace YIELD;
 
 
-TEST_SUITE( ThreadSafePriorityQueue )
-
 struct TestElement
 {
 public:
@@ -23,7 +21,7 @@ struct TestElementComparator
 	}
 };
 
-TEST( ThreadSafePriorityQueue, ThreadSafePriorityQueue )
+TEST( ThreadSafePriorityQueue, babudb )
 {
 	ThreadSafePriorityQueue<TestElement, TestElementComparator> queue;
 
@@ -39,5 +37,3 @@ TEST( ThreadSafePriorityQueue, ThreadSafePriorityQueue )
 	dequeued = queue.try_dequeue();
 	ASSERT_EQUAL( dequeued.my_size, 3 );
 }
-
-TEST_MAIN( ThreadSafePriorityQueue )

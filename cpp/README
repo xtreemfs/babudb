@@ -1,12 +1,60 @@
-General
-------------
+-- General
+
+babudb/cpp is a library that implements several database abstractions that can
+be combined to build an embedded database. The glue code for building a
+non-replicated database with string-type index keys is provided.
+
+babudb is built around the concept of log-structured merge (LSM) trees. A LSM
+tree is an index that consists of an immutable persistent base index and one or
+several overlays. In combination the base and its overlays yield the current
+state of the index. The oldest overlay index can be merged with the base index
+in order to generated a more recent base.
+
+babudb manages the consistency of indices with the write-ahead operation log. It
+does not define an operation semantics by itself, but merely uses the concept of
+log-sequence numbers (LSNs) to associate logged operations with index state.
+
+For more information please refer to the Database class in database.h.
+
+A simple database with several indices that map string keys to string values
+can be found in profiles/string_db.h
+
+
+-- Strength and Weaknesses
+
+babudb is designed as a light-weight database system around an
+application-defined log format. If you need full control over the log, babudb
+is for you. 
+
+As babudb comes with wrapper classes for a simple mult-index database, it can
+also help applications that need a light-weight BSD-licensed embedded database.
+
+Features:
+* full control over the operations log
+* light-weight and BSD-licensed
+* multi-platform, no dependencies
+
+babudb's on-disk formats are still pretty basic and lack several features,
+mostly around compression, but also around corruption handling. They will
+change.
+
+Therefore don't use babudb if you need:
+* a future-proof on-disk format
+* thread or process-level concurrency handling
+* a mature code base
+* a query engine
+* large databases on 32 bit systems
+* a relational data model
+
+
+--- Building
 
 babudb/cpp's build system is based on CMake (http://www.cmake.com). With CMake
 you can generate build or project files for your favorite build environment
 and platform.
 
-babudb's only dependency, the platform classes of yield are part of the
-repository (third_party/yield_platform) and are part of the CMake build files.
-
 CMake exports two targets: a library for linking with your applications and a
 unit test executable.
+
+babudb contains yield_platform, an old snapshot of the platform foundation
+classes of yield (http://yield.googlecode.com).

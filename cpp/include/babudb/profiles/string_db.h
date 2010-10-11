@@ -36,7 +36,7 @@ public:
   // TODO: hide the LookupIterator
   LookupIterator Lookup(const string& index, const string& lower, const string& upper);
 
-  // Merge the log and indices; truncate the log; prefix the obsolete data with to
+  // Merge the log and indices; truncate the log; prefix the obsolete data with "to"
   void Compact(const string& to);
 
 private:

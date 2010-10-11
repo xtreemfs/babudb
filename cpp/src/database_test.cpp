@@ -65,7 +65,7 @@ TEST_TMPDIR(Database_Migration,babudb)
   delete db;
 }
 
-TEST_TMPDIR(Database_Snapshot,babudb)
+TEST_TMPDIR(Database_SnapshotAndImport,babudb)
 {
   StringOrder myorder;
   std::vector<babudb::IndexDescriptor> indices;
@@ -89,19 +89,45 @@ TEST_TMPDIR(Database_Snapshot,babudb)
     db->CompactIndex(i->first, db->GetCurrentLSN());
   }
   
+  // The database has not loaded the new index base yet,
+  // we merely created index files with a newer version
   index_versions = db->GetIndexVersions();
-  for (vector<pair<string, babudb::lsn_t> >::iterator i = index_versions.begin(); i != index_versions.end(); ++i) {
-    EXPECT_EQUAL(3, i->second);
+  for (vector<pair<string, babudb::lsn_t> >::iterator i = index_versions.begin();
+       i != index_versions.end(); ++i) {
+    EXPECT_EQUAL(0, i->second);
   }
+
+  // Now reopen the index files we have just compacted
+  db->ReopenIndices();
+  index_versions = db->GetIndexVersions();
+  for (vector<pair<string, babudb::lsn_t> >::iterator i = index_versions.begin();
+       i != index_versions.end(); ++i) {
+    EXPECT_EQUAL(db->GetCurrentLSN(), i->second);
+  }
+
   delete db;
   
   db = Database::Open(testPath("test").getHostCharsetPath(), indices);
   EXPECT_EQUAL(3, db->GetMinimalPersistentLSN());
   EXPECT_EQUAL(3, db->GetCurrentLSN());
+  const int current_lsn = db->GetCurrentLSN();
 
   index_versions = db->GetIndexVersions();
   for (vector<pair<string, babudb::lsn_t> >::iterator i = index_versions.begin(); i != index_versions.end(); ++i) {
     EXPECT_EQUAL(3, i->second);
   }
+  delete db;
+
+  // And now import the index snapshots into a new database
+  Database::ImportIndex(
+      testPath("copy").getHostCharsetPath(), "testidx", current_lsn,
+      testPath("test-testidx_3.idx"), false);
+  Database::ImportIndex(
+      testPath("copy").getHostCharsetPath(), "testidx2", current_lsn,
+      testPath("test-testidx2_3.idx"), false);
+
+  db = Database::Open(testPath("copy").getHostCharsetPath(), indices);
+  EXPECT_EQUAL(3, db->GetMinimalPersistentLSN());
+  EXPECT_EQUAL(3, db->GetCurrentLSN());
   delete db;
 }

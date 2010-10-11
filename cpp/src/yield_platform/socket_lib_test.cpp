@@ -13,15 +13,13 @@ using std::strcmp;
 using std::strncmp;
 
 
-TEST_SUITE( SocketLib )
-
-TEST( SocketLib_init, SocketLib )
+TEST( SocketLib_init, babudb )
 {
 	SocketLib::init();
 	SocketLib::init();
 }
 
-TEST( SocketLib_getLocalHost, SocketLib )
+TEST( SocketLib_getLocalHost, babudb )
 {
 	SocketLib::init();
 	const char *local_host_name = SocketLib::getLocalHostName(), *local_host_fqdn = SocketLib::getLocalHostFQDN();
@@ -31,7 +29,7 @@ TEST( SocketLib_getLocalHost, SocketLib )
 }
 
 
-TEST( SocketLib_createSocket, SocketLib )
+TEST( SocketLib_createSocket, babudb )
 {
 	SocketLib::init();
 	socket_t s = SocketLib::createSocket( true );
@@ -42,7 +40,7 @@ TEST( SocketLib_createSocket, SocketLib )
 	SocketLib::close( s );
 }
 
-TEST( SocketLib_pipe, SocketLib )
+TEST( SocketLib_pipe, babudb )
 {
 	SocketLib::init();
 	socket_t ends[2];
@@ -61,7 +59,7 @@ TEST( SocketLib_pipe, SocketLib )
 	ASSERT_EQUAL( m_out, m_in );
 }
 
-TEST( SocketLib_setBlocking, SocketLib )
+TEST( SocketLib_setBlocking, babudb )
 {
 	SocketLib::init();
 	socket_t s = SocketLib::createSocket( true );
@@ -69,13 +67,14 @@ TEST( SocketLib_setBlocking, SocketLib )
 	if ( !SocketLib::setNonBlocking( s ) ) throw PlatformException();
 }
 
-TEST( SocketLib_reverseLookupHost, SocketLib )
+TEST( SocketLib_reverseLookupHost, babudb )
 {
 	SocketLib::init();
 	char host[MAX_FQDN_LENGTH];
 
 #ifdef _WIN32
 	// String localhost=0
+  // Needs an active network interface
 	SocketLib::reverseLookupHost( 0, 22, host, MAX_FQDN_LENGTH );
 	ASSERT_TRUE( strcmp( host, "localhost" ) == 0 || strcmp( host, SocketLib::getLocalHostName() ) == 0 || strcmp( host, SocketLib::getLocalHostFQDN() ) == 0 );
 // Linux returns "0.0.0.0" for ip = 0
@@ -104,7 +103,7 @@ TEST( SocketLib_reverseLookupHost, SocketLib )
 	*/
 }
 
-TEST( SocketLib_resolveHost, SocketLib )
+TEST( SocketLib_resolveHost, babudb )
 {
 	SocketLib::init();
 	unsigned int ip = SocketLib::resolveHost( NULL );
@@ -117,7 +116,7 @@ TEST( SocketLib_resolveHost, SocketLib )
 	ASSERT_TRUE( ip != 0 );
 }
 
-TEST( SocketLib_sockaddr, SocketLib )
+TEST( SocketLib_sockaddr, babudb )
 {
 	sockaddr_in sin;
 	SocketLib::getsockaddr_inFromIP( 0, 27095, sin );
@@ -128,6 +127,3 @@ TEST( SocketLib_sockaddr, SocketLib )
 	ASSERT_EQUAL( S_ADDR( sin ), ntohl( ip ) );
 	ASSERT_EQUAL( sin.sin_port, ntohs( 27095 ) );
 }
-
-TEST_MAIN( SocketLib )
-

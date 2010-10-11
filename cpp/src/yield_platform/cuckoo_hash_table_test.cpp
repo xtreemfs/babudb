@@ -7,9 +7,7 @@
 using namespace YIELD;
 
 
-TEST_SUITE( CuckooHashTable )
-
-TEST( CuckooHashTable_normal, CuckooHashTable )
+TEST( CuckooHashTable_normal, babudb )
 {
 	uint32_t key = string_hash( "key" );
 	CuckooHashTable<uint32_t, uint32_t> cht;
@@ -19,7 +17,7 @@ TEST( CuckooHashTable_normal, CuckooHashTable )
 	ASSERT_EQUAL( cht.size(), 1 );
 }
 
-TEST( CuckooHashTable_duplicate, CuckooHashTable )
+TEST( CuckooHashTable_duplicate,  babudb )
 {
 	uint32_t key = string_hash( "key" );
 	CuckooHashTable<uint32_t, uint32_t> cht;
@@ -30,7 +28,7 @@ TEST( CuckooHashTable_duplicate, CuckooHashTable )
 	ASSERT_EQUAL( cht.size(), 2 );
 }
 
-TEST( CuckooHashTable_erase, CuckooHashTable )
+TEST( CuckooHashTable_erase, babudb )
 {
 	uint32_t key = string_hash( "key" );
 	CuckooHashTable<uint32_t, uint32_t> cht;
@@ -46,7 +44,7 @@ TEST( CuckooHashTable_erase, CuckooHashTable )
 	ASSERT_EQUAL( cht.size(), 1 );
 }
 
-TEST( CuckooHashTable_clear, CuckooHashTable )
+TEST( CuckooHashTable_clear, babudb )
 {
 	uint32_t key = string_hash( "key" );
 	CuckooHashTable<uint32_t, uint32_t> cht;
@@ -57,7 +55,7 @@ TEST( CuckooHashTable_clear, CuckooHashTable )
 	ASSERT_EQUAL( cht.size(), 0 );
 }
 
-TEST( CuckooHashTable_iterator, CuckooHashTable )
+TEST( CuckooHashTable_iterator, babudb )
 {
 	uint32_t key = string_hash( "key" );
 	CuckooHashTable<uint32_t, uint32_t> cht;
@@ -73,5 +71,3 @@ TEST( CuckooHashTable_iterator, CuckooHashTable )
 		FAIL();
 	}
 }
-
-TEST_MAIN( CuckooHashTable )

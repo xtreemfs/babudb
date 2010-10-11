@@ -12,9 +12,7 @@ using namespace YIELD;
 #define TEST_DIR_NAME "Stat_test"
 
 
-TEST_SUITE( Stat )
-
-TEST( Stat, Stat )
+TEST( Stat, babudb )
 {
 	try
 	{
@@ -38,5 +36,3 @@ TEST( Stat, Stat )
 		throw exc;
 	}
 }
-
-TEST_MAIN( Stat )

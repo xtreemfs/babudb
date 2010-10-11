@@ -8,33 +8,30 @@
 using namespace YIELD;
 
 
-TEST_SUITE( Thread )
-
-
-TEST( Thread_getCurrentThreadId, Thread )
+TEST( Thread_getCurrentThreadId, babudb )
 {
 	ASSERT_TRUE( Thread::getCurrentThreadId() > 0 );
 }
 
-TEST( Thread_setCurrentThreadName, Thread )
+TEST( Thread_setCurrentThreadName, babudb )
 {
 	Thread::setCurrentThreadName( "test thread" );
 }
 
-TEST( Thread_yield, Thread )
+TEST( Thread_yield, babudb )
 {
 	Thread::yield();
 }
 
-TEST( Thread_sleep, Thread )
+TEST( Thread_sleep, babudb )
 {
 	double start_time_ms = Time::getCurrentEpochTimeMS();
-	Thread::sleep( 10 * NS_IN_MS );
+	Thread::sleep( 100 * NS_IN_MS );
 	double slept_ms = Time::getCurrentEpochTimeMS() - start_time_ms;
 	ASSERT_TRUE( slept_ms >= 1 );
 }
 
-TEST( Thread_TLS, Thread )
+TEST( Thread_TLS, babudb )
 {
 	unsigned long tls_key = Thread::createTLSKey();
 	unsigned long my_value = 42;
@@ -46,7 +43,7 @@ TEST( Thread_TLS, Thread )
 class ThreadTestCase : public TestCase, public Thread
 {
 public:
-	ThreadTestCase( const char* short_description ) : TestCase( short_description, ThreadTestSuite() )
+	ThreadTestCase( const char* short_description ) : TestCase( short_description, babudbTestSuite() )
 	{ }
 
 	void runTest()
@@ -89,5 +86,3 @@ THREAD_TEST( Thread_SetName )
 	thread.setName( "test thread" );
 	THREAD_TEST_END;
 }
-
-TEST_MAIN( Thread )

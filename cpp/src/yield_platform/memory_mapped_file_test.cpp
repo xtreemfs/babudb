@@ -15,13 +15,12 @@ using namespace YIELD;
 #define TEST_FILE_NAME "MemoryMappedFile_test.dat"
 #define TESTSTRING "Test string"
 
-
-TEST_SUITE( MemoryMappedFile )
+DECLARE_TEST_SUITE(babudb)
 
 class MemoryMappedFileTest : public TestCase
 {
 public:
-	MemoryMappedFileTest() : TestCase( "MemoryMappedFileTest", MemoryMappedFileTestSuite() ) { }
+	MemoryMappedFileTest() : TestCase( "MemoryMappedFileTest", babudbTestSuite() ) { }
 
 	void setUp()
 	{
@@ -48,5 +47,3 @@ public:
 };
 
 MemoryMappedFileTest MemoryMappedFileTest_inst;
-
-TEST_MAIN( MemoryMappedFile )

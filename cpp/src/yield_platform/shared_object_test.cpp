@@ -6,8 +6,6 @@
 using namespace YIELD;
 
 
-TEST_SUITE( SharedObject )
-
 class ExposedSharedObject : public SharedObject
 {
 public:
@@ -26,7 +24,7 @@ public:
 
 bool ExposedSharedObject::deleted = false;
 
-TEST( SharedObject, SharedObject )
+TEST( SharedObject, babudb )
 {
 	ExposedSharedObject* so = new ExposedSharedObject;
 	SharedObject::decRef( so );
@@ -40,7 +38,7 @@ TEST( SharedObject, SharedObject )
 	ASSERT_TRUE( ExposedSharedObject::deleted );
 }
 
-TEST( auto_SharedObject, SharedObject )
+TEST( auto_SharedObject, babudb )
 {
 	// Construct, go out of scope
 	{
@@ -93,5 +91,3 @@ TEST( auto_SharedObject, SharedObject )
 	}
 	ASSERT_TRUE( ExposedSharedObject::deleted );
 }
-
-TEST_MAIN( SharedObject )

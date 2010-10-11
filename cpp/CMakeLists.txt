@@ -6,10 +6,14 @@ message(STATUS "babudb root directory: " ${SRC_DIR})
 # Important for installing yield_platform to lib/
 set(CMAKE_INSTALL_PREFIX ${SRC_DIR})
 
-include_directories(include/ src/ third_party/yield_platform/include)
+include_directories(include/ src/)
 
 # Get all files
-file(GLOB ALL_FILES src/*.cpp src/log/*.cpp src/index/*.cpp)
+file(GLOB ALL_FILES
+     src/*.cpp
+     src/log/*.cpp
+     src/index/*.cpp 
+     src/yield_platform/*.cpp)
 
 # Separate code and tests
 set(SRC_FILES "")
@@ -22,16 +26,18 @@ foreach(FILE ${ALL_FILES})
   endif()
 endforeach(FILE)
 
-add_subdirectory("third_party/yield_platform")
 add_library(babudb ${SRC_FILES})
+
+source_group(platform ".*platform.*")
+source_group(log ".*/log/.*")
+source_group(index ".*/index/.*")
 
 list(APPEND TEST_FILES "src/test_main.cpp")
 add_executable(babudb_tests ${TEST_FILES})
-target_link_libraries(babudb_tests babudb yield_platform)
+target_link_libraries(babudb_tests babudb)
 
 set_target_properties(babudb PROPERTIES COMPILE_FLAGS "/MTd")
 set_target_properties(babudb_tests PROPERTIES COMPILE_FLAGS "/MTd")
-set_target_properties(yield_platform PROPERTIES COMPILE_FLAGS "/MTd")
 
 install(TARGETS babudb babudb_tests
         RUNTIME DESTINATION "${SRC_DIR}/bin"

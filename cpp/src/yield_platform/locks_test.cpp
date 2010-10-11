@@ -7,12 +7,12 @@
 using namespace YIELD;
 
 
-TEST_SUITE( Locks )
+DECLARE_TEST_SUITE( babudb )
 
 class MutexTest : public TestCase, public Thread
 {
 public:
-	MutexTest() : TestCase( "MutexTest", LocksTestSuite() )
+	MutexTest() : TestCase( "MutexTest",  babudbTestSuite() )
 	{ }
 
 	void runTest()
@@ -44,7 +44,7 @@ MutexTest MutexTest_inst;
 class CountingSemaphoreTest : public TestCase, public Thread
 {
 public:
-	CountingSemaphoreTest() : TestCase( "CountingSemaphoreTest", LocksTestSuite() )
+	CountingSemaphoreTest() : TestCase( "CountingSemaphoreTest", babudbTestSuite() )
 	{ }
 
 	void runTest()
@@ -68,5 +68,3 @@ public:
 };
 
 CountingSemaphoreTest CountingSemaphoreTest_inst;
-
-TEST_MAIN( Locks )

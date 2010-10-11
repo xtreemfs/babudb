@@ -17,10 +17,6 @@
 // extended with volatile overlay indices. After Open() the application has to replay its
 // log from GetMinimalLSN() + 1 against the database to re-establish the current state.
 
-// Volatile index overlays can be merged into the persistent index with the Migrate()
-// call. The application marks LSNs which form a complete unit to be merged with the
-// MarkMergeUnit() call.
-
 // TODO: 
 // - implement index with non-unique keys (for full-text indices)
 //   can be implemented as non-unique key or multi-value index.
@@ -54,6 +50,9 @@ class Database {
   static Database* Open(const string& name, const std::vector<IndexDescriptor>& indices);
   ~Database();
 
+  // Reopen indices, possible from a more recent, compacted version
+  void ReopenIndices();
+
   void Add(const string& index_name, lsn_t lsn, const Buffer& key, const Buffer& value);
   void Remove(const string& index_name, lsn_t lsn, const Buffer& key);
 
@@ -68,26 +67,50 @@ class Database {
   // Also any log merges need to start from here.
   lsn_t GetMinimalPersistentLSN() const;
 
+  // Index versions:
+  // - every index can have multiple versions on disk
+  // - on startup the latest intact version is read
+  // - new versions are created with 
+  //   lsn_t snapshot_lsn = GetCurrentLSN();
+  //   Snapshot(index_name);  // @snapshot_lsn
+  //   // Database can now be written again,
+  //   // compaction can be done in parallel
+  //   CompactIndex(index_name, snapshot_lsn);
+  // - Cleanup: prepends all obsolete index files
+  //   with a prefix, so that you can glob and delete them.
+
   // Snapshot index at current lsn, for later merging
   void Snapshot(const string& index_name);
   // Compact the index snapshot. It is thread-safe in the sense that normal database
   // operations can continue concurrently.
   void CompactIndex(const string& name, lsn_t snapshot_lsn);
-  // Cleanup obsolete indicees by moving them to a directory from which they can
+  // Cleanup obsolete indices by moving them to a directory from which they can
   // be later deleted
   void Cleanup(const string& obsolete_prefix);
 
+  // Index import/export
   // Get latest versions (characterized by their lsn) of all immutable indices
   std::vector<std::pair<string, lsn_t> > GetIndexVersions();
-  // Read a certain index version
-  int ReadIndex(const string& name, lsn_t version, int offset, char* buffer, int bytes);
   // Get paths of used indices
   std::vector<std::pair<string, string> > GetIndexPaths();
 
+  static string GetIndexFile(
+      const string& db_name, const string& index_name,
+      lsn_t version);                           
+
+  // Import an index version from a file (file will be renamed)
+  static bool ImportIndex(const string& database_name,
+                          const string& index_name,
+                          lsn_t index_version,
+                          const string& source_filename,
+                          bool delete_source);
+
 private:
   Database(const string& name);
+  void CloseIndices();
+  void OpenIndices(const std::vector<IndexDescriptor>& index_list);
 
-  std::map<string,MergedIndex*> indices;
+  std::map<string, MergedIndex*> indices;
   string name;
 
   lsn_t latest_lsn;  // the latest known LSN in the Database state

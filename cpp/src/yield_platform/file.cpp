@@ -8,6 +8,7 @@ using namespace YIELD;
 
 #ifdef _WIN32
 #include "yield/platform/windows.h"
+#undef CopyFile
 #else
 #define _XOPEN_SOURCE 600
 #define _LARGEFILE64_SOURCE 1
@@ -264,3 +265,25 @@ uint64_t AIOFile::seek( uint64_t offset, unsigned char whence )
 #endif
 }
 */
+
+
+bool File::CopyFile(const std::string& from, const std::string& to) {
+  File* source = File::open(from);
+  File* dest = File::open(to, O_WRONLY|O_TRUNC);
+
+  const ssize_t buffer_size = 1024 * 1024;
+  char* buffer = new char[buffer_size];
+
+  ssize_t read = buffer_size;
+  while (read == buffer_size) {
+    read = source->read(buffer, buffer_size);
+	  if (dest->write(buffer, read) != read) {
+	    return false;
+	  }
+  }
+
+  delete buffer;
+  delete source;
+  delete dest;
+  return true;
+}

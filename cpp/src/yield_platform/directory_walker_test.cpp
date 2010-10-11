@@ -18,12 +18,12 @@ using namespace std;
 #endif
 
 
-TEST_SUITE( DirectoryWalker )
+DECLARE_TEST_SUITE( babudb )
 
 class DirectoryWalkerTest : public TestCase
 {
 public:
-	DirectoryWalkerTest() : TestCase( "DirectoryWalkerTest", DirectoryWalkerTestSuite() ) { }
+	DirectoryWalkerTest() : TestCase( "DirectoryWalkerTest", babudbTestSuite() ) { }
 
 	void setUp()
 	{
