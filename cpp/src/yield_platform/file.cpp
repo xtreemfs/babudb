@@ -268,8 +268,12 @@ uint64_t AIOFile::seek( uint64_t offset, unsigned char whence )
 
 
 bool File::CopyFile(const std::string& from, const std::string& to) {
-  File* source = File::open(from);
+  File* source = File::open(from, O_RDONLY);
+  if (source == NULL)
+    return false;
   File* dest = File::open(to, O_WRONLY|O_TRUNC);
+  if (dest == NULL)
+    return false;
 
   const ssize_t buffer_size = 1024 * 1024;
   char* buffer = new char[buffer_size];

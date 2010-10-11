@@ -119,12 +119,12 @@ TEST_TMPDIR(Database_SnapshotAndImport,babudb)
   delete db;
 
   // And now import the index snapshots into a new database
-  Database::ImportIndex(
+  EXPECT_TRUE(Database::ImportIndex(
       testPath("copy").getHostCharsetPath(), "testidx", current_lsn,
-      testPath("test-testidx_3.idx"), false);
-  Database::ImportIndex(
+      testPath("test-testidx_3.idx"), false));
+  EXPECT_TRUE(Database::ImportIndex(
       testPath("copy").getHostCharsetPath(), "testidx2", current_lsn,
-      testPath("test-testidx2_3.idx"), false);
+      testPath("test-testidx2_3.idx"), false));
 
   db = Database::Open(testPath("copy").getHostCharsetPath(), indices);
   EXPECT_EQUAL(3, db->GetMinimalPersistentLSN());
