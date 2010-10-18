@@ -64,3 +64,10 @@ void LogSection::Commit() {
 	in_transaction = false;
 	commit();
 }
+
+void LogSection::ForwardLSN(babudb::lsn_t new_lsn) {
+  ASSERT_TRUE(new_lsn > next_lsn);
+  next_lsn = new_lsn - 1;
+  StartTransaction();
+  Commit();
+}

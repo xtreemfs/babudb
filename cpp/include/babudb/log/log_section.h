@@ -46,6 +46,9 @@ public:
   // Make the current transaction durable
 	void Commit();
 
+  // Commit an empty transaction with a new LSN
+  void ForwardLSN(babudb::lsn_t);
+
 private:
 	bool in_transaction;
 	lsn_t first_lsn; // the first lsn in this file
