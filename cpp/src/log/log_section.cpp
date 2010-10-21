@@ -65,7 +65,7 @@ void LogSection::Commit() {
 	commit();
 }
 
-void LogSection::ForwardLSN(babudb::lsn_t new_lsn) {
+void LogSection::SeekForwardTo(babudb::lsn_t new_lsn) {
   ASSERT_TRUE(new_lsn > next_lsn);
   next_lsn = new_lsn - 1;
   StartTransaction();

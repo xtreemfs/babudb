@@ -47,7 +47,7 @@ public:
 	void Commit();
 
   // Commit an empty transaction with a new LSN
-  void ForwardLSN(babudb::lsn_t);
+  void SeekForwardTo(babudb::lsn_t);
 
 private:
 	bool in_transaction;
