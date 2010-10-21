@@ -31,8 +31,11 @@
   * added configuration options to disable and control memory-mapping of database files
   * improved robustness when shutting down databases while checkpoints are being created
   
-2910-09-27: release 0.4.4
+2010-09-27: release 0.4.4
   * fixed a bug that could cause data loss during checkpoints if memory mapping was disabled
   * added support for range queries
   * fixed synchronization issues at index level
   * added tool that creates an XML dump of all databases
+  
+2010-10-21: release 0.4.5
+  * fixed issue #12, which caused a failure when trying to initialize a database with an LSN > 2^31
