@@ -206,7 +206,7 @@ public class LSMDatabase {
                     + "' does not exist");
             
             int maxView = -1;
-            int maxSeq = -1;
+            long maxSeq = -1;
             Pattern p = Pattern.compile(SNAPSHOT_FILENAME_REGEXP);
             for (String fname : files) {
                 Matcher m = p.matcher(fname);
@@ -214,7 +214,7 @@ public class LSMDatabase {
                 Logging.logMessage(Logging.LEVEL_DEBUG, this, "inspecting snapshot: " + fname);
                 
                 int view = Integer.valueOf(m.group(2));
-                int seq = Integer.valueOf(m.group(3));
+                long seq = Long.valueOf(m.group(3));
                 if (view > maxView) {
                     maxView = view;
                     maxSeq = seq;
