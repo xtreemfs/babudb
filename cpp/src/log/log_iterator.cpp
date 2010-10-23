@@ -15,25 +15,28 @@ template class LogIterator<std::vector<LogSection*>::iterator >;
 template class LogIterator<std::vector<LogSection*>::reverse_iterator >;
 
 template <>
-RecordIterator LogIterator<std::vector<LogSection*>::iterator>::section_begin(std::vector<LogSection*>::iterator& section) {
+RecordIterator LogIterator<std::vector<LogSection*>::iterator>::section_begin(
+    const std::vector<LogSection*>::iterator& section) {
 	return (*section)->begin();
 }
 
 template <>
-RecordIterator LogIterator<std::vector<LogSection*>::reverse_iterator>::section_begin(std::vector<LogSection*>::reverse_iterator& section) {
+RecordIterator LogIterator<std::vector<LogSection*>::reverse_iterator>::section_begin(
+    const std::vector<LogSection*>::reverse_iterator& section) {
 	return (*section)->rbegin();
 }
 
 template <>
-RecordIterator LogIterator<std::vector<LogSection*>::iterator>::section_end(std::vector<LogSection*>::iterator& section) {
+RecordIterator LogIterator<std::vector<LogSection*>::iterator>::section_end(
+    const std::vector<LogSection*>::iterator& section) {
 	return (*section)->end();
 }
 
 template <>
-RecordIterator LogIterator<std::vector<LogSection*>::reverse_iterator>::section_end(std::vector<LogSection*>::reverse_iterator& section) {
+RecordIterator LogIterator<std::vector<LogSection*>::reverse_iterator>::section_end(
+    const std::vector<LogSection*>::reverse_iterator& section) {
 	return (*section)->rend();
 }
-
 
 
 template <class T>

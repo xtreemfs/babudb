@@ -35,8 +35,8 @@ public:
 	record_type_t getType() const;
   lsn_t GetLSN() const { return lsn; };
 
-	static RecordIterator section_begin(T& section);
-	static RecordIterator section_end(T& section);
+	static RecordIterator section_begin(const T& section);
+	static RecordIterator section_end(const T& section);
 
 private:
 	T  sections_begin;
