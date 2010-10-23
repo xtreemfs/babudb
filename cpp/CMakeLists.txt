@@ -36,8 +36,10 @@ list(APPEND TEST_FILES "src/test_main.cpp")
 add_executable(babudb_tests ${TEST_FILES})
 target_link_libraries(babudb_tests babudb)
 
-set_target_properties(babudb PROPERTIES COMPILE_FLAGS "/MTd")
-set_target_properties(babudb_tests PROPERTIES COMPILE_FLAGS "/MTd")
+if (MSVC)
+  set_target_properties(babudb PROPERTIES COMPILE_FLAGS "/MTd")
+  set_target_properties(babudb_tests PROPERTIES COMPILE_FLAGS "/MTd")
+endif (MSVC)
 
 install(TARGETS babudb babudb_tests
         RUNTIME DESTINATION "${SRC_DIR}/bin"
