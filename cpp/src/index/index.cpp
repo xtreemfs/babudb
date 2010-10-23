@@ -31,7 +31,7 @@ ImmutableIndex::ImmutableIndex(LogStorage* mm,
 
 ImmutableIndex* ImmutableIndex::Load(const string& name, lsn_t lsn,
                                      const KeyOrder& order) {
-  LogStorage* mmap = PersistentLogStorage::Open(name);
+  LogStorage* mmap = PersistentLogStorage::OpenReadOnly(name);
   if (mmap == NULL)
      return NULL;
 
