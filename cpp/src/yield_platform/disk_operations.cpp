@@ -142,7 +142,7 @@ bool DiskOperations::rename( const Path& from_path, const Path& to_path, unsigne
 #ifdef _WIN32
 	if ( MoveFileExW( from_path.getWidePath().c_str(), to_path.getWidePath().c_str(), MOVEFILE_REPLACE_EXISTING ) )
 #else
-	if ( ::rename( from_path.getHostCharsetPath().c_str(), to_path.getHostCharsetPath().c_str() ) >= 0 )
+	if ( rename( from_path.getHostCharsetPath().c_str(), to_path.getHostCharsetPath().c_str() ) >= 0 )
 #endif
 		return true;
 	else if ( ( flags & O_THROW_EXCEPTIONS ) == O_THROW_EXCEPTIONS )

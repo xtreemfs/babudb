@@ -194,17 +194,19 @@ static bool MoreRecent(const std::pair<YIELD::Path,lsn_t>& one,
   return one.second > two.second;
 }
 
-ImmutableIndex* ImmutableIndex::LoadLatestIntactIndex(DiskIndices& on_disk, const KeyOrder& order) {
-	// find latest intact ImmutableIndex
-	lsn_t latest_intact_lsn = 0;
-	YIELD::Path latest_intact_path("");
+ImmutableIndex* ImmutableIndex::LoadLatestIntactIndex(
+    DiskIndices& on_disk, const KeyOrder& order) {
+  // find latest intact ImmutableIndex
+  lsn_t latest_intact_lsn = 0;
+  YIELD::Path latest_intact_path("");
   sort(on_disk.begin(), on_disk.end(), MoreRecent);
 
-	for (DiskIndices::iterator i = on_disk.begin(); i != on_disk.end(); ++i) {
+  for (DiskIndices::iterator i = on_disk.begin(); i != on_disk.end(); ++i) {
     ImmutableIndex* result = Load(i->first, i->second, order);
-    if (result)
+    if (result) {
       return result;
 	}
+  }
   return NULL;
 }
 

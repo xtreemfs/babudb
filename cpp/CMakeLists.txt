@@ -40,6 +40,9 @@ if (MSVC)
   set_target_properties(babudb PROPERTIES COMPILE_FLAGS "/MTd")
   set_target_properties(babudb_tests PROPERTIES COMPILE_FLAGS "/MTd")
 endif (MSVC)
+if (CMAKE_COMPILER_IS_GNUCXX)
+  target_link_libraries(babudb_tests pthread rt)
+endif()
 
 install(TARGETS babudb babudb_tests
         RUNTIME DESTINATION "${SRC_DIR}/bin"

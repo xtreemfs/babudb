@@ -15,34 +15,34 @@ class LogSection;
 template <class T>
 class LogIterator {
 public:
-	LogIterator(const LogIterator&);
-	LogIterator(const T& sections_begin,
-				const T& sections_end,
-				const T& current_section,
-				const RecordIterator& current_record);
+  LogIterator(const LogIterator&);
+  LogIterator(const T& sections_begin,
+        const T& sections_end,
+        const T& current_section,
+        const RecordIterator& current_record);
 
-	void operator ++ ();
-	void operator -- ();
+  void operator ++ ();
+  void operator -- ();
 
-	bool operator != (const LogIterator&) const;
-	bool operator == (const LogIterator&) const;
+  bool operator != (const LogIterator&) const;
+  bool operator == (const LogIterator&) const;
 
-	Buffer& operator * () const;
-	Buffer* operator -> () const;
-	Buffer asData() const { return this->operator *(); }
-	Buffer getOperationWithFrame() const;
+  Buffer& operator * () const;
+  Buffer* operator -> () const;
+  Buffer asData() const { return this->operator *(); }
+  Buffer getOperationWithFrame() const;
 
-	record_type_t getType() const;
+  record_type_t getType() const;
   lsn_t GetLSN() const { return lsn; };
 
-	static RecordIterator section_begin(const T& section);
-	static RecordIterator section_end(const T& section);
+  static RecordIterator section_begin(const T& section);
+  static RecordIterator section_end(const T& section);
 
 private:
-	T  sections_begin;
-	T  sections_end;
-	T  current_section;
-	RecordIterator current_record;
+  T sections_begin;
+  T sections_end;
+  T current_section;
+  RecordIterator current_record;
   mutable Buffer current_record_data;
   lsn_t lsn;
 };

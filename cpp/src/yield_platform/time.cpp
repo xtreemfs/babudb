@@ -127,9 +127,9 @@ uint64_t Time::parseHTTPDateTimeToEpochTimeNS( const char* date_str )
 	struct tm unix_tm;
 
 	int sf_ret = sscanf( date_str, "%03s, %02d %03s %04d %02d:%02d:%02d GMT",
-	                     &day,
+	                     (char*)&day,
 	                     &unix_tm.tm_mday,
-	                     &month,
+	                     (char*)&month,
 	                     &unix_tm.tm_year,
 	                     &unix_tm.tm_hour,
 	                     &unix_tm.tm_min,

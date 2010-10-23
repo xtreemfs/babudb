@@ -33,19 +33,19 @@ class ImmutableIndexWriter;
 
 class ImmutableIndex {
 public:
-	static ImmutableIndex* Load(
+  static ImmutableIndex* Load(
       const std::string& file_name, lsn_t lsn, const KeyOrder& order);
   static ImmutableIndexWriter* Create(
       const std::string& name, lsn_t lsn, size_t chunk_size);
 
-	typedef class ImmutableIndexIterator iterator;
-	Buffer Lookup(Buffer search_key);
-	iterator Find(Buffer key);
+  typedef class ImmutableIndexIterator iterator;
+  Buffer Lookup(Buffer search_key);
+  iterator Find(Buffer key);
 
-	iterator begin() const;
-	iterator end() const;
+  iterator begin() const;
+  iterator end() const;
 
-	lsn_t GetLastLSN() { return latest_lsn; }
+  lsn_t GetLastLSN() { return latest_lsn; }
 
   typedef std::vector<std::pair<YIELD::Path,lsn_t> > DiskIndices;
   static DiskIndices FindIndices(const std::string& name_prefix);

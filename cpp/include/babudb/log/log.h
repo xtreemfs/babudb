@@ -29,32 +29,32 @@ template <class T> class LogIterator;
 class Log {
 public:
   Log(Buffer data);  // a volatile in-memory log
-	Log(const string& name_prefix);
-	~Log();
+  Log(const string& name_prefix);
+  ~Log();
 
-	void loadRequiredLogSections(lsn_t);
-	void close();
+  void loadRequiredLogSections(lsn_t);
+  void close();
 
-	void cleanup(lsn_t from_lsn, const string& to);
+  void cleanup(lsn_t from_lsn, const string& to);
 
-	LogSection* getTail();
-	void advanceTail();
-	lsn_t getLastLSN();
+  LogSection* getTail();
+  void advanceTail();
+  lsn_t getLastLSN();
 
-	typedef LogIteratorForward iterator;
-	typedef LogIteratorBackward reverse_iterator;
+  typedef LogIteratorForward iterator;
+  typedef LogIteratorBackward reverse_iterator;
 
-	iterator begin();
-	iterator end();
-	reverse_iterator rbegin();
-	reverse_iterator rend();
+  iterator begin();
+  iterator end();
+  reverse_iterator rbegin();
+  reverse_iterator rend();
 
-	std::vector<LogSection*>& getSections() { return sections; }
+  std::vector<LogSection*>& getSections() { return sections; }
 
 private:
-	std::vector<LogSection*> sections;
-	LogSection* tail;
-	string name_prefix;
+  std::vector<LogSection*> sections;
+  LogSection* tail;
+  string name_prefix;
 };
 
 }
