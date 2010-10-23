@@ -23,8 +23,7 @@ using namespace std;
 using namespace YIELD;
 
 Log::Log(Buffer data) : tail(NULL), name_prefix("") {  // volatile in-memory
-  auto_ptr<LogStorage> storage;
-  storage.reset(new VolatileLogStorage(data));
+  LogStorage* storage = new VolatileLogStorage(data);
   tail = new LogSection(storage, 1);
 	sections.push_back(tail);
 }
@@ -32,7 +31,9 @@ Log::Log(Buffer data) : tail(NULL), name_prefix("") {  // volatile in-memory
 Log::Log(const string& name_prefix) : tail(NULL), name_prefix(name_prefix) {}
 
 Log::~Log() {
-//	ASSERT_TRUE(tail == NULL); // close before delete!
+  if (tail != NULL) {
+    close();
+  }
 	for(vector<LogSection*>::iterator i = sections.begin(); i != sections.end(); ++i)
 		delete *i;
 }
@@ -91,8 +92,7 @@ void Log::loadRequiredLogSections(lsn_t min_lsn) {
 		DiskSections::iterator next = i; next++;
 
 		if(next == disk_sections.end() || (min_lsn + 1) < next->second) {
-      auto_ptr<LogStorage> file(PersistentLogStorage::OpenReadOnly(i->first));
-
+      LogStorage* file = PersistentLogStorage::OpenReadOnly(i->first);
 			LogSection* section = new LogSection(file, i->second); // repairs if not graceful
 
       if(section->getFirstLSN() <= section->getLastLSN()) { // check if there is a LSN in this section
@@ -127,14 +127,14 @@ LogSection* Log::getTail() {
 		if(!sections.empty())
 			next_lsn = sections.back()->getLastLSN() + 1;
 
-    auto_ptr<LogStorage> storage;
+    LogStorage* storage = NULL;
     // TODO: hack, refactor!
     if (!name_prefix.empty()) {
   		std::ostringstream section_name;
   		section_name << name_prefix << "_" << next_lsn << ".log";
-  		storage.reset(PersistentLogStorage::Open(section_name.str()));
+  		storage = PersistentLogStorage::Open(section_name.str());
     } else {
-      storage.reset(new VolatileLogStorage(1024));
+      storage = new VolatileLogStorage(1024);
     }
 		tail = new LogSection(storage, next_lsn);
 		sections.push_back(tail);
@@ -145,8 +145,9 @@ LogSection* Log::getTail() {
 
 void Log::advanceTail() {
 	if(tail) {
-		if(tail->isWritable())
+		if(tail->isWritable()) {
 			tail->truncate();
+    }
 		tail->close();
 	}
 	tail = NULL;

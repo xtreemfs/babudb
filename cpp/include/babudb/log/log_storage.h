@@ -76,7 +76,7 @@ class PersistentLogStorage : public LogStorage {
 	virtual bool Close();
   virtual bool IsWritable();
 protected:
-  PersistentLogStorage(auto_ptr<yield::MemoryMappedFile>);
+  PersistentLogStorage(yield::MemoryMappedFile*);
 	auto_ptr<yield::MemoryMappedFile> memory;
 };
 

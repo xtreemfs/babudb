@@ -41,25 +41,29 @@ void VolatileLogStorage::Resize(size_t new_size) {
 }
 
 PersistentLogStorage* PersistentLogStorage::Open(const string& name) {
-  auto_ptr<yield::MemoryMappedFile> mfile(
-      new YIELD::MemoryMappedFile(name, 1024*1024, O_CREAT|O_RDWR|O_SYNC));
-  if (mfile.get()->isOpen())
+  yield::MemoryMappedFile* mfile =
+      new YIELD::MemoryMappedFile(name, 1024*1024, O_CREAT|O_RDWR|O_SYNC);
+  if (mfile->isOpen()) {
     return new PersistentLogStorage(mfile);
-  else
+  } else {
+    delete mfile;
     return NULL;
+  }
 }
 
 PersistentLogStorage* PersistentLogStorage::OpenReadOnly(const string& name) {
-  auto_ptr<yield::MemoryMappedFile> mfile(
-      new YIELD::MemoryMappedFile(name, 4, O_RDONLY));
-  if (mfile.get()->isOpen())
+  yield::MemoryMappedFile* mfile =
+      new YIELD::MemoryMappedFile(name, 4, O_RDONLY);
+  if (mfile->isOpen()) {
     return new PersistentLogStorage(mfile);
-  else
+  } else {
+    delete mfile;
     return NULL;
+  }
 }
 
 PersistentLogStorage::PersistentLogStorage(
-  auto_ptr<yield::MemoryMappedFile> mfile) : memory(mfile) {
+    yield::MemoryMappedFile* mfile) : memory(mfile) {
   start = memory->getRegionStart();
   size = memory->getRegionSize();
 }

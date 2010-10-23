@@ -34,7 +34,7 @@ public:
 
 class LogSection : public SequentialFile {
 public:
-	LogSection(auto_ptr<LogStorage>, lsn_t first);
+	LogSection(LogStorage*, lsn_t first);
 
 	lsn_t getFirstLSN();
 	lsn_t getLastLSN();

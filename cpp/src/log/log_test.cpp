@@ -40,30 +40,33 @@ void WriteToLog(Log* log) {
 
 TEST_TMPDIR(Log,babudb)
 {
-	auto_ptr<Log> log(new Log(testPath("testlog")));
-
-  WriteToLog(log.get());
-	log->close();
-
-	log.reset(new Log(testPath("testlog")));
-	log->loadRequiredLogSections(0);
-	EXPECT_EQUAL(log->getSections().size(), 3);
-	log->close();
-  
-	log.reset(new Log(testPath("testlog")));
-	log->loadRequiredLogSections(1);
-	EXPECT_EQUAL(log->getSections().size(), 2);
-	log->close();
-
-	log.reset(new Log(testPath("testlog")));
-	log->loadRequiredLogSections(2);
-	EXPECT_EQUAL(log->getSections().size(), 2);
-	log->close();
+  {
+	  Log log(testPath("testlog"));
+    WriteToLog(&log);
+	  log.close();
+  }
+  {
+	  Log log(testPath("testlog"));
+	  log.loadRequiredLogSections(0);
+	  EXPECT_EQUAL(log.getSections().size(), 3);
+	  log.close();
+  }
+  {
+	  Log log(testPath("testlog"));
+	  log.loadRequiredLogSections(1);
+	  EXPECT_EQUAL(log.getSections().size(), 2);
+	  log.close();
+  }
+  {
+	  Log log(testPath("testlog"));
+  	log.loadRequiredLogSections(2);
+  	EXPECT_EQUAL(log.getSections().size(), 2);
+  	log.close();
+  }
 }
 
 TEST_TMPDIR(LogVolatile,babudb) {
   Buffer empty_buffer = Buffer::Empty();
-	auto_ptr<Log> log(new Log(empty_buffer));
-
-  WriteToLog(log.get());
+	Log log(empty_buffer);
+  WriteToLog(&log);
 }

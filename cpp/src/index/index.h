@@ -58,7 +58,7 @@ public:
   int Read(int offset, char* buffer, int bytes);
 
 private:
-	ImmutableIndex(std::auto_ptr<LogStorage> mm, const KeyOrder& order, lsn_t);
+	ImmutableIndex(LogStorage* mm, const KeyOrder& order, lsn_t);
   bool LoadRoot();
 	typedef std::map<Buffer,offset_t,MapCompare> Tree;
 

@@ -27,7 +27,7 @@ class KeyOrder;
 
 class ImmutableIndexWriter {
 public:
-	ImmutableIndexWriter(std::auto_ptr<LogStorage> mm, size_t chunk_size)
+	ImmutableIndexWriter(LogStorage* mm, size_t chunk_size)
 		: storage(mm), chunk_size(chunk_size), data_in_buffer(0) {}
 
 	void Add(Buffer key, Buffer value);

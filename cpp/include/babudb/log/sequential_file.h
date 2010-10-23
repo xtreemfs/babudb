@@ -41,8 +41,7 @@ public:
 	typedef class RecordFrame Record;
 	typedef class RecordIterator iterator;
 
-	SequentialFile(auto_ptr<LogStorage>, LogStats* = NULL);
-	virtual ~SequentialFile() {}
+	SequentialFile(LogStorage*, LogStats* = NULL);
 
 	void close();
 	unsigned short getVersion()				{ return database_version; }

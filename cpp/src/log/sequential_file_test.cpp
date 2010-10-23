@@ -19,7 +19,7 @@ using namespace babudb;
 
 TEST_TMPDIR(SequentialFile_iteration,babudb)
 {
-  auto_ptr<LogStorage> file(PersistentLogStorage::Open(testPath("testfile").getHostCharsetPath()));
+  LogStorage* file = PersistentLogStorage::Open(testPath("testfile").getHostCharsetPath());
 	SequentialFile sf(file, NULL);
 
 	EXPECT_TRUE(sf.begin() == sf.end());
@@ -32,7 +32,7 @@ TEST_TMPDIR(SequentialFile_iteration,babudb)
 
 	sf.close();
 
-  file.reset(PersistentLogStorage::OpenReadOnly(testPath("testfile").getHostCharsetPath()));
+  file = PersistentLogStorage::OpenReadOnly(testPath("testfile").getHostCharsetPath());
 	SequentialFile sf2(file, NULL);
 
 	SequentialFile::iterator i = sf2.begin();
@@ -72,7 +72,7 @@ TEST_TMPDIR(SequentialFile_iteration,babudb)
 
 TEST_TMPDIR(SequentialFile_rollback,babudb)
 {
-  auto_ptr<LogStorage> file(PersistentLogStorage::Open(testPath("testfile").getHostCharsetPath()));
+  LogStorage* file = PersistentLogStorage::Open(testPath("testfile").getHostCharsetPath());
 	SequentialFile sf(file, NULL);
 
 	sf.append(1,1);
@@ -82,7 +82,7 @@ TEST_TMPDIR(SequentialFile_rollback,babudb)
 
 	sf.close();
 
-  file.reset(PersistentLogStorage::OpenReadOnly(testPath("testfile").getHostCharsetPath()));
+  file = PersistentLogStorage::OpenReadOnly(testPath("testfile").getHostCharsetPath());
 	SequentialFile sf2(file, NULL);
 
 	SequentialFile::iterator i = sf2.begin();

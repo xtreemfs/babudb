@@ -25,15 +25,14 @@
 using namespace std;
 using namespace babudb;
 
-ImmutableIndex::ImmutableIndex(auto_ptr<LogStorage> mm,
+ImmutableIndex::ImmutableIndex(LogStorage* mm,
                                const KeyOrder& order, lsn_t lsn)
     : storage(mm), order(order), latest_lsn(lsn), index(MapCompare(order)) {}
 
 ImmutableIndex* ImmutableIndex::Load(const string& name, lsn_t lsn,
                                      const KeyOrder& order) {
-  auto_ptr<LogStorage> mmap;
-  mmap.reset(PersistentLogStorage::Open(name));
-  if (mmap.get() == NULL)
+  LogStorage* mmap = PersistentLogStorage::Open(name);
+  if (mmap == NULL)
      return NULL;
 
   ImmutableIndex* result = new ImmutableIndex(mmap, order, lsn);
@@ -52,9 +51,8 @@ string ImmutableIndex::GetIndexName(const string& name, lsn_t lsn) {
 
 ImmutableIndexWriter* ImmutableIndex::Create(
     const string& name, lsn_t lsn, size_t chunk_size) {
-	auto_ptr<LogStorage> mfile;
-  mfile.reset(PersistentLogStorage::Open(GetIndexName(name, lsn)));
-  if (!mfile.get()) {
+	LogStorage* mfile = PersistentLogStorage::Open(GetIndexName(name, lsn));
+  if (!mfile) {
     return NULL;
   }
 	ImmutableIndexWriter* result = new ImmutableIndexWriter(mfile, chunk_size);

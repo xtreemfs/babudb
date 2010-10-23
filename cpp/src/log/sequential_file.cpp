@@ -26,7 +26,7 @@ using namespace YIELD;
 #define FIRST_RECORD_ADDRESS	(void*)((unsigned char*)memory->Start() + FIRST_RECORD_OFFSET)
 
 
-SequentialFile::SequentialFile(auto_ptr<LogStorage> m, LogStats* stats ) : memory( m ), stats( stats )
+SequentialFile::SequentialFile(LogStorage* m, LogStats* stats ) : memory( m ), stats( stats )
 {
 	if(stats == NULL)
 		this->stats = new LogStats();
