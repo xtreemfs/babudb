@@ -49,7 +49,6 @@ private:
 
 typedef class LogIterator<std::vector<LogSection*>::iterator> LogIteratorForward;
 typedef class LogIterator<std::vector<LogSection*>::reverse_iterator> LogIteratorBackward;
-
 }
 
 #endif

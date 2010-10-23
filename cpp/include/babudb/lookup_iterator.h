@@ -28,32 +28,32 @@ class ImmutableIndexIterator;
 
 class LookupIterator {
 public:
-	LookupIterator(const vector<LogIndex*>& idx, ImmutableIndex* iidx, const KeyOrder& order, const Buffer& start_key, const Buffer& end_key);
-	LookupIterator(const vector<LogIndex*>& idx, ImmutableIndex* iidx, const KeyOrder& order);
+  LookupIterator(const vector<LogIndex*>& idx, ImmutableIndex* iidx, const KeyOrder& order, const Buffer& start_key, const Buffer& end_key);
+  LookupIterator(const vector<LogIndex*>& idx, ImmutableIndex* iidx, const KeyOrder& order);
   explicit LookupIterator(const KeyOrder& order);
 
   ~LookupIterator();
 
-	void operator ++ ();
-	std::pair<Buffer,Buffer> operator * ();
+  void operator ++ ();
+  std::pair<Buffer,Buffer> operator * ();
 
-	bool hasMore() const;
+  bool hasMore() const;
 
 private:
   void InitializeOverlays(const vector<LogIndex*>&);
-	void findMinimalIterator();
-	void advanceIterator(int);
-	void assureNonDeletedCursor();
+  void findMinimalIterator();
+  void advanceIterator(int);
+  void assureNonDeletedCursor();
   void CheckInvariant();
   void DebugPrint();
 
-	int current_depth;
-	vector<map<Buffer,Buffer,MapCompare>::const_iterator> logi_it;		// MSI to LSI
-	const KeyOrder& order;
-	const Buffer* end_key;
-	vector<LogIndex*> logi;
-	ImmutableIndex* iidx;
-	ImmutableIndexIterator* iidx_it;
+  int current_depth;
+  vector<map<Buffer,Buffer,MapCompare>::const_iterator> logi_it;  // MSI to LSI
+  const KeyOrder& order;
+  const Buffer* end_key;
+  vector<LogIndex*> logi;
+  ImmutableIndex* iidx;
+  ImmutableIndexIterator* iidx_it;
 };
 
 }

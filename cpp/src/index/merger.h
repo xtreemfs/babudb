@@ -44,15 +44,15 @@ public:
 
 protected:
   string file_name;
-	LogIndex diff;
-	const KeyOrder& order;
-	lsn_t last_lsn;
+  const KeyOrder& order;
+  ImmutableIndex* base; 
+  lsn_t last_lsn;
+  LogIndex diff;
 
-  ImmutableIndex* base;  
   ImmutableIndex::iterator* base_it;
- 	LogIndex::iterator diff_it;
+  LogIndex::iterator diff_it;
   
-	std::auto_ptr<ImmutableIndexWriter> destination;
+  std::auto_ptr<ImmutableIndexWriter> destination;
 };
 
 }

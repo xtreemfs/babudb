@@ -7,17 +7,17 @@
 namespace YIELD
 {
 #ifdef _WIN32
-	extern "C"
-	{
-		__declspec( dllimport ) void __stdcall DebugBreak();
-	}
+  extern "C"
+  {
+    __declspec( dllimport ) void __stdcall DebugBreak();
+  }
 #else
-	static void DebugBreak()
-	{
-		*((int*)0) = 0xabadcafe;
-	}
+  inline void DebugBreak()
+  {
+    *((int*)0) = 0xabadcafe;
+  }
 #endif
-};
+}
 
 #endif
 

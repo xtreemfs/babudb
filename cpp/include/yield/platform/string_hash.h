@@ -12,29 +12,29 @@
 
 namespace YIELD
 {
-	static uint32_t string_hash( const char* str, uint32_t hash = 0 )
-	{
-		while ( *str != 0 )
-		{
-			YIELD_STRING_HASH_NEXT( *str, hash );
-			str++;
-		}
+  inline uint32_t string_hash( const char* str, uint32_t hash = 0 )
+  {
+    while ( *str != 0 )
+    {
+      YIELD_STRING_HASH_NEXT( *str, hash );
+      str++;
+    }
 
-		return hash;
-	}
+    return hash;
+  }
 
-	static uint32_t string_hash( const char* str, size_t str_len, uint32_t hash )
-	{
-		size_t str_i = 0;
+  inline uint32_t string_hash( const char* str, size_t str_len, uint32_t hash )
+  {
+    size_t str_i = 0;
 
-		while ( str_i < str_len )
-		{
-			YIELD_STRING_HASH_NEXT( str[str_i], hash );
-			str_i++;
-		}
+    while ( str_i < str_len )
+    {
+      YIELD_STRING_HASH_NEXT( str[str_i], hash );
+      str_i++;
+    }
 
-		return hash;
-	}
-};
+    return hash;
+  }
+}
 
 #endif

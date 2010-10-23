@@ -27,47 +27,46 @@ class KeyOrder;
 
 class ImmutableIndexWriter {
 public:
-	ImmutableIndexWriter(LogStorage* mm, size_t chunk_size)
-		: storage(mm), chunk_size(chunk_size), data_in_buffer(0) {}
+  ImmutableIndexWriter(LogStorage* mm, size_t chunk_size)
+    : storage(mm), chunk_size(chunk_size), data_in_buffer(0) {}
 
-	void Add(Buffer key, Buffer value);
-	void FlushBuffer();
-	void Finalize();
+  void Add(Buffer key, Buffer value);
+  void FlushBuffer();
+  void Finalize();
 
 private:
-	void* WriteData(Buffer data, char type);
-	typedef std::vector<std::pair<Buffer,Buffer> > WriteBuffer;
-	WriteBuffer record_buffer;
-	size_t data_in_buffer;
+  void* WriteData(Buffer data, char type);
+  typedef std::vector<std::pair<Buffer,Buffer> > WriteBuffer;
+  WriteBuffer record_buffer;
 
-	size_t chunk_size;
-	SequentialFile storage;
+  SequentialFile storage;
+  size_t chunk_size;
+  size_t data_in_buffer;
 
-	std::vector<Buffer> index_keys;
-	std::vector<offset_t> index_offsets;
+  std::vector<Buffer> index_keys;
+  std::vector<offset_t> index_offsets;
 };
 
 
 class ImmutableIndexIterator {
 public:
-	ImmutableIndexIterator(const SequentialFile& file, bool end);
-	ImmutableIndexIterator(const ImmutableIndexIterator& o);
-	ImmutableIndexIterator(SequentialFile& file, offset_t* table, SequentialFile::iterator i, int n);
+  ImmutableIndexIterator(const SequentialFile& file, bool end);
+  ImmutableIndexIterator(const ImmutableIndexIterator& o);
+  ImmutableIndexIterator(SequentialFile& file, offset_t* table, SequentialFile::iterator i, int n);
 
-	void operator ++ ();
-	std::pair<Buffer,Buffer> operator * ();
-	bool operator != (const ImmutableIndexIterator& other );
-	bool operator == (const ImmutableIndexIterator& other );
+  void operator ++ ();
+  std::pair<Buffer,Buffer> operator * ();
+  bool operator != (const ImmutableIndexIterator& other );
+  bool operator == (const ImmutableIndexIterator& other );
 
 private:
-	void findNextOffsetTable(SequentialFile::iterator it);
+  void findNextOffsetTable(SequentialFile::iterator it);
 
-	const SequentialFile& file;
+  const SequentialFile& file;
+  offset_t* offset_table;
 
-	offset_t* offset_table;
-
-	SequentialFile::iterator key; // the current key if offset_table != NULL
-	int key_no;		 			  // the ordinal number of the current key
+  SequentialFile::iterator key; // the current key if offset_table != NULL
+  int key_no;  // the ordinal number of the current key
 };
 
 }

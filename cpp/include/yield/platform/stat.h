@@ -37,7 +37,7 @@ namespace YIELD
 		void init( fd_t ); // fstats the file descriptor but doesn't close it
 
 		StatType type;
-		size_t _st_size; int64_t _st_ctime, _st_mtime, _st_atime; // Unix doesn't like using the actual names, thus the _
+		size_t _st_size; int64_t _st_mtime, _st_ctime, _st_atime; // Unix doesn't like using the actual names, thus the _
 		bool is_hidden;
 	};
 };

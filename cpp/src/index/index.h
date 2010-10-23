@@ -58,17 +58,17 @@ public:
   int Read(int offset, char* buffer, int bytes);
 
 private:
-	ImmutableIndex(LogStorage* mm, const KeyOrder& order, lsn_t);
+  ImmutableIndex(LogStorage* mm, const KeyOrder& order, lsn_t);
   bool LoadRoot();
-	typedef std::map<Buffer,offset_t,MapCompare> Tree;
+  typedef std::map<Buffer,offset_t,MapCompare> Tree;
 
-	Tree::iterator findChunk(const Buffer& key);
-	offset_t* getOffsetTable(offset_t offset_rec_offset);
+  Tree::iterator findChunk(const Buffer& key);
+  offset_t* getOffsetTable(offset_t offset_rec_offset);
 
-	SequentialFile storage;
-	Tree index;
-	const KeyOrder& order;
-	lsn_t latest_lsn;
+  SequentialFile storage;
+  Tree index;
+  const KeyOrder& order;
+  lsn_t latest_lsn;
 };
 
 }

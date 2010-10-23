@@ -21,8 +21,8 @@ using namespace babudb;
 #include "yield/platform/path.h"
 using namespace YIELD;
 
-MergedIndex::MergedIndex(const string& name, const KeyOrder& order)
-	: order(order), immutable_index(NULL), name_prefix(name), tail(NULL) {
+MergedIndex::MergedIndex(const string& name, const KeyOrder& order) 
+    : tail(NULL), immutable_index(NULL), name_prefix(name), order(order)  {
   ImmutableIndex::DiskIndices indices = ImmutableIndex::FindIndices(name);
   immutable_index = ImmutableIndex::LoadLatestIntactIndex(indices, order);
 

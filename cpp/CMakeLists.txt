@@ -41,6 +41,8 @@ if (MSVC)
   set_target_properties(babudb_tests PROPERTIES COMPILE_FLAGS "/MTd")
 endif (MSVC)
 if (CMAKE_COMPILER_IS_GNUCXX)
+  set_target_properties(babudb PROPERTIES COMPILE_FLAGS "-Wall")
+  set_target_properties(babudb_tests PROPERTIES COMPILE_FLAGS "-Wall")
   target_link_libraries(babudb_tests pthread rt)
 endif()
 

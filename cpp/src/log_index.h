@@ -23,33 +23,32 @@ class LogIndex;
 
 class LogIndex {
 public:
-	LogIndex(const KeyOrder& order, lsn_t first)
+  LogIndex(const KeyOrder& order, lsn_t first)
       : order(order), latest_value(MapCompare(order)), first_lsn(first) {}
 
-	Buffer lookup(const Buffer& key);
+  Buffer lookup(const Buffer& key);
   // not implemented, needs value comp. operator
   //	vector<std::pair<Buffer,Buffer> > search(Buffer value);
 
-	bool Add(const Buffer&, const Buffer&);
+  bool Add(const Buffer&, const Buffer&);
 
-	lsn_t getFirstLSN()			{ return first_lsn; }
+  lsn_t getFirstLSN()  { return first_lsn; }
 
-	typedef map<Buffer,Buffer,MapCompare> Tree;
-	typedef Tree::const_iterator iterator;
+  typedef map<Buffer,Buffer,MapCompare> Tree;
+  typedef Tree::const_iterator iterator;
 
-	iterator begin() const { return latest_value.begin(); }
-	iterator end() const	 { return latest_value.end(); }
+  iterator begin() const { return latest_value.begin(); }
+  iterator end() const  { return latest_value.end(); }
 
-	iterator find(const Buffer& key)
-	{
-		return latest_value.lower_bound(key);
-	}
+  iterator find(const Buffer& key)
+  {
+    return latest_value.lower_bound(key);
+  }
 
 private:
-	lsn_t first_lsn;
-
-	Tree latest_value;
-	const KeyOrder& order;
+  const KeyOrder& order;
+  Tree latest_value;
+  lsn_t first_lsn;
 };
 
 };
