@@ -122,7 +122,7 @@ lsn_t Log::getLastLSN() {
 }
 
 LogSection* Log::getTail() {
-  if(tail == NULL ) {
+  if(tail == NULL) {
     lsn_t next_lsn = 1;
     if(!sections.empty())
       next_lsn = sections.back()->getLastLSN() + 1;
