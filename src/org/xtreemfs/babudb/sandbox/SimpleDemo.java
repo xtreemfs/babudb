@@ -5,14 +5,14 @@
 
 package org.xtreemfs.babudb.sandbox;
 
-import org.xtreemfs.babudb.BabuDB;
-import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
+import org.xtreemfs.babudb.api.BabuDB;
+import org.xtreemfs.babudb.api.Database;
+import org.xtreemfs.babudb.api.DatabaseManager;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
-import org.xtreemfs.babudb.lsmdb.Database;
-import org.xtreemfs.babudb.lsmdb.DatabaseManager;
 
 public class SimpleDemo {
     

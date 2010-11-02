@@ -20,9 +20,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.xtreemfs.babudb.BabuDB;
-import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.BabuDBImpl;
+import org.xtreemfs.babudb.api.Checkpointer;
+import org.xtreemfs.babudb.api.Database;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
@@ -66,7 +68,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
      */
     private long                               maxLogLength;
     
-    private final BabuDB                       dbs;
+    private final BabuDBImpl                   dbs;
     
     /**
      * a queue containing all snapshot materialization requests that should be
@@ -107,7 +109,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
      * @param master
      *            the database
      */
-    public CheckpointerImpl(BabuDB master) {
+    public CheckpointerImpl(BabuDBImpl master) {
         super("ChkptrThr");
         down = new AtomicBoolean(false);
         this.dbs = master;
@@ -173,7 +175,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
      */
     @Override
     public void checkpoint() throws BabuDBException, InterruptedException {
-        dbs.slaveCheck();
+        // TODO dbs.slaveCheck();
         
         checkpoint(false);
     }

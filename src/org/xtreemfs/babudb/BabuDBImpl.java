@@ -7,45 +7,42 @@
  */
 package org.xtreemfs.babudb;
 
-import static org.xtreemfs.babudb.config.ReplicationConfig.slaveProtectionMsg;
-
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.util.List;
+import java.util.Vector;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.xtreemfs.babudb.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.BabuDB;
+import org.xtreemfs.babudb.api.Checkpointer;
+import org.xtreemfs.babudb.api.Database;
+import org.xtreemfs.babudb.api.DatabaseManager;
+import org.xtreemfs.babudb.api.SnapshotManager;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.config.BabuDBConfig;
-import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.conversion.AutoConverter;
 import org.xtreemfs.babudb.log.DiskLogIterator;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
-import org.xtreemfs.babudb.lsmdb.Checkpointer;
 import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
 import org.xtreemfs.babudb.lsmdb.DBConfig;
-import org.xtreemfs.babudb.lsmdb.Database;
 import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
-import org.xtreemfs.babudb.lsmdb.DatabaseManager;
 import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSMDBWorker;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.ReplicationManager;
-import org.xtreemfs.babudb.replication.ReplicationManagerImpl;
-import org.xtreemfs.babudb.replication.service.logic.LoadLogic;
-import org.xtreemfs.babudb.replication.transmission.FileIO;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
-import org.xtreemfs.babudb.snapshots.SnapshotManager;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
-import org.xtreemfs.foundation.buffer.BufferPool;
-import org.xtreemfs.foundation.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.LifeCycleThread;
 import org.xtreemfs.foundation.logging.Logging;
-import org.xtreemfs.foundation.logging.Logging.Category;
+
+import static org.xtreemfs.babudb.BabuDBFactory.*;
 
 /**
  * BabuDB main class.
@@ -60,17 +57,7 @@ import org.xtreemfs.foundation.logging.Logging.Category;
  * @author stenjan
  * 
  */
-public class BabuDB {
-    
-    /**
-     * Version (name)
-     */
-    public static final String           BABUDB_VERSION           = "0.4.5";
-    
-    /**
-     * Version of the DB on-disk format (to detect incompatibilities).
-     */
-    public static final int              BABUDB_DB_FORMAT_VERSION = 4;
+public class BabuDBImpl implements BabuDBInternal {
     
     /**
      * the disk logger is used to write InsertRecordGroups persistently to disk
@@ -78,8 +65,6 @@ public class BabuDB {
     private DiskLogger                   logger;
     
     private LSMDBWorker[]                worker;
-    
-    private final ReplicationManagerImpl replicationManager;
     
     /**
      * Checkpointer thread for automatic checkpointing
@@ -109,46 +94,43 @@ public class BabuDB {
     /**
      * Flag that shows the replication if babuDB is running at the moment.
      */
-    private final AtomicBoolean          stopped;
+    private final AtomicBoolean          stopped = new AtomicBoolean(true);
+    
+    /**
+     * Threads used within the plugins. They will be stopped when BabuDB shuts
+     * down. 
+     */
+    private final List<LifeCycleThread>  plugins = 
+        new Vector<LifeCycleThread>();
     
     static {
-        ReusableBuffer.enableAutoFree(true);
-        BufferPool.enableStacktraceRecording(false);
+        //ReusableBuffer.enableAutoFree(true);
+        //BufferPool.enableStacktraceRecording(false);
     }
     
     /**
-     * Starts the BabuDB database. If conf is instance of MasterConfig it comes
-     * with replication in master-mode. If conf is instance of SlaveConfig it
-     * comes with replication in slave-mode.
+     * Initializes the basic components of the BabuDB database system.
      * 
-     * @param conf
-     * @param staticInit
+     * @param configuration
      * @throws BabuDBException
      */
-    BabuDB(BabuDBConfig conf, final StaticInitialization staticInit) throws BabuDBException {
-        Logging.start(conf.getDebugLevel());
-        
-        Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB %s", BABUDB_VERSION);
-        Logging.logMessage(Logging.LEVEL_INFO, this, "\n%s", conf.toString());
-        
-        this.configuration = conf;
+    BabuDBImpl(BabuDBConfig configuration) throws BabuDBException {
+      
+        this.configuration = configuration;
         this.databaseManager = new DatabaseManagerImpl(this);
         this.dbConfigFile = new DBConfig(this);
         this.snapshotManager = new SnapshotManagerImpl(this);
-        this.dbCheckptr = new CheckpointerImpl(this);
-        
-        if (dbConfigFile.isConversionRequired()) {
-            
-            Logging.logMessage(Logging.LEVEL_WARN, Category.storage, this, "The "
-                + "database version is outdated. The database will be "
-                + "automatically converted to the latest version if "
-                + "possible. This may take some time, depending on " + "the size.");
-            
-            AutoConverter.initiateConversion(dbConfigFile.getDBFormatVersion(), conf);
-        }
-        
+        this.dbCheckptr = new CheckpointerImpl(this); 
+    }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.BabuDB#init(StaticInitialization staticInit)
+     */
+    @Override
+    public void init(final StaticInitialization staticInit) throws BabuDBException {
         snapshotManager.init();
         
+        /* TODO
         try {
             if (conf instanceof ReplicationConfig)
                 new FileIO((ReplicationConfig) conf).replayBackupFiles();
@@ -156,6 +138,7 @@ public class BabuDB {
             Logging.logMessage(Logging.LEVEL_ERROR, this, "Could not retrieve the "
                 + "slave backup files, because: ", io.getMessage());
         }
+        */
         // determine the LSN from which to start the log replay
         
         // to be able to recover from crashes during checkpoints, it is
@@ -186,6 +169,7 @@ public class BabuDB {
         Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done, using LSN: " + nextLSN);
         
         // set up the replication service
+        /* TODO
         try {
             if (conf instanceof ReplicationConfig) {
                 this.replicationManager = new ReplicationManagerImpl(this);
@@ -198,27 +182,28 @@ public class BabuDB {
             Logging.logError(Logging.LEVEL_ERROR, this, e);
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
         }
+        */
         
         // set up and start the disk logger
         try {
-            this.logger = new DiskLogger(conf.getDbLogDir(), nextLSN.getViewId(), nextLSN.getSequenceNo(),
-                conf.getSyncMode(), conf.getPseudoSyncWait(),
-                conf.getMaxQueueLength() * conf.getNumThreads(), replicationManager);
+            this.logger = new DiskLogger(configuration.getDbLogDir(), nextLSN.getViewId(), nextLSN.getSequenceNo(),
+                configuration.getSyncMode(), configuration.getPseudoSyncWait(),
+                configuration.getMaxQueueLength() * configuration.getNumThreads());
             this.logger.start();
         } catch (IOException ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot start database operations logger", ex);
         }
         
-        if (conf.getNumThreads() > 0) {
-            worker = new LSMDBWorker[conf.getNumThreads()];
-            for (int i = 0; i < conf.getNumThreads(); i++) {
-                worker[i] = new LSMDBWorker(logger, i, (conf.getPseudoSyncWait() > 0), conf
+        if (configuration.getNumThreads() > 0) {
+            worker = new LSMDBWorker[configuration.getNumThreads()];
+            for (int i = 0; i < configuration.getNumThreads(); i++) {
+                worker[i] = new LSMDBWorker(logger, i, (configuration.getPseudoSyncWait() > 0), configuration
                         .getMaxQueueLength());
                 worker[i].start();
             }
         } else {
             // number of workers is 0 => requests will be responded directly.
-            assert (conf.getNumThreads() == 0);
+            assert (configuration.getNumThreads() == 0);
             
             worker = null;
         }
@@ -229,16 +214,19 @@ public class BabuDB {
         // initialize and start the checkpointer; this has to be separated from
         // the instantiation because the instance has to be there when the log
         // is replayed
-        dbCheckptr.init(logger, conf.getCheckInterval(), conf.getMaxLogfileSize());
+        dbCheckptr.init(logger, configuration.getCheckInterval(), 
+                                configuration.getMaxLogfileSize());
         dbCheckptr.start();
         
         if (staticInit != null) {
-            staticInit.initialize(databaseManager, snapshotManager, replicationManager);
+            staticInit.initialize(databaseManager, snapshotManager);
         }
         
-        this.stopped = new AtomicBoolean(false);
+        this.stopped.set(false);
+        /* TODO
         if (replicationManager != null)
             replicationManager.initialize();
+            */
         
         Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running " + "(version "
             + BABUDB_VERSION + ")");
@@ -324,7 +312,7 @@ public class BabuDB {
             try {
                 logger = new DiskLogger(configuration.getDbLogDir(), nextLSN.getViewId(), nextLSN
                         .getSequenceNo(), configuration.getSyncMode(), configuration.getPseudoSyncWait(),
-                    configuration.getMaxQueueLength() * configuration.getNumThreads(), replicationManager);
+                    configuration.getMaxQueueLength() * configuration.getNumThreads());
                 logger.start();
             } catch (IOException ex) {
                 throw new BabuDBException(ErrorCode.IO_ERROR, "cannot start database operations logger", ex);
@@ -356,13 +344,10 @@ public class BabuDB {
         }
     }
     
-    /**
-     * Terminates BabuDB. All threads will be terminated and all resources will
-     * be freed. Note that ongoing checkpoint operations may be interrupted, but
-     * the database will remain in a consistent state.
-     * 
-     * @throws BabuDBException
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.BabuDB#shutdown()
      */
+    @Override
     public void shutdown() throws BabuDBException {
         
         Logging.logMessage(Logging.LEVEL_INFO, this, "shutting down BabuDB ...");
@@ -371,13 +356,14 @@ public class BabuDB {
             for (LSMDBWorker w : worker)
                 w.shutdown();
         
-        // stop the replication
-        if (replicationManager != null) {
+        // stop the plugin threads
+        for (LifeCycleThread p : plugins) {
+            p.shutdown();
             try {
-                replicationManager.shutdown();
+                p.waitForShutdown();
             } catch (Exception e) {
-                Logging.logMessage(Logging.LEVEL_ERROR, this, "Replication "
-                    + "mechanism could not be shut down gracefully, " + "because: %s", e.getMessage());
+                throw new BabuDBException(ErrorCode.BROKEN_PLUGIN, 
+                        e.getMessage(), e.getCause());
             }
         }
         
@@ -425,12 +411,10 @@ public class BabuDB {
         }
     }
     
-    /**
-     * Returns a reference to the BabuDB checkpointer. The checkpointer can be
-     * used by applications to enforce the creation of a database checkpoint.
-     * 
-     * @return a reference to the checkpointer
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.BabuDB#getCheckpointer()
      */
+    @Override
     public Checkpointer getCheckpointer() {
         return dbCheckptr;
     }
@@ -445,31 +429,16 @@ public class BabuDB {
         return logger;
     }
     
-    /**
-     * Returns a reference to the replication manager. The replication manager
-     * gives applications the possiblility to control the behavior of a
-     * replicated BabuDB setup.
-     * 
-     * @return a reference to the replication manager
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.BabuDB#getDatabaseManager()
      */
-    public ReplicationManager getReplicationManager() {
-        return replicationManager;
-    }
-    
-    /**
-     * Returns a reference to the database manager. The database manager gives
-     * applications access to single databases.
-     * 
-     * @return a reference to the database manager
-     */
+    @Override
     public DatabaseManager getDatabaseManager() {
         return databaseManager;
     }
     
-    /**
-     * Returns the configuration associated with this BabuDB instance.
-     * 
-     * @return the configuration
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.BabuDBInternal#getConfig()
      */
     public BabuDBConfig getConfig() {
         return configuration;
@@ -588,16 +557,18 @@ public class BabuDB {
         }
     }
     
-    /**
-     * Returns a reference to the snapshot manager. The snapshot manager offers
-     * applications the possibility to manage snapshots of single databases.
-     * 
-     * @return a reference to the snapshot manager
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.BabuDB#getSnapshotManager()
      */
+    @Override
     public SnapshotManager getSnapshotManager() {
         return snapshotManager;
     }
     
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.BabuDBInternal#getDBConfigFile()
+     */
+    @Override
     public DBConfig getDBConfigFile() {
         return dbConfigFile;
     }
@@ -624,14 +595,14 @@ public class BabuDB {
         return worker[dbId % worker.length];
     }
     
-    /**
-     * 
+    /** TODO
      * @return true, if replication runs in slave-mode, false otherwise.
-     */
+    
     public void slaveCheck() throws BabuDBException {
         if (replicationManager != null && replicationManager.isInitialized()
             && !replicationManager.isMaster()) {
             throw new BabuDBException(ErrorCode.NO_ACCESS, slaveProtectionMsg);
         }
     }
+     */
 }

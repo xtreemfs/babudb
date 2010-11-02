@@ -15,8 +15,8 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.reader.DiskIndex;
 
@@ -32,7 +32,7 @@ public class DiskIndexView implements BabuDBView {
     private Map<Integer, DiskIndex> indexMap;
     
     /**
-     * Creates a new <code>DiskIndexBabuDBImpl</code>.
+     * Creates a new <code>DiskIndexBabuDB</code>.
      * 
      * @param dir
      *            the directory containing the indices

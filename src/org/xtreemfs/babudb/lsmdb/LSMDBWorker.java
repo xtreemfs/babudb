@@ -15,14 +15,14 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBRequest;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
-import org.xtreemfs.babudb.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.UserDefinedLookup;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;

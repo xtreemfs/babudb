@@ -12,7 +12,8 @@ package org.xtreemfs.babudb;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.xtreemfs.babudb.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException.ErrorCode;
 
 /**
  * Default return value for BabuDB requests.

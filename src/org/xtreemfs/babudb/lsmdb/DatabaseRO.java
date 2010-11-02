@@ -11,9 +11,9 @@ package org.xtreemfs.babudb.lsmdb;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBRequestResult;
 import org.xtreemfs.babudb.UserDefinedLookup;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException;
 
 public interface DatabaseRO {
     

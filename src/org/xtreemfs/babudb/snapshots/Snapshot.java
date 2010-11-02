@@ -10,10 +10,10 @@ package org.xtreemfs.babudb.snapshots;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBRequest;
 import org.xtreemfs.babudb.BabuDBRequestResult;
 import org.xtreemfs.babudb.UserDefinedLookup;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException;
 import org.xtreemfs.babudb.lsmdb.DatabaseRO;
 
 public class Snapshot implements DatabaseRO {

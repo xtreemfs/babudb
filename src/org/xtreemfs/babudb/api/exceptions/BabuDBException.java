@@ -6,7 +6,7 @@
  * 
 */
 
-package org.xtreemfs.babudb;
+package org.xtreemfs.babudb.api.exceptions;
 
 /**
  * A BabuDB database exception class.
@@ -61,6 +61,11 @@ public class BabuDBException extends Exception {
          * The snapshot to create already exists in the database
          */
         SNAP_EXISTS,
+        
+        /**
+         * The attempt to load an optionally plugin failed.
+         */
+        BROKEN_PLUGIN,
         
         /**
          * Everything else that went wrong

@@ -17,11 +17,10 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
-import org.xtreemfs.babudb.interfaces.DBFileMetaData;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.FSUtils;
@@ -483,7 +482,7 @@ public class LSMDatabase {
      * 
      * @return a list of file details from snapshot files that can used to
      *         synchronize master and slave in replication.
-     */
+      TODO
     public ArrayList<DBFileMetaData> getLastestSnapshotFiles(int chunkSize) {
         ArrayList<DBFileMetaData> result = new ArrayList<DBFileMetaData>();
         
@@ -535,6 +534,7 @@ public class LSMDatabase {
         
         return result;
     }
+    */
     
     public int getDatabaseId() {
         return databaseId;

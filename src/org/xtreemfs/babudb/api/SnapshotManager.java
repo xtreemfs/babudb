@@ -5,10 +5,11 @@
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-package org.xtreemfs.babudb.snapshots;
+package org.xtreemfs.babudb.api;
 
-import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException;
 import org.xtreemfs.babudb.lsmdb.DatabaseRO;
+import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 
 public interface SnapshotManager {
     

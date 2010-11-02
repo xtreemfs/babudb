@@ -36,6 +36,8 @@ POSSIBILITY OF SUCH DAMAGE.
  */
 package org.xtreemfs.babudb;
 
+import org.xtreemfs.babudb.api.exceptions.BabuDBException;
+
 /**
  * User interface for {@link BabuDBRequest} return values.
  * 

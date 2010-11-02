@@ -6,9 +6,9 @@
  * 
  */
 
-package org.xtreemfs.babudb.lsmdb;
+package org.xtreemfs.babudb.api;
 
-import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException;
 
 /**
  * Interface for checkpointing support.

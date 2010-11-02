@@ -20,10 +20,12 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.xtreemfs.babudb.BabuDB;
-import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.BabuDBImpl;
 import org.xtreemfs.babudb.BabuDBRequest;
-import org.xtreemfs.babudb.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.Database;
+import org.xtreemfs.babudb.api.DatabaseManager;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
@@ -39,7 +41,7 @@ import org.xtreemfs.foundation.util.FSUtils;
 
 public class DatabaseManagerImpl implements DatabaseManager {
     
-    private BabuDB                         dbs;
+    private BabuDBImpl                     dbs;
     
     /**
      * Mapping from database name to database id
@@ -66,7 +68,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
      */
     private final Object                   dbModificationLock;
     
-    public DatabaseManagerImpl(BabuDB dbs) throws BabuDBException {
+    public DatabaseManagerImpl(BabuDBImpl dbs) throws BabuDBException {
         
         this.dbs = dbs;
         
@@ -130,7 +132,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
     @Override
     public Database createDatabase(String databaseName, int numIndices, ByteRangeComparator[] comparators)
         throws BabuDBException {
-        dbs.slaveCheck();
+        // TODO dbs.slaveCheck();
         
         return proceedCreate(databaseName, numIndices, comparators);
     }
@@ -191,7 +193,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
     
     @Override
     public void deleteDatabase(String databaseName) throws BabuDBException {
-        dbs.slaveCheck();
+        // TODO dbs.slaveCheck();
         
         proceedDelete(databaseName);
     }
@@ -237,7 +239,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
     @Override
     public void copyDatabase(String sourceDB, String destDB) throws BabuDBException, IOException,
         InterruptedException {
-        dbs.slaveCheck();
+        // TODO dbs.slaveCheck();
         
         proceedCopy(sourceDB, destDB);
     }

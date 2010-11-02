@@ -17,12 +17,13 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.xtreemfs.babudb.BabuDB;
-import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.BabuDBImpl;
 import org.xtreemfs.babudb.BabuDBRequest;
 import org.xtreemfs.babudb.BabuDBRequestResult;
 import org.xtreemfs.babudb.UserDefinedLookup;
-import org.xtreemfs.babudb.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.Database;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.log.DiskLogger;
@@ -37,7 +38,7 @@ import org.xtreemfs.foundation.logging.Logging;
 
 public class DatabaseImpl implements Database {
     
-    private BabuDB      dbs;
+    private BabuDBImpl  dbs;
     
     private LSMDatabase lsmDB;
     
@@ -51,7 +52,7 @@ public class DatabaseImpl implements Database {
      * @param lsmDB
      *            the underlying LSM database
      */
-    public DatabaseImpl(BabuDB master, LSMDatabase lsmDB) {
+    public DatabaseImpl(BabuDBImpl master, LSMDatabase lsmDB) {
         this.dbs = master;
         this.lsmDB = lsmDB;
     }
@@ -79,7 +80,7 @@ public class DatabaseImpl implements Database {
      */
     @Override
     public BabuDBInsertGroup createInsertGroup() throws BabuDBException {
-        dbs.slaveCheck();
+        // TODO dbs.slaveCheck();
         
         return new BabuDBInsertGroup(lsmDB);
     }
@@ -112,12 +113,13 @@ public class DatabaseImpl implements Database {
     @Override
     public BabuDBRequestResult<Object> insert(BabuDBInsertGroup irg, Object context) {
         BabuDBRequest<Object> result = new BabuDBRequest<Object>(context);
+        /*
         try {
-            dbs.slaveCheck();
+            // TODO dbs.slaveCheck();
         } catch (BabuDBException e) {
             result.failed(e);
             return result;
-        }
+        } */
         
         InsertRecordGroup ins = irg.getRecord();
         int dbId = ins.getDatabaseId();
@@ -321,12 +323,13 @@ public class DatabaseImpl implements Database {
         BabuDBRequest<Iterator<Entry<byte[], byte[]>>> result = new BabuDBRequest<Iterator<Entry<byte[], byte[]>>>(
             context);
         
+        /* TODO
         try {
             dbs.slaveCheck();
         } catch (BabuDBException e) {
             result.failed(e);
             return result;
-        }
+        } */
         
         // if there are worker threads, delegate the prefix lookup to the
         // responsible worker thread
@@ -397,12 +400,13 @@ public class DatabaseImpl implements Database {
         BabuDBRequest<Iterator<Entry<byte[], byte[]>>> result = new BabuDBRequest<Iterator<Entry<byte[], byte[]>>>(
             context);
         
+        /* TODO
         try {
             dbs.slaveCheck();
         } catch (BabuDBException e) {
             result.failed(e);
             return result;
-        }
+        } */
         
         // if there are worker threads, delegate the range lookup to the
         // responsible worker thread
@@ -444,12 +448,13 @@ public class DatabaseImpl implements Database {
     public BabuDBRequestResult<Object> userDefinedLookup(UserDefinedLookup udl, Object context) {
         BabuDBRequest<Object> result = new BabuDBRequest<Object>(context);
         
+        /* TODO
         try {
             dbs.slaveCheck();
         } catch (BabuDBException e) {
             result.failed(e);
             return result;
-        }
+        } */
         
         LSMDBWorker w = dbs.getWorker(lsmDB.getDatabaseId());
         if (w != null) {
@@ -490,7 +495,7 @@ public class DatabaseImpl implements Database {
      */
 
     public byte[] directLookup(int indexId, int snapId, byte[] key) throws BabuDBException {
-        dbs.slaveCheck();
+        // TODO dbs.slaveCheck();
         
         if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
             throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
@@ -500,7 +505,7 @@ public class DatabaseImpl implements Database {
     
     public Iterator<Entry<byte[], byte[]>> directPrefixLookup(int indexId, int snapId, byte[] key,
         boolean ascending) throws BabuDBException {
-        dbs.slaveCheck();
+        // TODO dbs.slaveCheck();
         
         if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
             throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
@@ -510,7 +515,7 @@ public class DatabaseImpl implements Database {
     
     public Iterator<Entry<byte[], byte[]>> directRangeLookup(int indexId, int snapId, byte[] from, byte[] to,
         boolean ascending) throws BabuDBException {
-        dbs.slaveCheck();
+        // TODO dbs.slaveCheck();
         
         if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
             throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist");
@@ -568,7 +573,7 @@ public class DatabaseImpl implements Database {
      * @return an array with the snapshot ID for each index in the database
      */
     public int[] createSnapshot() throws BabuDBException, InterruptedException {
-        dbs.slaveCheck();
+        // TODO dbs.slaveCheck();
         
         int[] result = null;
         try {
@@ -608,7 +613,7 @@ public class DatabaseImpl implements Database {
      */
     public int[] createSnapshot(SnapshotConfig snap, boolean appendLogEntry) throws BabuDBException,
         InterruptedException {
-        dbs.slaveCheck();
+        // TODO dbs.slaveCheck();
         
         if (appendLogEntry) {
             
@@ -659,7 +664,7 @@ public class DatabaseImpl implements Database {
      *             positive
      */
     public void writeSnapshot(int[] snapIds, String directory, SnapshotConfig cfg) throws BabuDBException {
-        dbs.slaveCheck();
+        // TODO dbs.slaveCheck();
         
         proceedWriteSnapshot(snapIds, directory, cfg);
     }
@@ -701,7 +706,7 @@ public class DatabaseImpl implements Database {
      *             slave-mode.
      */
     public void writeSnapshot(int viewId, long sequenceNo, int[] snapIds) throws BabuDBException {
-        dbs.slaveCheck();
+        // TODO dbs.slaveCheck();
         
         proceedWriteSnapshot(viewId, sequenceNo, snapIds);
     }
@@ -739,7 +744,7 @@ public class DatabaseImpl implements Database {
      *             if snapshots cannot be cleaned up
      */
     public void cleanupSnapshot(final int viewId, final long sequenceNo) throws BabuDBException {
-        dbs.slaveCheck();
+        // TODO dbs.slaveCheck();
         
         proceedCleanupSnapshot(viewId, sequenceNo);
     }

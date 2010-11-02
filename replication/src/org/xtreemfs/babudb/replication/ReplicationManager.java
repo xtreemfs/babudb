@@ -20,7 +20,7 @@ import org.xtreemfs.foundation.LifeCycleListener;
  * @since 09/14/2009
  */
 
-public interface ReplicationManager extends LifeCycleListener{
+public interface ReplicationManager extends LifeCycleListener {
 
     /**
      * <p>

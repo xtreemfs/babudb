@@ -19,9 +19,11 @@ import junit.textui.TestRunner;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.xtreemfs.babudb.api.BabuDB;
+import org.xtreemfs.babudb.api.Database;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
-import org.xtreemfs.babudb.lsmdb.Database;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.FSUtils;
@@ -61,7 +63,7 @@ public class ConcurrencyTest extends TestCase {
     @Test
     public void testLargeIndexWithConcurrentCheckpoint() throws Exception {
         
-        database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 1000, 0,
+        database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 1000, 0,
             SyncMode.ASYNC, 0, 0, compression, maxNumRecs, maxBlockFileSize, true, 1000, 7), null);
         
         Database db = database.getDatabaseManager().createDatabase("test", 1);

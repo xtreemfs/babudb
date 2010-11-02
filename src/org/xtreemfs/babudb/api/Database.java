@@ -6,11 +6,13 @@
  * 
  */
 
-package org.xtreemfs.babudb.lsmdb;
+package org.xtreemfs.babudb.api;
 
-import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBRequestResult;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
+import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
+import org.xtreemfs.babudb.lsmdb.DatabaseRO;
 
 public interface Database extends DatabaseRO {
     

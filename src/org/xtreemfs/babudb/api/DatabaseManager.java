@@ -6,12 +6,12 @@
  * 
  */
 
-package org.xtreemfs.babudb.lsmdb;
+package org.xtreemfs.babudb.api;
 
 import java.io.IOException;
 import java.util.Map;
 
-import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
 
 public interface DatabaseManager {

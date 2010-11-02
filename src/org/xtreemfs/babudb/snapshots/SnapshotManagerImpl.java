@@ -14,12 +14,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Map.Entry;
 
-import org.xtreemfs.babudb.BabuDB;
-import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.BabuDBImpl;
+import org.xtreemfs.babudb.api.Database;
+import org.xtreemfs.babudb.api.SnapshotManager;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
-import org.xtreemfs.babudb.lsmdb.Database;
 import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
 import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
 import org.xtreemfs.babudb.lsmdb.DatabaseRO;
@@ -31,11 +32,11 @@ public class SnapshotManagerImpl implements SnapshotManager {
     
     public static final String                       SNAP_DIR = "snapshots";
     
-    private final BabuDB                             dbs;
+    private final BabuDBImpl                         dbs;
     
     private final Map<String, Map<String, Snapshot>> snapshotDBs;
     
-    public SnapshotManagerImpl(BabuDB dbs) {
+    public SnapshotManagerImpl(BabuDBImpl dbs) {
         this.dbs = dbs;
         this.snapshotDBs = Collections.synchronizedMap(new HashMap<String, Map<String, Snapshot>>());
     }

@@ -15,9 +15,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.xtreemfs.babudb.BabuDB;
-import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
+import org.xtreemfs.babudb.api.BabuDB;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.sandbox.CLIParser.CliOption;
@@ -51,7 +51,7 @@ public class BabuDBBenchmark {
     
     private final int          maxKeyLength;
     
-    // private final BabuDB slaveDB;
+    // private final BabuDBImpl slaveDB;
     
     private final byte[]       payload;
     

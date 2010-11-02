@@ -9,10 +9,13 @@ package org.xtreemfs.babudb.config;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.List;
 import java.util.Properties;
+import java.util.Vector;
 
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.config.Config;
 
 /**
  * Reading configurations from the babuDB-config-file.
@@ -109,7 +112,12 @@ public class BabuDBConfig extends Config {
     protected int      mmapLimit;
     
     /**
-     * Crates a new BabuDB configuration.
+     * Paths for optionally plugins used by BabuDB.
+     */
+    protected List<String> pluginPaths;
+    
+    /**
+     * Creates a new BabuDB configuration.
      * 
      * @param dbDir
      *            the directory in which persistent checkpoints are stored
@@ -181,7 +189,7 @@ public class BabuDBConfig extends Config {
     }
     
     /**
-     * Crates a new BabuDB configuration.
+     * Creates a new BabuDB configuration.
      * 
      * @param dbDir
      *            the directory in which persistent checkpoints are stored
@@ -287,6 +295,14 @@ public class BabuDBConfig extends Config {
             System.getProperty("os.arch") != null && !System.getProperty("os.arch").endsWith("64"));
         
         this.mmapLimit = this.readOptionalInt("babudb.mmapLimit", -1);
+        
+        this.pluginPaths = new Vector<String>();
+        
+        int i = 0;
+        String pluginPath = null;
+        while ((pluginPath = this.readOptionalString("plugin" + i++, null)) != null) {
+            this.pluginPaths.add(pluginPath);
+        }
     }
     
     protected int readDebugLevel() {
@@ -392,6 +408,10 @@ public class BabuDBConfig extends Config {
         return this.mmapLimit;
     }
     
+    public List<String> getPluginPaths() {
+        return this.pluginPaths;
+    }
+    
     public String toString() {
         StringBuffer buf = new StringBuffer();
         buf.append("############# CONFIGURATION #############\n");
@@ -410,7 +430,10 @@ public class BabuDBConfig extends Config {
         buf.append("#            mmap disabled: " + disableMMap + "\n");
         if (!disableMMap)
             buf.append("#               mmap limit: " + mmapLimit + "\n");
-        
+        int i = 0;
+        for (String pluginPath : pluginPaths) {
+            buf.append("#               plugin " + (i++) + ": " + pluginPath + "\n");
+        }
         return buf.toString();
     }
     

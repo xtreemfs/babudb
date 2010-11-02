@@ -12,11 +12,11 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.xtreemfs.babudb.BabuDB;
-import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
+import org.xtreemfs.babudb.api.BabuDB;
+import org.xtreemfs.babudb.api.Database;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException;
 import org.xtreemfs.babudb.config.ConfigBuilder;
-import org.xtreemfs.babudb.lsmdb.Database;
 import org.xtreemfs.foundation.util.OutputUtils;
 
 /**
@@ -80,7 +80,7 @@ public class DBDumpTool {
         BabuDB databaseSystem = BabuDBFactory.createBabuDB(new ConfigBuilder().setDataPath(dbDir, logDir)
                 .setCompressed(compression).build());
         
-        out.println("<BabuDB version=\"" + BabuDB.BABUDB_VERSION + "\">");
+        out.println("<BabuDB version=\"" + BabuDBFactory.BABUDB_VERSION + "\">");
         
         Map<String, Database> dbs = databaseSystem.getDatabaseManager().getDatabases();
         

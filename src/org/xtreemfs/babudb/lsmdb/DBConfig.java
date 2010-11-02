@@ -18,11 +18,14 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
-import org.xtreemfs.babudb.BabuDB;
-import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.BabuDBImpl;
+import org.xtreemfs.babudb.api.Database;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException;
+import org.xtreemfs.babudb.api.exceptions.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.index.ByteRangeComparator;
 import org.xtreemfs.foundation.logging.Logging;
+
+import static org.xtreemfs.babudb.BabuDBFactory.*;
 
 /**
  * <p>
@@ -35,15 +38,15 @@ import org.xtreemfs.foundation.logging.Logging;
 
 public class DBConfig {
     
-    private final BabuDB dbs;
+    private final BabuDBImpl    dbs;
     
-    private final File   configFile;
+    private final File          configFile;
     
-    private boolean      conversionRequired;
+    private boolean             conversionRequired;
     
-    private int          dbFormatVer;
+    private int                 dbFormatVer;
     
-    public DBConfig(BabuDB dbs) throws BabuDBException {
+    public DBConfig(BabuDBImpl dbs) throws BabuDBException {
         this.dbs = dbs;
         this.configFile = new File(this.dbs.getConfig().getBaseDir() + this.dbs.getConfig().getDbCfgFile());
         load();
@@ -65,10 +68,10 @@ public class DBConfig {
             if (configFile.exists()) {
                 ois = new ObjectInputStream(new FileInputStream(configFile));
                 final int dbFormatVer = ois.readInt();
-                if (dbFormatVer != BabuDB.BABUDB_DB_FORMAT_VERSION) {
+                if (dbFormatVer != BABUDB_DB_FORMAT_VERSION) {
                     throw new BabuDBException(ErrorCode.IO_ERROR, "on-disk format (version " + dbFormatVer
                         + ") is incompatible with this BabuDB release " + "(uses on-disk format version "
-                        + BabuDB.BABUDB_DB_FORMAT_VERSION + ")");
+                        + BABUDB_DB_FORMAT_VERSION + ")");
                 }
                 final int numDB = ois.readInt();
                 dbman.nextDbId = ois.readInt();
@@ -163,7 +166,7 @@ public class DBConfig {
             if (configFile.exists()) {
                 ois = new ObjectInputStream(new FileInputStream(configFile));
                 dbFormatVer = ois.readInt();
-                if (dbFormatVer != BabuDB.BABUDB_DB_FORMAT_VERSION)
+                if (dbFormatVer != BABUDB_DB_FORMAT_VERSION)
                     conversionRequired = true;
                 final int numDB = ois.readInt();
                 dbman.nextDbId = ois.readInt();
@@ -239,7 +242,7 @@ public class DBConfig {
                 File tempFile = new File(filename + ".in_progress");
                 FileOutputStream fos = new FileOutputStream(tempFile);
                 ObjectOutputStream oos = new ObjectOutputStream(fos);
-                oos.writeInt(BabuDB.BABUDB_DB_FORMAT_VERSION);
+                oos.writeInt(BABUDB_DB_FORMAT_VERSION);
                 oos.writeInt(dbman.dbsById.size());
                 oos.writeInt(dbman.nextDbId);
                 for (int dbId : dbman.dbsById.keySet()) {

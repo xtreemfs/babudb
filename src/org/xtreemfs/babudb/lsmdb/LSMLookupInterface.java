@@ -7,7 +7,8 @@ package org.xtreemfs.babudb.lsmdb;
 
 import java.util.Iterator;
 import java.util.Map.Entry;
-import org.xtreemfs.babudb.BabuDBException;
+
+import org.xtreemfs.babudb.api.exceptions.BabuDBException;
 import org.xtreemfs.babudb.index.LSMTree;
 
 /**
