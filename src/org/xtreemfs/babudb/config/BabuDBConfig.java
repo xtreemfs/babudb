@@ -261,7 +261,7 @@ public class BabuDBConfig extends Config {
     
     public void read() throws IOException {
         
-        this.debugLevel = readDebugLevel();
+        this.debugLevel = thiss.readDebugLevel();
         
         this.debugCategory = this.readOptionalString("babudb.debug.category", "all");
         
@@ -303,45 +303,10 @@ public class BabuDBConfig extends Config {
         while ((pluginPath = this.readOptionalString("plugin" + i++, null)) != null) {
             this.pluginPaths.add(pluginPath);
         }
-    }
-    
-    protected int readDebugLevel() {
-        String level = props.getProperty("debug.level");
-        if (level == null)
-            return Logging.LEVEL_WARN;
-        else {
-            
-            level = level.trim().toUpperCase();
-            
-            if (level.equals("EMERG")) {
-                return Logging.LEVEL_EMERG;
-            } else if (level.equals("ALERT")) {
-                return Logging.LEVEL_ALERT;
-            } else if (level.equals("CRIT")) {
-                return Logging.LEVEL_CRIT;
-            } else if (level.equals("ERR")) {
-                return Logging.LEVEL_ERROR;
-            } else if (level.equals("WARNING")) {
-                return Logging.LEVEL_WARN;
-            } else if (level.equals("NOTICE")) {
-                return Logging.LEVEL_NOTICE;
-            } else if (level.equals("INFO")) {
-                return Logging.LEVEL_INFO;
-            } else if (level.equals("DEBUG")) {
-                return Logging.LEVEL_DEBUG;
-            } else {
-                
-                try {
-                    int levelInt = Integer.valueOf(level);
-                    return levelInt;
-                } catch (NumberFormatException ex) {
-                    throw new RuntimeException("'" + level + "' is not a valid level name nor an integer");
-                }
-                
-            }
-            
-        }
         
+        checkArgs(this.baseDir, this.dbLogDir, numThreads, maxLogfileSize, 
+                checkInterval, syncMode, pseudoSyncWait, maxQueueLength, 
+                compression, maxNumRecordsPerBlock, maxBlockFileSize, mmapLimit);
     }
     
     public int getDebugLevel() {
