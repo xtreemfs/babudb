@@ -261,7 +261,7 @@ public class BabuDBConfig extends Config {
     
     public void read() throws IOException {
         
-        this.debugLevel = thiss.readDebugLevel();
+        this.debugLevel = this.readOptionalDebugLevel();
         
         this.debugCategory = this.readOptionalString("babudb.debug.category", "all");
         
