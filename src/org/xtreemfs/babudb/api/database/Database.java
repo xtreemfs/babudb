@@ -6,13 +6,10 @@
  * 
  */
 
-package org.xtreemfs.babudb.api;
+package org.xtreemfs.babudb.api.database;
 
-import org.xtreemfs.babudb.BabuDBRequestResult;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
-import org.xtreemfs.babudb.index.ByteRangeComparator;
-import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
-import org.xtreemfs.babudb.lsmdb.DatabaseRO;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 
 public interface Database extends DatabaseRO {
     
@@ -29,7 +26,7 @@ public interface Database extends DatabaseRO {
      * @return an insert record group
      * @throws BabuDBException
      */
-    public BabuDBInsertGroup createInsertGroup() throws BabuDBException;
+    public DatabaseInsertGroup createInsertGroup() throws BabuDBException;
     
     /**
      * Returns an array of byte range comparators for all indices in the
@@ -53,7 +50,7 @@ public interface Database extends DatabaseRO {
      *            arbitrary context which is passed to the listener
      * @return a future as proxy for the request result.
      */
-    public BabuDBRequestResult<Object> singleInsert(int indexId, byte[] key, 
+    public DatabaseRequestResult<Object> singleInsert(int indexId, byte[] key, 
             byte[] value, Object context);
     
     /**
@@ -65,6 +62,6 @@ public interface Database extends DatabaseRO {
      *            arbitrary context which is passed to the listener
      * @return a future as proxy for the request result.
      */
-    public BabuDBRequestResult<Object> insert(BabuDBInsertGroup irg, 
+    public DatabaseRequestResult<Object> insert(DatabaseInsertGroup irg, 
             Object context);
 }

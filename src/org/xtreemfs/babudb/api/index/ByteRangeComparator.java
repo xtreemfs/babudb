@@ -6,9 +6,11 @@
  * 
  */
 
-package org.xtreemfs.babudb.index;
+package org.xtreemfs.babudb.api.index;
 
 import java.util.Comparator;
+
+import org.xtreemfs.babudb.index.ByteRange;
 
 /**
  * A comparator for byte buffers and byte ranges.

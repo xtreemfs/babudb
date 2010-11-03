@@ -18,9 +18,9 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.BabuDBImpl;
-import org.xtreemfs.babudb.api.Database;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.logging.Logging.Category;

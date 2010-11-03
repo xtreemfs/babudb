@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Map.Entry;
 
+import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.overlay.MultiOverlayBufferTree;
 import org.xtreemfs.babudb.index.reader.DiskIndex;
 import org.xtreemfs.babudb.index.reader.InternalBufferUtil;

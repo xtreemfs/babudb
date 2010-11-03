@@ -18,13 +18,14 @@ import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.xtreemfs.babudb.BabuDBImpl;
-import org.xtreemfs.babudb.BabuDBRequest;
-import org.xtreemfs.babudb.BabuDBRequestResult;
-import org.xtreemfs.babudb.UserDefinedLookup;
-import org.xtreemfs.babudb.api.Database;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException.ErrorCode;
-import org.xtreemfs.babudb.index.ByteRangeComparator;
+import org.xtreemfs.babudb.BabuDBRequestResultImpl;
+import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
+import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
+import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.database.UserDefinedLookup;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
@@ -79,8 +80,7 @@ public class DatabaseImpl implements Database {
      * @see org.xtreemfs.babudb.lsmdb.Database#createInsertGroup()
      */
     @Override
-    public BabuDBInsertGroup createInsertGroup() throws BabuDBException {
-        // TODO dbs.slaveCheck();
+    public DatabaseInsertGroup createInsertGroup() throws BabuDBException {
         
         return new BabuDBInsertGroup(lsmDB);
     }
@@ -96,7 +96,7 @@ public class DatabaseImpl implements Database {
      * java.lang.Object)
      */
     @Override
-    public BabuDBRequestResult<Object> singleInsert(int indexId, byte[] key, byte[] value, Object context) {
+    public DatabaseRequestResult<Object> singleInsert(int indexId, byte[] key, byte[] value, Object context) {
         
         BabuDBInsertGroup irg = new BabuDBInsertGroup(lsmDB);
         irg.addInsert(indexId, key, value);
@@ -111,8 +111,9 @@ public class DatabaseImpl implements Database {
      * BabuDBInsertGroup, java.lang.Object)
      */
     @Override
-    public BabuDBRequestResult<Object> insert(BabuDBInsertGroup irg, Object context) {
-        BabuDBRequest<Object> result = new BabuDBRequest<Object>(context);
+    public DatabaseRequestResult<Object> insert(DatabaseInsertGroup irg, Object context) {
+        BabuDBRequestResultImpl<Object> result = 
+            new BabuDBRequestResultImpl<Object>(context);
         /*
         try {
             // TODO dbs.slaveCheck();
@@ -121,23 +122,24 @@ public class DatabaseImpl implements Database {
             return result;
         } */
         
-        InsertRecordGroup ins = irg.getRecord();
+        InsertRecordGroup ins = ((BabuDBInsertGroup) irg).getRecord();
         int dbId = ins.getDatabaseId();
         
         LSMDBWorker w = dbs.getWorker(dbId);
         if (w != null) {
             if (Logging.isNotice()) {
-                Logging.logMessage(Logging.LEVEL_NOTICE, this, "insert request" + " is sent to worker #"
-                    + dbId % dbs.getWorkerCount());
+                Logging.logMessage(Logging.LEVEL_NOTICE, this, "insert request" 
+                        + " is sent to worker #" + dbId % dbs.getWorkerCount());
             }
             
             try {
                 w.addRequest(new LSMDBRequest<Object>(lsmDB, result, ins));
             } catch (InterruptedException ex) {
-                result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, "operation was interrupted", ex));
+                result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, 
+                        "operation was interrupted", ex));
             }
         } else
-            directInsert(irg, result);
+            directInsert((BabuDBInsertGroup) irg, result);
         
         return result;
     }
@@ -150,7 +152,8 @@ public class DatabaseImpl implements Database {
      * @param listener
      *            to notify after insert.
      */
-    private void directInsert(final BabuDBInsertGroup irg, final BabuDBRequest<Object> listener) {
+    private void directInsert(final BabuDBInsertGroup irg, 
+            final BabuDBRequestResultImpl<Object> listener) {
         
         int numIndices = lsmDB.getIndexCount();
         
@@ -247,9 +250,10 @@ public class DatabaseImpl implements Database {
      * java.lang.Object)
      */
     @Override
-    public BabuDBRequestResult<byte[]> lookup(int indexId, byte[] key, Object context) {
+    public DatabaseRequestResult<byte[]> lookup(int indexId, byte[] key, Object context) {
         
-        BabuDBRequest<byte[]> result = new BabuDBRequest<byte[]>(context);
+        BabuDBRequestResultImpl<byte[]> result = 
+            new BabuDBRequestResultImpl<byte[]>(context);
         LSMDBWorker w = dbs.getWorker(lsmDB.getDatabaseId());
         if (w != null) {
             if (Logging.isNotice()) {
@@ -276,7 +280,8 @@ public class DatabaseImpl implements Database {
      * @param listener
      *            the result listener.
      */
-    private void directLookup(int indexId, byte[] key, BabuDBRequest<byte[]> listener) {
+    private void directLookup(int indexId, byte[] key, 
+            BabuDBRequestResultImpl<byte[]> listener) {
         
         if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
             listener.failed(new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index does not exist"));
@@ -291,7 +296,7 @@ public class DatabaseImpl implements Database {
      * java.lang.Object)
      */
     @Override
-    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> prefixLookup(int indexId, byte[] key,
+    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> prefixLookup(int indexId, byte[] key,
         Object context) {
         return prefixLookup(indexId, key, context, true);
     }
@@ -303,7 +308,7 @@ public class DatabaseImpl implements Database {
      * byte[], java.lang.Object)
      */
     @Override
-    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> reversePrefixLookup(int indexId, byte[] key,
+    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> reversePrefixLookup(int indexId, byte[] key,
         Object context) {
         return prefixLookup(indexId, key, context, false);
     }
@@ -317,11 +322,12 @@ public class DatabaseImpl implements Database {
      * @param ascending
      * @return
      */
-    private BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> prefixLookup(int indexId, byte[] key,
+    private DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> prefixLookup(int indexId, byte[] key,
         Object context, boolean ascending) {
         
-        BabuDBRequest<Iterator<Entry<byte[], byte[]>>> result = new BabuDBRequest<Iterator<Entry<byte[], byte[]>>>(
-            context);
+        BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>> result = 
+            new BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>>(
+                    context);
         
         /* TODO
         try {
@@ -367,7 +373,7 @@ public class DatabaseImpl implements Database {
      * byte[], java.lang.Object)
      */
     @Override
-    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> rangeLookup(int indexId, byte[] from,
+    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> rangeLookup(int indexId, byte[] from,
         byte[] to, Object context) {
         return rangeLookup(indexId, from, to, context, true);
     }
@@ -379,7 +385,7 @@ public class DatabaseImpl implements Database {
      * byte[], java.lang.Object)
      */
     @Override
-    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> reverseRangeLookup(int indexId, byte[] from,
+    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> reverseRangeLookup(int indexId, byte[] from,
         byte[] to, Object context) {
         return rangeLookup(indexId, from, to, context, false);
     }
@@ -394,10 +400,11 @@ public class DatabaseImpl implements Database {
      * @param ascending
      * @return
      */
-    private BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> rangeLookup(int indexId, byte[] from,
+    private DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> rangeLookup(int indexId, byte[] from,
         byte[] to, Object context, boolean ascending) {
         
-        BabuDBRequest<Iterator<Entry<byte[], byte[]>>> result = new BabuDBRequest<Iterator<Entry<byte[], byte[]>>>(
+        BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>> result = 
+            new BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>>(
             context);
         
         /* TODO
@@ -445,8 +452,9 @@ public class DatabaseImpl implements Database {
      * .UserDefinedLookup, java.lang.Object)
      */
     @Override
-    public BabuDBRequestResult<Object> userDefinedLookup(UserDefinedLookup udl, Object context) {
-        BabuDBRequest<Object> result = new BabuDBRequest<Object>(context);
+    public DatabaseRequestResult<Object> userDefinedLookup(UserDefinedLookup udl, Object context) {
+        BabuDBRequestResultImpl<Object> result = 
+            new BabuDBRequestResultImpl<Object>(context);
         
         /* TODO
         try {
@@ -480,7 +488,8 @@ public class DatabaseImpl implements Database {
      * @param udl
      * @param listener
      */
-    private void directUserDefinedLookup(UserDefinedLookup udl, BabuDBRequest<Object> listener) {
+    private void directUserDefinedLookup(UserDefinedLookup udl, 
+            BabuDBRequestResultImpl<Object> listener) {
         final LSMLookupInterface lif = new LSMLookupInterface(lsmDB);
         try {
             Object result = udl.execute(lif);

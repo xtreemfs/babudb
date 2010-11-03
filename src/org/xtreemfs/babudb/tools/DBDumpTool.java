@@ -14,8 +14,8 @@ import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.api.BabuDB;
-import org.xtreemfs.babudb.api.Database;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
+import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.config.ConfigBuilder;
 import org.xtreemfs.foundation.util.OutputUtils;
 

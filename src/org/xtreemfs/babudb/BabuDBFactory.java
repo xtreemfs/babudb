@@ -11,8 +11,9 @@ package org.xtreemfs.babudb;
 import java.io.IOException;
 
 import org.xtreemfs.babudb.api.BabuDB;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.StaticInitialization;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.conversion.AutoConverter;
 import org.xtreemfs.babudb.plugin.PluginLoader;

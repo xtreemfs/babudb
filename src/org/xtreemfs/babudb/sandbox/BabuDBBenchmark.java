@@ -17,7 +17,7 @@ import java.util.Map;
 
 import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.api.BabuDB;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.sandbox.CLIParser.CliOption;

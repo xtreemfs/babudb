@@ -34,18 +34,19 @@ POSSIBILITY OF SUCH DAMAGE.
 /*
  * AUTHORS: Felix Langner (ZIB)
  */
-package org.xtreemfs.babudb;
+package org.xtreemfs.babudb.api.database;
 
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 
 /**
- * Generic interface for waiting asynchronously for a BabuDBRequest to be finished. 
+ * Generic interface for waiting asynchronously for a BabuDBRequest to be 
+ * finished. 
  * 
  * @author flangner
  * @since 11/11/2009
  * @param <T>
  */
-public interface BabuDBRequestListener<T> {
+public interface DatabaseRequestListener<T> {
     
     /**
      * Operation to perform if the request finally fails.

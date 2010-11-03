@@ -13,7 +13,6 @@ import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_CREATE;
 import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_DELETE;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -21,13 +20,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.xtreemfs.babudb.BabuDBImpl;
-import org.xtreemfs.babudb.BabuDBRequest;
-import org.xtreemfs.babudb.api.Database;
+import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.DatabaseManager;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.config.BabuDBConfig;
-import org.xtreemfs.babudb.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.log.DiskLogger;
@@ -325,7 +324,8 @@ public class DatabaseManagerImpl implements DatabaseManager {
     public static void metaInsert(byte type, ReusableBuffer parameters, DiskLogger logger)
         throws BabuDBException {
         
-        final BabuDBRequest<Object> result = new BabuDBRequest<Object>();
+        final BabuDBRequestResultImpl<Object> result = 
+            new BabuDBRequestResultImpl<Object>();
         
         // make the entry
         LogEntry entry = new LogEntry(parameters, new SyncListener() {

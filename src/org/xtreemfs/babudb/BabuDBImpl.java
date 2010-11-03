@@ -18,11 +18,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.xtreemfs.babudb.api.BabuDB;
 import org.xtreemfs.babudb.api.Checkpointer;
-import org.xtreemfs.babudb.api.Database;
 import org.xtreemfs.babudb.api.DatabaseManager;
 import org.xtreemfs.babudb.api.SnapshotManager;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.StaticInitialization;
+import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.conversion.AutoConverter;
 import org.xtreemfs.babudb.log.DiskLogIterator;
@@ -124,21 +125,12 @@ public class BabuDBImpl implements BabuDBInternal {
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.BabuDB#init(StaticInitialization staticInit)
+     * @see org.xtreemfs.babudb.BabuDBInternal#init(org.xtreemfs.babudb.StaticInitialization)
      */
     @Override
     public void init(final StaticInitialization staticInit) throws BabuDBException {
         snapshotManager.init();
-        
-        /* TODO
-        try {
-            if (conf instanceof ReplicationConfig)
-                new FileIO((ReplicationConfig) conf).replayBackupFiles();
-        } catch (IOException io) {
-            Logging.logMessage(Logging.LEVEL_ERROR, this, "Could not retrieve the "
-                + "slave backup files, because: ", io.getMessage());
-        }
-        */
+
         // determine the LSN from which to start the log replay
         
         // to be able to recover from crashes during checkpoints, it is
@@ -232,11 +224,10 @@ public class BabuDBImpl implements BabuDBInternal {
             + BABUDB_VERSION + ")");
     }
     
-    /**
-     * REPLICATION Stops the BabuDB for an initial Load. This is necessary if
-     * the replication has copied the onDiskData from a master- participant due
-     * a {@link LoadLogic} run.
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.BabuDBInternal#stop()
      */
+    @Override
     public void stop() {
         synchronized (stopped) {
             if (stopped.get())
@@ -263,15 +254,10 @@ public class BabuDBImpl implements BabuDBInternal {
         }
     }
     
-    /**
-     * <p>
-     * Needed for the initial load process of the babuDB, done by the
-     * replication.
-     * </p>
-     * 
-     * @throws BabuDBException
-     * @return the next LSN.
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.BabuDBInternal#restart()
      */
+    @Override
     public LSN restart() throws BabuDBException {
         synchronized (stopped) {
             if (!stopped.get())
@@ -345,7 +331,7 @@ public class BabuDBImpl implements BabuDBInternal {
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.BabuDB#shutdown()
+     * @see org.xtreemfs.babudb.api.BabuDB#shutdown()
      */
     @Override
     public void shutdown() throws BabuDBException {
@@ -412,25 +398,23 @@ public class BabuDBImpl implements BabuDBInternal {
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.BabuDB#getCheckpointer()
+     * @see org.xtreemfs.babudb.api.BabuDB#getCheckpointer()
      */
     @Override
     public Checkpointer getCheckpointer() {
         return dbCheckptr;
     }
     
-    /**
-     * Returns a reference to the disk logger. The disk logger should not be
-     * accessed by applications.
-     * 
-     * @return a reference to the disk logger
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.BabuDBInternal#getLogger()
      */
+    @Override
     public DiskLogger getLogger() {
         return logger;
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.BabuDB#getDatabaseManager()
+     * @see org.xtreemfs.babudb.api.BabuDB#getDatabaseManager()
      */
     @Override
     public DatabaseManager getDatabaseManager() {
@@ -440,6 +424,7 @@ public class BabuDBImpl implements BabuDBInternal {
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.BabuDBInternal#getConfig()
      */
+    @Override
     public BabuDBConfig getConfig() {
         return configuration;
     }
@@ -456,6 +441,44 @@ public class BabuDBImpl implements BabuDBInternal {
         if (f.exists())
             return result;
         return null;
+    }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.BabuDB#getSnapshotManager()
+     */
+    @Override
+    public SnapshotManager getSnapshotManager() {
+        return snapshotManager;
+    }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.BabuDBInternal#getDBConfigFile()
+     */
+    @Override
+    public DBConfig getDBConfigFile() {
+        return dbConfigFile;
+    }
+    
+    /**
+     * Returns the number of worker threads.
+     * 
+     * @return the number of worker threads.
+     */
+    public int getWorkerCount() {
+        if (worker == null)
+            return 0;
+        return worker.length;
+    }
+    
+    /**
+     * 
+     * @param dbId
+     * @return a worker Thread, responsible for the DB given by its ID.
+     */
+    public LSMDBWorker getWorker(int dbId) {
+        if (worker == null)
+            return null;
+        return worker[dbId % worker.length];
     }
     
     /**
@@ -555,44 +578,6 @@ public class BabuDBImpl implements BabuDBInternal {
                 throw new BabuDBException(ErrorCode.IO_ERROR,
                     "corrupted/incomplete log entry in database operations log", ex);
         }
-    }
-    
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.BabuDB#getSnapshotManager()
-     */
-    @Override
-    public SnapshotManager getSnapshotManager() {
-        return snapshotManager;
-    }
-    
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.BabuDBInternal#getDBConfigFile()
-     */
-    @Override
-    public DBConfig getDBConfigFile() {
-        return dbConfigFile;
-    }
-    
-    /**
-     * Returns the number of worker threads.
-     * 
-     * @return the number of worker threads.
-     */
-    public int getWorkerCount() {
-        if (worker == null)
-            return 0;
-        return worker.length;
-    }
-    
-    /**
-     * 
-     * @param dbId
-     * @return a worker Thread, responsible for the DB given by its ID.
-     */
-    public LSMDBWorker getWorker(int dbId) {
-        if (worker == null)
-            return null;
-        return worker[dbId % worker.length];
     }
     
     /** TODO

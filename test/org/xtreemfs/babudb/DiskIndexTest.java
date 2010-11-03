@@ -21,7 +21,7 @@ import java.util.Map.Entry;
 import junit.framework.TestCase;
 import junit.textui.TestRunner;
 
-import org.xtreemfs.babudb.index.ByteRangeComparator;
+import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.index.reader.DiskIndex;
 import org.xtreemfs.babudb.index.writer.DiskIndexWriter;

@@ -1,4 +1,4 @@
-/*  Copyright (c) 2008, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+/*  Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
 All rights reserved.
 
@@ -34,24 +34,25 @@ POSSIBILITY OF SUCH DAMAGE.
 /*
  * AUTHORS: Felix Langner (ZIB)
  */
-package org.xtreemfs.babudb;
+package org.xtreemfs.babudb.api.database;
 
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
+import org.xtreemfs.babudb.api.BabuDB;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 
 /**
- * User interface for {@link BabuDBRequest} return values.
+ * User interface for {@link BabuDB} request return values.
  * 
  * @author flangner
  * @since 11/11/2009
  * @param <T>
  */
-public interface BabuDBRequestResult<T> {
+public interface DatabaseRequestResult<T> {
     
     /**
      * Sets a listener to wait asynchronously for the result of the request.
      * @param listener
      */
-    public void registerListener(BabuDBRequestListener<T> listener);
+    public void registerListener(DatabaseRequestListener<T> listener);
     
     /**
      * Waits synchronously for the request-result.

@@ -10,7 +10,7 @@ package org.xtreemfs.babudb.snapshots;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 
 public interface BabuDBView {
     

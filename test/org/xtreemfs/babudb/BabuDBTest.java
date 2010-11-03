@@ -19,11 +19,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.xtreemfs.babudb.api.BabuDB;
-import org.xtreemfs.babudb.api.Database;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
+import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
+import org.xtreemfs.babudb.api.database.UserDefinedLookup;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
-import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
 import org.xtreemfs.babudb.lsmdb.LSMLookupInterface;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.FSUtils;
@@ -159,7 +160,7 @@ public class BabuDBTest extends TestCase {
             SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize), null);
         Database db = database.getDatabaseManager().createDatabase("test", 3);
         
-        BabuDBInsertGroup ir = db.createInsertGroup();
+        DatabaseInsertGroup ir = db.createInsertGroup();
         ir.addInsert(0, "Key1".getBytes(), "Value1".getBytes());
         ir.addInsert(1, "Key2".getBytes(), "Value2".getBytes());
         ir.addInsert(2, "Key3".getBytes(), "Value3".getBytes());
@@ -198,7 +199,7 @@ public class BabuDBTest extends TestCase {
             SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize), null);
         Database db = database.getDatabaseManager().createDatabase("test", 4);
         
-        BabuDBInsertGroup ir = db.createInsertGroup();
+        DatabaseInsertGroup ir = db.createInsertGroup();
         ir.addInsert(0, "Key1".getBytes(), "Value1".getBytes());
         ir.addInsert(1, "Key2".getBytes(), "Value2".getBytes());
         ir.addInsert(2, "Key3".getBytes(), "Value3".getBytes());
@@ -246,7 +247,7 @@ public class BabuDBTest extends TestCase {
             SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize), null);
         Database db = database.getDatabaseManager().createDatabase("test", 3);
         
-        BabuDBInsertGroup ir = db.createInsertGroup();
+        DatabaseInsertGroup ir = db.createInsertGroup();
         ir.addInsert(0, "Key1".getBytes(), "Value1".getBytes());
         ir.addInsert(1, "Key2".getBytes(), "Value2".getBytes());
         ir.addInsert(2, "Key3".getBytes(), "Value3".getBytes());
@@ -281,7 +282,7 @@ public class BabuDBTest extends TestCase {
         Database db = database.getDatabaseManager().createDatabase("test", 2);
         
         for (int i = 0; i < 100000; i++) {
-            BabuDBInsertGroup ir = db.createInsertGroup();
+            DatabaseInsertGroup ir = db.createInsertGroup();
             ir.addInsert(0, (i + "").getBytes(), "bla".getBytes());
             ir.addInsert(1, (i + "").getBytes(), "bla".getBytes());
             db.insert(ir, null).get();
@@ -307,7 +308,7 @@ public class BabuDBTest extends TestCase {
         Database db = database.getDatabaseManager().createDatabase("test", 3);
         
         for (int i = 0; i < 1000; i++) {
-            BabuDBInsertGroup ir = db.createInsertGroup();
+            DatabaseInsertGroup ir = db.createInsertGroup();
             ir.addInsert(0, (i + "").getBytes(), "bla".getBytes());
             ir.addInsert(1, (i + "").getBytes(), "bla".getBytes());
             ir.addInsert(2, (i + "").getBytes(), "bla".getBytes());
@@ -316,7 +317,7 @@ public class BabuDBTest extends TestCase {
         
         byte[] data = new byte[2048];
         for (int i = 0; i < 1000; i++) {
-            BabuDBInsertGroup ir = db.createInsertGroup();
+            DatabaseInsertGroup ir = db.createInsertGroup();
             ir.addInsert(0, (i + "").getBytes(), data);
             ir.addInsert(1, (i + "").getBytes(), data);
             ir.addInsert(2, (i + "").getBytes(), data);
@@ -337,7 +338,7 @@ public class BabuDBTest extends TestCase {
         }
         
         for (int i = 0; i < 1000; i++) {
-            BabuDBInsertGroup ir = db.createInsertGroup();
+            DatabaseInsertGroup ir = db.createInsertGroup();
             ir.addDelete(0, (i + "").getBytes());
             ir.addDelete(1, (i + "").getBytes());
             ir.addDelete(2, (i + "").getBytes());
@@ -364,7 +365,7 @@ public class BabuDBTest extends TestCase {
         Database db = database.getDatabaseManager().createDatabase("test", 3);
         
         for (int i = 1000; i < 2000; i++) {
-            BabuDBInsertGroup ir = db.createInsertGroup();
+            DatabaseInsertGroup ir = db.createInsertGroup();
             ir.addInsert(0, (i + "").getBytes(), (i + "").getBytes());
             ir.addInsert(1, (i + "").getBytes(), (i + "").getBytes());
             ir.addInsert(2, (i + "").getBytes(), (i + "").getBytes());
@@ -399,7 +400,7 @@ public class BabuDBTest extends TestCase {
         Database db = database.getDatabaseManager().createDatabase("test", 3);
         
         for (int i = 1000; i < 2000; i++) {
-            BabuDBInsertGroup ir = db.createInsertGroup();
+            DatabaseInsertGroup ir = db.createInsertGroup();
             ir.addInsert(0, (i + "").getBytes(), (i + "").getBytes());
             ir.addInsert(1, (i + "").getBytes(), (i + "").getBytes());
             ir.addInsert(2, (i + "").getBytes(), (i + "").getBytes());

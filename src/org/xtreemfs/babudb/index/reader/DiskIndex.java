@@ -23,8 +23,8 @@ import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.ByteRange;
-import org.xtreemfs.babudb.index.ByteRangeComparator;
 import org.xtreemfs.foundation.logging.Logging;
 
 public class DiskIndex {

@@ -14,8 +14,8 @@ import java.util.NoSuchElementException;
 import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.api.BabuDB;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
 
 /**

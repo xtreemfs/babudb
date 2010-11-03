@@ -12,8 +12,10 @@ package org.xtreemfs.babudb;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
+import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 
 /**
  * Default return value for BabuDB requests.
@@ -22,9 +24,9 @@ import org.xtreemfs.babudb.api.exceptions.BabuDBException.ErrorCode;
  * @since 11/11/2009
  * @param <T>
  */
-public class BabuDBRequest<T> implements BabuDBRequestResult<T>{
+public class BabuDBRequestResultImpl<T> implements DatabaseRequestResult<T>{
     
-    private BabuDBRequestListener<T>  listener; 
+    private DatabaseRequestListener<T>  listener; 
 
     private T                         result;
     
@@ -41,7 +43,7 @@ public class BabuDBRequest<T> implements BabuDBRequestResult<T>{
     /**
      * Creates a new future-object for a BabuDB request.
      */
-    public BabuDBRequest() {
+    public BabuDBRequestResultImpl() {
         this.context = null;
     }
     
@@ -51,7 +53,7 @@ public class BabuDBRequest<T> implements BabuDBRequestResult<T>{
      * @param context
      *          can be null.
      */
-    public BabuDBRequest(Object context) {
+    public BabuDBRequestResultImpl(Object context) {
         this.context = context;
     }
     
@@ -124,14 +126,14 @@ public class BabuDBRequest<T> implements BabuDBRequestResult<T>{
     }
 
 /*
- * BabuDBRequestResult interface
+ * DatabaseRequestResult interface
  */
     
     /*
      * (non-Javadoc)
      * @see org.xtreemfs.babudb.BabuDBRequestResult#registerListener(org.xtreemfs.babudb.RequestListener)
      */
-    public void registerListener(BabuDBRequestListener<T> listener) {
+    public void registerListener(DatabaseRequestListener<T> listener) {
         synchronized (finished) {
             assert (this.listener == null) : "There is already a listener registered!";
             if (finished.get()) {

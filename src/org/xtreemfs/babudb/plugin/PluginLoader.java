@@ -20,7 +20,7 @@ import static org.xtreemfs.babudb.BabuDBFactory.*;
 
 /**
  * {@link ClassLoader} for accessing optional plugins for BabuDB.
- * Plugins may access BabuDB via BabuDB Main.start(BabuDBImpl babuDB).
+ * Plugins may access BabuDB via BabuDB Main.start(BabuDBInternal babuDB).
  * 
  * @author flangner
  * @date 11/01/2010
@@ -46,6 +46,7 @@ public final class PluginLoader extends ClassLoader {
         this.babuDB = babuDB;
         
         String main = null;
+        int index = 0;
         for (String pluginPath : babuDB.getConfig().getPluginPaths()) {
             
             // load all classes from the plugin JARs
@@ -78,19 +79,25 @@ public final class PluginLoader extends ClassLoader {
             jis.close();
             
             if (main != null) {
+                String configPath = 
+                    babuDB.getConfig().getPluginConfigPaths().get(index);
                 
                 try {
                     Class<?> pluginMain = loadClass(main);
-                    babuDB = (BabuDBInternal) 
-                        pluginMain.getMethod("start", BabuDBInternal.class)
-                            .invoke(this.babuDB);
+                    this.babuDB = (BabuDBInternal) pluginMain
+                        .getMethod("start", BabuDBInternal.class, String.class)
+                        .invoke(this.babuDB, configPath);
+                    
                 } catch (Exception e) {
                     throw new RuntimeException("Plugin at '" + pluginPath + "'" +
                     		" for version " + BABUDB_VERSION + 
+                    		((configPath != null) ? " with " +
+                    		"config at path " + configPath : "") +
                     		" could not be initialized!", e.getCause());
                 }
                 main = null;
             }
+            index++;
         }
     }
 

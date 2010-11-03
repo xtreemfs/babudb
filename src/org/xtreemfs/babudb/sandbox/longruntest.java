@@ -16,11 +16,11 @@ import java.util.NoSuchElementException;
 
 import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.api.BabuDB;
-import org.xtreemfs.babudb.api.Database;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
+import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
-import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.logging.Logging;
 
@@ -46,7 +46,6 @@ public class longruntest {
     
 //    private final TreeMap<String, String>[] controlIndices;
     
-    @SuppressWarnings("unchecked")
     public longruntest(String basedir, String dictFile, int numIndices, boolean compression)
         throws IOException, BabuDBException {
         dictionary = new ArrayList<String>(maxdictentries);
@@ -108,7 +107,7 @@ public class longruntest {
             case 1: {
                 // groupInsert
                 final int numInGroup = (int) Math.round(Math.random() * (9)) + 1;
-                final BabuDBInsertGroup ig = db.createInsertGroup();
+                final DatabaseInsertGroup ig = db.createInsertGroup();
                 for (int i = 0; i < numInGroup; i++) {
                     final int index = getRandomIndex();
                     final String key = getRandomDictEntry();

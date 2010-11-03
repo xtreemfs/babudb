@@ -11,8 +11,9 @@ package org.xtreemfs.babudb.api;
 import java.io.IOException;
 import java.util.Map;
 
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
-import org.xtreemfs.babudb.index.ByteRangeComparator;
+import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 
 public interface DatabaseManager {
     
@@ -48,7 +49,8 @@ public interface DatabaseManager {
      *             if the database directory cannot be created or the config
      *             cannot be saved
      */
-    public Database createDatabase(String databaseName, int numIndices) throws BabuDBException;
+    public Database createDatabase(String databaseName, int numIndices) 
+            throws BabuDBException;
     
     /**
      * Creates a new database.
@@ -65,8 +67,8 @@ public interface DatabaseManager {
      *             if the database directory cannot be created or the config
      *             cannot be saved
      */
-    public Database createDatabase(String databaseName, int numIndices, ByteRangeComparator[] comparators)
-        throws BabuDBException;
+    public Database createDatabase(String databaseName, int numIndices, 
+            ByteRangeComparator[] comparators) throws BabuDBException;
     
     /**
      * Deletes a database.
@@ -89,12 +91,13 @@ public interface DatabaseManager {
      * @throws BabuDBException
      * @throws IOException
      */
-    public void copyDatabase(String sourceDB, String destDB) throws BabuDBException, IOException,
-        InterruptedException;
+    public void copyDatabase(String sourceDB, String destDB) 
+            throws BabuDBException, IOException, InterruptedException;
     
     /**
      * Creates a dump of all databases registered with this DatabaseManager. 
-     * The dump is stored in the given destination path and is suitable for backup.
+     * The dump is stored in the given destination path and is suitable for 
+     * backup.
      * Creating a dump does not influence the original database. The procedure 
      * is as follows:
      * 
@@ -113,6 +116,6 @@ public interface DatabaseManager {
      * @throws IOException
      * @throws InterruptedException
      */
-    public void dumpAllDatabases(String destPath) throws BabuDBException, IOException, 
-    	InterruptedException;    
+    public void dumpAllDatabases(String destPath) throws BabuDBException, 
+            IOException, InterruptedException;    
 }

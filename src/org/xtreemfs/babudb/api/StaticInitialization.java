@@ -5,10 +5,8 @@
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-package org.xtreemfs.babudb;
+package org.xtreemfs.babudb.api;
 
-import org.xtreemfs.babudb.api.DatabaseManager;
-import org.xtreemfs.babudb.api.SnapshotManager;
 
 /**
  * <p>

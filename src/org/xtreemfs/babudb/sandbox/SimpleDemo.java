@@ -7,12 +7,12 @@ package org.xtreemfs.babudb.sandbox;
 
 import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.api.BabuDB;
-import org.xtreemfs.babudb.api.Database;
 import org.xtreemfs.babudb.api.DatabaseManager;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
+import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
-import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
 
 public class SimpleDemo {
     
@@ -28,7 +28,7 @@ public class SimpleDemo {
             Database db = dbm.getDatabase("myDB");
             
             // create an insert group for atomic inserts
-            BabuDBInsertGroup group = db.createInsertGroup();
+            DatabaseInsertGroup group = db.createInsertGroup();
             
             // insert one key in each index
             group.addInsert(0, "Key1".getBytes(), "Value1".getBytes());

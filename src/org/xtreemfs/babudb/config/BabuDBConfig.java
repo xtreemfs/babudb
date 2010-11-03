@@ -117,6 +117,11 @@ public class BabuDBConfig extends Config {
     protected List<String> pluginPaths;
     
     /**
+     * Paths for the configuration files of optionally plugins used by BabuDB.
+     */
+    protected List<String> pluginConfigPaths;
+    
+    /**
      * Creates a new BabuDB configuration.
      * 
      * @param dbDir
@@ -296,12 +301,18 @@ public class BabuDBConfig extends Config {
         
         this.mmapLimit = this.readOptionalInt("babudb.mmapLimit", -1);
         
-        this.pluginPaths = new Vector<String>();
-        
-        int i = 0;
+        this.pluginPaths = new Vector<String>(); 
+        int count = 0;
         String pluginPath = null;
-        while ((pluginPath = this.readOptionalString("plugin" + i++, null)) != null) {
+        while ((pluginPath = this.readOptionalString("plugin" + count++, null)) 
+                != null) {
             this.pluginPaths.add(pluginPath);
+        }
+        
+        this.pluginConfigPaths = new Vector<String>(count);
+        for (int i = 0; i < count; i++) {
+            this.pluginConfigPaths.add(this.readOptionalString("pluginConfig"+i, 
+                    null));
         }
         
         checkArgs(this.baseDir, this.dbLogDir, numThreads, maxLogfileSize, 
@@ -377,6 +388,10 @@ public class BabuDBConfig extends Config {
         return this.pluginPaths;
     }
     
+    public List<String> getPluginConfigPaths() {
+        return this.pluginConfigPaths;
+    }
+ 
     public String toString() {
         StringBuffer buf = new StringBuffer();
         buf.append("############# CONFIGURATION #############\n");
@@ -397,7 +412,10 @@ public class BabuDBConfig extends Config {
             buf.append("#               mmap limit: " + mmapLimit + "\n");
         int i = 0;
         for (String pluginPath : pluginPaths) {
-            buf.append("#               plugin " + (i++) + ": " + pluginPath + "\n");
+            buf.append("#               plugin " + (i++) + ": " + pluginPath + 
+                    "\n");
+            buf.append("#               plugin config: " + 
+                    pluginConfigPaths.get(i) + "\n");
         }
         return buf.toString();
     }

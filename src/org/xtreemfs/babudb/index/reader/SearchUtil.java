@@ -8,8 +8,8 @@
 
 package org.xtreemfs.babudb.index.reader;
 
+import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.ByteRange;
-import org.xtreemfs.babudb.index.ByteRangeComparator;
 
 public class SearchUtil {
     

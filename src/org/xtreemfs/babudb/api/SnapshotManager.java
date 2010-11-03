@@ -7,8 +7,8 @@
  */
 package org.xtreemfs.babudb.api;
 
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
-import org.xtreemfs.babudb.lsmdb.DatabaseRO;
+import org.xtreemfs.babudb.api.database.DatabaseRO;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 
 public interface SnapshotManager {
@@ -31,7 +31,8 @@ public interface SnapshotManager {
      * @throws BabuDBException
      *             if the database does not exist
      */
-    public DatabaseRO getSnapshotDB(String dbName, String snapshotName) throws BabuDBException;
+    public DatabaseRO getSnapshotDB(String dbName, String snapshotName) 
+            throws BabuDBException;
     
     /**
      * Triggers the creation of a persistent snapshot of a database. Snapshot
@@ -45,7 +46,8 @@ public interface SnapshotManager {
      * @throws BabuDBException
      *             if snapshot creation failed
      */
-    public void createPersistentSnapshot(String dbName, SnapshotConfig snap) throws BabuDBException;
+    public void createPersistentSnapshot(String dbName, SnapshotConfig snap) 
+            throws BabuDBException;
     
     /**
      * Deletes a persistent snapshot.
@@ -57,7 +59,8 @@ public interface SnapshotManager {
      * @throws BabuDBException
      *             if an error occurs
      */
-    public void deletePersistentSnapshot(String dbName, String snapshotName) throws BabuDBException;
+    public void deletePersistentSnapshot(String dbName, String snapshotName) 
+            throws BabuDBException;
     
     /**
      * Returns a list of all snapshots of a given database.

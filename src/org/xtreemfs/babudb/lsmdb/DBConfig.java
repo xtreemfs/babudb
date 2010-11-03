@@ -19,10 +19,10 @@ import java.util.List;
 import java.util.Set;
 
 import org.xtreemfs.babudb.BabuDBImpl;
-import org.xtreemfs.babudb.api.Database;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException.ErrorCode;
-import org.xtreemfs.babudb.index.ByteRangeComparator;
+import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.foundation.logging.Logging;
 
 import static org.xtreemfs.babudb.BabuDBFactory.*;

@@ -8,7 +8,7 @@
 
 package org.xtreemfs.babudb.api;
 
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 
 /**
  * Interface for checkpointing support.

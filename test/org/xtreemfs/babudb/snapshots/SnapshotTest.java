@@ -19,12 +19,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.api.BabuDB;
-import org.xtreemfs.babudb.api.Database;
+import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
+import org.xtreemfs.babudb.api.database.DatabaseRO;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
-import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
-import org.xtreemfs.babudb.lsmdb.DatabaseRO;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.FSUtils;
 
@@ -66,7 +66,7 @@ public class SnapshotTest extends TestCase {
         Database db = database.getDatabaseManager().createDatabase("test", 3);
         
         // add some key-value pairs
-        BabuDBInsertGroup ir = db.createInsertGroup();
+        DatabaseInsertGroup ir = db.createInsertGroup();
         ir.addInsert(0, "Key1".getBytes(), "Value1".getBytes());
         ir.addInsert(0, "Key2".getBytes(), "Value2".getBytes());
         ir.addInsert(0, "Key3".getBytes(), "Value3".getBytes());
@@ -141,7 +141,7 @@ public class SnapshotTest extends TestCase {
         Database db = database.getDatabaseManager().createDatabase("test", 4);
         
         // add some key-value pairs
-        BabuDBInsertGroup ir = db.createInsertGroup();
+        DatabaseInsertGroup ir = db.createInsertGroup();
         ir.addInsert(0, "testxyz".getBytes(), "v1".getBytes());
         ir.addInsert(0, "test".getBytes(), "v2".getBytes());
         ir.addInsert(0, "testabc".getBytes(), "v3".getBytes());
@@ -217,7 +217,7 @@ public class SnapshotTest extends TestCase {
         Database db = database.getDatabaseManager().createDatabase("test", 4);
         
         // add some key-value pairs
-        BabuDBInsertGroup ir = db.createInsertGroup();
+        DatabaseInsertGroup ir = db.createInsertGroup();
         ir.addInsert(0, "testxyz".getBytes(), "v1".getBytes());
         ir.addInsert(0, "test".getBytes(), "v2".getBytes());
         ir.addInsert(0, "yagga".getBytes(), "bla".getBytes());
@@ -295,7 +295,7 @@ public class SnapshotTest extends TestCase {
         Database db = database.getDatabaseManager().createDatabase("test", 4);
         
         // add some key-value pairs
-        BabuDBInsertGroup ir = db.createInsertGroup();
+        DatabaseInsertGroup ir = db.createInsertGroup();
         ir.addInsert(0, "testxyz".getBytes(), "v1".getBytes());
         ir.addInsert(0, "test".getBytes(), "v2".getBytes());
         ir.addInsert(0, "yagga".getBytes(), "bla".getBytes());

@@ -6,7 +6,7 @@
  * 
 */
 
-package org.xtreemfs.babudb.api.exceptions;
+package org.xtreemfs.babudb.api.exception;
 
 /**
  * A BabuDB database exception class.

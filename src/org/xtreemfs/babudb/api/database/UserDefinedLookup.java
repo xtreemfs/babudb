@@ -3,9 +3,9 @@
  * and open the template in the editor.
  */
 
-package org.xtreemfs.babudb;
+package org.xtreemfs.babudb.api.database;
 
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.lsmdb.LSMLookupInterface;
 
 /**
@@ -19,8 +19,9 @@ public interface UserDefinedLookup {
      * The method which is executed by the worker thread.
      * @param database direct access to synchronous database lookups
      * @return the result which is passed on to the listener
-     * @throws org.xtreemfs.babudb.api.exceptions.BabuDBException in case of an error, is passed to the listener
+     * @throws BabuDBException in case of an error, is passed to the listener
      */
-    public Object execute(final LSMLookupInterface database) throws BabuDBException;
+    public Object execute(final LSMLookupInterface database) 
+            throws BabuDBException;
     
 }

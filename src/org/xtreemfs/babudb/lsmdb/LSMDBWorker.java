@@ -15,15 +15,14 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.xtreemfs.babudb.BabuDBRequest;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.database.UserDefinedLookup;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
-import org.xtreemfs.babudb.UserDefinedLookup;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
@@ -221,8 +220,8 @@ public class LSMDBWorker extends Thread implements SyncListener {
             for (InsertRecord ir : irg.getInserts()) {
                 if ((ir.getIndexId() >= numIndices) || (ir.getIndexId() < 0))
                     r.getListener().failed(
-                        new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + r.getIndexId()
-                            + " does not exist"));
+                        new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + 
+                                r.getIndexId() + " does not exist"));
                 final LSMTree index = db.getIndex(ir.getIndexId());
                 if (ir.getValue() != null)
                     index.insert(ir.getKey(), ir.getValue());
@@ -243,7 +242,8 @@ public class LSMDBWorker extends Thread implements SyncListener {
     }
     
     public void failed(LogEntry entry, Exception ex) {
-        ((BabuDBRequest<?>) entry.getAttachment().getListener()).failed(new BabuDBException(
-            ErrorCode.IO_ERROR, "could not execute " + "insert because of IO problem", ex));
+        entry.getAttachment().getListener().failed(new BabuDBException(
+            ErrorCode.IO_ERROR, "could not execute insert because of IO problem", 
+            ex));
     }
 }

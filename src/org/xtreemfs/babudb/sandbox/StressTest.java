@@ -5,8 +5,8 @@ import java.nio.ByteBuffer;
 
 import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.api.BabuDB;
-import org.xtreemfs.babudb.api.Database;
 import org.xtreemfs.babudb.api.DatabaseManager;
+import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 

@@ -20,8 +20,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.xtreemfs.babudb.api.BabuDB;
-import org.xtreemfs.babudb.api.Database;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
+import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.foundation.buffer.BufferPool;
@@ -78,10 +78,8 @@ public class ConcurrencyTest extends TestCase {
                         sleep(1000);
                     }
                 } catch (BabuDBException e) {
-                    // TODO Auto-generated catch block
                     e.printStackTrace();
                 } catch (InterruptedException e) {
-                    // TODO Auto-generated catch block
                     e.printStackTrace();
                 }
             }

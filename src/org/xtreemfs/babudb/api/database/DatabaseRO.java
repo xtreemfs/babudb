@@ -6,14 +6,12 @@
  * 
  */
 
-package org.xtreemfs.babudb.lsmdb;
+package org.xtreemfs.babudb.api.database;
 
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import org.xtreemfs.babudb.BabuDBRequestResult;
-import org.xtreemfs.babudb.UserDefinedLookup;
-import org.xtreemfs.babudb.api.exceptions.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 
 public interface DatabaseRO {
     
@@ -30,7 +28,8 @@ public interface DatabaseRO {
      *            arbitrary context which is passed to the listener.
      * @return a future as proxy for the request result.
      */
-    public BabuDBRequestResult<byte[]> lookup(int indexId, byte[] key, Object context);
+    public DatabaseRequestResult<byte[]> lookup(int indexId, byte[] key, 
+            Object context);
     
     /**
      * Executes a prefix lookup. The result object contains an iterator to the
@@ -45,8 +44,8 @@ public interface DatabaseRO {
      *            arbitrary context which is passed to the listener.
      * @return a future as proxy for the request result.
      */
-    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> prefixLookup(int indexId, byte[] key,
-        Object context);
+    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> prefixLookup(
+            int indexId, byte[] key, Object context);
     
     /**
      * Executes a prefix lookup. The result object contains an iterator to the
@@ -61,8 +60,8 @@ public interface DatabaseRO {
      *            arbitrary context which is passed to the listener.
      * @return a future as proxy for the request result.
      */
-    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> reversePrefixLookup(int indexId, byte[] key,
-        Object context);
+    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> 
+            reversePrefixLookup(int indexId, byte[] key, Object context);
     
     /**
      * Executes a range lookup. The result object contains an iterator to the
@@ -83,8 +82,8 @@ public interface DatabaseRO {
      *            arbitrary context which is passed to the listener.
      * @return a future as proxy for the request result.
      */
-    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> rangeLookup(int indexId, byte[] from,
-        byte[] to, Object context);
+    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> rangeLookup(
+            int indexId, byte[] from, byte[] to, Object context);
     
     /**
      * Executes a range lookup. The result object contains an iterator to the
@@ -105,8 +104,9 @@ public interface DatabaseRO {
      *            arbitrary context which is passed to the listener.
      * @return a future as proxy for the request result.
      */
-    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> reverseRangeLookup(int indexId, byte[] from,
-        byte[] to, Object context);
+    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> 
+            reverseRangeLookup(int indexId, byte[] from, byte[] to, 
+                    Object context);
     
     /**
      * <p>
@@ -120,7 +120,8 @@ public interface DatabaseRO {
      *            arbitrary context which is passed to the listener.
      * @return a future as proxy for the request result.
      */
-    public BabuDBRequestResult<Object> userDefinedLookup(UserDefinedLookup udl, Object context);
+    public DatabaseRequestResult<Object> userDefinedLookup(UserDefinedLookup udl, 
+            Object context);
     
     /**
      * Shuts down the database.
