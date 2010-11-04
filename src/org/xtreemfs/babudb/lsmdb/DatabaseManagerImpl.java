@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -8,9 +8,7 @@
 
 package org.xtreemfs.babudb.lsmdb;
 
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_COPY;
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_CREATE;
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_DELETE;
+import static org.xtreemfs.babudb.log.LogEntry.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,7 +18,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.xtreemfs.babudb.BabuDBImpl;
-import org.xtreemfs.babudb.BabuDBRequestResultImpl;
+import org.xtreemfs.babudb.BabuDBInternal;
 import org.xtreemfs.babudb.api.DatabaseManager;
 import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
@@ -29,9 +27,6 @@ import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
-import org.xtreemfs.babudb.log.DiskLogger;
-import org.xtreemfs.babudb.log.LogEntry;
-import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
@@ -40,7 +35,7 @@ import org.xtreemfs.foundation.util.FSUtils;
 
 public class DatabaseManagerImpl implements DatabaseManager {
     
-    private BabuDBImpl                     dbs;
+    private BabuDBInternal                 dbs;
     
     /**
      * Mapping from database name to database id
@@ -123,21 +118,26 @@ public class DatabaseManagerImpl implements DatabaseManager {
         return dbsById.get(dbId);
     }
     
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.DatabaseManager#createDatabase(java.lang.String, int)
+     */
     @Override
     public Database createDatabase(String databaseName, int numIndices) throws BabuDBException {
         return createDatabase(databaseName, numIndices, null);
     }
     
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.DatabaseManager#createDatabase(java.lang.String, int, org.xtreemfs.babudb.api.index.ByteRangeComparator[])
+     */
     @Override
     public Database createDatabase(String databaseName, int numIndices, ByteRangeComparator[] comparators)
         throws BabuDBException {
-        // TODO dbs.slaveCheck();
         
         return proceedCreate(databaseName, numIndices, comparators);
     }
     
     /**
-     * Proceeds a Create, without isSlaveCheck. Replication Approach!
+     * TODO
      * 
      * @param databaseName
      * @param numIndices
@@ -161,20 +161,22 @@ public class DatabaseManagerImpl implements DatabaseManager {
         }
         
         DatabaseImpl db = null;
-        synchronized (dbModificationLock) {
-            if (dbsByName.containsKey(databaseName)) {
-                throw new BabuDBException(ErrorCode.DB_EXISTS, "database '" + databaseName
-                    + "' already exists");
+        synchronized (getDBModificationLock()) {
+            synchronized (dbs.getCheckpointer()) {
+                if (dbsByName.containsKey(databaseName)) {
+                    throw new BabuDBException(ErrorCode.DB_EXISTS, "database '" 
+                            + databaseName + "' already exists");
+                }
+                final int dbId = nextDbId++;
+                db = new DatabaseImpl(dbs,
+                    new LSMDatabase(databaseName, dbId, dbs.getConfig().getBaseDir() + databaseName
+                        + File.separatorChar, numIndices, false, comparators, dbs.getConfig().getCompression(),
+                        dbs.getConfig().getMaxNumRecordsPerBlock(), dbs.getConfig().getMaxBlockFileSize(), dbs
+                                .getConfig().getDisableMMap(), dbs.getConfig().getMMapLimit()));
+                dbsById.put(dbId, db);
+                dbsByName.put(databaseName, db);
+                dbs.getDBConfigFile().save();
             }
-            final int dbId = nextDbId++;
-            db = new DatabaseImpl(dbs,
-                new LSMDatabase(databaseName, dbId, dbs.getConfig().getBaseDir() + databaseName
-                    + File.separatorChar, numIndices, false, comparators, dbs.getConfig().getCompression(),
-                    dbs.getConfig().getMaxNumRecordsPerBlock(), dbs.getConfig().getMaxBlockFileSize(), dbs
-                            .getConfig().getDisableMMap(), dbs.getConfig().getMMapLimit()));
-            dbsById.put(dbId, db);
-            dbsByName.put(databaseName, db);
-            dbs.getDBConfigFile().save();
         }
         
         // append the data to the diskLogger
@@ -185,28 +187,30 @@ public class DatabaseManagerImpl implements DatabaseManager {
         buf.putInt(numIndices);
         buf.flip();
         
-        metaInsert(PAYLOAD_TYPE_CREATE, buf, dbs.getLogger());
-        
+        dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_CREATE, buf)
+                                   .get();        
         return db;
     }
     
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.DatabaseManager#deleteDatabase(
+     *                  java.lang.String)
+     */
     @Override
-    public void deleteDatabase(String databaseName) throws BabuDBException {
-        // TODO dbs.slaveCheck();
-        
+    public void deleteDatabase(String databaseName) throws BabuDBException {        
         proceedDelete(databaseName);
     }
     
     /**
-     * Proceeds a Delete, without isSlaveCheck. Replication Approach!
+     * TODO
      * 
      * @param databaseName
      * @throws BabuDBException
      */
     public void proceedDelete(String databaseName) throws BabuDBException {
         int dbId = -1;
-        synchronized (dbModificationLock) {
-            synchronized (((CheckpointerImpl) dbs.getCheckpointer()).getCheckpointerLock()) {
+        synchronized (getDBModificationLock()) {
+            synchronized (dbs.getCheckpointer()) {
                 if (!dbsByName.containsKey(databaseName)) {
                     throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '" + databaseName
                         + "' does not exists");
@@ -232,24 +236,24 @@ public class DatabaseManagerImpl implements DatabaseManager {
         buf.putString(databaseName);
         buf.flip();
         
-        metaInsert(PAYLOAD_TYPE_DELETE, buf, dbs.getLogger());
+        dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_DELETE, buf)
+                                   .get();
     }
     
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.DatabaseManager#copyDatabase(java.lang.String, java.lang.String)
+     */
     @Override
-    public void copyDatabase(String sourceDB, String destDB) throws BabuDBException, IOException,
-        InterruptedException {
-        // TODO dbs.slaveCheck();
-        
+    public void copyDatabase(String sourceDB, String destDB) 
+            throws BabuDBException {        
         proceedCopy(sourceDB, destDB);
     }
     
     /**
-     * Proceeds a Copy, without isSlaveCheck. Replication Approach!
-     * 
+     * TODO
      * @param sourceDB
      * @param destDB
      * @throws BabuDBException
-     * @throws IOException
      */
     public void proceedCopy(String sourceDB, String destDB) throws BabuDBException {
         
@@ -259,15 +263,16 @@ public class DatabaseManagerImpl implements DatabaseManager {
         }
         
         final int dbId;
-        synchronized (dbModificationLock) {
-            if (dbsByName.containsKey(destDB)) {
-                throw new BabuDBException(ErrorCode.DB_EXISTS, "database '" + destDB + "' already exists");
+        synchronized (getDBModificationLock()) {
+            synchronized (dbs.getCheckpointer()) {
+                if (dbsByName.containsKey(destDB)) {
+                    throw new BabuDBException(ErrorCode.DB_EXISTS, "database '" + destDB + "' already exists");
+                }
+                dbId = nextDbId++;
+                // just "reserve" the name
+                dbsByName.put(destDB, null);
+                dbs.getDBConfigFile().save();
             }
-            dbId = nextDbId++;
-            // just "reserve" the name
-            dbsByName.put(destDB, null);
-            dbs.getDBConfigFile().save();
-            
         }
         // materializing the snapshot takes some time, we should not hold the
         // lock meanwhile!
@@ -299,58 +304,13 @@ public class DatabaseManagerImpl implements DatabaseManager {
         buf.putString(destDB);
         buf.flip();
         
-        metaInsert(PAYLOAD_TYPE_COPY, buf, dbs.getLogger());
+        dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_COPY, buf).get();
     }
     
     public void shutdown() throws BabuDBException {
         for (Database db : dbsById.values())
             db.shutdown();
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "DB manager shut down successfully");
-    }
-    
-    /**
-     * <p>
-     * Performs a logEntry-insert at the {@link DiskLogger} that will make
-     * metaCall replay-able. It also will be replicated if replication is
-     * enabled and running in master-mode.
-     * </p>
-     * 
-     * @param type
-     * @param parameters
-     * @param logger
-     * @throws BabuDBException
-     *             if {@link LogEntry} could not be appended to the DiskLogger.
-     */
-    public static void metaInsert(byte type, ReusableBuffer parameters, DiskLogger logger)
-        throws BabuDBException {
-        
-        final BabuDBRequestResultImpl<Object> result = 
-            new BabuDBRequestResultImpl<Object>();
-        
-        // make the entry
-        LogEntry entry = new LogEntry(parameters, new SyncListener() {
-            
-            @Override
-            public void synced(LogEntry entry) {
-                result.finished();
-            }
-            
-            @Override
-            public void failed(LogEntry entry, Exception ex) {
-                result.failed((ex != null && ex instanceof BabuDBException) ? (BabuDBException) ex
-                    : new BabuDBException(ErrorCode.INTERNAL_ERROR, ex.getMessage()));
-            }
-        }, type);
-        
-        // append it to the DiskLogger
-        try {
-            logger.append(entry);
-            result.get();
-        } catch (InterruptedException ie) {
-            throw new BabuDBException(ErrorCode.INTERNAL_ERROR, ie.getMessage());
-        } finally {
-            entry.free();
-        }
     }
     
     /**

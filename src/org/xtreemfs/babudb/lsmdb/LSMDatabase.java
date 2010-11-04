@@ -69,8 +69,6 @@ public class LSMDatabase {
      */
     private LSN                         ondiskLSN;
     
-    private final int                   numIndices;
-    
     private final ByteRangeComparator[] comparators;
     
     /**
@@ -133,7 +131,6 @@ public class LSMDatabase {
         boolean readFromDisk, ByteRangeComparator[] comparators, boolean compression, int maxEntriesPerBlock,
         int maxBlockFileSize, boolean disableMMap, int mmapLimit) throws BabuDBException {
         
-        this.numIndices = numIndices;
         this.databaseId = databaseId;
         File f = new File(databaseDir);
         if (!f.exists())

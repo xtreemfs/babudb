@@ -215,7 +215,8 @@ public class SnapshotManagerImpl implements SnapshotManager {
             System.arraycopy(snapNameBytes, 0, data, 1 + dbNameBytes.length, snapNameBytes.length);
             
             ReusableBuffer buf = ReusableBuffer.wrap(data);
-            DatabaseManagerImpl.metaInsert(LogEntry.PAYLOAD_TYPE_SNAP_DELETE, buf, dbs.getLogger());
+            dbs.getPersistenceManager().makePersistent(
+                    LogEntry.PAYLOAD_TYPE_SNAP_DELETE, buf).get();
         }
     }
     

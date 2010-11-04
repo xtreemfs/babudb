@@ -39,25 +39,31 @@ import org.xtreemfs.foundation.util.OutputUtils;
  */
 public class CheckpointerImpl extends Thread implements Checkpointer {
     
-    static class MaterializationRequest {
+    private final static class MaterializationRequest {
         
-        public MaterializationRequest(String dbName, int[] snapIDs, SnapshotConfig snap) {
+        MaterializationRequest(String dbName, int[] snapIDs, 
+                SnapshotConfig snap) {
+            
             this.dbName = dbName;
             this.snapIDs = snapIDs;
             this.snap = snap;
         }
         
-        public String         dbName;
+        String         dbName;
         
-        public int[]          snapIDs;
+        int[]          snapIDs;
         
-        public SnapshotConfig snap;
+        SnapshotConfig snap;
         
     }
     
-    private transient boolean                  quit;
+    private volatile boolean                   quit;
     
-    private final AtomicBoolean                down;
+    private final AtomicBoolean                down = 
+        new AtomicBoolean(true);
+    
+    private final AtomicBoolean                suspended = 
+        new AtomicBoolean(true);
     
     private DiskLogger                         logger;
     
@@ -83,20 +89,10 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
     private boolean                            forceCheckpoint;
     
     /**
-     * indicates when the current checkpoint is complete
+     * indicates when the current checkpoint is complete and is also a lock
      */
-    private boolean                            checkpointComplete = true;
-    
-    /**
-     * object used to ensure that only one checkpoint is created synchronously
-     */
-    private final Object                       checkpointLock;
-    
-    /**
-     * object used to block the user-triggered checkpointing operation until
-     * checkpoint creation has completed
-     */
-    private final Object                       checkpointCompletionLock;
+    private AtomicBoolean                      checkpointComplete = 
+        new AtomicBoolean(true);
     
     /**
      * Flag to notify the disk-logger about a viewId incrementation.
@@ -111,11 +107,8 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
      */
     public CheckpointerImpl(BabuDBImpl master) {
         super("ChkptrThr");
-        down = new AtomicBoolean(false);
         this.dbs = master;
         this.requests = new LinkedList<MaterializationRequest>();
-        this.checkpointLock = new Object();
-        this.checkpointCompletionLock = new Object();
     }
     
     /**
@@ -130,6 +123,37 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
         this.logger = logger;
         this.checkInterval = 1000l * checkInterval;
         this.maxLogLength = maxLogLength;
+
+        synchronized (this) {
+            
+            synchronized (down) {
+                if (down.getAndSet(false)) {
+                    quit = false;  
+                    start();
+                }
+            }
+            
+            synchronized (suspended) {
+                this.suspended.set(false);
+                this.suspended.notify();
+            }
+        }
+    }
+    
+    /**
+     * This method suspends the Checkpointer from taking checkpoints.
+     * 
+     * @throws InterruptedException
+     */
+    public synchronized void suspendCheckpointing() 
+            throws InterruptedException {
+        
+        synchronized (suspended) {
+            if (!this.suspended.getAndSet(true)) {
+                this.notify();
+                this.suspended.wait();
+            }
+        }
     }
     
     /**
@@ -142,15 +166,14 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
      * have been persistently written to disk.
      * 
      * @param incViewId
-     *            - set true, if the viewId should be incremented (replication
-     *            issue).
+     *            - set true, if the viewId should be incremented.
      * 
      */
     public void checkpoint(boolean incViewId) throws BabuDBException {
         
         incrementViewId = incViewId;
-        synchronized (checkpointCompletionLock) {
-            checkpointComplete = false;
+        synchronized (checkpointComplete) {
+            checkpointComplete.set(false);
         }
         
         // notify the checkpointing thread to immediately process all requests
@@ -175,9 +198,47 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
      */
     @Override
     public void checkpoint() throws BabuDBException, InterruptedException {
-        // TODO dbs.slaveCheck();
-        
         checkpoint(false);
+    }
+    
+    /**
+     * Materialize all snapshots in the queue before taking a checkpoint.
+     * 
+     * @throws BabuDBException if materialization failed.
+     */
+    private void materializeSnapshots() throws BabuDBException {
+        
+        for (;;) {
+            MaterializationRequest rq = null;
+            
+            synchronized (requests) {
+                if (requests.size() > 0)
+                    rq = requests.remove(0);
+            }
+            
+            if (rq == null)
+                break;
+            
+            Logging.logMessage(Logging.LEVEL_DEBUG, this,
+                "snapshot materialization request found for database '" + 
+                rq.dbName + "', snapshot: '" + rq.snap.getName() + "'");
+            
+            SnapshotManagerImpl snapMan = 
+                (SnapshotManagerImpl) dbs.getSnapshotManager();
+            
+            // write the snapshot
+            ((DatabaseImpl) dbs.getDatabaseManager().getDatabase(rq.dbName))
+                    .proceedWriteSnapshot(rq.snapIDs, 
+                            snapMan.getSnapshotDir(rq.dbName,
+                            rq.snap.getName()), rq.snap);
+            
+            // notify the snapshot manager about the completion
+            // of the snapshot
+            snapMan.snapshotComplete(rq.dbName, rq.snap);
+            
+            Logging.logMessage(Logging.LEVEL_DEBUG, this,
+                        "snapshot materialization complete");
+        }
     }
     
     /**
@@ -199,66 +260,66 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
      * @throws InterruptedException
      */
     private void createCheckpoint() throws BabuDBException, InterruptedException {
+        Logging.logMessage(Logging.LEVEL_INFO, this, "initiating database checkpoint...");
         
         Collection<Database> databases = ((DatabaseManagerImpl) dbs.getDatabaseManager()).getDatabaseList();
         
-        synchronized (checkpointLock) {
+        try {
+            int[][] snapIds = new int[databases.size()][];
+            int i = 0;
+            
+            LSN lastWrittenLSN = null;
             try {
-                int[][] snapIds = new int[databases.size()][];
-                int i = 0;
-                
-                LSN lastWrittenLSN = null;
-                try {
-                    // critical block...
-                    logger.lockLogger();
-                    for (Database db : databases) {
-                        snapIds[i++] = ((DatabaseImpl) db).proceedCreateSnapshot();
-                    }
-                    lastWrittenLSN = logger.switchLogFile(incrementViewId);
-                    incrementViewId = false;
-                } finally {
-                    logger.unlockLogger();
-                }
-                
-                i = 0;
+                // critical block...
+                logger.lockLogger();
                 for (Database db : databases) {
-                    ((DatabaseImpl) db).proceedWriteSnapshot(lastWrittenLSN.getViewId(), lastWrittenLSN
-                            .getSequenceNo(), snapIds[i++]);
-                    ((DatabaseImpl) db).proceedCleanupSnapshot(lastWrittenLSN.getViewId(), lastWrittenLSN
-                            .getSequenceNo());
+                    snapIds[i++] = ((DatabaseImpl) db).proceedCreateSnapshot();
                 }
-                
-                // delete all logfile with LSN <= lastWrittenLSN
-                File f = new File(dbs.getConfig().getDbLogDir());
-                String[] logs = f.list(new FilenameFilter() {
-                    
-                    public boolean accept(File dir, String name) {
-                        return name.endsWith(".dbl");
-                    }
-                });
-                if (logs != null) {
-                    Pattern p = Pattern.compile("(\\d+)\\.(\\d+)\\.dbl");
-                    for (String log : logs) {
-                        Matcher m = p.matcher(log);
-                        m.matches();
-                        String tmp = m.group(1);
-                        int viewId = Integer.valueOf(tmp);
-                        tmp = m.group(2);
-                        int seqNo = Integer.valueOf(tmp);
-                        LSN logLSN = new LSN(viewId, seqNo);
-                        if (logLSN.compareTo(lastWrittenLSN) <= 0) {
-                            Logging.logMessage(Logging.LEVEL_DEBUG, this, "deleting old db log file: " + log);
-                            f = new File(dbs.getConfig().getDbLogDir() + log);
-                            if (!f.delete())
-                                Logging.logMessage(Logging.LEVEL_WARN, this, "could not delete log file: %s",
-                                    f.getAbsolutePath());
-                        }
-                    }
-                }
-            } catch (IOException ex) {
-                throw new BabuDBException(ErrorCode.IO_ERROR, "cannot create checkpoint", ex);
+                lastWrittenLSN = logger.switchLogFile(incrementViewId);
+                incrementViewId = false;
+            } finally {
+                logger.unlockLogger();
             }
+            
+            i = 0;
+            for (Database db : databases) {
+                ((DatabaseImpl) db).proceedWriteSnapshot(lastWrittenLSN.getViewId(), lastWrittenLSN
+                        .getSequenceNo(), snapIds[i++]);
+                ((DatabaseImpl) db).proceedCleanupSnapshot(lastWrittenLSN.getViewId(), lastWrittenLSN
+                        .getSequenceNo());
+            }
+            
+            // delete all logfile with LSN <= lastWrittenLSN
+            File f = new File(dbs.getConfig().getDbLogDir());
+            String[] logs = f.list(new FilenameFilter() {
+                
+                public boolean accept(File dir, String name) {
+                    return name.endsWith(".dbl");
+                }
+            });
+            if (logs != null) {
+                Pattern p = Pattern.compile("(\\d+)\\.(\\d+)\\.dbl");
+                for (String log : logs) {
+                    Matcher m = p.matcher(log);
+                    m.matches();
+                    String tmp = m.group(1);
+                    int viewId = Integer.valueOf(tmp);
+                    tmp = m.group(2);
+                    int seqNo = Integer.valueOf(tmp);
+                    LSN logLSN = new LSN(viewId, seqNo);
+                    if (logLSN.compareTo(lastWrittenLSN) <= 0) {
+                        Logging.logMessage(Logging.LEVEL_DEBUG, this, "deleting old db log file: " + log);
+                        f = new File(dbs.getConfig().getDbLogDir() + log);
+                        if (!f.delete())
+                            Logging.logMessage(Logging.LEVEL_WARN, this, "could not delete log file: %s",
+                                f.getAbsolutePath());
+                    }
+                }
+            }
+        } catch (IOException ex) {
+            throw new BabuDBException(ErrorCode.IO_ERROR, "cannot create checkpoint", ex);
         }
+        Logging.logMessage(Logging.LEVEL_INFO, this, "checkpoint complete");
     }
     
     public void addSnapshotMaterializationRequest(String dbName, int[] snapIds, SnapshotConfig snap) {
@@ -267,7 +328,9 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
         }
     }
     
-    public void removeSnapshotMaterializationRequest(String dbName, String snapshotName) {
+    public void removeSnapshotMaterializationRequest(String dbName, 
+            String snapshotName) {
+        
         synchronized (requests) {
             Iterator<MaterializationRequest> it = requests.iterator();
             while (it.hasNext()) {
@@ -285,27 +348,11 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
         this.interrupt();
     }
     
-    public boolean isDown() {
-        return down.get();
-    }
-    
     public void waitForShutdown() throws InterruptedException {
         synchronized (down) {
             if (!down.get())
                 down.wait();
         }
-    }
-    
-    /*
-     * (non-Javadoc)
-     * 
-     * @see java.lang.Thread#start()
-     */
-    @Override
-    public synchronized void start() {
-        quit = false;
-        down.set(false);
-        super.start();
     }
     
     public void run() {
@@ -314,17 +361,31 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
         boolean manualCheckpoint = false;
         while (!quit) {
             synchronized (this) {
+                
+                // this block allows to suspend the Checkpointer from taking
+                // checkpoints until it has been re-init()
+                synchronized (suspended) {
+                    if (suspended.get()) {
+                        suspended.notify();
+                        try {
+                            suspended.wait();
+                        } catch (InterruptedException ex) {
+                            if (quit) break;
+                        }
+                    }
+                }
+                
                 if (!forceCheckpoint) {
                     try {
                         this.wait(checkInterval);
                     } catch (InterruptedException ex) {
-                        if (quit)
-                            break;
+                        if (quit) break;
                     }
                 }
                 manualCheckpoint = forceCheckpoint;
                 forceCheckpoint = false;
             }
+            
             try {
                 
                 final long lfsize = logger.getLogFileSize();
@@ -332,87 +393,43 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
                     
                     if (!manualCheckpoint)
                         Logging.logMessage(Logging.LEVEL_INFO, this,
-                            "database operation log has exceeded threshold size of " + maxLogLength + " ("
-                                + lfsize + ")");
+                            "database operation log has exceeded threshold " +
+                            "size of " + maxLogLength + " ("  + lfsize + ")");
                     else
-                        Logging.logMessage(Logging.LEVEL_INFO, this, "triggered manual checkpoint");
+                        Logging.logMessage(Logging.LEVEL_INFO, this, 
+                                "triggered manual checkpoint");
                     
                     synchronized (((DatabaseManagerImpl) dbs.getDatabaseManager()).getDBModificationLock()) {
-                        
-                        // materialize all snapshots in the queue before
-                        // creating the checkpoint
-                        for (;;) {
-                            MaterializationRequest rq = null;
-                            
-                            synchronized (requests) {
-                                if (requests.size() > 0)
-                                    rq = requests.remove(0);
-                            }
-                            
-                            if (rq == null)
-                                break;
-                            
-                            Logging.logMessage(Logging.LEVEL_DEBUG, this,
-                                "snapshot materialization request found for database '" + rq.dbName
-                                    + "', snapshot: '" + rq.snap.getName() + "'");
-                            
-                            SnapshotManagerImpl snapMan = (SnapshotManagerImpl) dbs.getSnapshotManager();
-                            
-                            // write the snapshot
-                            ((DatabaseImpl) dbs.getDatabaseManager().getDatabase(rq.dbName))
-                                    .proceedWriteSnapshot(rq.snapIDs, snapMan.getSnapshotDir(rq.dbName,
-                                        rq.snap.getName()), rq.snap);
-                            
-                            // notify the snapshot manager about the completion
-                            // of the snapshot
-                            snapMan.snapshotComplete(rq.dbName, rq.snap);
-                            
-                            Logging
-                                    .logMessage(Logging.LEVEL_DEBUG, this,
-                                        "snapshot materialization complete");
-                        }
-                        
-                        // create the checkpoint
-                        Logging.logMessage(Logging.LEVEL_INFO, this, "initiating database checkpoint...");
-                        createCheckpoint();
-                        Logging.logMessage(Logging.LEVEL_INFO, this, "checkpoint complete");
-                        
-                    }
-                    
+                        synchronized (this) {
+                            materializeSnapshots();
+
+                            createCheckpoint();                     
+                        }                        
+                    }                    
                 }
-                
             } catch (InterruptedException ex) {
                 Logging.logMessage(Logging.LEVEL_DEBUG, this, "CHECKPOINT WAS ABORTED!");
             } catch (Throwable ex) {
-                
                 if (ex instanceof BabuDBException && ((BabuDBException) ex).getCause() instanceof ClosedByInterruptException) {
                     Logging.logMessage(Logging.LEVEL_DEBUG, this, "CHECKPOINT WAS ABORTED!");
-                }
-
-                else {
+                } else {
                     Logging.logMessage(Logging.LEVEL_ERROR, this, "DATABASE CHECKPOINT CREATION FAILURE!");
                     Logging.logMessage(Logging.LEVEL_ERROR, this, OutputUtils.stackTraceToString(ex));
                 }
             } finally {
-                synchronized (checkpointCompletionLock) {
-                    checkpointComplete = true;
-                    checkpointCompletionLock.notify();
+                synchronized (checkpointComplete) {
+                    checkpointComplete.set(true);
+                    checkpointComplete.notify();
                 }
             }
         }
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "checkpointer shut down successfully");
+        
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "checkpointer shut down "
+        		+ "successfully");
         synchronized (down) {
             down.set(true);
             down.notifyAll();
         }
-    }
-    
-    /**
-     * 
-     * @return the lock to support mutual exclusion for checkpointing.
-     */
-    public Object getCheckpointerLock() {
-        return checkpointLock;
     }
     
     /**
@@ -421,9 +438,9 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
      * @throws InterruptedException
      */
     public void waitForCheckpoint() throws InterruptedException {
-        synchronized (checkpointCompletionLock) {
-            if (!checkpointComplete)
-                checkpointCompletionLock.wait();
+        synchronized (checkpointComplete) {
+            while (!checkpointComplete.get())
+                checkpointComplete.wait();
         }
     }
 }

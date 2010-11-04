@@ -9,12 +9,14 @@
 package org.xtreemfs.babudb;
 
 import org.xtreemfs.babudb.api.BabuDB;
+import org.xtreemfs.babudb.api.PersistenceManager;
 import org.xtreemfs.babudb.api.StaticInitialization;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.config.BabuDBConfig;
-import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.lsmdb.DBConfig;
+import org.xtreemfs.babudb.lsmdb.LSMDBWorker;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.foundation.LifeCycleThread;
 
 /**
  * Interface of {@link BabuDB} for internal usage. This should not be accessed
@@ -38,12 +40,31 @@ public interface BabuDBInternal extends BabuDB {
     public BabuDBConfig getConfig();
     
     /**
-     * Returns a reference to the disk logger. The disk logger should not be
-     * accessed by applications.
      * 
-     * @return a reference to the disk logger
+     * @return
      */
-    public DiskLogger getLogger();
+    public PersistenceManager getPersistenceManager();
+    
+    /**
+     * @param dbId
+     * @return a worker Thread, responsible for the DB given by its ID.
+     */
+    public LSMDBWorker getWorker(int dbId);
+    
+    /**
+     * Returns the number of worker threads.
+     * 
+     * @return the number of worker threads.
+     */
+    public int getWorkerCount();
+    
+    /**
+     * Method to register a plugins thread at the BabuDB. This is necessary
+     * to ensure the plugin to be shut down when BabuDB is shut down.
+     * 
+     * @param plugin
+     */
+    public void addPluginThread(LifeCycleThread plugin);
     
     /**
      * Initializes all services provided by BabuDB.
@@ -51,7 +72,8 @@ public interface BabuDBInternal extends BabuDB {
      * @param staticInit
      * @throws BabuDBException if initialization failed.
      */
-    public void init(final StaticInitialization staticInit) throws BabuDBException;
+    public void init(final StaticInitialization staticInit) 
+        throws BabuDBException;
 
     /**
      * Stops all BabuDB services to be able to manipulate files without being 

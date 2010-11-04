@@ -89,10 +89,9 @@ public interface DatabaseManager {
      * @param destDB
      *            the new database's name
      * @throws BabuDBException
-     * @throws IOException
      */
     public void copyDatabase(String sourceDB, String destDB) 
-            throws BabuDBException, IOException, InterruptedException;
+            throws BabuDBException;
     
     /**
      * Creates a dump of all databases registered with this DatabaseManager. 

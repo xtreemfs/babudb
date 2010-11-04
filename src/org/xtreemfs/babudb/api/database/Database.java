@@ -8,7 +8,6 @@
 
 package org.xtreemfs.babudb.api.database;
 
-import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 
 public interface Database extends DatabaseRO {
@@ -24,9 +23,8 @@ public interface Database extends DatabaseRO {
      * Creates a new group of inserts.
      * 
      * @return an insert record group
-     * @throws BabuDBException
      */
-    public DatabaseInsertGroup createInsertGroup() throws BabuDBException;
+    public DatabaseInsertGroup createInsertGroup();
     
     /**
      * Returns an array of byte range comparators for all indices in the

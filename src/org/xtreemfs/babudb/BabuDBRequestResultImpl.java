@@ -129,9 +129,8 @@ public class BabuDBRequestResultImpl<T> implements DatabaseRequestResult<T>{
  * DatabaseRequestResult interface
  */
     
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.BabuDBRequestResult#registerListener(org.xtreemfs.babudb.RequestListener)
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.database.DatabaseRequestResult#registerListener(org.xtreemfs.babudb.api.database.DatabaseRequestListener)
      */
     public void registerListener(DatabaseRequestListener<T> listener) {
         synchronized (finished) {
@@ -146,9 +145,8 @@ public class BabuDBRequestResultImpl<T> implements DatabaseRequestResult<T>{
         }
     }
     
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.BabuDBRequestResult#get()
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.database.DatabaseRequestResult#get()
      */
     public T get() throws BabuDBException {
         try {
