@@ -3,7 +3,6 @@
 
 #include "yield/platform/directory_walker.h"
 #include "yield/platform/platform_exception.h"
-#include "yield/platform/time.h"
 #include "yield/platform/debug.h"
 using namespace YIELD;
 
@@ -16,6 +15,8 @@ using namespace std;
 #include <dirent.h>
 #endif
 
+static inline uint64_t WIN2UNIX( uint64_t time ) { return ( ( time - ( uint64_t )116444736000000000LL ) / ( uint64_t )10000000LL ); }
+static inline uint64_t UNIX2WIN( uint64_t time ) { return ( time * 10000000LL + ( uint64_t )116444736000000000LL ); }
 
 DirectoryWalker::DirectoryWalker( const Path& root_dir_path )
 	: root_dir_path( root_dir_path )
@@ -85,9 +86,9 @@ bool DirectoryWalker::hasNext()
 				new DirectoryEntry( next_path,
 									( next_find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) ? Stat::Directory : Stat::File,
 								    ( size_t )create_uint64( next_find_data.nFileSizeHigh, next_find_data.nFileSizeLow ),
-									Time::WIN2UNIX( create_uint64( next_find_data.ftLastWriteTime.dwHighDateTime, next_find_data.ftLastWriteTime.dwLowDateTime ) ),
-									Time::WIN2UNIX( create_uint64( next_find_data.ftCreationTime.dwHighDateTime, next_find_data.ftCreationTime.dwLowDateTime ) ),
-									Time::WIN2UNIX( create_uint64( next_find_data.ftLastAccessTime.dwHighDateTime, next_find_data.ftLastAccessTime.dwLowDateTime ) ),
+									WIN2UNIX( create_uint64( next_find_data.ftLastWriteTime.dwHighDateTime, next_find_data.ftLastWriteTime.dwLowDateTime ) ),
+									WIN2UNIX( create_uint64( next_find_data.ftCreationTime.dwHighDateTime, next_find_data.ftCreationTime.dwLowDateTime ) ),
+									WIN2UNIX( create_uint64( next_find_data.ftLastAccessTime.dwHighDateTime, next_find_data.ftLastAccessTime.dwLowDateTime ) ),
 									false ) );
 
 			return true;
