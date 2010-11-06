@@ -11,12 +11,11 @@ using namespace std;
 #ifdef _WIN32
 #define UNICODE
 #include "yield/platform/windows.h"
+inline uint64_t WIN2UNIX( uint64_t time ) { return ( ( time - ( uint64_t )116444736000000000LL ) / ( uint64_t )10000000LL ); }
 #else
 #include <dirent.h>
 #endif
 
-static uint64_t WIN2UNIX( uint64_t time ) { return ( ( time - ( uint64_t )116444736000000000LL ) / ( uint64_t )10000000LL ); }
-static uint64_t UNIX2WIN( uint64_t time ) { return ( time * 10000000LL + ( uint64_t )116444736000000000LL ); }
 
 DirectoryWalker::DirectoryWalker( const Path& root_dir_path )
 	: root_dir_path( root_dir_path )
