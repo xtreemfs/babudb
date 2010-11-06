@@ -4,9 +4,10 @@
 #include "yield/platform/stat.h"
 #include "yield/platform/disk_operations.h"
 #include "yield/platform/platform_exception.h"
-#include "yield/platform/time.h"
 using namespace YIELD;
 
+static uint64_t WIN2UNIX( uint64_t time ) { return ( ( time - ( uint64_t )116444736000000000LL ) / ( uint64_t )10000000LL ); }
+static uint64_t UNIX2WIN( uint64_t time ) { return ( time * 10000000LL + ( uint64_t )116444736000000000LL ); }
 
 #ifdef _WIN32
 
@@ -15,7 +16,7 @@ using namespace YIELD;
 
 inline int64_t getUnixUTCTimeFromFILETIME( FILETIME& file_time )
 {
-  return Time::WIN2UNIX( create_uint64( file_time.dwHighDateTime, file_time.dwLowDateTime ) );
+  return WIN2UNIX( create_uint64( file_time.dwHighDateTime, file_time.dwLowDateTime ) );
 }
 
 #else

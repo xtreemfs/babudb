@@ -15,8 +15,8 @@ using namespace std;
 #include <dirent.h>
 #endif
 
-static inline uint64_t WIN2UNIX( uint64_t time ) { return ( ( time - ( uint64_t )116444736000000000LL ) / ( uint64_t )10000000LL ); }
-static inline uint64_t UNIX2WIN( uint64_t time ) { return ( time * 10000000LL + ( uint64_t )116444736000000000LL ); }
+static uint64_t WIN2UNIX( uint64_t time ) { return ( ( time - ( uint64_t )116444736000000000LL ) / ( uint64_t )10000000LL ); }
+static uint64_t UNIX2WIN( uint64_t time ) { return ( time * 10000000LL + ( uint64_t )116444736000000000LL ); }
 
 DirectoryWalker::DirectoryWalker( const Path& root_dir_path )
 	: root_dir_path( root_dir_path )
