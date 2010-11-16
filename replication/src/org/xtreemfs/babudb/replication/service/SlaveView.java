@@ -32,8 +32,8 @@
  */
 package org.xtreemfs.babudb.replication.service;
 
-import org.xtreemfs.babudb.BabuDB;
-import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.api.BabuDB;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.LSN;

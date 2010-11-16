@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.interfaces.Chunk;
 import org.xtreemfs.babudb.interfaces.DBFileMetaData;
 import org.xtreemfs.babudb.interfaces.DBFileMetaDataSet;

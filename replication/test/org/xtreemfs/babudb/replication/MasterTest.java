@@ -23,11 +23,11 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.xtreemfs.babudb.BabuDB;
-import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.api.BabuDB;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
-import org.xtreemfs.babudb.BabuDBRequestListener;
-import org.xtreemfs.babudb.BabuDBRequestResult;
+import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
+import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.interfaces.LogEntries;
@@ -37,7 +37,9 @@ import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateResponse;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
-import org.xtreemfs.babudb.lsmdb.Database;
+import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
+import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
@@ -73,22 +75,27 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
         Logging.start(Logging.LEVEL_ERROR, Category.all);
-        conf = new ReplicationConfig("config/replication.properties");
+        conf = new ReplicationConfig("config/replication.properties", 
+                new BabuDBConfig("config/replication.properties"));
     }
     
     @Before
     public void setUp() throws Exception { 
         Process p;
         if (WIN) {
-            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getBaseDir() + "\"");
+            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + 
+                    conf.getBabuDBConfig().getBaseDir() + "\"");
         } else 
-            p = Runtime.getRuntime().exec("rm -rf " + conf.getBaseDir());
+            p = Runtime.getRuntime().exec("rm -rf " + 
+                    conf.getBabuDBConfig().getBaseDir());
         assertEquals(0, p.waitFor());
         
         if (WIN) {
-            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getDbLogDir() + "\"");
+            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + 
+                    conf.getBabuDBConfig().getDbLogDir() + "\"");
         } else 
-            p = Runtime.getRuntime().exec("rm -rf " + conf.getDbLogDir());
+            p = Runtime.getRuntime().exec("rm -rf " + 
+                    conf.getBabuDBConfig().getDbLogDir());
         assertEquals(0, p.waitFor());
         
         try {
@@ -378,14 +385,14 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
     
     private void insertData() throws Exception {
         Database dbase = db.getDatabaseManager().getDatabase(testDB);
-        BabuDBInsertGroup testInsert = dbase.createInsertGroup();
+        DatabaseInsertGroup testInsert = dbase.createInsertGroup();
         testInsert.addInsert(0, testKey1.getBytes(), testValue.getBytes());
         testInsert.addInsert(0, testKey2.getBytes(), testValue.getBytes());
         testInsert.addInsert(0, testKey3.getBytes(), testValue.getBytes());
            
         synchronized (response) {
-            BabuDBRequestResult<Object> rp = dbase.insert(testInsert, null);
-            rp.registerListener(new BabuDBRequestListener<Object>() {
+            DatabaseRequestResult<Object> rp = dbase.insert(testInsert, null);
+            rp.registerListener(new DatabaseRequestListener<Object>() {
                 
                 @Override
                 public void finished(Object result, Object context) {

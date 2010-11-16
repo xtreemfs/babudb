@@ -26,8 +26,9 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.xtreemfs.babudb.BabuDB;
+import org.xtreemfs.babudb.api.BabuDB;
 import org.xtreemfs.babudb.BabuDBFactory;
+import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
@@ -77,7 +78,8 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
         Logging.start(Logging.LEVEL_ERROR, Category.all);
-        conf = new ReplicationConfig("config/replication.properties");
+        conf = new ReplicationConfig("config/replication.properties", 
+                new BabuDBConfig("config/replication.properties"));
     }
 
     @AfterClass
@@ -88,21 +90,25 @@ public class SlaveTest implements RPCServerRequestListener,LifeCycleListener {
     public void setUp() throws Exception {
         Process p;
         if (WIN) {
-            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getBaseDir() + "\"");
+            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + 
+                    conf.getBabuDBConfig().getBaseDir() + "\"");
         } else 
-            p = Runtime.getRuntime().exec("rm -rf " + conf.getBaseDir());
+            p = Runtime.getRuntime().exec("rm -rf " + 
+                    conf.getBabuDBConfig().getBaseDir());
         assertEquals(0, p.waitFor());
         
         if (WIN) {
-            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getDbLogDir() + "\"");
+            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + 
+                    conf.getBabuDBConfig().getDbLogDir() + "\"");
         } else 
-            p = Runtime.getRuntime().exec("rm -rf " + conf.getDbLogDir());
+            p = Runtime.getRuntime().exec("rm -rf " + 
+                    conf.getBabuDBConfig().getDbLogDir());
         assertEquals(0, p.waitFor());
         
         if (WIN) {
-            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getBackupDir() + "\"");
+            p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getTempDir() + "\"");
         } else 
-            p = Runtime.getRuntime().exec("rm -rf " + conf.getBackupDir());
+            p = Runtime.getRuntime().exec("rm -rf " + conf.getTempDir());
         assertEquals(0, p.waitFor());
                 
         current = new LSN(0,0L);

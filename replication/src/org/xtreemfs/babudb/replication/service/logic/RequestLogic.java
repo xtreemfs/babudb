@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
-import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.interfaces.LogEntries;
 import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;

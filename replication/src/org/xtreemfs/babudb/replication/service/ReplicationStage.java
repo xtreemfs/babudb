@@ -14,9 +14,9 @@ import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBRequest;
-import org.xtreemfs.babudb.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.BabuDBRequestResultImpl;
+import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.interfaces.LogEntries;
@@ -81,7 +81,7 @@ public class ReplicationStage extends LifeCycleThread
     /** Counter for the number of tries needed to perform an operation */
     private int                                 tries = 0;
     
-    private BabuDBRequest<Boolean>              listener = null;
+    private BabuDBRequestResultImpl<Boolean>    listener = null;
     
     /** needed to control the heartbeat */
     protected final Pacemaker                   pacemaker;
@@ -259,7 +259,8 @@ public class ReplicationStage extends LifeCycleThread
      * 
      * @return 
      */
-    public void manualLoad(BabuDBRequest<Boolean> listener, LSN from, LSN to) {
+    public void manualLoad(BabuDBRequestResultImpl<Boolean> listener, LSN from, 
+            LSN to) {
         assert (from.compareTo(to) < 0);
         
         this.listener = listener;

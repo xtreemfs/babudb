@@ -66,7 +66,7 @@ public class FleaseHolder implements FleaseStatusListener {
      */
     FleaseHolder(ASCIIString cellId, ASCIIString ownId) {
         
-        this.flease = new AtomicReference<Flease>(new Flease(cellId, null, 0));
+        this.flease = new AtomicReference<Flease>(Flease.EMPTY_LEASE);
         this.id = ownId;
     }
     

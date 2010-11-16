@@ -12,16 +12,17 @@ import static org.junit.Assert.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.xtreemfs.babudb.BabuDB;
-import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.api.BabuDB;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
-import org.xtreemfs.babudb.StaticInitialization;
+import org.xtreemfs.babudb.api.StaticInitialization;
+import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.config.ReplicationConfig;
-import org.xtreemfs.babudb.lsmdb.DatabaseManager;
-import org.xtreemfs.babudb.snapshots.SnapshotManager;
+import org.xtreemfs.babudb.api.DatabaseManager;
+import org.xtreemfs.babudb.api.SnapshotManager;
 import org.xtreemfs.foundation.logging.Logging;
 
-import static org.xtreemfs.babudb.BabuDBException.ErrorCode.NO_ACCESS;
+import static org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode.NO_ACCESS;
 
 public class SecurityTest {
     
@@ -37,32 +38,37 @@ public class SecurityTest {
         Logging.start(Logging.LEVEL_ERROR);
         
         try {
-            conf = new ReplicationConfig("config/replication.properties");
+            conf = new ReplicationConfig("config/replication.properties", 
+                    new BabuDBConfig("config/replication.properties"));
             
             Process p;
             if (WIN) {
-                p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getBaseDir() + "\"");
+                p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + 
+                        conf.getBabuDBConfig().getBaseDir() + "\"");
             } else 
-                p = Runtime.getRuntime().exec("rm -rf " + conf.getBaseDir());
+                p = Runtime.getRuntime().exec("rm -rf " + 
+                        conf.getBabuDBConfig().getBaseDir());
             p.waitFor();
             
             if (WIN) {
-                p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getDbLogDir() + "\"");
+                p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + 
+                        conf.getBabuDBConfig().getDbLogDir() + "\"");
             } else 
-                p = Runtime.getRuntime().exec("rm -rf " + conf.getDbLogDir());
+                p = Runtime.getRuntime().exec("rm -rf " + 
+                        conf.getBabuDBConfig().getDbLogDir());
             p.waitFor();
             
             if (WIN) {
-                p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getBackupDir() + "\"");
+                p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getTempDir() + "\"");
             } else 
-                p = Runtime.getRuntime().exec("rm -rf " + conf.getBackupDir());
+                p = Runtime.getRuntime().exec("rm -rf " + conf.getTempDir());
             p.waitFor();
         
             // start the slave
             slave = BabuDBFactory.createReplicatedBabuDB(conf,new StaticInitialization() {
                 
                 @Override
-                public void initialize(DatabaseManager dbMan, SnapshotManager sMan, ReplicationManager replMan) {
+                public void initialize(DatabaseManager dbMan, SnapshotManager sMan) {
                     try {
                         dbMan.createDatabase(DB_NAME, 2);
                     } catch (BabuDBException e) {

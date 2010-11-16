@@ -35,7 +35,7 @@ package org.xtreemfs.babudb.replication.transmission;
 import java.io.File;
 import java.io.IOException;
 
-import org.xtreemfs.babudb.BabuDB;
+import org.xtreemfs.babudb.api.BabuDB;
 import org.xtreemfs.babudb.interfaces.Chunk;
 import org.xtreemfs.babudb.interfaces.DBFileMetaData;
 import org.xtreemfs.babudb.log.DiskLogIterator;

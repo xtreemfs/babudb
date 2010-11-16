@@ -61,8 +61,8 @@ public class FileIO implements FileIOInterface {
      */
     @Override
     public DBFileMetaData getConfigFileMetaData() {        
-        String path = this.configuration.getBaseDir() + 
-                      this.configuration.getDbCfgFile();
+        String path = this.configuration.getBabuDBConfig().getBaseDir() + 
+                      this.configuration.getBabuDBConfig().getDbCfgFile();
         
         long length = new File(path).length();
         
@@ -80,7 +80,7 @@ public class FileIO implements FileIOInterface {
         String fName = chnk.getName();
         String pName = chnk.getParentFile().getName();
         File result;
-        String baseDir = this.configuration.getBaseDir();
+        String baseDir = this.configuration.getBabuDBConfig().getBaseDir();
         
         if (LSMDatabase.isSnapshotFilename(pName)) {
             // create the db-name directory, if necessary
@@ -94,7 +94,8 @@ public class FileIO implements FileIOInterface {
             result.createNewFile();
         } else {
             // create the file if necessary
-            result = new File(baseDir + this.configuration.getDbCfgFile());
+            result = new File(baseDir + 
+                    this.configuration.getBabuDBConfig().getDbCfgFile());
             result.getParentFile().mkdirs();
             result.createNewFile();
         } 
@@ -115,7 +116,7 @@ public class FileIO implements FileIOInterface {
      */
     @Override
     public void removeBackupFiles() {
-        File backupDir = new File(this.configuration.getBackupDir());
+        File backupDir = new File(this.configuration.getTempDir());
         if (backupDir.exists()) { 
             File backupLock = new File (backupDir.getPath() + File.separator +
                     BACKUP_LOCK_FILE);
@@ -129,13 +130,15 @@ public class FileIO implements FileIOInterface {
      */
     @Override
     public void replayBackupFiles() throws IOException {
-        File backupDir = new File(this.configuration.getBackupDir());
+        File backupDir = new File(this.configuration.getTempDir());
         if (backupDir.exists()) {
             File backupLock = new File (backupDir.getPath() + File.separator +
                     BACKUP_LOCK_FILE);
             if (backupLock.exists()) {
-                File baseDir = new File(this.configuration.getBaseDir());
-                File logDir = new File(this.configuration.getDbLogDir());
+                File baseDir = new File(
+                        this.configuration.getBabuDBConfig().getBaseDir());
+                File logDir = new File(
+                        this.configuration.getBabuDBConfig().getDbLogDir());
                 
                 cleanUpFiles(logDir);
                 cleanUpFiles(baseDir);
@@ -157,9 +160,11 @@ public class FileIO implements FileIOInterface {
      */
     @Override
     public void backupFiles() throws IOException {
-        File backupDir = new File(this.configuration.getBackupDir());
-        File baseDir = new File(this.configuration.getBaseDir());
-        File logDir = new File(this.configuration.getDbLogDir());
+        File backupDir = new File(this.configuration.getTempDir());
+        File baseDir = new File(
+                this.configuration.getBabuDBConfig().getBaseDir());
+        File logDir = new File(
+                this.configuration.getBabuDBConfig().getDbLogDir());
         
         if (!backupDir.exists())
             backupDir.mkdirs();
@@ -272,7 +277,7 @@ public class FileIO implements FileIOInterface {
      * @return an array of log-files found in the database log-directory.
      */
     private File[] getLogFiles() {
-        File f = new File(this.configuration.getDbLogDir());
+        File f = new File(this.configuration.getBabuDBConfig().getDbLogDir());
         File[] result = f.listFiles(new FilenameFilter() {
             public boolean accept(File dir, String name) {
                 return name.endsWith(".dbl");

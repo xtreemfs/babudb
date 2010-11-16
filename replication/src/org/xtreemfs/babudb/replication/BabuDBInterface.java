@@ -36,14 +36,14 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Vector;
 
-import org.xtreemfs.babudb.BabuDB;
-import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.BabuDBInternal;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.interfaces.DBFileMetaData;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
-import org.xtreemfs.babudb.lsmdb.Database;
+import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
 import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
@@ -60,14 +60,14 @@ import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
 public class BabuDBInterface {
    
     /** reference to {@link BabuDB} */
-    private final BabuDB dbs;
+    private final BabuDBInternal dbs;
     
     /**
      * Registers the reference of {@link BabuDB}.
      * 
      * @param babuDB - {@link BabuDB}.
      */
-    public BabuDBInterface(BabuDB babuDB) {
+    public BabuDBInterface(BabuDBInternal babuDB) {
         this.dbs = babuDB;
     }
     

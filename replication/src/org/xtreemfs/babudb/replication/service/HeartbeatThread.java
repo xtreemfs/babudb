@@ -52,7 +52,8 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.Pacemaker#updateLSN(org.xtreemfs.babudb.lsmdb.LSN)
+     * @see org.xtreemfs.babudb.replication.service.Pacemaker#updateLSN(
+     *          org.xtreemfs.babudb.lsmdb.LSN)
      */
     public synchronized void updateLSN(LSN lsn) {
         if (latestLSN.compareTo(lsn)<0) {
@@ -97,7 +98,7 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
                         halted.wait();
                 } catch (InterruptedException e) {
                     if (!quit) notifyCrashed(e);
-                    assert (quit==true) : "halted must be notified, if thread "+
+                    assert (quit==true) : "Halted must be notified, if thread "+
                     		"should not shut down";
                 }
             }
@@ -109,7 +110,7 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
     /**
      * Sends a heartBeat message to the master.
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     private void processHeartbeat() {
         final ConditionClient c = this.pOverview.getMaster();
         if (c != null) {

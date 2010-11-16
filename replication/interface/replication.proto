@@ -1,0 +1,63 @@
+package org.xtreemfs.pbrpc;
+option java_package = "org.xtreemfs.babudb.pbrpc";
+import "interface/Common.proto";
+import "interface/GlobalTypes.proto";
+import "share/foundation/include/PBRPC.proto";
+
+message Redirected {
+  optional fixed32 type = 1[default = 0];
+  required bytes load = 2;
+}
+
+message chunk_data {
+  required bytes payload = 1;
+}
+
+message timestamp {
+  optional fixed64 value = 1[default = 0];
+}
+
+service RemoteAccessService {
+  option(interface_id)=10001;
+
+  rpc makePersistent(LogEntry) returns(emptyResponse) {
+    option(proc_id)=1;
+  };
+  
+}
+
+service ReplicationService {
+  option(interface_id)=20001;
+  
+  rpc state(emptyRequest) returns(LSN) {
+    option(proc_id)=1;
+  };
+  
+  rpc load(LSN) returns(DBFileMetaDatas) {
+    option(proc_id)=2;
+  };
+  
+  rpc chunk(Chunk) returns(chunk_data) {
+    option(proc_id)=3;
+  };
+  
+  rpc flease(FLease) returns(emptyResponse) {
+    option(proc_id)=4;
+  };
+  
+  rpc localTime(emptyRequest) returns(timestamp) {
+    option(proc_id)=5;
+  };
+  
+  rpc replica(LSNRange) returns(LogEntries) {
+    option(proc_id)=6;
+  };
+  
+  rpc heartbeat(LSN) returns(emptyResponse) {
+    option(proc_id)=7;
+  };
+  
+  rpc replicate(LogEntry) returns(emptyResponse) {
+    option(proc_id)=8;
+  };
+}

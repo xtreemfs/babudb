@@ -32,7 +32,7 @@
  */
 package org.xtreemfs.babudb.replication;
 
-import org.xtreemfs.babudb.BabuDB;
+import org.xtreemfs.babudb.api.BabuDB;
 import org.xtreemfs.babudb.replication.control.ControlToBabuDBInterface;
 
 /**

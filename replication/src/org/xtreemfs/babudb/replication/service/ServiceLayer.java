@@ -46,9 +46,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBRequest;
-import org.xtreemfs.babudb.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.BabuDBRequestResultImpl;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
@@ -148,7 +148,8 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
         // ----------------------------------
         // initialize replication stage
         // ----------------------------------
-        this.replicationStage = new ReplicationStage(config.getMaxQueueLength(), 
+        this.replicationStage = new ReplicationStage(
+                config.getBabuDBConfig().getMaxQueueLength(), 
                 this.heartbeatThread, this, transLayer.getFileIOInterface(), 
                 this.babuDBInterface, this.lastOnView);
     }
@@ -257,7 +258,8 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
                             "Starting synchronization from '%s' to '%s'.", 
                             localState.toString(), latest.toString());
                 
-                    BabuDBRequest<Boolean> ready = new BabuDBRequest<Boolean>();
+                    BabuDBRequestResultImpl<Boolean> ready = 
+                        new BabuDBRequestResultImpl<Boolean>();
                     this.replicationStage.manualLoad(ready, localState, latest);
                     ready.get();
                 

@@ -1,0 +1,8 @@
+option java_package="org.xtreemfs.babudb.pbrpc";
+package org.xtreemfs.pbrpc;
+
+message emptyRequest {
+}
+
+message emptyResponse {
+}

@@ -36,7 +36,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.replication.service.ServiceToControlInterface;
 import org.xtreemfs.foundation.LifeCycleThread;
 import org.xtreemfs.foundation.TimeSync;

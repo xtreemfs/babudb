@@ -17,8 +17,8 @@ import java.net.InetSocketAddress;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.replication.FleaseMessageReceiver;
@@ -32,6 +32,7 @@ import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.flease.Flease;
 import org.xtreemfs.foundation.flease.FleaseStage;
 import org.xtreemfs.foundation.flease.FleaseViewChangeListenerInterface;
+import org.xtreemfs.foundation.flease.MasterEpochHandlerInterface;
 import org.xtreemfs.foundation.flease.comm.FleaseMessage;
 
 /**
@@ -97,11 +98,11 @@ public class ControlLayer extends TopLayer implements RoleChangeListener,
         // ----------------------------------
         // initialize Flease
         // ----------------------------------
-        File bDir = new File(config.getBaseDir());
+        File bDir = new File(config.getBabuDBConfig().getBaseDir());
         if (!bDir.exists()) bDir.mkdirs();
 
         this.fleaseStage = new FleaseStage(config.getFleaseConfig(), 
-                config.getBaseDir(), 
+                config.getBabuDBConfig().getBaseDir(), 
                 new FleaseMessageSender(service.getParticipantOverview()), true, 
                 new FleaseViewChangeListenerInterface() {
                     @Override
@@ -109,14 +110,28 @@ public class ControlLayer extends TopLayer implements RoleChangeListener,
                             int viewId) {
                         /* ignored */
                     }
-                }, this.leaseHolder);
+                }, this.leaseHolder, new MasterEpochHandlerInterface() {
+                    
+                    @Override
+                    public void storeMasterEpoch(FleaseMessage request, Continuation callback) {
+                        // TODO Auto-generated method stub
+                        
+                    }
+                    
+                    @Override
+                    public void sendMasterEpoch(FleaseMessage response, Continuation callback) {
+                        // TODO Auto-generated method stub
+                        
+                    }
+                });
     }  
     
     /**
      * Method to participate at the {@link Flease} mechanism.
      */
     void joinFlease() {
-        this.fleaseStage.openCell(REPLICATION_CELL, this.fleaseParticipants);
+        this.fleaseStage.openCell(REPLICATION_CELL, this.fleaseParticipants, 
+                false); // TODO enable master epoch
     }
     
     /**

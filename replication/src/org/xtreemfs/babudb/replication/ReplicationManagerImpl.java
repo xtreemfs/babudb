@@ -9,7 +9,7 @@ package org.xtreemfs.babudb.replication;
 
 import java.net.InetAddress;
 
-import org.xtreemfs.babudb.BabuDB;
+import org.xtreemfs.babudb.BabuDBInternal;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.replication.control.ControlLayer;
@@ -45,11 +45,12 @@ public class ReplicationManagerImpl implements ReplicationManager {
      * Replication instance will be remaining stopped and in slave-mode.</p>
      * 
      * @param dbs
+     * @param conf
      * @throws Exception 
      */
-    public ReplicationManagerImpl(BabuDB dbs) 
+    public ReplicationManagerImpl(BabuDBInternal dbs, ReplicationConfig conf) 
         throws Exception {
-        ReplicationConfig conf = (ReplicationConfig) dbs.getConfig();
+        
         TimeSync.initializeLocal(conf.getTimeSyncInterval(), 
                 conf.getLocalTimeRenew()).setLifeCycleListener(this);
 

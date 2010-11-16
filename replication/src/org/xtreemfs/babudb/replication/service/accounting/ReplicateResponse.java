@@ -7,8 +7,8 @@
  */
 package org.xtreemfs.babudb.replication.service.accounting;
 
-import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
 

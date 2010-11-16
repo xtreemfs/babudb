@@ -35,7 +35,7 @@ package org.xtreemfs.babudb.replication.service;
 import java.io.IOException;
 import java.net.InetAddress;
 
-import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.replication.Coinable;
 import org.xtreemfs.babudb.replication.FleaseMessageReceiver;

@@ -43,10 +43,11 @@ public interface ReplicationManager extends LifeCycleListener {
      * @return the currently designated master, or null, if BabuDB is 
      *         suspended at the moment.
      */
-    public InetAddress getMaster();
+    public InetAddress getMaster(); // TODO change to InetSocketAddr
     
     /**
-     * @return true, if the replication is running in master mode. false, otherwise.
+     * @return true, if the replication is running in master mode. 
+     *         false, otherwise.
      */
     public boolean isMaster();
 }

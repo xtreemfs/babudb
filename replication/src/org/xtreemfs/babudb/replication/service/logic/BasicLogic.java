@@ -9,7 +9,7 @@ package org.xtreemfs.babudb.replication.service.logic;
 
 import java.util.concurrent.BlockingQueue;
 
-import org.xtreemfs.babudb.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
