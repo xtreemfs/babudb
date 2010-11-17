@@ -8,905 +8,6 @@ public final class Replication {
   public static void registerAllExtensions(
       com.google.protobuf.ExtensionRegistry registry) {
   }
-  public static final class Redirected extends
-      com.google.protobuf.GeneratedMessage {
-    // Use Redirected.newBuilder() to construct.
-    private Redirected() {
-      initFields();
-    }
-    private Redirected(boolean noInit) {}
-    
-    private static final Redirected defaultInstance;
-    public static Redirected getDefaultInstance() {
-      return defaultInstance;
-    }
-    
-    public Redirected getDefaultInstanceForType() {
-      return defaultInstance;
-    }
-    
-    public static final com.google.protobuf.Descriptors.Descriptor
-        getDescriptor() {
-      return org.xtreemfs.babudb.pbrpc.Replication.internal_static_org_xtreemfs_pbrpc_Redirected_descriptor;
-    }
-    
-    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
-        internalGetFieldAccessorTable() {
-      return org.xtreemfs.babudb.pbrpc.Replication.internal_static_org_xtreemfs_pbrpc_Redirected_fieldAccessorTable;
-    }
-    
-    // optional fixed32 type = 1 [default = 0];
-    public static final int TYPE_FIELD_NUMBER = 1;
-    private boolean hasType;
-    private int type_ = 0;
-    public boolean hasType() { return hasType; }
-    public int getType() { return type_; }
-    
-    // required bytes load = 2;
-    public static final int LOAD_FIELD_NUMBER = 2;
-    private boolean hasLoad;
-    private com.google.protobuf.ByteString load_ = com.google.protobuf.ByteString.EMPTY;
-    public boolean hasLoad() { return hasLoad; }
-    public com.google.protobuf.ByteString getLoad() { return load_; }
-    
-    private void initFields() {
-    }
-    public final boolean isInitialized() {
-      if (!hasLoad) return false;
-      return true;
-    }
-    
-    public void writeTo(com.google.protobuf.CodedOutputStream output)
-                        throws java.io.IOException {
-      getSerializedSize();
-      if (hasType()) {
-        output.writeFixed32(1, getType());
-      }
-      if (hasLoad()) {
-        output.writeBytes(2, getLoad());
-      }
-      getUnknownFields().writeTo(output);
-    }
-    
-    private int memoizedSerializedSize = -1;
-    public int getSerializedSize() {
-      int size = memoizedSerializedSize;
-      if (size != -1) return size;
-    
-      size = 0;
-      if (hasType()) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeFixed32Size(1, getType());
-      }
-      if (hasLoad()) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(2, getLoad());
-      }
-      size += getUnknownFields().getSerializedSize();
-      memoizedSerializedSize = size;
-      return size;
-    }
-    
-    public static org.xtreemfs.babudb.pbrpc.Replication.Redirected parseFrom(
-        com.google.protobuf.ByteString data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.Redirected parseFrom(
-        com.google.protobuf.ByteString data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.Redirected parseFrom(byte[] data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.Redirected parseFrom(
-        byte[] data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.Redirected parseFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.Redirected parseFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.Redirected parseDelimitedFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.Redirected parseDelimitedFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.Redirected parseFrom(
-        com.google.protobuf.CodedInputStream input)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.Redirected parseFrom(
-        com.google.protobuf.CodedInputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
-    }
-    
-    public static Builder newBuilder() { return Builder.create(); }
-    public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder(org.xtreemfs.babudb.pbrpc.Replication.Redirected prototype) {
-      return newBuilder().mergeFrom(prototype);
-    }
-    public Builder toBuilder() { return newBuilder(this); }
-    
-    public static final class Builder extends
-        com.google.protobuf.GeneratedMessage.Builder<Builder> {
-      private org.xtreemfs.babudb.pbrpc.Replication.Redirected result;
-      
-      // Construct using org.xtreemfs.babudb.pbrpc.Replication.Redirected.newBuilder()
-      private Builder() {}
-      
-      private static Builder create() {
-        Builder builder = new Builder();
-        builder.result = new org.xtreemfs.babudb.pbrpc.Replication.Redirected();
-        return builder;
-      }
-      
-      protected org.xtreemfs.babudb.pbrpc.Replication.Redirected internalGetResult() {
-        return result;
-      }
-      
-      public Builder clear() {
-        if (result == null) {
-          throw new IllegalStateException(
-            "Cannot call clear() after build().");
-        }
-        result = new org.xtreemfs.babudb.pbrpc.Replication.Redirected();
-        return this;
-      }
-      
-      public Builder clone() {
-        return create().mergeFrom(result);
-      }
-      
-      public com.google.protobuf.Descriptors.Descriptor
-          getDescriptorForType() {
-        return org.xtreemfs.babudb.pbrpc.Replication.Redirected.getDescriptor();
-      }
-      
-      public org.xtreemfs.babudb.pbrpc.Replication.Redirected getDefaultInstanceForType() {
-        return org.xtreemfs.babudb.pbrpc.Replication.Redirected.getDefaultInstance();
-      }
-      
-      public boolean isInitialized() {
-        return result.isInitialized();
-      }
-      public org.xtreemfs.babudb.pbrpc.Replication.Redirected build() {
-        if (result != null && !isInitialized()) {
-          throw newUninitializedMessageException(result);
-        }
-        return buildPartial();
-      }
-      
-      private org.xtreemfs.babudb.pbrpc.Replication.Redirected buildParsed()
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        if (!isInitialized()) {
-          throw newUninitializedMessageException(
-            result).asInvalidProtocolBufferException();
-        }
-        return buildPartial();
-      }
-      
-      public org.xtreemfs.babudb.pbrpc.Replication.Redirected buildPartial() {
-        if (result == null) {
-          throw new IllegalStateException(
-            "build() has already been called on this Builder.");
-        }
-        org.xtreemfs.babudb.pbrpc.Replication.Redirected returnMe = result;
-        result = null;
-        return returnMe;
-      }
-      
-      public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof org.xtreemfs.babudb.pbrpc.Replication.Redirected) {
-          return mergeFrom((org.xtreemfs.babudb.pbrpc.Replication.Redirected)other);
-        } else {
-          super.mergeFrom(other);
-          return this;
-        }
-      }
-      
-      public Builder mergeFrom(org.xtreemfs.babudb.pbrpc.Replication.Redirected other) {
-        if (other == org.xtreemfs.babudb.pbrpc.Replication.Redirected.getDefaultInstance()) return this;
-        if (other.hasType()) {
-          setType(other.getType());
-        }
-        if (other.hasLoad()) {
-          setLoad(other.getLoad());
-        }
-        this.mergeUnknownFields(other.getUnknownFields());
-        return this;
-      }
-      
-      public Builder mergeFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws java.io.IOException {
-        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder(
-            this.getUnknownFields());
-        while (true) {
-          int tag = input.readTag();
-          switch (tag) {
-            case 0:
-              this.setUnknownFields(unknownFields.build());
-              return this;
-            default: {
-              if (!parseUnknownField(input, unknownFields,
-                                     extensionRegistry, tag)) {
-                this.setUnknownFields(unknownFields.build());
-                return this;
-              }
-              break;
-            }
-            case 13: {
-              setType(input.readFixed32());
-              break;
-            }
-            case 18: {
-              setLoad(input.readBytes());
-              break;
-            }
-          }
-        }
-      }
-      
-      
-      // optional fixed32 type = 1 [default = 0];
-      public boolean hasType() {
-        return result.hasType();
-      }
-      public int getType() {
-        return result.getType();
-      }
-      public Builder setType(int value) {
-        result.hasType = true;
-        result.type_ = value;
-        return this;
-      }
-      public Builder clearType() {
-        result.hasType = false;
-        result.type_ = 0;
-        return this;
-      }
-      
-      // required bytes load = 2;
-      public boolean hasLoad() {
-        return result.hasLoad();
-      }
-      public com.google.protobuf.ByteString getLoad() {
-        return result.getLoad();
-      }
-      public Builder setLoad(com.google.protobuf.ByteString value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  result.hasLoad = true;
-        result.load_ = value;
-        return this;
-      }
-      public Builder clearLoad() {
-        result.hasLoad = false;
-        result.load_ = getDefaultInstance().getLoad();
-        return this;
-      }
-      
-      // @@protoc_insertion_point(builder_scope:org.xtreemfs.pbrpc.Redirected)
-    }
-    
-    static {
-      defaultInstance = new Redirected(true);
-      org.xtreemfs.babudb.pbrpc.Replication.internalForceInit();
-      defaultInstance.initFields();
-    }
-    
-    // @@protoc_insertion_point(class_scope:org.xtreemfs.pbrpc.Redirected)
-  }
-  
-  public static final class chunk_data extends
-      com.google.protobuf.GeneratedMessage {
-    // Use chunk_data.newBuilder() to construct.
-    private chunk_data() {
-      initFields();
-    }
-    private chunk_data(boolean noInit) {}
-    
-    private static final chunk_data defaultInstance;
-    public static chunk_data getDefaultInstance() {
-      return defaultInstance;
-    }
-    
-    public chunk_data getDefaultInstanceForType() {
-      return defaultInstance;
-    }
-    
-    public static final com.google.protobuf.Descriptors.Descriptor
-        getDescriptor() {
-      return org.xtreemfs.babudb.pbrpc.Replication.internal_static_org_xtreemfs_pbrpc_chunk_data_descriptor;
-    }
-    
-    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
-        internalGetFieldAccessorTable() {
-      return org.xtreemfs.babudb.pbrpc.Replication.internal_static_org_xtreemfs_pbrpc_chunk_data_fieldAccessorTable;
-    }
-    
-    // required bytes payload = 1;
-    public static final int PAYLOAD_FIELD_NUMBER = 1;
-    private boolean hasPayload;
-    private com.google.protobuf.ByteString payload_ = com.google.protobuf.ByteString.EMPTY;
-    public boolean hasPayload() { return hasPayload; }
-    public com.google.protobuf.ByteString getPayload() { return payload_; }
-    
-    private void initFields() {
-    }
-    public final boolean isInitialized() {
-      if (!hasPayload) return false;
-      return true;
-    }
-    
-    public void writeTo(com.google.protobuf.CodedOutputStream output)
-                        throws java.io.IOException {
-      getSerializedSize();
-      if (hasPayload()) {
-        output.writeBytes(1, getPayload());
-      }
-      getUnknownFields().writeTo(output);
-    }
-    
-    private int memoizedSerializedSize = -1;
-    public int getSerializedSize() {
-      int size = memoizedSerializedSize;
-      if (size != -1) return size;
-    
-      size = 0;
-      if (hasPayload()) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(1, getPayload());
-      }
-      size += getUnknownFields().getSerializedSize();
-      memoizedSerializedSize = size;
-      return size;
-    }
-    
-    public static org.xtreemfs.babudb.pbrpc.Replication.chunk_data parseFrom(
-        com.google.protobuf.ByteString data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.chunk_data parseFrom(
-        com.google.protobuf.ByteString data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.chunk_data parseFrom(byte[] data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.chunk_data parseFrom(
-        byte[] data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.chunk_data parseFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.chunk_data parseFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.chunk_data parseDelimitedFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.chunk_data parseDelimitedFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.chunk_data parseFrom(
-        com.google.protobuf.CodedInputStream input)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.chunk_data parseFrom(
-        com.google.protobuf.CodedInputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
-    }
-    
-    public static Builder newBuilder() { return Builder.create(); }
-    public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder(org.xtreemfs.babudb.pbrpc.Replication.chunk_data prototype) {
-      return newBuilder().mergeFrom(prototype);
-    }
-    public Builder toBuilder() { return newBuilder(this); }
-    
-    public static final class Builder extends
-        com.google.protobuf.GeneratedMessage.Builder<Builder> {
-      private org.xtreemfs.babudb.pbrpc.Replication.chunk_data result;
-      
-      // Construct using org.xtreemfs.babudb.pbrpc.Replication.chunk_data.newBuilder()
-      private Builder() {}
-      
-      private static Builder create() {
-        Builder builder = new Builder();
-        builder.result = new org.xtreemfs.babudb.pbrpc.Replication.chunk_data();
-        return builder;
-      }
-      
-      protected org.xtreemfs.babudb.pbrpc.Replication.chunk_data internalGetResult() {
-        return result;
-      }
-      
-      public Builder clear() {
-        if (result == null) {
-          throw new IllegalStateException(
-            "Cannot call clear() after build().");
-        }
-        result = new org.xtreemfs.babudb.pbrpc.Replication.chunk_data();
-        return this;
-      }
-      
-      public Builder clone() {
-        return create().mergeFrom(result);
-      }
-      
-      public com.google.protobuf.Descriptors.Descriptor
-          getDescriptorForType() {
-        return org.xtreemfs.babudb.pbrpc.Replication.chunk_data.getDescriptor();
-      }
-      
-      public org.xtreemfs.babudb.pbrpc.Replication.chunk_data getDefaultInstanceForType() {
-        return org.xtreemfs.babudb.pbrpc.Replication.chunk_data.getDefaultInstance();
-      }
-      
-      public boolean isInitialized() {
-        return result.isInitialized();
-      }
-      public org.xtreemfs.babudb.pbrpc.Replication.chunk_data build() {
-        if (result != null && !isInitialized()) {
-          throw newUninitializedMessageException(result);
-        }
-        return buildPartial();
-      }
-      
-      private org.xtreemfs.babudb.pbrpc.Replication.chunk_data buildParsed()
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        if (!isInitialized()) {
-          throw newUninitializedMessageException(
-            result).asInvalidProtocolBufferException();
-        }
-        return buildPartial();
-      }
-      
-      public org.xtreemfs.babudb.pbrpc.Replication.chunk_data buildPartial() {
-        if (result == null) {
-          throw new IllegalStateException(
-            "build() has already been called on this Builder.");
-        }
-        org.xtreemfs.babudb.pbrpc.Replication.chunk_data returnMe = result;
-        result = null;
-        return returnMe;
-      }
-      
-      public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof org.xtreemfs.babudb.pbrpc.Replication.chunk_data) {
-          return mergeFrom((org.xtreemfs.babudb.pbrpc.Replication.chunk_data)other);
-        } else {
-          super.mergeFrom(other);
-          return this;
-        }
-      }
-      
-      public Builder mergeFrom(org.xtreemfs.babudb.pbrpc.Replication.chunk_data other) {
-        if (other == org.xtreemfs.babudb.pbrpc.Replication.chunk_data.getDefaultInstance()) return this;
-        if (other.hasPayload()) {
-          setPayload(other.getPayload());
-        }
-        this.mergeUnknownFields(other.getUnknownFields());
-        return this;
-      }
-      
-      public Builder mergeFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws java.io.IOException {
-        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder(
-            this.getUnknownFields());
-        while (true) {
-          int tag = input.readTag();
-          switch (tag) {
-            case 0:
-              this.setUnknownFields(unknownFields.build());
-              return this;
-            default: {
-              if (!parseUnknownField(input, unknownFields,
-                                     extensionRegistry, tag)) {
-                this.setUnknownFields(unknownFields.build());
-                return this;
-              }
-              break;
-            }
-            case 10: {
-              setPayload(input.readBytes());
-              break;
-            }
-          }
-        }
-      }
-      
-      
-      // required bytes payload = 1;
-      public boolean hasPayload() {
-        return result.hasPayload();
-      }
-      public com.google.protobuf.ByteString getPayload() {
-        return result.getPayload();
-      }
-      public Builder setPayload(com.google.protobuf.ByteString value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  result.hasPayload = true;
-        result.payload_ = value;
-        return this;
-      }
-      public Builder clearPayload() {
-        result.hasPayload = false;
-        result.payload_ = getDefaultInstance().getPayload();
-        return this;
-      }
-      
-      // @@protoc_insertion_point(builder_scope:org.xtreemfs.pbrpc.chunk_data)
-    }
-    
-    static {
-      defaultInstance = new chunk_data(true);
-      org.xtreemfs.babudb.pbrpc.Replication.internalForceInit();
-      defaultInstance.initFields();
-    }
-    
-    // @@protoc_insertion_point(class_scope:org.xtreemfs.pbrpc.chunk_data)
-  }
-  
-  public static final class timestamp extends
-      com.google.protobuf.GeneratedMessage {
-    // Use timestamp.newBuilder() to construct.
-    private timestamp() {
-      initFields();
-    }
-    private timestamp(boolean noInit) {}
-    
-    private static final timestamp defaultInstance;
-    public static timestamp getDefaultInstance() {
-      return defaultInstance;
-    }
-    
-    public timestamp getDefaultInstanceForType() {
-      return defaultInstance;
-    }
-    
-    public static final com.google.protobuf.Descriptors.Descriptor
-        getDescriptor() {
-      return org.xtreemfs.babudb.pbrpc.Replication.internal_static_org_xtreemfs_pbrpc_timestamp_descriptor;
-    }
-    
-    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
-        internalGetFieldAccessorTable() {
-      return org.xtreemfs.babudb.pbrpc.Replication.internal_static_org_xtreemfs_pbrpc_timestamp_fieldAccessorTable;
-    }
-    
-    // optional fixed64 value = 1 [default = 0];
-    public static final int VALUE_FIELD_NUMBER = 1;
-    private boolean hasValue;
-    private long value_ = 0L;
-    public boolean hasValue() { return hasValue; }
-    public long getValue() { return value_; }
-    
-    private void initFields() {
-    }
-    public final boolean isInitialized() {
-      return true;
-    }
-    
-    public void writeTo(com.google.protobuf.CodedOutputStream output)
-                        throws java.io.IOException {
-      getSerializedSize();
-      if (hasValue()) {
-        output.writeFixed64(1, getValue());
-      }
-      getUnknownFields().writeTo(output);
-    }
-    
-    private int memoizedSerializedSize = -1;
-    public int getSerializedSize() {
-      int size = memoizedSerializedSize;
-      if (size != -1) return size;
-    
-      size = 0;
-      if (hasValue()) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeFixed64Size(1, getValue());
-      }
-      size += getUnknownFields().getSerializedSize();
-      memoizedSerializedSize = size;
-      return size;
-    }
-    
-    public static org.xtreemfs.babudb.pbrpc.Replication.timestamp parseFrom(
-        com.google.protobuf.ByteString data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.timestamp parseFrom(
-        com.google.protobuf.ByteString data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.timestamp parseFrom(byte[] data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data).buildParsed();
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.timestamp parseFrom(
-        byte[] data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return newBuilder().mergeFrom(data, extensionRegistry)
-               .buildParsed();
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.timestamp parseFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.timestamp parseFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.timestamp parseDelimitedFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.timestamp parseDelimitedFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      Builder builder = newBuilder();
-      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
-        return builder.buildParsed();
-      } else {
-        return null;
-      }
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.timestamp parseFrom(
-        com.google.protobuf.CodedInputStream input)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input).buildParsed();
-    }
-    public static org.xtreemfs.babudb.pbrpc.Replication.timestamp parseFrom(
-        com.google.protobuf.CodedInputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return newBuilder().mergeFrom(input, extensionRegistry)
-               .buildParsed();
-    }
-    
-    public static Builder newBuilder() { return Builder.create(); }
-    public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder(org.xtreemfs.babudb.pbrpc.Replication.timestamp prototype) {
-      return newBuilder().mergeFrom(prototype);
-    }
-    public Builder toBuilder() { return newBuilder(this); }
-    
-    public static final class Builder extends
-        com.google.protobuf.GeneratedMessage.Builder<Builder> {
-      private org.xtreemfs.babudb.pbrpc.Replication.timestamp result;
-      
-      // Construct using org.xtreemfs.babudb.pbrpc.Replication.timestamp.newBuilder()
-      private Builder() {}
-      
-      private static Builder create() {
-        Builder builder = new Builder();
-        builder.result = new org.xtreemfs.babudb.pbrpc.Replication.timestamp();
-        return builder;
-      }
-      
-      protected org.xtreemfs.babudb.pbrpc.Replication.timestamp internalGetResult() {
-        return result;
-      }
-      
-      public Builder clear() {
-        if (result == null) {
-          throw new IllegalStateException(
-            "Cannot call clear() after build().");
-        }
-        result = new org.xtreemfs.babudb.pbrpc.Replication.timestamp();
-        return this;
-      }
-      
-      public Builder clone() {
-        return create().mergeFrom(result);
-      }
-      
-      public com.google.protobuf.Descriptors.Descriptor
-          getDescriptorForType() {
-        return org.xtreemfs.babudb.pbrpc.Replication.timestamp.getDescriptor();
-      }
-      
-      public org.xtreemfs.babudb.pbrpc.Replication.timestamp getDefaultInstanceForType() {
-        return org.xtreemfs.babudb.pbrpc.Replication.timestamp.getDefaultInstance();
-      }
-      
-      public boolean isInitialized() {
-        return result.isInitialized();
-      }
-      public org.xtreemfs.babudb.pbrpc.Replication.timestamp build() {
-        if (result != null && !isInitialized()) {
-          throw newUninitializedMessageException(result);
-        }
-        return buildPartial();
-      }
-      
-      private org.xtreemfs.babudb.pbrpc.Replication.timestamp buildParsed()
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        if (!isInitialized()) {
-          throw newUninitializedMessageException(
-            result).asInvalidProtocolBufferException();
-        }
-        return buildPartial();
-      }
-      
-      public org.xtreemfs.babudb.pbrpc.Replication.timestamp buildPartial() {
-        if (result == null) {
-          throw new IllegalStateException(
-            "build() has already been called on this Builder.");
-        }
-        org.xtreemfs.babudb.pbrpc.Replication.timestamp returnMe = result;
-        result = null;
-        return returnMe;
-      }
-      
-      public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof org.xtreemfs.babudb.pbrpc.Replication.timestamp) {
-          return mergeFrom((org.xtreemfs.babudb.pbrpc.Replication.timestamp)other);
-        } else {
-          super.mergeFrom(other);
-          return this;
-        }
-      }
-      
-      public Builder mergeFrom(org.xtreemfs.babudb.pbrpc.Replication.timestamp other) {
-        if (other == org.xtreemfs.babudb.pbrpc.Replication.timestamp.getDefaultInstance()) return this;
-        if (other.hasValue()) {
-          setValue(other.getValue());
-        }
-        this.mergeUnknownFields(other.getUnknownFields());
-        return this;
-      }
-      
-      public Builder mergeFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws java.io.IOException {
-        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder(
-            this.getUnknownFields());
-        while (true) {
-          int tag = input.readTag();
-          switch (tag) {
-            case 0:
-              this.setUnknownFields(unknownFields.build());
-              return this;
-            default: {
-              if (!parseUnknownField(input, unknownFields,
-                                     extensionRegistry, tag)) {
-                this.setUnknownFields(unknownFields.build());
-                return this;
-              }
-              break;
-            }
-            case 9: {
-              setValue(input.readFixed64());
-              break;
-            }
-          }
-        }
-      }
-      
-      
-      // optional fixed64 value = 1 [default = 0];
-      public boolean hasValue() {
-        return result.hasValue();
-      }
-      public long getValue() {
-        return result.getValue();
-      }
-      public Builder setValue(long value) {
-        result.hasValue = true;
-        result.value_ = value;
-        return this;
-      }
-      public Builder clearValue() {
-        result.hasValue = false;
-        result.value_ = 0L;
-        return this;
-      }
-      
-      // @@protoc_insertion_point(builder_scope:org.xtreemfs.pbrpc.timestamp)
-    }
-    
-    static {
-      defaultInstance = new timestamp(true);
-      org.xtreemfs.babudb.pbrpc.Replication.internalForceInit();
-      defaultInstance.initFields();
-    }
-    
-    // @@protoc_insertion_point(class_scope:org.xtreemfs.pbrpc.timestamp)
-  }
-  
   public static abstract class RemoteAccessService
       implements com.google.protobuf.Service {
     protected RemoteAccessService() {}
@@ -914,7 +15,7 @@ public final class Replication {
     public interface Interface {
       public abstract void makePersistent(
           com.google.protobuf.RpcController controller,
-          org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry request,
+          org.xtreemfs.babudb.pbrpc.Common.emptyRequest request,
           com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done);
       
     }
@@ -925,7 +26,7 @@ public final class Replication {
         @Override
         public  void makePersistent(
             com.google.protobuf.RpcController controller,
-            org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry request,
+            org.xtreemfs.babudb.pbrpc.Common.emptyRequest request,
             com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done) {
           impl.makePersistent(controller, request, done);
         }
@@ -953,7 +54,7 @@ public final class Replication {
           }
           switch(method.getIndex()) {
             case 0:
-              return impl.makePersistent(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry)request);
+              return impl.makePersistent(controller, (org.xtreemfs.babudb.pbrpc.Common.emptyRequest)request);
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -969,7 +70,7 @@ public final class Replication {
           }
           switch(method.getIndex()) {
             case 0:
-              return org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry.getDefaultInstance();
+              return org.xtreemfs.babudb.pbrpc.Common.emptyRequest.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -996,7 +97,7 @@ public final class Replication {
     
     public abstract void makePersistent(
         com.google.protobuf.RpcController controller,
-        org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry request,
+        org.xtreemfs.babudb.pbrpc.Common.emptyRequest request,
         com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done);
     
     public static final
@@ -1022,7 +123,7 @@ public final class Replication {
       }
       switch(method.getIndex()) {
         case 0:
-          this.makePersistent(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry)request,
+          this.makePersistent(controller, (org.xtreemfs.babudb.pbrpc.Common.emptyRequest)request,
             com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.Common.emptyResponse>specializeCallback(
               done));
           return;
@@ -1041,7 +142,7 @@ public final class Replication {
       }
       switch(method.getIndex()) {
         case 0:
-          return org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry.getDefaultInstance();
+          return org.xtreemfs.babudb.pbrpc.Common.emptyRequest.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -1081,7 +182,7 @@ public final class Replication {
       
       public  void makePersistent(
           com.google.protobuf.RpcController controller,
-          org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry request,
+          org.xtreemfs.babudb.pbrpc.Common.emptyRequest request,
           com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done) {
         channel.callMethod(
           getDescriptor().getMethods().get(0),
@@ -1103,7 +204,7 @@ public final class Replication {
     public interface BlockingInterface {
       public org.xtreemfs.babudb.pbrpc.Common.emptyResponse makePersistent(
           com.google.protobuf.RpcController controller,
-          org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry request)
+          org.xtreemfs.babudb.pbrpc.Common.emptyRequest request)
           throws com.google.protobuf.ServiceException;
     }
     
@@ -1116,7 +217,7 @@ public final class Replication {
       
       public org.xtreemfs.babudb.pbrpc.Common.emptyResponse makePersistent(
           com.google.protobuf.RpcController controller,
-          org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry request)
+          org.xtreemfs.babudb.pbrpc.Common.emptyRequest request)
           throws com.google.protobuf.ServiceException {
         return (org.xtreemfs.babudb.pbrpc.Common.emptyResponse) channel.callBlockingMethod(
           getDescriptor().getMethods().get(0),
@@ -1146,7 +247,7 @@ public final class Replication {
       public abstract void chunk(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.GlobalTypes.Chunk request,
-          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Replication.chunk_data> done);
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done);
       
       public abstract void flease(
           com.google.protobuf.RpcController controller,
@@ -1156,7 +257,7 @@ public final class Replication {
       public abstract void localTime(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.Common.emptyRequest request,
-          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Replication.timestamp> done);
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.Timestamp> done);
       
       public abstract void replica(
           com.google.protobuf.RpcController controller,
@@ -1170,7 +271,7 @@ public final class Replication {
       
       public abstract void replicate(
           com.google.protobuf.RpcController controller,
-          org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry request,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request,
           com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done);
       
     }
@@ -1198,7 +299,7 @@ public final class Replication {
         public  void chunk(
             com.google.protobuf.RpcController controller,
             org.xtreemfs.babudb.pbrpc.GlobalTypes.Chunk request,
-            com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Replication.chunk_data> done) {
+            com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done) {
           impl.chunk(controller, request, done);
         }
         
@@ -1214,7 +315,7 @@ public final class Replication {
         public  void localTime(
             com.google.protobuf.RpcController controller,
             org.xtreemfs.babudb.pbrpc.Common.emptyRequest request,
-            com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Replication.timestamp> done) {
+            com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.Timestamp> done) {
           impl.localTime(controller, request, done);
         }
         
@@ -1237,7 +338,7 @@ public final class Replication {
         @Override
         public  void replicate(
             com.google.protobuf.RpcController controller,
-            org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry request,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request,
             com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done) {
           impl.replicate(controller, request, done);
         }
@@ -1279,7 +380,7 @@ public final class Replication {
             case 6:
               return impl.heartbeat(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN)request);
             case 7:
-              return impl.replicate(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry)request);
+              return impl.replicate(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN)request);
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -1309,7 +410,7 @@ public final class Replication {
             case 6:
               return org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.getDefaultInstance();
             case 7:
-              return org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry.getDefaultInstance();
+              return org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -1329,11 +430,11 @@ public final class Replication {
             case 1:
               return org.xtreemfs.babudb.pbrpc.GlobalTypes.DBFileMetaDatas.getDefaultInstance();
             case 2:
-              return org.xtreemfs.babudb.pbrpc.Replication.chunk_data.getDefaultInstance();
+              return org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance();
             case 3:
               return org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance();
             case 4:
-              return org.xtreemfs.babudb.pbrpc.Replication.timestamp.getDefaultInstance();
+              return org.xtreemfs.babudb.pbrpc.GlobalTypes.Timestamp.getDefaultInstance();
             case 5:
               return org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntries.getDefaultInstance();
             case 6:
@@ -1361,7 +462,7 @@ public final class Replication {
     public abstract void chunk(
         com.google.protobuf.RpcController controller,
         org.xtreemfs.babudb.pbrpc.GlobalTypes.Chunk request,
-        com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Replication.chunk_data> done);
+        com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done);
     
     public abstract void flease(
         com.google.protobuf.RpcController controller,
@@ -1371,7 +472,7 @@ public final class Replication {
     public abstract void localTime(
         com.google.protobuf.RpcController controller,
         org.xtreemfs.babudb.pbrpc.Common.emptyRequest request,
-        com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Replication.timestamp> done);
+        com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.Timestamp> done);
     
     public abstract void replica(
         com.google.protobuf.RpcController controller,
@@ -1385,7 +486,7 @@ public final class Replication {
     
     public abstract void replicate(
         com.google.protobuf.RpcController controller,
-        org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry request,
+        org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request,
         com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done);
     
     public static final
@@ -1422,7 +523,7 @@ public final class Replication {
           return;
         case 2:
           this.chunk(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.Chunk)request,
-            com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.Replication.chunk_data>specializeCallback(
+            com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.Common.emptyResponse>specializeCallback(
               done));
           return;
         case 3:
@@ -1432,7 +533,7 @@ public final class Replication {
           return;
         case 4:
           this.localTime(controller, (org.xtreemfs.babudb.pbrpc.Common.emptyRequest)request,
-            com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.Replication.timestamp>specializeCallback(
+            com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.GlobalTypes.Timestamp>specializeCallback(
               done));
           return;
         case 5:
@@ -1446,7 +547,7 @@ public final class Replication {
               done));
           return;
         case 7:
-          this.replicate(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry)request,
+          this.replicate(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN)request,
             com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.Common.emptyResponse>specializeCallback(
               done));
           return;
@@ -1479,7 +580,7 @@ public final class Replication {
         case 6:
           return org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.getDefaultInstance();
         case 7:
-          return org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry.getDefaultInstance();
+          return org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -1499,11 +600,11 @@ public final class Replication {
         case 1:
           return org.xtreemfs.babudb.pbrpc.GlobalTypes.DBFileMetaDatas.getDefaultInstance();
         case 2:
-          return org.xtreemfs.babudb.pbrpc.Replication.chunk_data.getDefaultInstance();
+          return org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance();
         case 3:
           return org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance();
         case 4:
-          return org.xtreemfs.babudb.pbrpc.Replication.timestamp.getDefaultInstance();
+          return org.xtreemfs.babudb.pbrpc.GlobalTypes.Timestamp.getDefaultInstance();
         case 5:
           return org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntries.getDefaultInstance();
         case 6:
@@ -1564,16 +665,16 @@ public final class Replication {
       public  void chunk(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.GlobalTypes.Chunk request,
-          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Replication.chunk_data> done) {
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done) {
         channel.callMethod(
           getDescriptor().getMethods().get(2),
           controller,
           request,
-          org.xtreemfs.babudb.pbrpc.Replication.chunk_data.getDefaultInstance(),
+          org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance(),
           com.google.protobuf.RpcUtil.generalizeCallback(
             done,
-            org.xtreemfs.babudb.pbrpc.Replication.chunk_data.class,
-            org.xtreemfs.babudb.pbrpc.Replication.chunk_data.getDefaultInstance()));
+            org.xtreemfs.babudb.pbrpc.Common.emptyResponse.class,
+            org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance()));
       }
       
       public  void flease(
@@ -1594,16 +695,16 @@ public final class Replication {
       public  void localTime(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.Common.emptyRequest request,
-          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Replication.timestamp> done) {
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.Timestamp> done) {
         channel.callMethod(
           getDescriptor().getMethods().get(4),
           controller,
           request,
-          org.xtreemfs.babudb.pbrpc.Replication.timestamp.getDefaultInstance(),
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.Timestamp.getDefaultInstance(),
           com.google.protobuf.RpcUtil.generalizeCallback(
             done,
-            org.xtreemfs.babudb.pbrpc.Replication.timestamp.class,
-            org.xtreemfs.babudb.pbrpc.Replication.timestamp.getDefaultInstance()));
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.Timestamp.class,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.Timestamp.getDefaultInstance()));
       }
       
       public  void replica(
@@ -1638,7 +739,7 @@ public final class Replication {
       
       public  void replicate(
           com.google.protobuf.RpcController controller,
-          org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry request,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request,
           com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done) {
         channel.callMethod(
           getDescriptor().getMethods().get(7),
@@ -1668,7 +769,7 @@ public final class Replication {
           org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request)
           throws com.google.protobuf.ServiceException;
       
-      public org.xtreemfs.babudb.pbrpc.Replication.chunk_data chunk(
+      public org.xtreemfs.babudb.pbrpc.Common.emptyResponse chunk(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.GlobalTypes.Chunk request)
           throws com.google.protobuf.ServiceException;
@@ -1678,7 +779,7 @@ public final class Replication {
           org.xtreemfs.babudb.pbrpc.GlobalTypes.FLease request)
           throws com.google.protobuf.ServiceException;
       
-      public org.xtreemfs.babudb.pbrpc.Replication.timestamp localTime(
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.Timestamp localTime(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.Common.emptyRequest request)
           throws com.google.protobuf.ServiceException;
@@ -1695,7 +796,7 @@ public final class Replication {
       
       public org.xtreemfs.babudb.pbrpc.Common.emptyResponse replicate(
           com.google.protobuf.RpcController controller,
-          org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry request)
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request)
           throws com.google.protobuf.ServiceException;
     }
     
@@ -1730,15 +831,15 @@ public final class Replication {
       }
       
       
-      public org.xtreemfs.babudb.pbrpc.Replication.chunk_data chunk(
+      public org.xtreemfs.babudb.pbrpc.Common.emptyResponse chunk(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.GlobalTypes.Chunk request)
           throws com.google.protobuf.ServiceException {
-        return (org.xtreemfs.babudb.pbrpc.Replication.chunk_data) channel.callBlockingMethod(
+        return (org.xtreemfs.babudb.pbrpc.Common.emptyResponse) channel.callBlockingMethod(
           getDescriptor().getMethods().get(2),
           controller,
           request,
-          org.xtreemfs.babudb.pbrpc.Replication.chunk_data.getDefaultInstance());
+          org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance());
       }
       
       
@@ -1754,15 +855,15 @@ public final class Replication {
       }
       
       
-      public org.xtreemfs.babudb.pbrpc.Replication.timestamp localTime(
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.Timestamp localTime(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.Common.emptyRequest request)
           throws com.google.protobuf.ServiceException {
-        return (org.xtreemfs.babudb.pbrpc.Replication.timestamp) channel.callBlockingMethod(
+        return (org.xtreemfs.babudb.pbrpc.GlobalTypes.Timestamp) channel.callBlockingMethod(
           getDescriptor().getMethods().get(4),
           controller,
           request,
-          org.xtreemfs.babudb.pbrpc.Replication.timestamp.getDefaultInstance());
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.Timestamp.getDefaultInstance());
       }
       
       
@@ -1792,7 +893,7 @@ public final class Replication {
       
       public org.xtreemfs.babudb.pbrpc.Common.emptyResponse replicate(
           com.google.protobuf.RpcController controller,
-          org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry request)
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request)
           throws com.google.protobuf.ServiceException {
         return (org.xtreemfs.babudb.pbrpc.Common.emptyResponse) channel.callBlockingMethod(
           getDescriptor().getMethods().get(7),
@@ -1804,21 +905,6 @@ public final class Replication {
     }
   }
   
-  private static com.google.protobuf.Descriptors.Descriptor
-    internal_static_org_xtreemfs_pbrpc_Redirected_descriptor;
-  private static
-    com.google.protobuf.GeneratedMessage.FieldAccessorTable
-      internal_static_org_xtreemfs_pbrpc_Redirected_fieldAccessorTable;
-  private static com.google.protobuf.Descriptors.Descriptor
-    internal_static_org_xtreemfs_pbrpc_chunk_data_descriptor;
-  private static
-    com.google.protobuf.GeneratedMessage.FieldAccessorTable
-      internal_static_org_xtreemfs_pbrpc_chunk_data_fieldAccessorTable;
-  private static com.google.protobuf.Descriptors.Descriptor
-    internal_static_org_xtreemfs_pbrpc_timestamp_descriptor;
-  private static
-    com.google.protobuf.GeneratedMessage.FieldAccessorTable
-      internal_static_org_xtreemfs_pbrpc_timestamp_fieldAccessorTable;
   
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -1829,68 +915,42 @@ public final class Replication {
   static {
     java.lang.String[] descriptorData = {
       "\n\033interface/replication.proto\022\022org.xtree" +
-      "mfs.pbrpc\032\026interface/Common.proto\032\033inter" +
-      "face/GlobalTypes.proto\032$share/foundation" +
-      "/include/PBRPC.proto\"+\n\nRedirected\022\017\n\004ty" +
-      "pe\030\001 \001(\007:\0010\022\014\n\004load\030\002 \002(\014\"\035\n\nchunk_data\022" +
-      "\017\n\007payload\030\001 \002(\014\"\035\n\ttimestamp\022\020\n\005value\030\001" +
-      " \001(\006:\00102z\n\023RemoteAccessService\022Z\n\016makePe" +
-      "rsistent\022\034.org.xtreemfs.pbrpc.LogEntry\032!" +
-      ".org.xtreemfs.pbrpc.emptyResponse\"\007\215\265\030\001\000" +
-      "\000\000\032\007\225\265\030\021\'\000\0002\252\005\n\022ReplicationService\022K\n\005st",
-      "ate\022 .org.xtreemfs.pbrpc.emptyRequest\032\027." +
-      "org.xtreemfs.pbrpc.LSN\"\007\215\265\030\001\000\000\000\022M\n\004load\022" +
-      "\027.org.xtreemfs.pbrpc.LSN\032#.org.xtreemfs." +
-      "pbrpc.DBFileMetaDatas\"\007\215\265\030\002\000\000\000\022K\n\005chunk\022" +
-      "\031.org.xtreemfs.pbrpc.Chunk\032\036.org.xtreemf" +
-      "s.pbrpc.chunk_data\"\007\215\265\030\003\000\000\000\022P\n\006flease\022\032." +
-      "org.xtreemfs.pbrpc.FLease\032!.org.xtreemfs" +
-      ".pbrpc.emptyResponse\"\007\215\265\030\004\000\000\000\022U\n\tlocalTi" +
-      "me\022 .org.xtreemfs.pbrpc.emptyRequest\032\035.o" +
-      "rg.xtreemfs.pbrpc.timestamp\"\007\215\265\030\005\000\000\000\022P\n\007",
-      "replica\022\034.org.xtreemfs.pbrpc.LSNRange\032\036." +
-      "org.xtreemfs.pbrpc.LogEntries\"\007\215\265\030\006\000\000\000\022P" +
-      "\n\theartbeat\022\027.org.xtreemfs.pbrpc.LSN\032!.o" +
-      "rg.xtreemfs.pbrpc.emptyResponse\"\007\215\265\030\007\000\000\000" +
-      "\022U\n\treplicate\022\034.org.xtreemfs.pbrpc.LogEn" +
-      "try\032!.org.xtreemfs.pbrpc.emptyResponse\"\007" +
-      "\215\265\030\010\000\000\000\032\007\225\265\030!N\000\000B\033\n\031org.xtreemfs.babudb." +
-      "pbrpc"
+      "mfs.pbrpc\032\033interface/GlobalTypes.proto\032%" +
+      "share/foundation/include/Common.proto\032$s" +
+      "hare/foundation/include/PBRPC.proto2\202\001\n\023" +
+      "RemoteAccessService\022b\n\016makePersistent\022 ." +
+      "org.xtreemfs.pbrpc.emptyRequest\032!.org.xt" +
+      "reemfs.pbrpc.emptyResponse\"\013\215\265\030\001\000\000\000\240\265\030\001\032" +
+      "\007\225\265\030\021\'\000\0002\270\005\n\022ReplicationService\022K\n\005state" +
+      "\022 .org.xtreemfs.pbrpc.emptyRequest\032\027.org" +
+      ".xtreemfs.pbrpc.LSN\"\007\215\265\030\001\000\000\000\022M\n\004load\022\027.o",
+      "rg.xtreemfs.pbrpc.LSN\032#.org.xtreemfs.pbr" +
+      "pc.DBFileMetaDatas\"\007\215\265\030\002\000\000\000\022R\n\005chunk\022\031.o" +
+      "rg.xtreemfs.pbrpc.Chunk\032!.org.xtreemfs.p" +
+      "brpc.emptyResponse\"\013\215\265\030\003\000\000\000\230\265\030\001\022T\n\006fleas" +
+      "e\022\032.org.xtreemfs.pbrpc.FLease\032!.org.xtre" +
+      "emfs.pbrpc.emptyResponse\"\013\215\265\030\004\000\000\000\240\265\030\001\022U\n" +
+      "\tlocalTime\022 .org.xtreemfs.pbrpc.emptyReq" +
+      "uest\032\035.org.xtreemfs.pbrpc.Timestamp\"\007\215\265\030" +
+      "\005\000\000\000\022T\n\007replica\022\034.org.xtreemfs.pbrpc.LSN" +
+      "Range\032\036.org.xtreemfs.pbrpc.LogEntries\"\013\215",
+      "\265\030\006\000\000\000\230\265\030\001\022P\n\theartbeat\022\027.org.xtreemfs.p" +
+      "brpc.LSN\032!.org.xtreemfs.pbrpc.emptyRespo" +
+      "nse\"\007\215\265\030\007\000\000\000\022T\n\treplicate\022\027.org.xtreemfs" +
+      ".pbrpc.LSN\032!.org.xtreemfs.pbrpc.emptyRes" +
+      "ponse\"\013\215\265\030\010\000\000\000\240\265\030\001\032\007\225\265\030!N\000\000B\033\n\031org.xtree" +
+      "mfs.babudb.pbrpc"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
         public com.google.protobuf.ExtensionRegistry assignDescriptors(
             com.google.protobuf.Descriptors.FileDescriptor root) {
           descriptor = root;
-          internal_static_org_xtreemfs_pbrpc_Redirected_descriptor =
-            getDescriptor().getMessageTypes().get(0);
-          internal_static_org_xtreemfs_pbrpc_Redirected_fieldAccessorTable = new
-            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-              internal_static_org_xtreemfs_pbrpc_Redirected_descriptor,
-              new java.lang.String[] { "Type", "Load", },
-              org.xtreemfs.babudb.pbrpc.Replication.Redirected.class,
-              org.xtreemfs.babudb.pbrpc.Replication.Redirected.Builder.class);
-          internal_static_org_xtreemfs_pbrpc_chunk_data_descriptor =
-            getDescriptor().getMessageTypes().get(1);
-          internal_static_org_xtreemfs_pbrpc_chunk_data_fieldAccessorTable = new
-            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-              internal_static_org_xtreemfs_pbrpc_chunk_data_descriptor,
-              new java.lang.String[] { "Payload", },
-              org.xtreemfs.babudb.pbrpc.Replication.chunk_data.class,
-              org.xtreemfs.babudb.pbrpc.Replication.chunk_data.Builder.class);
-          internal_static_org_xtreemfs_pbrpc_timestamp_descriptor =
-            getDescriptor().getMessageTypes().get(2);
-          internal_static_org_xtreemfs_pbrpc_timestamp_fieldAccessorTable = new
-            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-              internal_static_org_xtreemfs_pbrpc_timestamp_descriptor,
-              new java.lang.String[] { "Value", },
-              org.xtreemfs.babudb.pbrpc.Replication.timestamp.class,
-              org.xtreemfs.babudb.pbrpc.Replication.timestamp.Builder.class);
           com.google.protobuf.ExtensionRegistry registry =
             com.google.protobuf.ExtensionRegistry.newInstance();
           registerAllExtensions(registry);
-          org.xtreemfs.babudb.pbrpc.Common.registerAllExtensions(registry);
           org.xtreemfs.babudb.pbrpc.GlobalTypes.registerAllExtensions(registry);
+          org.xtreemfs.babudb.pbrpc.Common.registerAllExtensions(registry);
           org.xtreemfs.foundation.pbrpc.generatedinterfaces.PBRPC.registerAllExtensions(registry);
           return registry;
         }
@@ -1898,8 +958,8 @@ public final class Replication {
     com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
         new com.google.protobuf.Descriptors.FileDescriptor[] {
-          org.xtreemfs.babudb.pbrpc.Common.getDescriptor(),
           org.xtreemfs.babudb.pbrpc.GlobalTypes.getDescriptor(),
+          org.xtreemfs.babudb.pbrpc.Common.getDescriptor(),
           org.xtreemfs.foundation.pbrpc.generatedinterfaces.PBRPC.getDescriptor(),
         }, assigner);
   }

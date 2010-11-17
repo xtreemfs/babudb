@@ -1,7 +1,11 @@
 package org.xtreemfs.pbrpc;
 option java_package="org.xtreemfs.babudb.pbrpc";
-import "interface/Common.proto";
+import "share/foundation/include/Common.proto";
 import "share/foundation/include/PBRPC.proto";
+
+message Timestamp {
+  optional fixed64 value = 1[default = 0];
+}
 
 message DBFileMetaData {
   optional fixed32 max_chunk_size = 1[default = 5242880];
@@ -14,7 +18,7 @@ message DBFileMetaDatas {
 }
 
 message LogEntry {
-  required bytes load = 1;
+  required fixed64 length = 1;
 }
 
 message LogEntries {
@@ -43,7 +47,6 @@ message InetAddress {
 }
 
 message FLease {
-  required bytes message = 1;
-  required string host = 2;
-  required fixed32 port = 3;
+  required string host = 1;
+  required fixed32 port = 2;
 }

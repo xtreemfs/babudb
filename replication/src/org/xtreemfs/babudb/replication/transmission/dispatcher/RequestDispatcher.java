@@ -11,24 +11,22 @@ import java.io.IOException;
 import java.util.Map;
 
 import org.xtreemfs.babudb.config.ReplicationConfig;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.ProtocolException;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.ReplicationInterface;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
+import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
 import org.xtreemfs.babudb.replication.Layer;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsVerification;
-import org.xtreemfs.foundation.ErrNo;
 import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.LifeCycleThread;
 import org.xtreemfs.foundation.logging.Logging;
-import org.xtreemfs.foundation.oncrpc.server.NullAuthFlavorProvider;
-import org.xtreemfs.foundation.oncrpc.server.ONCRPCRequest;
-import org.xtreemfs.foundation.oncrpc.server.RPCNIOSocketServer;
-import org.xtreemfs.foundation.oncrpc.server.RPCServerRequestListener;
+import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.ErrorType;
+import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.MessageType;
+import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.RPCHeader.RequestHeader;
+import org.xtreemfs.foundation.pbrpc.server.RPCServerRequest;
+import org.xtreemfs.foundation.pbrpc.server.RPCNIOSocketServer;
+import org.xtreemfs.foundation.pbrpc.server.RPCServerRequestListener;
 import org.xtreemfs.foundation.util.OutputUtils;
-import org.xtreemfs.foundation.oncrpc.utils.ONCRPCRequestHeader;
-import org.xtreemfs.foundation.oncrpc.utils.ONCRPCResponseHeader;
+import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.RPCHeader;
 
-import yidl.runtime.Object;
+import static org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.POSIXErrno.POSIX_ERROR_NONE;
 
 /**
  * Dispatches incoming requests.
@@ -58,8 +56,7 @@ public class RequestDispatcher implements RPCServerRequestListener {
         
         this.rpcServer = new RPCNIOSocketServer(config.getPort(), 
                 config.getInetSocketAddress().getAddress(), this, 
-                config.getSSLOptions(), 
-                new NullAuthFlavorProvider());
+                config.getSSLOptions());
     }
     
     /**
@@ -134,47 +131,52 @@ public class RequestDispatcher implements RPCServerRequestListener {
         this.rpcServer.shutdown();
     }
 
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.foundation.oncrpc.server.
-     * RPCServerRequestListener#receiveRecord(org.xtreemfs.include.
-     * foundation.oncrpc.server.ONCRPCRequest)
+    /* (non-Javadoc)
+     * @see org.xtreemfs.foundation.pbrpc.server.RPCServerRequestListener#
+     * receiveRecord(org.xtreemfs.foundation.pbrpc.server.RPCServerRequest)
      */
     @Override
-    public void receiveRecord(ONCRPCRequest rq){    
-        if (!verificator.isRegistered(rq.getClientIdentity())){
-            rq.sendException(new ProtocolException(
-                    ONCRPCResponseHeader.ACCEPT_STAT_PROC_UNAVAIL,
-                    ErrNo.EACCES,"you "+rq.getClientIdentity().toString()+
-                    " have no access rights to execute the requested " +
-                    "operation"));
+    public void receiveRecord(RPCServerRequest rq) {  
+        
+        if (!verificator.isRegistered(rq.getSenderAddress())){
+            rq.sendError(ErrorType.AUTH_FAILED, POSIX_ERROR_NONE, "you " 
+                    + rq.getSenderAddress().toString() + " have no access " 
+                    + "rights to execute the requested operation");
             return;
         }
-                
-        final ONCRPCRequestHeader hdr = rq.getRequestHeader();
+              
+        RPCHeader hdr = rq.getHeader();
         
-        if (hdr.getInterfaceVersion() != ReplicationInterface.getVersion()) {
-            rq.sendException(new ProtocolException(
-                    ONCRPCResponseHeader.ACCEPT_STAT_PROG_MISMATCH,
-                    ErrNo.EINVAL,"invalid version requested"));
+        if (hdr.getMessageType() != MessageType.RPC_REQUEST) {
+            rq.sendError(ErrorType.GARBAGE_ARGS, POSIX_ERROR_NONE, 
+                    "expected RPC request message type but got " + 
+                    hdr.getMessageType());
             return;
         }
         
-        Operation op = operations.get(hdr.getTag());
+        final RequestHeader rqHdr = hdr.getRequestHeader();
+        
+        if (rqHdr.getInterfaceId() != ReplicationServiceConstants.INTERFACE_ID){
+            rq.sendError(ErrorType.INVALID_INTERFACE_ID, null,
+                    "invalid interface id");
+            return;
+        }
+        
+        Operation op = operations.get(rqHdr.getProcId());
         if (op == null) {
-            rq.sendException(new ProtocolException(
-                    ONCRPCResponseHeader.ACCEPT_STAT_PROC_UNAVAIL,
-                    ErrNo.EINVAL,"requested operation ("+hdr.getTag()+
-                    ") is not available"));
+            rq.sendError(ErrorType.INVALID_PROC_ID, POSIX_ERROR_NONE,
+                    "requested operation (" + rqHdr.getProcId() + 
+                    ") is not available");
             return;
         } 
         
         Request rpcrq = new Request(rq);
         try {
             Object message = op.parseRPCMessage(rpcrq);
-            if (message!=null) throw new Exception(message.getTypeName());
+            if (message != null) throw new Exception();
         } catch (Throwable ex) {
-            rq.sendGarbageArgs();
+            rq.sendError(ErrorType.GARBAGE_ARGS, POSIX_ERROR_NONE, 
+                    "message could not be parsed");
             return;
         }
         
@@ -183,9 +185,9 @@ public class RequestDispatcher implements RPCServerRequestListener {
         } catch (Throwable ex) {
             Logging.logError(Logging.LEVEL_ERROR, this, ex);
             
-            rq.sendException(new errnoException(ErrNo.EIO, 
+            rq.sendError(ErrorType.INTERNAL_SERVER_ERROR, POSIX_ERROR_NONE, 
                     "internal server error: "+ex.toString(), 
-                    OutputUtils.stackTraceToString(ex)));
+                    OutputUtils.stackTraceToString(ex));
             return;
         }
     }

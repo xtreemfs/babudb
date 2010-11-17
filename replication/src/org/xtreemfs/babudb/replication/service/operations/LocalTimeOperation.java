@@ -7,12 +7,14 @@
  */
 package org.xtreemfs.babudb.replication.service.operations;
 
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.localTimeRequest;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.localTimeResponse;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.Timestamp;
+import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
 import org.xtreemfs.foundation.TimeSync;
 import org.xtreemfs.foundation.logging.Logging;
+
+import com.google.protobuf.Message;
 
 /**
  * {@link Operation} to answer a local-time request.
@@ -22,34 +24,25 @@ import org.xtreemfs.foundation.logging.Logging;
  */
 
 public class LocalTimeOperation extends Operation {
-
-    private final int procId;
     
-    public LocalTimeOperation() {
-        this.procId = new localTimeRequest().getTag();
-    }
-
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#getProcedureId()
+     * @see org.xtreemfs.babudb.replication.service.operations.Operation#
+     * getProcedureId()
      */
     @Override
     public int getProcedureId() {
-        return this.procId;
+        return ReplicationServiceConstants.PROC_ID_LOCALTIME;
     }
 
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#parseRPCMessage(org.xtreemfs.babudb.replication.Request)
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#getDefaultRequest()
      */
     @Override
-    public yidl.runtime.Object parseRPCMessage(final Request rq) {
-        localTimeRequest rpcrq = new localTimeRequest();
-        rq.deserializeMessage(rpcrq);
-        
+    public Message getDefaultRequest() {
         return null;
     }
-
+    
     /*
      * (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.service.operations.Operation#startInternalEvent(java.lang.Object[])
@@ -68,8 +61,8 @@ public class LocalTimeOperation extends Operation {
         long time = TimeSync.getGlobalTime();
         Logging.logMessage(Logging.LEVEL_INFO, this, "LocalTimeOperation:" +
                 " reporting %d to %s.", time,
-                rq.getRPCRequest().getClientIdentity().toString());
+                rq.getRPCRequest().getSenderAddress().toString());
         
-        rq.sendSuccess(new localTimeResponse(time));
+        rq.sendSuccess(Timestamp.newBuilder().setValue(time).build());
     }
 }

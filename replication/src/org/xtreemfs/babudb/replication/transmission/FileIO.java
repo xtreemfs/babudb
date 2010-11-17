@@ -15,12 +15,12 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 
 import org.xtreemfs.babudb.config.ReplicationConfig;
-import org.xtreemfs.babudb.interfaces.Chunk;
-import org.xtreemfs.babudb.interfaces.DBFileMetaData;
 import org.xtreemfs.babudb.log.DiskLogIterator;
 import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.Chunk;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.DBFileMetaData;
 import org.xtreemfs.foundation.util.FSUtils;
 
 /**
@@ -66,8 +66,10 @@ public class FileIO implements FileIOInterface {
         
         long length = new File(path).length();
         
-        return new DBFileMetaData(path, length, 
-                this.configuration.getChunkSize());
+        return DBFileMetaData.newBuilder()
+                .setFileName(path)
+                .setFileSize(length)
+                .setMaxChunkSize(this.configuration.getChunkSize()).build();
     }
     
     /* (non-Javadoc)

@@ -31,41 +31,43 @@ public class SecurityTest {
     private final static String DB_NAME = "test";
     
     private BabuDB slave;
-    private ReplicationConfig conf;
+    private BabuDBConfig conf;
     
     @Before
     public void setUp() throws Exception {   
         Logging.start(Logging.LEVEL_ERROR);
         
         try {
-            conf = new ReplicationConfig("config/replication.properties", 
-                    new BabuDBConfig("config/replication.properties"));
+            conf = new BabuDBConfig("config/replication.properties");
+            ReplicationConfig replConf = new ReplicationConfig(
+                    "config/replication.properties", conf);
             
             Process p;
             if (WIN) {
                 p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + 
-                        conf.getBabuDBConfig().getBaseDir() + "\"");
+                        conf.getBaseDir() + "\"");
             } else 
                 p = Runtime.getRuntime().exec("rm -rf " + 
-                        conf.getBabuDBConfig().getBaseDir());
+                        conf.getBaseDir());
             p.waitFor();
             
             if (WIN) {
                 p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + 
-                        conf.getBabuDBConfig().getDbLogDir() + "\"");
+                        conf.getDbLogDir() + "\"");
             } else 
                 p = Runtime.getRuntime().exec("rm -rf " + 
-                        conf.getBabuDBConfig().getDbLogDir());
+                        conf.getDbLogDir());
             p.waitFor();
             
             if (WIN) {
-                p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + conf.getTempDir() + "\"");
+                p = Runtime.getRuntime().exec("cmd /c rd /s /q \"" + 
+                        replConf.getTempDir() + "\"");
             } else 
-                p = Runtime.getRuntime().exec("rm -rf " + conf.getTempDir());
+                p = Runtime.getRuntime().exec("rm -rf " + replConf.getTempDir());
             p.waitFor();
         
             // start the slave
-            slave = BabuDBFactory.createReplicatedBabuDB(conf,new StaticInitialization() {
+            slave = BabuDBFactory.createBabuDB(conf,new StaticInitialization() {
                 
                 @Override
                 public void initialize(DatabaseManager dbMan, SnapshotManager sMan) {

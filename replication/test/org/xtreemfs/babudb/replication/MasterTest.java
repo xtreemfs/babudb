@@ -29,11 +29,6 @@ import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.config.ReplicationConfig;
-import org.xtreemfs.babudb.interfaces.LSNRange;
-import org.xtreemfs.babudb.interfaces.LogEntries;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateRequest;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.replicateResponse;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
@@ -43,23 +38,15 @@ import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
-import org.xtreemfs.babudb.replication.transmission.client.Client;
-import org.xtreemfs.babudb.replication.transmission.client.InterfaceExceptionParser;
+import org.xtreemfs.babudb.pbrpc.ReplicationServiceClient;
 import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.logging.Logging.Category;
-import org.xtreemfs.foundation.oncrpc.client.RPCNIOSocketClient;
-import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
-import org.xtreemfs.foundation.oncrpc.client.RemoteExceptionParser;
-import org.xtreemfs.foundation.oncrpc.server.NullAuthFlavorProvider;
-import org.xtreemfs.foundation.oncrpc.server.ONCRPCRequest;
-import org.xtreemfs.foundation.oncrpc.server.RPCNIOSocketServer;
-import org.xtreemfs.foundation.oncrpc.server.RPCServerRequestListener;
-import org.xtreemfs.foundation.oncrpc.utils.XDRUnmarshaller;
-import org.xtreemfs.foundation.oncrpc.utils.ONCRPCError;
-import org.xtreemfs.foundation.oncrpc.utils.ONCRPCException;
+import org.xtreemfs.foundation.pbrpc.client.RPCNIOSocketClient;
+import org.xtreemfs.foundation.pbrpc.server.RPCNIOSocketServer;
+import org.xtreemfs.foundation.pbrpc.server.RPCServerRequestListener;
 
-public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
+public class MasterTest implements RPCServerRequestListener, LifeCycleListener {
         
     public final static boolean WIN = System.getProperty("os.name").toLowerCase().contains("win");
     
@@ -68,7 +55,7 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
     private RPCNIOSocketServer  rpcServer;
     private static ReplicationConfig conf;
     private RPCNIOSocketClient  rpcClient;
-    private Client        client;
+    private ReplicationServiceClient client;
     private BabuDB              db;
     private final AtomicInteger response = new AtomicInteger(-1);
     
@@ -99,17 +86,15 @@ public class MasterTest implements RPCServerRequestListener,LifeCycleListener{
         assertEquals(0, p.waitFor());
         
         try {
-            db = BabuDBFactory.createReplicatedBabuDB(conf,null);
+            db = BabuDBFactory.createBabuDB(conf);
             assertTrue (conf.getSSLOptions() == null);
-            rpcClient = new RPCNIOSocketClient(null,5000,10000, 
-                    new RemoteExceptionParser[]{new InterfaceExceptionParser()});
+            rpcClient = new RPCNIOSocketClient(null,5000,10000);
             rpcClient.setLifeCycleListener(this);
             client = new Client(rpcClient,conf.getInetSocketAddress(),null);
             
             int port = 35666;
             InetAddress address = InetAddress.getByAddress(new byte[]{127,0,0,1});
-            rpcServer = new RPCNIOSocketServer(port,address,this,null, 
-                new NullAuthFlavorProvider());
+            rpcServer = new RPCNIOSocketServer(port,address,this,null);
             rpcServer.setLifeCycleListener(this);
             
             rpcClient.start();

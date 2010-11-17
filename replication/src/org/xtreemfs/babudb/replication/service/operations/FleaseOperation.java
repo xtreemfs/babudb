@@ -9,14 +9,17 @@ package org.xtreemfs.babudb.replication.service.operations;
 
 import java.net.InetSocketAddress;
 
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.fleaseRequest;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.fleaseResponse;
+import org.xtreemfs.babudb.pbrpc.Common.emptyResponse;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.FLease;
+import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
 import org.xtreemfs.babudb.replication.FleaseMessageReceiver;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
-import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.flease.Flease;
 import org.xtreemfs.foundation.flease.comm.FleaseMessage;
+import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.RPCHeader.ErrorResponse;
+
+import com.google.protobuf.Message;
 
 /**
  * {@link Operation} to process an incoming {@link Flease} message.
@@ -26,54 +29,64 @@ import org.xtreemfs.foundation.flease.comm.FleaseMessage;
  */
 
 public class FleaseOperation extends Operation {
-
-    private final int                   procId;
     
     private final FleaseMessageReceiver receiver;
     
     public FleaseOperation(FleaseMessageReceiver receiver) {
         this.receiver = receiver;
-        this.procId = new fleaseRequest().getTag();
     }
 
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#getProcedureId()
+     * @see org.xtreemfs.babudb.replication.service.operations.Operation#
+     * getProcedureId()
      */
     @Override
     public int getProcedureId() {
-        return this.procId;
+        return ReplicationServiceConstants.PROC_ID_FLEASE;
     }
-
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#parseRPCMessage(org.xtreemfs.babudb.replication.Request)
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
+     * getDefaultRequest()
      */
     @Override
-    public yidl.runtime.Object parseRPCMessage(final Request rq) {
-        fleaseRequest rpcrq = new fleaseRequest();
-        rq.deserializeMessage(rpcrq);
+    public Message getDefaultRequest() {
+        return FLease.getDefaultInstance();
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
+     * parseRPCMessage(org.xtreemfs.babudb.replication.transmission.dispatcher.Request)
+     */
+    @Override
+    public ErrorResponse parseRPCMessage(Request rq) { 
+        ErrorResponse resp = super.parseRPCMessage(rq);
+        if (resp == null) {
         
-        FleaseMessage message = new FleaseMessage(rpcrq.getMessage());
-        assert (message != null);
-        
-        InetSocketAddress sender = new InetSocketAddress(rpcrq.getHost(), rpcrq.getPort());
-        assert (sender != null);
-        message.setSender(sender);
-        
-        rq.setAttachment(message);
-        BufferPool.free(rpcrq.getMessage());
-        
-        return null;
+            FleaseMessage message = new FleaseMessage(rq.getRpcRequest().getData());
+            FLease rpcrq = (FLease) rq.getRequestMessage();
+            assert (message != null);
+            
+            InetSocketAddress sender = new InetSocketAddress(rpcrq.getHost(), 
+                    rpcrq.getPort());
+            assert (sender != null);
+            message.setSender(sender);
+            
+            rq.setAttachment(message);
+        }
+        // TODO where is rq.getRpcRequest().getData() freed?
+        return resp;
     }
 
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#startInternalEvent(java.lang.Object[])
+     * @see org.xtreemfs.babudb.replication.service.operations.Operation#
+     * startInternalEvent(java.lang.Object[])
      */
     @Override
     public void startInternalEvent(Object[] args) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new UnsupportedOperationException();
     }
 
     /*
@@ -82,8 +95,8 @@ public class FleaseOperation extends Operation {
      */
     @Override
     public void startRequest(final Request rq) {
+
         this.receiver.receive((FleaseMessage) rq.getAttachment());
-        
-        rq.sendSuccess(new fleaseResponse());
+        rq.sendSuccess(emptyResponse.getDefaultInstance());
     }
 }

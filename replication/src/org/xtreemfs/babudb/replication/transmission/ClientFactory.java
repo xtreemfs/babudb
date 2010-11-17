@@ -34,10 +34,10 @@ package org.xtreemfs.babudb.replication.transmission;
 
 import java.net.SocketAddress;
 
-import org.xtreemfs.babudb.replication.transmission.client.Client;
+import org.xtreemfs.babudb.pbrpc.ReplicationServiceClient;
 
 /**
- * Interface for {@link Client}-generating objects.
+ * Interface for {@link ReplicationServiceClient}-generating objects.
  * 
  * @author flangner
  * @since 04/13/2010
@@ -46,8 +46,8 @@ public interface ClientFactory {
 
     /**
      * @param receiver
-     * @return the {@link Client}, an abstraction from the underlying ONCRPC 
-     *         architecture.
+     * @return the {@link ReplicationServiceClient}, an abstraction from the 
+     *         underlying RPC architecture.
      */
-    public Client getClient(SocketAddress receiver);
+    public ReplicationServiceClient getClient(SocketAddress receiver);
 }

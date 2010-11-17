@@ -38,16 +38,14 @@ import java.net.SocketAddress;
 import java.util.Map;
 
 import org.xtreemfs.babudb.config.ReplicationConfig;
+import org.xtreemfs.babudb.pbrpc.ReplicationServiceClient;
 import org.xtreemfs.babudb.replication.Coinable;
 import org.xtreemfs.babudb.replication.Layer;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsVerification;
-import org.xtreemfs.babudb.replication.transmission.client.Client;
-import org.xtreemfs.babudb.replication.transmission.client.InterfaceExceptionParser;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestDispatcher;
 import org.xtreemfs.foundation.LifeCycleListener;
-import org.xtreemfs.foundation.oncrpc.client.RPCNIOSocketClient;
-import org.xtreemfs.foundation.oncrpc.client.RemoteExceptionParser;
+import org.xtreemfs.foundation.pbrpc.client.RPCNIOSocketClient;
 
 /**
  * <p>
@@ -67,10 +65,7 @@ public class TransmissionLayer extends Layer implements ClientFactory,
     
     /** dispatcher to process incoming RPCs */
     private final RequestDispatcher     dispatcher;
-    
-    /** the address to access on connecting with the local host */
-    private final InetSocketAddress     localhost;
-    
+        
     /** interface for accessing files defined by BabuDB */
     private final FileIO                fileIO;
     
@@ -81,7 +76,6 @@ public class TransmissionLayer extends Layer implements ClientFactory,
      *                     started.
      */
     public TransmissionLayer(ReplicationConfig config) throws IOException {
-        this.localhost = config.getInetSocketAddress();
         this.fileIO = new FileIO(config);
         
         // ---------------------------------
@@ -89,9 +83,7 @@ public class TransmissionLayer extends Layer implements ClientFactory,
         // ---------------------------------
         this.rpcClient = new RPCNIOSocketClient(config.getSSLOptions(), 
                 ReplicationConfig.REQUEST_TIMEOUT,
-                ReplicationConfig.CONNECTION_TIMEOUT, 
-                new RemoteExceptionParser[]{
-                    new InterfaceExceptionParser()});
+                ReplicationConfig.CONNECTION_TIMEOUT);
         
         // ---------------------------------
         // initialize the RequestDispatcher
@@ -104,7 +96,8 @@ public class TransmissionLayer extends Layer implements ClientFactory,
  */
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.transmission.TransmissionToServiceInterface#getFileIOInterface()
+     * @see org.xtreemfs.babudb.replication.transmission.
+     * TransmissionToServiceInterface#getFileIOInterface()
      */
     @Override
     public FileIOInterface getFileIOInterface() {
@@ -112,7 +105,9 @@ public class TransmissionLayer extends Layer implements ClientFactory,
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.transmission.Coinable#coinDispatcher(java.util.Map, org.xtreemfs.babudb.replication.service.accounting.ParticipantsVerification)
+     * @see org.xtreemfs.babudb.replication.transmission.Coinable#
+     * coinDispatcher(java.util.Map, org.xtreemfs.babudb.replication.service.
+     * accounting.ParticipantsVerification)
      */
     @Override
     public void coin(Map<Integer, Operation> operations, 
@@ -123,18 +118,21 @@ public class TransmissionLayer extends Layer implements ClientFactory,
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.transmission.ClientFactory#getClient(java.net.SocketAddress)
+     * @see org.xtreemfs.babudb.replication.transmission.ClientFactory#
+     * getClient(java.net.SocketAddress)
      */
     @Override
-    public Client getClient(SocketAddress receiver) {
+    public ReplicationServiceClient getClient(SocketAddress receiver) {
         assert (receiver instanceof InetSocketAddress);
-        return new Client(this.rpcClient, (InetSocketAddress) receiver, 
-                this.localhost);
+        
+        return new ReplicationServiceClient(this.rpcClient, 
+                (InetSocketAddress) receiver);
     }
     
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.Layer#_setLifeCycleListener(org.xtreemfs.foundation.LifeCycleListener)
+     * @see org.xtreemfs.babudb.replication.Layer#
+     * _setLifeCycleListener(org.xtreemfs.foundation.LifeCycleListener)
      */
     @Override
     public void _setLifeCycleListener(LifeCycleListener listener) {

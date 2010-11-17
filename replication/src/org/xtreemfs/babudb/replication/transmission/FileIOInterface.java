@@ -36,12 +36,12 @@ import java.io.File;
 import java.io.IOException;
 
 import org.xtreemfs.babudb.api.BabuDB;
-import org.xtreemfs.babudb.interfaces.Chunk;
-import org.xtreemfs.babudb.interfaces.DBFileMetaData;
 import org.xtreemfs.babudb.log.DiskLogIterator;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.Chunk;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.DBFileMetaData;
 
 /**
  * Interface for accessing files provided by {@link BabuDB}.

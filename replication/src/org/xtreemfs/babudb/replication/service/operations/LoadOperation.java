@@ -9,15 +9,16 @@ package org.xtreemfs.babudb.replication.service.operations;
 
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.xtreemfs.babudb.interfaces.DBFileMetaDataSet;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.loadRequest;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.loadResponse;
-import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.DBFileMetaDatas;
+import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.transmission.FileIOInterface;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
 import org.xtreemfs.foundation.logging.Logging;
+
+import com.google.protobuf.Message;
 
 /**
  * {@link Operation} to request a {@link DBFileMetaDataSet} from the master.
@@ -27,8 +28,6 @@ import org.xtreemfs.foundation.logging.Logging;
  */
 
 public class LoadOperation extends Operation {
-
-    private final int                   procId;
            
     private final AtomicReference<LSN>  lastOnView;
     
@@ -42,67 +41,69 @@ public class LoadOperation extends Operation {
         this.fileIO = fileIO;
         this.babuInterface = babuInterface;
         this.lastOnView = lastOnView;
-        this.procId = new loadRequest().getTag();
     }
 
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#getProcedureId()
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.service.operations.Operation#
+     * getProcedureId()
      */
     @Override
     public int getProcedureId() {
-        return this.procId;
+        return ReplicationServiceConstants.PROC_ID_LOAD;
     }
-
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#parseRPCMessage(org.xtreemfs.babudb.replication.Request)
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#getDefaultRequest()
      */
     @Override
-    public yidl.runtime.Object parseRPCMessage(Request rq) {
-        loadRequest rpcrq = new loadRequest();
-        rq.deserializeMessage(rpcrq);
-        
-        return null;
+    public Message getDefaultRequest() {
+        return LSN.getDefaultInstance();
     }
 
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#startInternalEvent(java.lang.Object[])
+     * @see org.xtreemfs.babudb.replication.service.operations.Operation#
+     * startInternalEvent(java.lang.Object[])
      */
     @Override
     public void startInternalEvent(Object[] args) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new UnsupportedOperationException();
     }
 
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#startRequest(org.xtreemfs.babudb.replication.Request)
+     * @see org.xtreemfs.babudb.replication.service.operations.Operation#
+     * startRequest(org.xtreemfs.babudb.replication.Request)
      */
     @Override
     public void startRequest(Request rq) {
-        DBFileMetaDataSet result = new DBFileMetaDataSet();
-        loadRequest request = (loadRequest) rq.getRequestMessage();
+        DBFileMetaDatas.Builder result = DBFileMetaDatas.newBuilder();
+        LSN request = (LSN) rq.getRequestMessage();
         
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "LOAD from %s, by %s", 
-                request.getLsn().toString(), rq.getRPCRequest()
-                .getClientIdentity().toString());
+                request.toString(), rq.getRPCRequest()
+                .getSenderAddress().toString());
         
-        if (new LSN(request.getLsn()).equals(this.lastOnView.get())) {
-            rq.sendSuccess(new loadResponse());
+        if (new org.xtreemfs.babudb.lsmdb.LSN(request.getViewId(), 
+                                              request.getSequenceNo())
+                .equals(this.lastOnView.get())) {
+            
+            rq.sendSuccess(DBFileMetaDatas.getDefaultInstance());
         } else {
             synchronized (this.babuInterface.getDBModificationLock()) {
                 synchronized (this.babuInterface.getCheckpointerLock()) {
                     
                     // add the DB-structure-file metadata
-                    result.add(this.fileIO.getConfigFileMetaData());
+                    result.addDbFileMetadatas(
+                            this.fileIO.getConfigFileMetaData());
                     
                     // add the latest snapshot files for every DB,
                     // if available
-                    result.addAll(this.babuInterface.getAllSnapshotFiles());
+                    result.addAllDbFileMetadatas(
+                            this.babuInterface.getAllSnapshotFiles());
                 }
             }
-            rq.sendSuccess(new loadResponse(result));
+            rq.sendSuccess(result.build());
         }
     }
 }

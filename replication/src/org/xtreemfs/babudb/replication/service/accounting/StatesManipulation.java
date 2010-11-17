@@ -34,7 +34,7 @@ package org.xtreemfs.babudb.replication.service.accounting;
 
 import java.net.SocketAddress;
 
-import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates.UnknownParticipantException;
 import org.xtreemfs.babudb.replication.service.clients.SlaveClient;
 

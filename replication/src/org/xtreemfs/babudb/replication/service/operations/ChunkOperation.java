@@ -12,15 +12,20 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
-import org.xtreemfs.babudb.interfaces.Chunk;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.chunkRequest;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.chunkResponse;
-import org.xtreemfs.babudb.replication.transmission.dispatcher.ErrNo;
+import org.xtreemfs.babudb.pbrpc.Common.emptyResponse;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.Chunk;
+import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
+import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestDispatcher;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.ErrorType;
+import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.RPCHeader.ErrorResponse;
+import org.xtreemfs.foundation.util.OutputUtils;
+
+import com.google.protobuf.Message;
 
 /**
  * {@link Operation} to request a {@link Chunk} from the master.
@@ -31,55 +36,47 @@ import org.xtreemfs.foundation.logging.Logging;
 
 public class ChunkOperation extends Operation {
 
-    private final int procId;
-    
-    public ChunkOperation() {
-        this.procId = new chunkRequest().getTag();
-    }
-
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#getProcedureId()
+     * @see org.xtreemfs.babudb.replication.service.operations.Operation#
+     * getProcedureId()
      */
     @Override
     public int getProcedureId() {
-        return this.procId;
+        return ReplicationServiceConstants.PROC_ID_CHUNK;
     }
-
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#parseRPCMessage(org.xtreemfs.babudb.replication.Request)
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#getDefaultRequest()
      */
     @Override
-    public yidl.runtime.Object parseRPCMessage(Request rq) {
-        chunkRequest amr = new chunkRequest();
-        rq.deserializeMessage(amr);
-        
-        return null;
+    public Message getDefaultRequest() {
+        return Chunk.getDefaultInstance();
     }
 
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#startInternalEvent(java.lang.Object[])
+     * @see org.xtreemfs.babudb.replication.service.operations.Operation#
+     * startInternalEvent(java.lang.Object[])
      */
     @Override
     public void startInternalEvent(Object[] args) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new UnsupportedOperationException();
     }
 
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#startRequest(org.xtreemfs.babudb.replication.Request)
+     * @see org.xtreemfs.babudb.replication.service.operations.Operation#
+     * startRequest(org.xtreemfs.babudb.replication.Request)
      */
     @Override
     public void startRequest(Request rq) {
-        chunkRequest request = (chunkRequest) rq.getRequestMessage();
-        Chunk chunk = request.getChunk();
-        int length = (int) (chunk.getEnd() - chunk.getBegin());
+        Chunk chunk = (Chunk) rq.getRequestMessage();
+        int length = (int) (chunk.getEnd() - chunk.getStart());
       
         Logging.logMessage(Logging.LEVEL_INFO, this, 
                 "%s request received from %s", chunk.toString(), 
-                rq.getRPCRequest().getClientIdentity().toString());
+                rq.getRPCRequest().getSenderAddress().toString());
         
         FileChannel channel = null;
         ReusableBuffer payload = null;
@@ -87,12 +84,15 @@ public class ChunkOperation extends Operation {
             // get the requested chunk
             channel = new FileInputStream(chunk.getFileName()).getChannel();
             ByteBuffer buffer = ByteBuffer.allocate(length);
-            if (channel.read(buffer, chunk.getBegin()) != length) throw new Exception();          
+            if (channel.read(buffer, chunk.getStart()) != length) 
+                throw new Exception(); 
+            
             buffer.flip();
             payload = new ReusableBuffer(buffer);
-            rq.sendSuccess(new chunkResponse(payload));
+            rq.sendSuccess(emptyResponse.getDefaultInstance(), payload);
             
         } catch (Exception e) {
+            // TODO fix exceptionhandling!
             rq.sendReplicationException(ErrNo.FILE_UNAVAILABLE, 
                     "The requested chunk ("+chunk.toString()+") is not" +
                     " available anymore, because: "+e.getMessage(), e);

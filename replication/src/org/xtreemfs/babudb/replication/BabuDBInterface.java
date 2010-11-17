@@ -39,7 +39,6 @@ import java.util.Vector;
 import org.xtreemfs.babudb.BabuDBInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.config.ReplicationConfig;
-import org.xtreemfs.babudb.interfaces.DBFileMetaData;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
@@ -48,6 +47,7 @@ import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
 import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.DBFileMetaData;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
 
@@ -76,9 +76,11 @@ public class BabuDBInterface {
      * 
      * @param entry - {@link LogEntry}.
      * @throws InterruptedException 
+     * @throws BabuDBException 
      */
-    public void appendToDisklogger(LogEntry entry) throws InterruptedException {
-        this.dbs.getLogger().append(entry);
+    public void appendToDisklogger(LogEntry entry) throws BabuDBException {
+        this.dbs.getPersistenceManager().makePersistent(entry.getPayloadType(), 
+                entry.getPayload());
     }
     
     /**

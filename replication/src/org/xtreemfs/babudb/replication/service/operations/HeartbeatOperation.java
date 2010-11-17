@@ -7,15 +7,18 @@
  */
 package org.xtreemfs.babudb.replication.service.operations;
 
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.heartbeatRequest;
 import org.xtreemfs.babudb.log.LogEntry;
-import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.pbrpc.Common.emptyResponse;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN;
+import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
 import org.xtreemfs.babudb.replication.service.accounting.StatesManipulation;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates.UnknownParticipantException;
-import org.xtreemfs.babudb.replication.transmission.dispatcher.ErrNo;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
 import org.xtreemfs.foundation.TimeSync;
+import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.RPCHeader.ErrorResponse;
+
+import com.google.protobuf.Message;
 
 /**
  * <p>
@@ -28,59 +31,55 @@ import org.xtreemfs.foundation.TimeSync;
  */
 
 public class HeartbeatOperation extends Operation {
-
-    private final int                   procId;
     
     private final StatesManipulation    sManipulator;
     
     public HeartbeatOperation(StatesManipulation statesManipulator) {
         this.sManipulator = statesManipulator;
-        this.procId = new heartbeatRequest().getTag();
     }
 
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#getProcedureId()
+     * @see org.xtreemfs.babudb.replication.service.operations.Operation#
+     * getProcedureId()
      */
     @Override
     public int getProcedureId() {
-        return this.procId;
+        return ReplicationServiceConstants.PROC_ID_HEARTBEAT;
     }
 
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#parseRPCMessage(org.xtreemfs.babudb.replication.Request)
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
+     * getDefaultRequest()
      */
     @Override
-    public yidl.runtime.Object parseRPCMessage(Request rq) {
-        heartbeatRequest rpcrq = new heartbeatRequest();
-        rq.deserializeMessage(rpcrq);
-        
-        return null;
+    public Message getDefaultRequest() {
+        return LSN.getDefaultInstance();
     }
-
+    
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#startInternalEvent(java.lang.Object[])
+     * @see org.xtreemfs.babudb.replication.service.operations.Operation#
+     * startInternalEvent(java.lang.Object[])
      */
     @Override
     public void startInternalEvent(Object[] args) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new UnsupportedOperationException();
     }
 
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#startRequest(org.xtreemfs.babudb.replication.Request)
+     * @see org.xtreemfs.babudb.replication.service.operations.Operation#
+     * startRequest(org.xtreemfs.babudb.replication.Request)
      */
     @Override
     public void startRequest(final Request rq) {
-        heartbeatRequest request = (heartbeatRequest) rq.getRequestMessage();
-        LSN lsn = new LSN(request.getLsn());
+        LSN lsn = (LSN) rq.getRequestMessage();
         try {
-            this.sManipulator.update(rq.getRPCRequest().getClientIdentity(), 
+            this.sManipulator.update(rq.getRPCRequest().getSenderAddress(), 
                     lsn, TimeSync.getGlobalTime());
             
-            rq.sendSuccess(request.createDefaultResponse());
+            rq.sendSuccess(emptyResponse.getDefaultInstance());
         } catch (UnknownParticipantException e) {
             rq.sendReplicationException(ErrNo.NO_ACCESS, "You are not allowed" +
             		" to request that!");

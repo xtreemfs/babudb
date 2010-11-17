@@ -82,7 +82,8 @@ public class BabuDBStub implements BabuDBInternal {
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.BabuDBInternal#init(org.xtreemfs.babudb.api.StaticInitialization)
+     * @see org.xtreemfs.babudb.BabuDBInternal#
+     * init(org.xtreemfs.babudb.api.StaticInitialization)
      */
     @Override
     public void init(StaticInitialization staticInit) throws BabuDBException {
@@ -91,7 +92,8 @@ public class BabuDBStub implements BabuDBInternal {
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.BabuDBInternal#addPluginThread(org.xtreemfs.foundation.LifeCycleThread)
+     * @see org.xtreemfs.babudb.BabuDBInternal#
+     * addPluginThread(org.xtreemfs.foundation.LifeCycleThread)
      */
     @Override
     public void addPluginThread(LifeCycleThread plugin) {
