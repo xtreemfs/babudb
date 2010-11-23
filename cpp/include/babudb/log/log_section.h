@@ -13,6 +13,7 @@
 
 #include <string>
 using std::string;
+#include <vector>
 
 #include "babudb/log/sequential_file.h"
 #include "babudb/buffer.h"
@@ -53,6 +54,39 @@ private:
 	bool in_transaction;
 	lsn_t first_lsn; // the first lsn in this file
 	lsn_t next_lsn;  // the next lsn to write
+};
+
+class LogSectionIterator {
+public:
+  LogSectionIterator(const LogSectionIterator& it); 
+
+  static LogSectionIterator begin(std::vector<LogSection*>& sections);
+  static LogSectionIterator last(std::vector<LogSection*>& sections);
+  static LogSectionIterator end(std::vector<LogSection*>& sections);
+  static LogSectionIterator rbegin(std::vector<LogSection*>& sections);
+  static LogSectionIterator rlast(std::vector<LogSection*>& sections);
+  static LogSectionIterator rend(std::vector<LogSection*>& sections);
+  
+	void operator ++ ();
+	void operator -- ();
+	bool operator != (const LogSectionIterator& other) const;
+	bool operator == (const LogSectionIterator& other) const;
+
+  void operator = (const LogSectionIterator& other);
+
+	LogSection* operator * ()	const;
+
+  bool IsReverse() const {
+    return direction < 0;
+  }
+
+private:
+  LogSectionIterator(std::vector<LogSection*>& sections);
+  std::vector<LogSection*>& sections;
+  int index;
+  int direction;
+  int begin_index;
+  int end_index;
 };
 
 }

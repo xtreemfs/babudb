@@ -73,6 +73,14 @@ public:
   static Buffer wrap(const unsigned long long& data) {
     return Buffer((void*)&data,sizeof(unsigned long long));
   }
+  
+  static Buffer wrap(const char* str, int size) {
+    return Buffer((void*)str, size);
+  }
+
+  static Buffer wrap(const char* str) {
+    return Buffer((void*)str, strlen(str));
+  }
 
   static Buffer wrap(const string& str) {
     return Buffer((void*)str.c_str(),str.size());

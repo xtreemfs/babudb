@@ -48,19 +48,19 @@ TEST_TMPDIR(Log,babudb)
   {
 	  Log log(testPath("testlog"));
 	  log.loadRequiredLogSections(0);
-	  EXPECT_EQUAL(log.getSections().size(), 3);
+	  EXPECT_EQUAL(log.NumberOfSections(), 3);
 	  log.close();
   }
   {
 	  Log log(testPath("testlog"));
 	  log.loadRequiredLogSections(1);
-	  EXPECT_EQUAL(log.getSections().size(), 2);
+	  EXPECT_EQUAL(log.NumberOfSections(), 2);
 	  log.close();
   }
   {
 	  Log log(testPath("testlog"));
   	log.loadRequiredLogSections(2);
-  	EXPECT_EQUAL(log.getSections().size(), 2);
+  	EXPECT_EQUAL(log.NumberOfSections(), 2);
   	log.close();
   }
 }

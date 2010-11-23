@@ -72,3 +72,100 @@ void LogSection::SeekForwardTo(babudb::lsn_t new_lsn) {
   StartTransaction();
   Commit();
 }
+
+
+LogSectionIterator::LogSectionIterator(std::vector<LogSection*>& sections)
+  : sections(sections) {}
+
+LogSectionIterator::LogSectionIterator(const LogSectionIterator& it)
+  : sections(it.sections), index(it.index), direction(it.direction),
+    begin_index(it.begin_index), end_index(it.end_index) {}
+
+void LogSectionIterator::operator = (const LogSectionIterator& other) {
+  sections = other.sections;
+  index = other.index;
+  direction = other.direction;
+  begin_index = other.begin_index;
+  end_index = other.end_index;
+}
+
+LogSectionIterator LogSectionIterator::begin(
+    std::vector<LogSection*>& sections) {
+  LogSectionIterator it(sections);
+  it.begin_index = 0;
+  it.end_index = sections.size();
+  it.index = it.begin_index;
+  it.direction = 1;
+  return it;
+}
+
+LogSectionIterator LogSectionIterator::last(
+    std::vector<LogSection*>& sections) {
+  LogSectionIterator it(sections);
+  it.begin_index = 0;
+  it.end_index = sections.size();
+  it.index = it.end_index - 1;
+  it.direction = 1;
+  return it;
+}
+
+LogSectionIterator LogSectionIterator::end(
+    std::vector<LogSection*>& sections) {
+  LogSectionIterator it(sections);
+  it.begin_index = 0;
+  it.end_index = sections.size();
+  it.index = it.end_index;
+  it.direction = 1;
+  return it;
+}
+
+LogSectionIterator LogSectionIterator::rbegin(
+    std::vector<LogSection*>& sections) {
+  LogSectionIterator it(sections);
+  it.begin_index = sections.size() - 1;
+  it.end_index = -1;
+  it.index = it.begin_index;
+  it.direction = -1;
+  return it;
+}
+
+LogSectionIterator LogSectionIterator::rlast(
+   std::vector<LogSection*>& sections) {
+  LogSectionIterator it(sections);
+  it.begin_index = sections.size() - 1;
+  it.end_index = -1;
+  it.direction = -1;
+  it.index = it.end_index - it.direction;
+  return it;
+}
+LogSectionIterator LogSectionIterator::rend(
+   std::vector<LogSection*>& sections) {
+  LogSectionIterator it(sections);
+  it.begin_index = sections.size() - 1;
+  it.end_index = -1;
+  it.index = it.end_index;
+  it.direction = -1;
+  return it;
+}
+  
+void LogSectionIterator::operator ++ () {
+  index += direction;
+}
+
+void LogSectionIterator::operator -- () {
+  index -= direction;
+}
+
+bool LogSectionIterator::operator != ( const LogSectionIterator& other ) const {
+  return !this->operator==(other);
+}
+
+bool LogSectionIterator::operator == ( const LogSectionIterator& other ) const {
+  ASSERT_TRUE(direction == other.direction);
+  ASSERT_TRUE(sections.begin() == other.sections.begin());
+  return index == other.index;
+}
+
+LogSection* LogSectionIterator::operator * ()	const {
+ return sections[index];
+}

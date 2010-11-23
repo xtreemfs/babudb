@@ -45,7 +45,7 @@ TEST_TMPDIR(LogIterator,babudb)
 
     log.loadRequiredLogSections(0);
 
-    EXPECT_TRUE(log.getSections().size() == 2);
+    EXPECT_TRUE(log.NumberOfSections() == 2);
     DummyOperation op(0);
 
     Log::iterator i = log.begin();

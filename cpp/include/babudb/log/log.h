@@ -24,7 +24,7 @@ namespace babudb {
 class MergedIndex;
 class OperationFactory;
 class MergedIndexOperationTarget;
-template <class T> class LogIterator;
+class LogIterator;
 
 class Log {
 public:
@@ -41,15 +41,17 @@ public:
   void advanceTail();
   lsn_t getLastLSN();
 
-  typedef LogIteratorForward iterator;
-  typedef LogIteratorBackward reverse_iterator;
+  typedef LogIterator iterator;
+  typedef LogIterator reverse_iterator;
 
   iterator begin();
   iterator end();
   reverse_iterator rbegin();
   reverse_iterator rend();
 
-  std::vector<LogSection*>& getSections() { return sections; }
+  int NumberOfSections() const {
+    return sections.size();
+  }
 
 private:
   std::vector<LogSection*> sections;

@@ -6,20 +6,21 @@
 
 #include "babudb/buffer.h"
 #include "babudb/log/record_iterator.h"
+#include "babudb/log/log_section.h"
 
 #include <vector>
 
 namespace babudb {
 class LogSection;
 
-template <class T>
 class LogIterator {
 public:
   LogIterator(const LogIterator&);
-  LogIterator(const T& sections_begin,
-        const T& sections_end,
-        const T& current_section,
-        const RecordIterator& current_record);
+  LogIterator(
+      const LogSectionIterator& sections_begin,
+      const LogSectionIterator& sections_end,
+      const LogSectionIterator& current_section,
+      const RecordIterator& current_record);
 
   void operator ++ ();
   void operator -- ();
@@ -35,20 +36,18 @@ public:
   record_type_t getType() const;
   lsn_t GetLSN() const { return lsn; };
 
-  static RecordIterator section_begin(const T& section);
-  static RecordIterator section_end(const T& section);
+  static RecordIterator section_begin(const LogSectionIterator& section);
+  static RecordIterator section_end(const LogSectionIterator& section);
 
 private:
-  T sections_begin;
-  T sections_end;
-  T current_section;
+  LogSectionIterator sections_begin;
+  LogSectionIterator sections_end;
+  LogSectionIterator current_section;
   RecordIterator current_record;
   mutable Buffer current_record_data;
   lsn_t lsn;
 };
 
-typedef class LogIterator<std::vector<LogSection*>::iterator> LogIteratorForward;
-typedef class LogIterator<std::vector<LogSection*>::reverse_iterator> LogIteratorBackward;
 }
 
 #endif
