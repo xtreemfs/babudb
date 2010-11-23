@@ -96,7 +96,11 @@ bool DirectoryWalker::hasNext()
 		{ }
 	}
 #elif !defined(__sun)
-	struct dirent* next_dirent;
+	struct dirent* next_dirent = NULL;
+        if (scan_handle == NULL) {
+          return false;
+        }
+
 	while ( ( next_dirent = readdir( ( DIR* )scan_handle ) ) )
 	{
 		if ( next_dirent->d_name[0] != '.' && ( next_dirent->d_type == DT_DIR || next_dirent->d_type == DT_REG ) )

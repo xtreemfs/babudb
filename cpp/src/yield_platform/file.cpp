@@ -273,7 +273,7 @@ bool File::CopyFile(const std::string& from, const std::string& to) {
   File* source = File::open(from, O_RDONLY);
   if (source == NULL)
     return false;
-  File* dest = File::open(to, O_WRONLY|O_TRUNC);
+  File* dest = File::open(to, O_WRONLY|O_TRUNC|O_CREAT);
   if (dest == NULL)
     return false;
 
