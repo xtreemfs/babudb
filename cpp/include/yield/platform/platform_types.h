@@ -6,13 +6,8 @@
 
 #include "yield/platform/platform_config.h" // for YIELD
 
-#ifdef _WIN32
-#include "yield/platform/msstdint.h"
-#else
 #include <stdint.h>
 #include <sys/types.h> // For size_t
-#endif
-
 
 namespace YIELD
 {
