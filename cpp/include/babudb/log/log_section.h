@@ -50,6 +50,10 @@ public:
   // Commit an empty transaction with a new LSN
   void SeekForwardTo(babudb::lsn_t);
 
+  // Erase record pointed to by iterator. Iterator becomes
+  // valid again after increment or decrement.
+  void Erase(SequentialFile::iterator it);
+
 private:
 	bool in_transaction;
 	lsn_t first_lsn; // the first lsn in this file

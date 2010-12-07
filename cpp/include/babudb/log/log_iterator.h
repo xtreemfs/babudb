@@ -30,11 +30,21 @@ public:
 
   Buffer& operator * () const;
   Buffer* operator -> () const;
-  Buffer asData() const { return this->operator *(); }
+  Buffer asData() const {
+    return this->operator *();
+  }
   Buffer getOperationWithFrame() const;
 
   record_type_t getType() const;
-  lsn_t GetLSN() const { return lsn; };
+  lsn_t GetLSN() const {
+    return lsn; 
+  }
+  RecordIterator getCurrentRecord() const {
+    return current_record;
+  }
+  LogSectionIterator getCurrentSection() const {
+    return current_section;
+  }
 
   static RecordIterator section_begin(const LogSectionIterator& section);
   static RecordIterator section_end(const LogSectionIterator& section);

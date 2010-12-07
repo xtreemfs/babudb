@@ -9,3 +9,6 @@
 
 == LogIndex
 - Put keys in tree nodes (better cache locality)
+
+== Log
+- remove LSN support in the log (should be done at user-level)

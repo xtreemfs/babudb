@@ -48,6 +48,9 @@ public:
 	}
 
 	void reverse();
+  bool isForwardIterator() const {
+    return is_forward_iterator;
+  }
 
 	bool operator != ( const RecordIterator& other ) const;
 	bool operator == ( const RecordIterator& other ) const;

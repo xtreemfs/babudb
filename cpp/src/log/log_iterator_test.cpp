@@ -146,3 +146,55 @@ TEST_TMPDIR(LogIterator,babudb)
     log.close();
   }
 }
+
+TEST_TMPDIR(LogIteratorAndErase,babudb)
+{
+  Log log(testPath("testlog"));
+  LogSection* tail = log.getTail();
+  
+  tail->Append(DummyOperation('A')); tail->Commit();
+  tail->Append(DummyOperation('B')); tail->Commit();
+  tail->Append(DummyOperation('C')); tail->Commit();
+  
+  DummyOperation op(0);
+  Log::iterator i = log.begin();
+  ++i;
+  EXPECT_TRUE(op.Deserialize(*i).value == 'B');
+  EXPECT_TRUE(i.GetLSN() == 2);
+
+  tail->Erase(i.getCurrentRecord());
+  
+  ++i;
+  EXPECT_TRUE(op.Deserialize(*i).value == 'C');
+  EXPECT_TRUE(i.GetLSN() == 3);
+
+  --i;
+  EXPECT_TRUE(op.Deserialize(*i).value == 'A');
+  
+  log.close();
+}
+
+TEST_TMPDIR(LogIteratorAndEraseReverse,babudb)
+{
+  Log log(testPath("testlog"));
+  LogSection* tail = log.getTail();
+  
+  tail->Append(DummyOperation('A')); tail->Commit();
+  tail->Append(DummyOperation('B')); tail->Commit();
+  tail->Append(DummyOperation('C')); tail->Commit();
+  
+  DummyOperation op(0);
+  Log::iterator i = log.rbegin();
+  ++i;
+  EXPECT_TRUE(op.Deserialize(*i).value == 'B');
+
+  tail->Erase(i.getCurrentRecord());
+  
+  ++i;
+  EXPECT_TRUE(op.Deserialize(*i).value == 'A');
+
+  --i;
+  EXPECT_TRUE(op.Deserialize(*i).value == 'C');
+  
+  log.close();
+}

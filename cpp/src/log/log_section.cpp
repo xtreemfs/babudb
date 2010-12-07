@@ -73,6 +73,18 @@ void LogSection::SeekForwardTo(babudb::lsn_t new_lsn) {
   Commit();
 }
 
+void LogSection::Erase(SequentialFile::iterator it) {
+  ASSERT_TRUE(it.getType() != LSN_RECORD_TYPE);
+  erase(record2offset(it.getRecord()));
+  // TODO: support erase of multi-record transactions
+  if (!it.isForwardIterator()) {
+    it.reverse();
+  }
+  --it;
+  ASSERT_TRUE(it.getType() == LSN_RECORD_TYPE);
+  erase(record2offset(it.getRecord()));
+}
+
 
 LogSectionIterator::LogSectionIterator(std::vector<LogSection*>& sections)
   : sections(sections) {}
