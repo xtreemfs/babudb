@@ -33,6 +33,7 @@ public:
   ~Log();
 
   void loadRequiredLogSections(lsn_t);
+  void loadAllSections(bool read_write);
   void close();
 
   void cleanup(lsn_t from_lsn, const string& to);
@@ -54,6 +55,8 @@ public:
   }
 
 private:
+  void loadSections(lsn_t, bool read_write);
+
   std::vector<LogSection*> sections;
   LogSection* tail;
   string name_prefix;

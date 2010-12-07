@@ -85,6 +85,14 @@ void Log::cleanup(lsn_t to_lsn, const string& obsolete_prefix) {
 // Loads all log sections with LSNs larger than min_lsn. Load them in order and check
 // for continuity.
 void Log::loadRequiredLogSections(lsn_t min_lsn) {
+  loadSections(min_lsn, false);
+}
+
+void Log::loadAllSections(bool read_write) {
+  loadSections(0, read_write);
+}
+
+void Log::loadSections(lsn_t min_lsn, bool read_write) {
   ASSERT_TRUE(sections.size() == 0);  // otherwise somebody called startup() twice
   DiskSections disk_sections = scanAvailableLogSections(name_prefix);  // sorted by LSN
 
@@ -92,7 +100,12 @@ void Log::loadRequiredLogSections(lsn_t min_lsn) {
     DiskSections::iterator next = i; next++;
 
     if(next == disk_sections.end() || (min_lsn + 1) < next->second) {
-      LogStorage* file = PersistentLogStorage::OpenReadOnly(i->first);
+      LogStorage* file = NULL;
+      if (read_write) {
+        file = PersistentLogStorage::Open(i->first);
+      } else {
+        file = PersistentLogStorage::OpenReadOnly(i->first);
+      }
       LogSection* section = new LogSection(file, i->second); // repairs if not graceful
 
       if(section->getFirstLSN() <= section->getLastLSN()) { // check if there is a LSN in this section
