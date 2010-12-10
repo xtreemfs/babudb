@@ -83,8 +83,8 @@ public:
 		value = op.substr(del2+1);
 	}
 
-	string db, key, value;
   babudb::lsn_t lsn;
+  string db, key, value;
 };
 
 }
