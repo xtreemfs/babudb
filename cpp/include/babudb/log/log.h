@@ -38,17 +38,13 @@ public:
 
   void cleanup(lsn_t from_lsn, const string& to);
 
-  LogSection* getTail();
+  LogSection* getTail(babudb::lsn_t next_lsn);
   void advanceTail();
-  lsn_t getLastLSN();
 
   typedef LogIterator iterator;
-  typedef LogIterator reverse_iterator;
 
-  iterator begin();
-  iterator end();
-  reverse_iterator rbegin();
-  reverse_iterator rend();
+  iterator First();
+  iterator Last();
 
   int NumberOfSections() const {
     return sections.size();

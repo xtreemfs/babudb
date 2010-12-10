@@ -96,7 +96,7 @@ void Log::loadSections(lsn_t min_lsn, bool read_write) {
   ASSERT_TRUE(sections.size() == 0);  // otherwise somebody called startup() twice
   DiskSections disk_sections = scanAvailableLogSections(name_prefix);  // sorted by LSN
 
-  for(DiskSections::iterator i = disk_sections.begin(); i != disk_sections.end(); ++i) {
+  for (DiskSections::iterator i = disk_sections.begin(); i != disk_sections.end(); ++i) {
     DiskSections::iterator next = i; next++;
 
     if(next == disk_sections.end() || (min_lsn + 1) < next->second) {
@@ -108,38 +108,17 @@ void Log::loadSections(lsn_t min_lsn, bool read_write) {
       }
       LogSection* section = new LogSection(file, i->second); // repairs if not graceful
 
-      if(section->getFirstLSN() <= section->getLastLSN()) { // check if there is a LSN in this section
+      if (!section->empty()) { // check if there is a LSN in this section
         sections.push_back(section);
       } else {
-        ASSERT_TRUE(section->empty());
         delete section;
       }
     }
   }
-
-  // Check that the sequence of LSNs is without gaps
-  if (sections.size() > 0) {
-    lsn_t prev_last_lsn = (*sections.begin())->getFirstLSN() - 1;
-    for(vector<LogSection*>::iterator sec = sections.begin(); sec != sections.end(); ++sec ) {
-      ASSERT_TRUE((*sec)->getFirstLSN() == prev_last_lsn + 1);
-      prev_last_lsn = (*sec)->getLastLSN();
-    }
-  }
 }
 
-lsn_t Log::getLastLSN() {
-  if(sections.empty())
-    return 0;
-  else
-    return sections.back()->getLastLSN();
-}
-
-LogSection* Log::getTail() {
+LogSection* Log::getTail(babudb::lsn_t next_lsn) {
   if(tail == NULL) {
-    lsn_t next_lsn = 1;
-    if(!sections.empty())
-      next_lsn = sections.back()->getLastLSN() + 1;
-
     LogStorage* storage = NULL;
     // TODO: hack, refactor!
     if (!name_prefix.empty()) {
@@ -165,58 +144,10 @@ void Log::advanceTail() {
   tail = NULL;
 }
 
-Log::iterator Log::begin() {
-  if(sections.empty()) {
-    return end();
-  } else {
-    return LogIterator(
-        LogSectionIterator::begin(sections),
-        LogSectionIterator::end(sections),
-        LogSectionIterator::begin(sections),
-        LogIterator::section_begin(LogSectionIterator::begin(sections)));
-  }
+Log::iterator Log::First() {
+  return LogIterator::First(LogSectionIterator::First(sections));
 }
 
-Log::iterator Log::end(){
-  if(sections.empty()) {
-    return LogIterator(
-        LogSectionIterator::begin(sections),
-        LogSectionIterator::end(sections),
-        LogSectionIterator::end(sections),
-        RecordIterator());
-  } else {
-    return LogIterator(
-        LogSectionIterator::begin(sections),
-        LogSectionIterator::end(sections),
-        LogSectionIterator::end(sections),
-        LogIterator::section_end(LogSectionIterator::last(sections)));
-  }
-}
-
-Log::reverse_iterator Log::rbegin() {
-  if(sections.empty()) {
-    return rend();
-  } else {
-    return LogIterator(
-        LogSectionIterator::rbegin(sections),
-        LogSectionIterator::rend(sections),
-        LogSectionIterator::rbegin(sections),
-        LogIterator::section_begin(LogSectionIterator::rbegin(sections)));
-  }
-}
-
-Log::reverse_iterator Log::rend(){
-  if(sections.empty()) {
-    return LogIterator(
-        LogSectionIterator::rbegin(sections),
-        LogSectionIterator::rend(sections),
-        LogSectionIterator::rend(sections),
-        RecordIterator());
-  } else {
-    return LogIterator(
-        LogSectionIterator::rbegin(sections),
-        LogSectionIterator::rend(sections),
-        LogSectionIterator::rend(sections),
-        LogIterator::section_end(LogSectionIterator::rlast(sections)));
-  }
+Log::iterator Log::Last(){
+  return LogIterator::Last(LogSectionIterator::Last(sections));
 }

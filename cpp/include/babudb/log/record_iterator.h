@@ -18,63 +18,47 @@ namespace babudb {
 
 class RecordFrame;
 class Buffer;
+class SequentialFile;
 
 class RecordIterator
 {
 public:
-	RecordIterator() : current(NULL), region_start(NULL), region_size(0), is_forward_iterator(true) {}
+	RecordIterator(const RecordIterator& other);
+	RecordIterator();
 
-	RecordIterator(const RecordIterator& other)
-		: current(other.current), region_start(other.region_start), region_size(other.region_size),
-		  is_forward_iterator(other.is_forward_iterator) {}
+	static RecordIterator First(void* start, size_t size);
+	static RecordIterator Last(void* start, size_t size);
 
-	RecordIterator(void* start, size_t size, RecordFrame* pos, bool is_forward )
-		: current(pos), region_start(start), region_size(size),
-		  is_forward_iterator(is_forward) {}
+  RecordFrame* GetNext();
+  RecordFrame* GetPrevious();
 
-	static RecordIterator begin(void* start, size_t size);
-	static RecordIterator end(void* start, size_t size);
-	static RecordIterator rbegin(void* start, size_t size);
-	static RecordIterator rend(void* start, size_t size);
+	bool operator != (const RecordIterator& other) const;
+	bool operator == (const RecordIterator& other) const;
 
-	void operator ++ () {
-		if(is_forward_iterator) plusplus();
-		else					minusminus();
-	}
-
-	void operator -- () {
-		if(is_forward_iterator) minusminus();
-		else					plusplus();
-	}
-
-	void reverse();
-  bool isForwardIterator() const {
-    return is_forward_iterator;
-  }
-
-	bool operator != ( const RecordIterator& other ) const;
-	bool operator == ( const RecordIterator& other ) const;
-
+  // The following operations refer to the current record as
+  // returned by GetNext/GetPrevious
 	void* operator * ()	const;
-	size_t getSize() const;
-
-	record_type_t getType() const;
-	bool isType( record_type_t t ) const;
-
-	RecordFrame* getRecord() const;
-	Buffer asData() const;
+	size_t GetSize() const;
+	record_type_t GetType() const;
+	bool IsType(record_type_t t) const;
+	RecordFrame* GetRecord() const;
+	Buffer AsData() const;
+  bool IsValid() const;
 
 protected:
-	void plusplus();
-	void minusminus();
-	void windIteratorToStart();
-	RecordFrame* windForwardToNextRecord(RecordFrame*);
-	RecordFrame* windBackwardToNextRecord(RecordFrame*);
+  friend class SequentialFile;
+	RecordIterator(void* start, size_t size, RecordFrame* pos);
+
+	RecordFrame* FindNextRecord(RecordFrame*) const;
+	RecordFrame* FindPreviousRecord(RecordFrame*) const;
+
+  bool IsCompatible(const RecordIterator& other) const;
+  bool IsValidPosition(RecordFrame* pos) const;
+  char* RegionEnd() const;
 
 	RecordFrame* current;
 	void* region_start;
 	size_t region_size;
-	bool is_forward_iterator;
 };
 
 }

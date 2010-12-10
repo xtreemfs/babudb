@@ -102,22 +102,19 @@ Buffer ImmutableIndex::Lookup(Buffer search_key) {
 ImmutableIndex::iterator ImmutableIndex::Find(Buffer search_key) {
   Tree::iterator cursor = findChunk(search_key);
 
-  if(cursor == index.end())
+  if(cursor == index.end()) {
     return end(); // not found
-
+  }
   offset_t* value_offsets = getOffsetTable(cursor->second);
 
   SequentialFile::iterator file_cursor = storage.at(cursor->second);
-  ++file_cursor; // go to the keys and do linear search
-  ASSERT_TRUE(file_cursor.isType(RECORD_TYPE_KEY));
-
   int record_count = 0;
-  for(; file_cursor != storage.end() && file_cursor.isType(RECORD_TYPE_KEY); ++file_cursor) {
-    Buffer key(file_cursor.getRecord()->getPayload(), file_cursor.getRecord()->getPayloadSize());
+  while (file_cursor.GetNext() && file_cursor.IsType(RECORD_TYPE_KEY)) {
+    Buffer key(file_cursor.GetRecord()->getPayload(), file_cursor.GetRecord()->getPayloadSize());
 
-    if(!order.less(key,search_key)) 		// found key >= search_key
+    if(!order.less(key,search_key)) { 		// found key >= search_key
       return ImmutableIndex::iterator(storage,value_offsets,file_cursor,record_count);
-
+    }
     record_count++;
   }
 
@@ -133,32 +130,29 @@ ImmutableIndexIterator ImmutableIndex::end() const {
 }
 
 bool ImmutableIndex::LoadRoot() {
-  SequentialFile::iterator cursor = storage.rbegin();
+  SequentialFile::iterator cursor = storage.Last();
+  ASSERT_TRUE(cursor.GetPrevious() != NULL);
 
-  if(cursor.getRecord()->getType() != RECORD_TYPE_FILE_FOOTER)
+  if(cursor.GetRecord()->getType() != RECORD_TYPE_FILE_FOOTER)
     return false;
 
-  ++cursor; // skip footer
-
-  for(; cursor != storage.rend(); ++cursor) {
-    if(cursor.getRecord()->getType() == RECORD_TYPE_INDEX_OFFSETS)
+  while (cursor.GetPrevious()) {  // skip footer and seek to end of section 
+    if (cursor.GetRecord()->getType() == RECORD_TYPE_INDEX_OFFSETS) {
       break;
+    }
   }
 
   // If they index file is not empty...
-  if (cursor.getRecord()->getPayloadSize() > 0) {
-    offset_t* offsets = (offset_t*)cursor.getRecord()->getPayload();
-    size_t no_offsets = cursor.getRecord()->getPayloadSize()/sizeof(offset_t);
-
-    cursor.reverse();
-    ++cursor;
-    ASSERT_TRUE(cursor.getRecord()->getType() == RECORD_TYPE_INDEX_KEY);
+  if (cursor.GetRecord()->getPayloadSize() > 0) {
+    offset_t* offsets = (offset_t*)cursor.GetRecord()->getPayload();
+    size_t no_offsets = cursor.GetRecord()->getPayloadSize()/sizeof(offset_t);
 
     size_t record_count = 0;
-    for(; cursor != storage.end(); ++cursor) {	
-      if(cursor.getRecord()->getType() != RECORD_TYPE_FILE_FOOTER) {
-        Buffer key(cursor.getRecord()->getPayload(),
-             cursor.getRecord()->getPayloadSize());
+    while (cursor.GetNext()) {	
+      if(cursor.GetRecord()->getType() != RECORD_TYPE_FILE_FOOTER) {
+        ASSERT_TRUE(cursor.GetRecord()->getType() == RECORD_TYPE_INDEX_KEY);
+        Buffer key(cursor.GetRecord()->getPayload(),
+             cursor.GetRecord()->getPayloadSize());
 
         ASSERT_TRUE(record_count < no_offsets);
 
@@ -166,6 +160,7 @@ bool ImmutableIndex::LoadRoot() {
         record_count++;
       }
     }
+    ASSERT_TRUE(record_count > 0);
   }
 
   return true;

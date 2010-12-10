@@ -14,10 +14,10 @@ using namespace YIELD;
 using namespace babudb;
 
 void* RecordFrame::getPayload()					{ return (char*)this + RECORD_FRAME_SIZE_BYTES; }
-RecordFrame* RecordFrame::getRecord( void* p )	{ return (RecordFrame*)((char*)p - RECORD_FRAME_SIZE_BYTES); }
+RecordFrame* RecordFrame::GetRecord( void* p )	{ return (RecordFrame*)((char*)p - RECORD_FRAME_SIZE_BYTES); }
 
 unsigned int RecordFrame::getPayloadSize()		{ return _getLengthField(); }
-unsigned int RecordFrame::getRecordSize()		{ return (unsigned int)ALIGN(_getLengthField(), RECORD_FRAME_ALIGNMENT) +  2*RECORD_FRAME_SIZE_BYTES; }
+unsigned int RecordFrame::GetRecordSize()		{ return (unsigned int)ALIGN(_getLengthField(), RECORD_FRAME_ALIGNMENT) +  2*RECORD_FRAME_SIZE_BYTES; }
 
 bool RecordFrame::isValid()						{ return mightBeHeader() && mightBeHeaderOf(getFooter()); }
 

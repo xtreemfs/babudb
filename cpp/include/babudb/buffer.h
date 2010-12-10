@@ -111,7 +111,10 @@ public:
   bool isDeleted() const {
     return data == 0 && size == -1;
   }
-
+  
+  operator bool () const {
+    return !isDeleted();
+  }
 
   // An empty value
 
@@ -122,6 +125,7 @@ public:
   bool isEmpty() const {
     return data == 0 && size != -1;
   }
+
 
   void* operator * () {
     return data;

@@ -15,119 +15,133 @@
 using namespace YIELD;
 using namespace babudb;
 
-#define ASSERT_VALID_POS(x)			  ASSERT_TRUE((char*)x >= (char*)region_start && (char*)x < ((char*)region_start + region_size))
-#define REGION_END					      ((char*)region_start + region_size)
-#define ASSERT_COMPATIBILITY(a,b)	ASSERT_TRUE((a).region_start == (b).region_start && (a).region_size == (b).region_size && (a).is_forward_iterator == (b).is_forward_iterator)
+RecordIterator::RecordIterator()
+    : current(NULL), region_start(NULL),
+      region_size(0) {}
+
+RecordIterator::RecordIterator(const RecordIterator& other)
+	: current(other.current), region_start(other.region_start),
+    region_size(other.region_size) {}
+
+RecordIterator::RecordIterator(void* start, size_t size,
+                               RecordFrame* pos)
+	: current(pos), region_start(start),
+    region_size(size) {}
 
 void* RecordIterator::operator * ()	const {
-	ASSERT_VALID_POS(current);
+	ASSERT_TRUE(IsValidPosition(current));
 	return current->getPayload();
 }
 
-RecordFrame* RecordIterator::getRecord() const {
-	ASSERT_VALID_POS(current);
+RecordFrame* RecordIterator::GetRecord() const {
+	ASSERT_TRUE(IsValidPosition(current));
 	return current;
 }
 
-Buffer RecordIterator::asData() const {
-	ASSERT_VALID_POS(current);
+Buffer RecordIterator::AsData() const {
+	ASSERT_TRUE(IsValidPosition(current));
 	return Buffer(current->getPayload(), current->getPayloadSize());
 }
 
-bool RecordIterator::operator != ( const RecordIterator& other ) const {
-	ASSERT_COMPATIBILITY(*this, other); 
+unsigned char RecordIterator::GetType() const	{
+  return current->getType(); 
+}
+
+bool RecordIterator::IsType(unsigned char t) const { 
+  return current->getType() == t;
+}
+
+size_t RecordIterator::GetSize() const { 
+  return current->getPayloadSize();
+}
+
+bool RecordIterator::operator != (const RecordIterator& other) const {
+	ASSERT_TRUE(IsCompatible(other));
 	return current != other.current; 
 }
 
-bool RecordIterator::operator == ( const RecordIterator& other ) const { 
-	ASSERT_COMPATIBILITY(*this, other);	// maybe you changed the database while iterating?
+bool RecordIterator::operator == (const RecordIterator& other) const { 
+	ASSERT_TRUE(IsCompatible(other));	// maybe you changed the database while iterating?
 	return current == other.current;
 }
 
-void RecordIterator::reverse()							{ is_forward_iterator = !is_forward_iterator; }
-unsigned char RecordIterator::getType() const			{ return current->getType(); }
-bool RecordIterator::isType( unsigned char t ) const	{ return current->getType() == t; }
-size_t RecordIterator::getSize() const					{ return current->getPayloadSize(); }
-
-RecordIterator RecordIterator::begin(void* start, size_t size) {
-	RecordIterator i = RecordIterator(start, size, (RecordFrame*)start, true);
-	i.windIteratorToStart(); return i;
+bool RecordIterator::IsCompatible(const RecordIterator& b) const {
+  return region_start == b.region_start &&
+         region_size == b.region_size;
 }
 
-RecordIterator RecordIterator::end(void* start, size_t size) {
-	return RecordIterator(start,size,(RecordFrame*)((char*)start+size),true);
+bool RecordIterator::IsValidPosition(RecordFrame* x) const {
+  return (char*)x >= (char*)region_start &&
+         (char*)x < ((char*)region_start + region_size);
 }
 
-RecordIterator RecordIterator::rbegin(void* start, size_t size) {
-	RecordIterator i = end(start, size);
-	i.reverse(); i.windIteratorToStart();  return i;
+char* RecordIterator::RegionEnd() const {
+  return ((char*)region_start + region_size);
 }
 
-RecordIterator RecordIterator::rend(void* start, size_t size) {
-	return RecordIterator(start, size, 0, false);
+RecordIterator RecordIterator::First(void* start, size_t size) {
+	return RecordIterator(start, size, NULL);
 }
 
-void RecordIterator::plusplus()	{
-	record_frame_t* peek;
+RecordIterator RecordIterator::Last(void* start, size_t size) {
+	return RecordIterator(
+      start, size, 
+      reinterpret_cast<RecordFrame*>((char*)start + size));
+}
 
-	if(current == NULL) {	// if we are at rend() move to start
-		peek = (record_frame_t*)region_start;
-	} 
-	else { // check whether there is a next record
-		ASSERT_VALID_POS(current);
+bool RecordIterator::IsValid() const {
+  return current != NULL && current != (RecordFrame*)RegionEnd();
+}
 
-		peek = (record_frame_t*)current->getEndOfRecord();
-
-		if(peek == (record_frame_t*)REGION_END) {
-			current = (RecordFrame*)peek;
-			return;
-		}
-
-		ASSERT_VALID_POS(peek); // should be still within region
-	}
-
-	current = windForwardToNextRecord((RecordFrame*)peek);
-
+RecordFrame* RecordIterator::GetNext() {
+  current = FindNextRecord(current);
 	ASSERT_TRUE(ISALIGNED(current, RECORD_FRAME_ALIGNMENT));
+	if (current != (RecordFrame*)RegionEnd()) {
+		return current;
+  } else {
+    return NULL;
+  }
 }
 
-RecordFrame* RecordIterator::windForwardToNextRecord(RecordFrame* record) {
-	ASSERT_TRUE(record != NULL);
+RecordFrame* RecordIterator::GetPrevious() {
+  current = FindPreviousRecord(current);
+	ASSERT_TRUE(ISALIGNED(current, RECORD_FRAME_ALIGNMENT));
+  return current;
+}
 
-	if(record == (RecordFrame*)REGION_END)
+RecordFrame* RecordIterator::FindNextRecord(RecordFrame* record) const {
+  if (record == NULL) {
+    return (RecordFrame*)region_start;
+  }
+
+	if(record == (RecordFrame*)RegionEnd()) {
 		return record;
+  }
 
-	record_frame_t* peek = (record_frame_t*)record;
+	record_frame_t* peek = (record_frame_t*)record->getEndOfRecord();
 
-	while((char*)peek < REGION_END && *peek == 0)
+	while((char*)peek < RegionEnd() && *peek == 0)
 		peek++;
 
-	ASSERT_TRUE((char*)peek <= REGION_END);
+	ASSERT_TRUE((char*)peek <= RegionEnd());
 
 	record = (RecordFrame*)peek;
 
-	if(peek != (record_frame_t*)REGION_END) {
-		ASSERT_VALID_POS(record);
+	if(peek != (record_frame_t*)RegionEnd()) {
+  	ASSERT_TRUE(IsValidPosition(record));
 		ASSERT_TRUE(record->isValid());
 	}
 
 	return record;
 }
 
-void RecordIterator::minusminus() {
-	current = windBackwardToNextRecord(current);
-
-	ASSERT_TRUE(ISALIGNED(current, RECORD_FRAME_ALIGNMENT));
-}
-
-RecordFrame* RecordIterator::windBackwardToNextRecord(RecordFrame* record) {
-	ASSERT_TRUE(record != NULL);
-
-	if(record == region_start)
-		return NULL;
+RecordFrame* RecordIterator::FindPreviousRecord(RecordFrame* record) const {
+  if (record == NULL || record == region_start) {
+    return NULL;
+  }
 
 	record_frame_t* peek = (record_frame_t*)record - 1;
-	ASSERT_VALID_POS(peek);
+	ASSERT_TRUE(IsValidPosition((RecordFrame*)peek));
 
 	while((char*)peek > region_start && *peek == 0)
 		peek--;
@@ -137,15 +151,8 @@ RecordFrame* RecordIterator::windBackwardToNextRecord(RecordFrame* record) {
 
 	RecordFrame* end = (RecordFrame*)peek;
 	record = end->getStartHeader();
-
-	ASSERT_VALID_POS(record);
+  
+	ASSERT_TRUE(IsValidPosition(record));
 	ASSERT_TRUE(record->isValid());
 	return record;
-}
-
-void RecordIterator::windIteratorToStart() {
-	if(is_forward_iterator)
-		current = windForwardToNextRecord(current);
-	else
-		current = windBackwardToNextRecord(current);
 }

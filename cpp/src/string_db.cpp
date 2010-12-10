@@ -44,11 +44,12 @@ StringDB* StringDB::Open(const string& name, const std::vector<string>& indices)
   // Now replay the log against the database to recreate the current state
   lsn_t min_persistent_lsn = db->db->GetMinimalPersistentLSN();
   db->log->loadRequiredLogSections(min_persistent_lsn);
-  for (Log::iterator i = db->log->begin(); i != db->log->end(); ++i) {
+  Log::iterator i = db->log->First();
+  while (i.GetNext()) {
     StringSetOperation op;
-    op.Deserialize(i.asData());
-    if (i.GetLSN() > min_persistent_lsn) {
-      op.ApplyTo(*db->db, i.GetLSN());
+    op.Deserialize(i.AsData());
+    if (op.GetLSN() > min_persistent_lsn) {
+      op.ApplyTo(*db->db, op.GetLSN());
     }
   }
 
@@ -57,18 +58,19 @@ StringDB* StringDB::Open(const string& name, const std::vector<string>& indices)
 
 void StringDB::Add(const string& index_name, const string& key, const string& value) {
   lsn_t lsn = db->GetCurrentLSN() + 1;
-  log->getTail()->Append(StringSetOperation(index_name, key, value));
+  log->getTail(lsn)->Append(StringSetOperation(lsn, index_name, key, value));
   db->Add(index_name, lsn, DataHolder(key), DataHolder(value));
 }
 
 void StringDB::Remove(const string& index_name, const string& key) {
   lsn_t lsn = db->GetCurrentLSN() + 1;
-  log->getTail()->Append(StringSetOperation(index_name, key));
+  log->getTail(lsn)->Append(StringSetOperation(lsn, index_name, key));
   db->Add(index_name, lsn, DataHolder(key), Buffer::Deleted());
 }
 
 void StringDB::Commit() {
-  log->getTail()->Commit();
+  lsn_t lsn = db->GetCurrentLSN();
+  log->getTail(lsn)->Commit();
 }
 
 string StringDB::Lookup(const string& index, const string& key) {

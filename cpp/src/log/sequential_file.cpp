@@ -48,22 +48,25 @@ void SequentialFile::close() {
 	memory->Close();
 }
 
-void SequentialFile::compact()
-{
+// Remove all empty space between records. Untested.
+void SequentialFile::compact() {
 	stats->no_of_records = 0;
 	offset_t to = FIRST_RECORD_OFFSET;
 
-	for(iterator r = begin(); r != end();)
-	{
-		unsigned int current_record_size = r.getRecord()->getRecordSize();
-		iterator next_record = r; ++next_record;
+  iterator current = First();
+  current.GetNext();
+  iterator previous = current;
+  int previous_size = 0;
+  if (previous.IsValid()) {
+    previous_size = previous.GetSize();
+  }
+	while (current.GetNext()) {
+		offset_t from = record2offset(current.GetRecord());
+		offset_t to  = record2offset(previous.GetRecord());
+		moveRecord(from, to + previous_size);
 
-		offset_t from = record2offset( r.getRecord() );
-		moveRecord( from, to );
-
-		to = to + current_record_size;
-		r = next_record;
-
+    previous = current;
+    previous_size = previous.GetSize();
 		stats->no_of_records++;
 	}
 
@@ -102,8 +105,7 @@ int SequentialFile::initialize()
 
 	record_frame_t* raw = (record_frame_t*)offset2record(next_write_offset);
 
-	if(next_write_offset == FIRST_RECORD_OFFSET)		// this is a new empty file, everything is fine
-	{
+	if(next_write_offset == FIRST_RECORD_OFFSET) {	// this is a new empty file, everything is fine
 		unsigned char* start = (unsigned char*)offset2record( 0 );
 
 		if(isWritable())
@@ -116,8 +118,7 @@ int SequentialFile::initialize()
   // TODO: skip initial zeros after FIRST_RECORD_ADDRESS
 
 	int lost_records = 0;
-	while(raw > (record_frame_t*)FIRST_RECORD_ADDRESS)
-	{
+	while(raw > (record_frame_t*)FIRST_RECORD_ADDRESS) {
 		if(assertValidRecordChain(raw))	// check whether at the current position could be a valid record
 			break;
 
@@ -133,10 +134,11 @@ int SequentialFile::initialize()
 	// find end, wipe out half-written records, write end of file marker
 	// clean memory after first valid record
 
-	if(isWritable())
-		for( raw = raw; (char*)raw < memory->End(); raw++ )
+	if(isWritable()) {
+		for( raw = raw; (char*)raw < memory->End(); raw++ ) {
 			*raw = 0;
-
+    }
+  }
 	rollback();		// remove any non-finalized transactions
 
 	return lost_records;
@@ -188,7 +190,7 @@ bool SequentialFile::assertValidRecordChain( void* raw )
 
 void SequentialFile::frameData(void* payload, size_t size, record_type_t type) {
 	ASSERT_TRUE(ISALIGNED(payload, RECORD_FRAME_ALIGNMENT));
-	Record* record = Record::getRecord((char*)payload);
+	Record* record = Record::GetRecord((char*)payload);
 
 	SequentialFile::Record* new_record = new (record)Record(type, size);
 	next_write_offset = record2offset( (SequentialFile::Record*)new_record->getEndOfRecord() );
@@ -225,7 +227,7 @@ void SequentialFile::AppendRaw(void* data, size_t size) {
 void SequentialFile::moveRecord( offset_t at, offset_t to )
 {
 	Record* source = offset2record( at );
-	unsigned int size = source->getRecordSize();
+	unsigned int size = source->GetRecordSize();
 
 	void* dest = offset2record( to );
 
@@ -261,24 +263,22 @@ void SequentialFile::commit()
 unsigned int SequentialFile::rollback() {
 	unsigned int rolledback_operations = 0;
 
-	iterator r;
-	iterator r_end = rend();	// may change due to erasing records
-	for(r = rbegin(); r != r_end; ++r)
-	{
-		if(r.getRecord()->isEndOfTransaction())
+	iterator r = Last();
+	while (r.GetPrevious()) {
+		if (r.GetRecord()->isEndOfTransaction())
 			break;
 
-		if(isWritable())
-			erase( record2offset( r.getRecord() ) );		// works because prev skips 0's
+		if (isWritable())
+			erase(record2offset(r.GetRecord()));		// works because prev skips 0's
 
 		rolledback_operations++;
 	}
 
-	if(r != r_end)
-		next_write_offset = record2offset((Record*)r.getRecord()->getEndOfRecord() );
-	else
+	if (r.IsValid()) {
+		next_write_offset = record2offset((Record*)r.GetRecord()->getEndOfRecord() );
+  } else {
 		next_write_offset = FIRST_RECORD_OFFSET;
-
+  }
 	return rolledback_operations;
 }
 
@@ -288,25 +288,27 @@ void SequentialFile::erase( offset_t offset )
 
 	Record* target = offset2record( offset );
 	ASSERT_TRUE(target->isValid());
-	offset_t end_offset = offset + target->getRecordSize();
+	offset_t end_offset = offset + target->GetRecordSize();
 
 	char* target_end = (char*)target->getEndOfRecord();
-	for( char* wiper = (char*)target; wiper < target_end; wiper++ )
+	for (char* wiper = (char*)target; wiper < target_end; wiper++) {
 		*wiper = 0;
+  }
 
 	// fix next_write_offset if it is the last record
-	if( end_offset == next_write_offset ) {
+	if (end_offset == next_write_offset) {
 		iterator i = at(end_offset);
-		--i;
+		i.GetPrevious();
 
-		if(i == begin())
+		if (!i.IsValid()) {
 			next_write_offset = 8;
-		else
-			next_write_offset = record2offset((Record*)i.getRecord()->getEndOfRecord());
+    } else {
+			next_write_offset = record2offset((Record*)i.GetRecord()->getEndOfRecord());
+    }
 	}
 
 	stats->no_of_gaps += 1;
-	stats->gaps_length += target->getRecordSize();
+	stats->gaps_length += target->GetRecordSize();
 	stats->no_of_deletors--;
 }
 
@@ -341,7 +343,7 @@ void SequentialFile::setFlush( bool f )
 
 void SequentialFile::copyRecord( Record* record, void* destination )
 {
-	memcpy( destination, record, record->getRecordSize() );
+	memcpy( destination, record, record->GetRecordSize() );
 }
 
 // OffsetPointerConversion
@@ -353,7 +355,7 @@ void* SequentialFile::offset2pointer( offset_t offset ) const
 
 offset_t SequentialFile::pointer2offset( void* payload ) const
 {
-	return record2offset( Record::getRecord( (char*)payload ) );
+	return record2offset( Record::GetRecord( (char*)payload ) );
 }
 
 // conversion helpers
@@ -375,7 +377,7 @@ bool SequentialFile::isValid( SequentialFile::Record* r )
 
 void SequentialFile::writeBack( Record* record )
 {
-	memory->WriteBack( record, record->getRecordSize() );
+	memory->WriteBack( record, record->GetRecordSize() );
 }
 
 void SequentialFile::writeBack()
@@ -387,31 +389,23 @@ void SequentialFile::writeBack()
 #define ACTUAL_SIZE (size_t)(next_write_offset - FIRST_RECORD_OFFSET)
 
 
-SequentialFile::iterator SequentialFile::begin() const {
-	return SequentialFile::iterator::begin(ACTUAL_START, ACTUAL_SIZE);
+SequentialFile::iterator SequentialFile::First() const {
+	return SequentialFile::iterator::First(ACTUAL_START, ACTUAL_SIZE);
 }
 
-SequentialFile::iterator SequentialFile::end() const {
-	return SequentialFile::iterator::end(ACTUAL_START, ACTUAL_SIZE);
-}
-
-SequentialFile::iterator SequentialFile::rbegin() const {
-	return SequentialFile::iterator::rbegin(ACTUAL_START, ACTUAL_SIZE);
-}
-
-SequentialFile::iterator SequentialFile::rend() const {
-	return SequentialFile::iterator::rend(ACTUAL_START, ACTUAL_SIZE);
+SequentialFile::iterator SequentialFile::Last() const {
+	return SequentialFile::iterator::Last(ACTUAL_START, ACTUAL_SIZE);
 }
 
 
 SequentialFile::iterator SequentialFile::at( void* payload ) const {
-	return SequentialFile::iterator(ACTUAL_START, ACTUAL_SIZE, (Record*)payload, true);
+	return SequentialFile::iterator(ACTUAL_START, ACTUAL_SIZE, (Record*)payload);
 }
 
 SequentialFile::iterator SequentialFile::at( Record* record ) const {
-	return SequentialFile::iterator(ACTUAL_START, ACTUAL_SIZE, record, true);
+	return SequentialFile::iterator(ACTUAL_START, ACTUAL_SIZE, record);
 }
 
 SequentialFile::iterator SequentialFile::at( offset_t offset ) const {
-	return SequentialFile::iterator(ACTUAL_START, ACTUAL_SIZE, offset2record(offset), true);
+	return SequentialFile::iterator(ACTUAL_START, ACTUAL_SIZE, offset2record(offset));
 }

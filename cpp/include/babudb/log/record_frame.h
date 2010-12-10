@@ -48,10 +48,10 @@ class RecordFrame
 {
 public:
 	void* getPayload();
-	static RecordFrame* getRecord( void* payload );
+	static RecordFrame* GetRecord( void* payload );
 
 	unsigned int getPayloadSize();
-	unsigned int getRecordSize();
+	unsigned int GetRecordSize();
 
 	bool isValid();
 
@@ -61,11 +61,11 @@ public:
 	bool isEndOfTransaction()					{ return getHeader().structured_header.eot == 1; }
 	void setEndOfTransaction( bool e )			{ record_header h = getHeader(); h.structured_header.eot = (e?1:0); setHeaderAndFooter(h); }
 
-	void* getEndOfRecord()						{ return (unsigned char*)this + getRecordSize(); }
+	void* getEndOfRecord()						{ return (unsigned char*)this + GetRecordSize(); }
 	RecordFrame *getStartHeader()				{ return (RecordFrame*)((unsigned char*)this - ALIGN(_getLengthField(), RECORD_FRAME_ALIGNMENT) - RECORD_FRAME_SIZE_BYTES); }
 
 	bool mightBeHeaderOf(RecordFrame* other)	{ return header_data.plain_header == other->header_data.plain_header; }
-	bool mightBeHeader()						{ return header_data.plain_header != 0 && getRecordSize() != 0; }
+	bool mightBeHeader()						{ return header_data.plain_header != 0 && GetRecordSize() != 0; }
 
 	RecordFrame( record_type_t type, size_t size_in_bytes );
 

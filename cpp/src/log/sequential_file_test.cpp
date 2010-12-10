@@ -22,8 +22,8 @@ TEST_TMPDIR(SequentialFile_iteration,babudb)
   LogStorage* file = PersistentLogStorage::Open(testPath("testfile").getHostCharsetPath());
 	SequentialFile sf(file, NULL);
 
-	EXPECT_TRUE(sf.begin() == sf.end());
-	EXPECT_TRUE(sf.rbegin() == sf.rend());
+	EXPECT_TRUE(sf.First().GetNext() == NULL);
+	EXPECT_TRUE(sf.Last().GetPrevious() == NULL);
 
 	sf.append(1,1);
 	sf.append(2,2);
@@ -35,39 +35,37 @@ TEST_TMPDIR(SequentialFile_iteration,babudb)
   file = PersistentLogStorage::OpenReadOnly(testPath("testfile").getHostCharsetPath());
 	SequentialFile sf2(file, NULL);
 
-	SequentialFile::iterator i = sf2.begin();
-	EXPECT_TRUE(i.getType() == 1);
-	EXPECT_TRUE(i.getRecord()->getPayloadSize() == 1);
+	SequentialFile::iterator i = sf2.First();
+  EXPECT_FALSE(i.IsValid());
+  EXPECT_TRUE(i.GetNext() != NULL);
+	EXPECT_TRUE(i.GetType() == 1);
+	EXPECT_TRUE(i.GetRecord()->getPayloadSize() == 1);
+  
+  EXPECT_TRUE(i.GetNext() != NULL);
+	EXPECT_TRUE(i.GetType() == 2);
+	EXPECT_TRUE(i.GetRecord()->getPayloadSize() == 2);
+  
+  EXPECT_TRUE(i.GetPrevious() != NULL);
+	EXPECT_TRUE(i.GetType() == 1);
+	EXPECT_TRUE(i.GetRecord()->getPayloadSize() == 1);
+  
+  EXPECT_TRUE(i.GetNext() != NULL);
+  EXPECT_TRUE(i.GetNext() != NULL);
+	EXPECT_TRUE(i.GetType() == 3);
+	EXPECT_TRUE(i.GetRecord()->getPayloadSize() == 3);
+  
+  EXPECT_FALSE(i.GetNext() != NULL);
 
-	++i;
-	EXPECT_TRUE(i.getType() == 2);
-	EXPECT_TRUE(i.getRecord()->getPayloadSize() == 2);
+	i = sf2.Last();
+  EXPECT_FALSE(i.IsValid());
+  EXPECT_TRUE(i.GetPrevious() != NULL);
+	EXPECT_TRUE(i.GetRecord()->getPayloadSize() == 3);
+  EXPECT_TRUE(i.GetPrevious() != NULL);
+	EXPECT_TRUE(i.GetRecord()->getPayloadSize() == 2);
+  EXPECT_TRUE(i.GetPrevious() != NULL);
+	EXPECT_TRUE(i.GetRecord()->getPayloadSize() == 1);
 
-	--i;
-	EXPECT_TRUE(i.getType() == 1);
-	EXPECT_TRUE(i.getRecord()->getPayloadSize() == 1);
-
-	++i; ++i;
-	EXPECT_TRUE(i.getType() == 3);
-	EXPECT_TRUE(i.getRecord()->getPayloadSize() == 3);
-
-	++i;
-	EXPECT_TRUE(i == sf2.end());
-
-	i = sf2.rbegin();
-	EXPECT_TRUE(i.getRecord()->getPayloadSize() == 3);
-	++i;
-	EXPECT_TRUE(i.getRecord()->getPayloadSize() == 2);
-
-	i = sf2.end(); --i;
-	EXPECT_TRUE(i.getRecord()->getPayloadSize() == 3);
-	--i;
-	EXPECT_TRUE(i.getRecord()->getPayloadSize() == 2);
-
-	i = sf2.rend(); --i;
-	EXPECT_TRUE(i.getRecord()->getPayloadSize() == 1);
-	--i;
-	EXPECT_TRUE(i.getRecord()->getPayloadSize() == 2);
+  EXPECT_FALSE(i.GetPrevious() != NULL);
 }
 
 TEST_TMPDIR(SequentialFile_rollback,babudb)
@@ -84,15 +82,16 @@ TEST_TMPDIR(SequentialFile_rollback,babudb)
 
   file = PersistentLogStorage::OpenReadOnly(testPath("testfile").getHostCharsetPath());
 	SequentialFile sf2(file, NULL);
-
-	SequentialFile::iterator i = sf2.begin();
-	EXPECT_TRUE(i.getType() == 1);
-	EXPECT_TRUE(i.getRecord()->getPayloadSize() == 1);
-
-	++i;
-	EXPECT_TRUE(i.getType() == 2);
-	EXPECT_TRUE(i.getRecord()->getPayloadSize() == 2);
-
-	++i;
-	EXPECT_TRUE(i == sf2.end());
+  
+	SequentialFile::iterator i = sf2.First();
+  EXPECT_TRUE(i.GetNext() != NULL);
+  EXPECT_TRUE(i.IsValid());
+	EXPECT_TRUE(i.GetType() == 1);
+	EXPECT_TRUE(i.GetRecord()->getPayloadSize() == 1);
+  
+  EXPECT_TRUE(i.GetNext() != NULL);
+	EXPECT_TRUE(i.GetType() == 2);
+	EXPECT_TRUE(i.GetRecord()->getPayloadSize() == 2);
+  
+  EXPECT_FALSE(i.GetNext() != NULL);
 }

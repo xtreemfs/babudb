@@ -52,13 +52,11 @@ public:
 	void enlarge();
 	void truncate();
 
-	iterator begin() const;
-	iterator end() const;
-	iterator rbegin() const;
-	iterator rend() const;
-	iterator at( void* ) const;		// payload pointer
-	iterator at( Record* ) const;
-	iterator at( offset_t ) const;
+	iterator First() const;
+	iterator Last() const;
+	iterator at(void* pointer) const;		// payload pointer
+	iterator at(Record* record) const;
+	iterator at(offset_t offset) const;
 
 	bool empty();
 	bool isWritable();
@@ -78,11 +76,13 @@ public:
 	Record* offset2record( offset_t offset ) const;
 	offset_t record2offset( Record* ) const;
 
-	bool isValid( Record* );
-	void setFlush( bool f );
+	bool isValid(Record* record);
+	void setFlush(bool do_flush);
 	void compact();
 
-  LogStorage* GetLogStorage() { return memory.get(); }
+  LogStorage* GetLogStorage() { 
+    return memory.get();
+  }
 
 private:
 	int initialize();

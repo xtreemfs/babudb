@@ -16,46 +16,30 @@ class LogSection;
 class LogIterator {
 public:
   LogIterator(const LogIterator&);
-  LogIterator(
-      const LogSectionIterator& sections_begin,
-      const LogSectionIterator& sections_end,
-      const LogSectionIterator& current_section,
-      const RecordIterator& current_record);
+  static LogIterator First(const LogSectionIterator& first_section);
+  static LogIterator Last(const LogSectionIterator& last_section);
 
-  void operator ++ ();
-  void operator -- ();
+  Buffer GetNext();
+  Buffer GetPrevious();
 
   bool operator != (const LogIterator&) const;
   bool operator == (const LogIterator&) const;
 
-  Buffer& operator * () const;
-  Buffer* operator -> () const;
-  Buffer asData() const {
+  Buffer operator * () const;
+  Buffer AsData() const {
     return this->operator *();
   }
-  Buffer getOperationWithFrame() const;
-
-  record_type_t getType() const;
-  lsn_t GetLSN() const {
-    return lsn; 
+  Buffer GetOperationWithFrame() const;
+  RecordIterator GetRecordIterator() const {
+    return record_iterator;
   }
-  RecordIterator getCurrentRecord() const {
-    return current_record;
-  }
-  LogSectionIterator getCurrentSection() const {
-    return current_section;
-  }
-
-  static RecordIterator section_begin(const LogSectionIterator& section);
-  static RecordIterator section_end(const LogSectionIterator& section);
+  record_type_t GetType() const;
 
 private:
-  LogSectionIterator sections_begin;
-  LogSectionIterator sections_end;
+  LogIterator(const LogSectionIterator& current_section);
+
   LogSectionIterator current_section;
-  RecordIterator current_record;
-  mutable Buffer current_record_data;
-  lsn_t lsn;
+  RecordIterator record_iterator;
 };
 
 }

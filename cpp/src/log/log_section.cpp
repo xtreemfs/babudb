@@ -16,168 +16,92 @@
 using namespace babudb;
 
 LogSection::LogSection(LogStorage* mmfile, lsn_t first)
-    : SequentialFile(mmfile, new LogStats()), in_transaction(false),
-      first_lsn(first), next_lsn(0) {
-	// set or retrieve last LSN
-	if(empty()) {
-		next_lsn = first;
-	} else {
-		for(SequentialFile::iterator i = rbegin(); i != rend(); ++i) {
-			if(i.getType() == LSN_RECORD_TYPE) {
-				ASSERT_TRUE(i.getRecord()->getPayloadSize() == sizeof(lsn_t));
-				next_lsn = *(lsn_t*)i.getRecord()->getPayload() + 1;
-				break;
-			}
-		}
-	}
-}
+    : SequentialFile(mmfile, new LogStats()), first_lsn(first) { }
 
-lsn_t LogSection::getFirstLSN() {
+lsn_t LogSection::getFirstLSN() const {
 	return first_lsn;
 }
 
-lsn_t LogSection::getLastLSN() {
-	ASSERT_TRUE(next_lsn != 0);
-	return next_lsn - 1;
-}
-
-lsn_t LogSection::StartTransaction() {
-	if(!in_transaction) {
-    // Write LSN frame
-		in_transaction = true;
-		lsn_t* write_location = (lsn_t*)getFreeSpace(sizeof(lsn_t));
-		*write_location = next_lsn;
-		frameData(write_location, sizeof(lsn_t), LSN_RECORD_TYPE);
-		next_lsn++;
-	}
-  return next_lsn - 1;
-}
-
-lsn_t LogSection::Append(const Serializable& entry) {
-  lsn_t lsn = StartTransaction();
+void LogSection::Append(const Serializable& entry) {
 	void* write_location = getFreeSpace(RECORD_MAX_SIZE);
   entry.Serialize(Buffer(write_location, RECORD_MAX_SIZE));
-  frameData(write_location, (unsigned int)entry.GetSize(), USER_RECORD_TYPE + entry.GetType());
-	return lsn;
+  frameData(write_location, (unsigned int)entry.GetSize(), entry.GetType());
 }
 
 void LogSection::Commit() {
-	in_transaction = false;
 	commit();
 }
 
-void LogSection::SeekForwardTo(babudb::lsn_t new_lsn) {
-  ASSERT_TRUE(new_lsn > next_lsn);
-  next_lsn = new_lsn - 1;
-  StartTransaction();
-  Commit();
-}
-
-void LogSection::Erase(SequentialFile::iterator it) {
-  ASSERT_TRUE(it.getType() != LSN_RECORD_TYPE);
-  erase(record2offset(it.getRecord()));
-  // TODO: support erase of multi-record transactions
-  if (!it.isForwardIterator()) {
-    it.reverse();
-  }
-  --it;
-  ASSERT_TRUE(it.getType() == LSN_RECORD_TYPE);
-  erase(record2offset(it.getRecord()));
+void LogSection::Erase(const iterator& it) {
+  erase(record2offset(it.GetRecord()));
 }
 
 
-LogSectionIterator::LogSectionIterator(std::vector<LogSection*>& sections)
-  : sections(sections) {}
+LogSectionIterator::LogSectionIterator(
+    std::vector<LogSection*>& sections,
+    std::vector<LogSection*>::iterator current)
+  : sections(sections), current_section(current) {}
 
 LogSectionIterator::LogSectionIterator(const LogSectionIterator& it)
-  : sections(it.sections), index(it.index), direction(it.direction),
-    begin_index(it.begin_index), end_index(it.end_index) {}
+  : sections(it.sections), current_section(it.current_section) {}
 
 void LogSectionIterator::operator = (const LogSectionIterator& other) {
   sections = other.sections;
-  index = other.index;
-  direction = other.direction;
-  begin_index = other.begin_index;
-  end_index = other.end_index;
+  current_section = other.current_section;
 }
 
-LogSectionIterator LogSectionIterator::begin(
+LogSectionIterator LogSectionIterator::First(
     std::vector<LogSection*>& sections) {
-  LogSectionIterator it(sections);
-  it.begin_index = 0;
-  it.end_index = sections.size();
-  it.index = it.begin_index;
-  it.direction = 1;
-  return it;
+  return LogSectionIterator(sections, sections.begin());
 }
 
-LogSectionIterator LogSectionIterator::last(
+LogSectionIterator LogSectionIterator::Last(
     std::vector<LogSection*>& sections) {
-  LogSectionIterator it(sections);
-  it.begin_index = 0;
-  it.end_index = sections.size();
-  it.index = it.end_index - 1;
-  it.direction = 1;
-  return it;
-}
-
-LogSectionIterator LogSectionIterator::end(
-    std::vector<LogSection*>& sections) {
-  LogSectionIterator it(sections);
-  it.begin_index = 0;
-  it.end_index = sections.size();
-  it.index = it.end_index;
-  it.direction = 1;
-  return it;
-}
-
-LogSectionIterator LogSectionIterator::rbegin(
-    std::vector<LogSection*>& sections) {
-  LogSectionIterator it(sections);
-  it.begin_index = sections.size() - 1;
-  it.end_index = -1;
-  it.index = it.begin_index;
-  it.direction = -1;
-  return it;
-}
-
-LogSectionIterator LogSectionIterator::rlast(
-   std::vector<LogSection*>& sections) {
-  LogSectionIterator it(sections);
-  it.begin_index = sections.size() - 1;
-  it.end_index = -1;
-  it.direction = -1;
-  it.index = it.end_index - it.direction;
-  return it;
-}
-LogSectionIterator LogSectionIterator::rend(
-   std::vector<LogSection*>& sections) {
-  LogSectionIterator it(sections);
-  it.begin_index = sections.size() - 1;
-  it.end_index = -1;
-  it.index = it.end_index;
-  it.direction = -1;
-  return it;
+  if (sections.empty()) {
+    return LogSectionIterator(sections, sections.end());
+  } else {
+    return LogSectionIterator(sections, --(sections.end()));
+  }
 }
   
-void LogSectionIterator::operator ++ () {
-  index += direction;
+LogSection* LogSectionIterator::GetNext() {
+  if (current_section == sections.end()) {
+    return NULL;
+  }
+  ++current_section;
+  if (current_section == sections.end()) {
+    return NULL;
+  } else {
+    return *current_section;
+  }
 }
 
-void LogSectionIterator::operator -- () {
-  index -= direction;
+LogSection* LogSectionIterator::GetPrevious() {
+  if (current_section == sections.begin()) {
+    return NULL;
+  } else {
+    --current_section;
+    return *current_section;
+  }
 }
 
-bool LogSectionIterator::operator != ( const LogSectionIterator& other ) const {
+bool LogSectionIterator::IsValid() const {
+  return sections.size() > 0 && current_section != sections.end();
+}
+
+bool LogSectionIterator::operator != (const LogSectionIterator& other) const {
   return !this->operator==(other);
 }
 
-bool LogSectionIterator::operator == ( const LogSectionIterator& other ) const {
-  ASSERT_TRUE(direction == other.direction);
+bool LogSectionIterator::operator == (const LogSectionIterator& other) const {
   ASSERT_TRUE(sections.begin() == other.sections.begin());
-  return index == other.index;
+  return current_section == other.current_section;
 }
 
 LogSection* LogSectionIterator::operator * ()	const {
- return sections[index];
+  if (current_section == sections.end()) {
+    return NULL;
+  } else {
+    return *current_section;
+  }
 }

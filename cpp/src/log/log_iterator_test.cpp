@@ -17,23 +17,35 @@
 using YIELD::MemoryMappedFile;
 using namespace babudb;
 
-TEST_TMPDIR(LogIterator,babudb)
+TEST_TMPDIR(LogIteratorEmptyLog,babudb)
 {
   {
     Log log(testPath("testlog"));
 
-    Log::iterator i = log.begin();	// try an empty log first
-    EXPECT_TRUE(i == log.end());
-    Log::reverse_iterator r = log.rbegin();	
-    EXPECT_TRUE(r == log.rend());
+    Log::iterator i = log.First();	// try an empty log first
+    EXPECT_FALSE((bool)i.GetNext());
+    EXPECT_FALSE((bool)i.GetNext());
+    EXPECT_FALSE((bool)i.GetPrevious());
+    EXPECT_FALSE((bool)i.GetPrevious());
+    i = log.Last();
+    EXPECT_FALSE((bool)i.GetNext());
+    EXPECT_FALSE((bool)i.GetNext());
+    EXPECT_FALSE((bool)i.GetPrevious());
+    EXPECT_FALSE((bool)i.GetPrevious());
+  }
+}
 
-    LogSection* tail = log.getTail();
+TEST_TMPDIR(LogIterator,babudb)
+{
+  {
+    Log log(testPath("testlog"));
+    LogSection* tail = log.getTail(1);
 
     tail->Append(DummyOperation('A')); tail->Commit();
     tail->Append(DummyOperation('B')); tail->Commit();
 
     log.advanceTail();
-    tail = log.getTail();
+    tail = log.getTail(3);
 
     tail->Append(DummyOperation('C')); tail->Commit();
     tail->Append(DummyOperation('D')); tail->Commit();
@@ -47,154 +59,82 @@ TEST_TMPDIR(LogIterator,babudb)
 
     EXPECT_TRUE(log.NumberOfSections() == 2);
     DummyOperation op(0);
-
-    Log::iterator i = log.begin();
-    EXPECT_TRUE(i != log.end());
-    EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
+    
+    Log::iterator i = log.First();
+    EXPECT_TRUE(i.GetNext());
+    EXPECT_EQUAL(i.GetType(), DUMMY_OPERATION_TYPE);
     EXPECT_TRUE(op.Deserialize(*i).value == 'A');
-    EXPECT_TRUE(i.GetLSN() == 1);
-
-    ++i;
-    EXPECT_TRUE(i != log.end());
-    EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
+    
+    EXPECT_TRUE(i.GetNext());
+    EXPECT_EQUAL(i.GetType(), DUMMY_OPERATION_TYPE);
     EXPECT_TRUE(op.Deserialize(*i).value == 'B');
-    EXPECT_TRUE(i.GetLSN() == 2);
-
-    ++i;
-    EXPECT_TRUE(i != log.end());
-    EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
+    
+    EXPECT_TRUE(i.GetNext());
+    EXPECT_EQUAL(i.GetType(), DUMMY_OPERATION_TYPE);
     EXPECT_TRUE(op.Deserialize(*i).value == 'C');
-    EXPECT_TRUE(i.GetLSN() == 3);
-
-    ++i;
-    EXPECT_TRUE(i != log.end());
-    EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
+    
+    EXPECT_TRUE(i.GetNext());
+    EXPECT_EQUAL(i.GetType(), DUMMY_OPERATION_TYPE);
     EXPECT_TRUE(op.Deserialize(*i).value == 'D');
-    EXPECT_TRUE(i.GetLSN() == 4);
-
-    ++i;
-    EXPECT_TRUE(i == log.end());
+    
+    EXPECT_FALSE((bool)i.GetNext());
+    EXPECT_FALSE((bool)i.GetNext());  // idempotent
+    
+    EXPECT_TRUE(i.GetPrevious());
+    EXPECT_EQUAL(i.GetType(), DUMMY_OPERATION_TYPE);
+    EXPECT_TRUE(op.Deserialize(*i).value == 'D');
 
     // now reverse
-    i = log.end(); --i;
-    EXPECT_TRUE(i != log.end());
-    EXPECT_TRUE(i.getType() != 0);
+    i = log.Last();
+    EXPECT_TRUE(i.GetPrevious());
+    EXPECT_TRUE(i.GetType() != 0);
     EXPECT_TRUE(op.Deserialize(*i).value == 'D');
-
-    --i;
-    EXPECT_TRUE(i != log.begin());
-    EXPECT_TRUE(i.getType() != 0);
+    
+    EXPECT_TRUE(i.GetPrevious());
+    EXPECT_TRUE(i.GetType() != 0);
     EXPECT_TRUE(op.Deserialize(*i).value == 'C');
-
-    --i;
-    EXPECT_TRUE(i != log.begin());
-    EXPECT_TRUE(i.getType() != 0);
+    
+    EXPECT_TRUE(i.GetPrevious());
+    EXPECT_TRUE(i.GetType() != 0);
     EXPECT_TRUE(op.Deserialize(*i).value == 'B');
-
-    --i;
-    EXPECT_TRUE(i == log.begin());
-    EXPECT_TRUE(i.getType() != 0);
+    
+    EXPECT_TRUE(i.GetPrevious());
+    EXPECT_TRUE(i.GetType() != 0);
     EXPECT_TRUE(op.Deserialize(*i).value == 'A');
-
-
-    // now reverse iterator
-    Log::reverse_iterator r = log.rbegin();
-    EXPECT_TRUE(r != log.rend());
-    EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
-    EXPECT_TRUE(op.Deserialize(*r).value == 'D');
-
-    ++r;
-    EXPECT_TRUE(r != log.rend());
-    EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
-    EXPECT_TRUE(op.Deserialize(*r).value == 'C');
-
-    ++r;
-    EXPECT_TRUE(r != log.rend());
-    EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
-    EXPECT_TRUE(op.Deserialize(*r).value == 'B');
-
-    ++r;
-    EXPECT_TRUE(r != log.rend());
-    EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
-    EXPECT_TRUE(op.Deserialize(*r).value == 'A');
-
-    ++r;
-    EXPECT_TRUE(r == log.rend());
-
-    // and reverse reverse
-  
-    r = log.rend(); --r;
-    EXPECT_TRUE(r != log.rend());
-    EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
-    EXPECT_TRUE(op.Deserialize(*r).value == 'A');
-
-    --r;
-    EXPECT_TRUE(r != log.rend());
-    EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
-    EXPECT_TRUE(op.Deserialize(*r).value == 'B');
-
-    --r;
-    EXPECT_TRUE(r != log.rend());
-    EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
-    EXPECT_TRUE(op.Deserialize(*r).value == 'C');
-
-    --r;
-    EXPECT_TRUE(r == log.rbegin());
-    EXPECT_EQUAL(i.getType(), DUMMY_OPERATION_TYPE);
-    EXPECT_TRUE(op.Deserialize(*r).value == 'D');
+    
+    EXPECT_FALSE((bool)i.GetPrevious());
+    EXPECT_FALSE((bool)i.GetPrevious());  // idempotent
+    
+    EXPECT_TRUE(i.GetNext());
+    EXPECT_EQUAL(i.GetType(), DUMMY_OPERATION_TYPE);
+    EXPECT_TRUE(op.Deserialize(*i).value == 'A');
 
     log.close();
   }
 }
 
-TEST_TMPDIR(LogIteratorAndErase,babudb)
+TEST_TMPDIR(LogIteratorOneSectionAndErase,babudb)
 {
   Log log(testPath("testlog"));
-  LogSection* tail = log.getTail();
+  LogSection* tail = log.getTail(1);
   
   tail->Append(DummyOperation('A')); tail->Commit();
   tail->Append(DummyOperation('B')); tail->Commit();
   tail->Append(DummyOperation('C')); tail->Commit();
   
   DummyOperation op(0);
-  Log::iterator i = log.begin();
-  ++i;
-  EXPECT_TRUE(op.Deserialize(*i).value == 'B');
-  EXPECT_TRUE(i.GetLSN() == 2);
-
-  tail->Erase(i.getCurrentRecord());
-  
-  ++i;
-  EXPECT_TRUE(op.Deserialize(*i).value == 'C');
-  EXPECT_TRUE(i.GetLSN() == 3);
-
-  --i;
-  EXPECT_TRUE(op.Deserialize(*i).value == 'A');
-  
-  log.close();
-}
-
-TEST_TMPDIR(LogIteratorAndEraseReverse,babudb)
-{
-  Log log(testPath("testlog"));
-  LogSection* tail = log.getTail();
-  
-  tail->Append(DummyOperation('A')); tail->Commit();
-  tail->Append(DummyOperation('B')); tail->Commit();
-  tail->Append(DummyOperation('C')); tail->Commit();
-  
-  DummyOperation op(0);
-  Log::iterator i = log.rbegin();
-  ++i;
+  Log::iterator i = log.First();
+  EXPECT_TRUE(i.GetNext());
+  EXPECT_TRUE(i.GetNext());
   EXPECT_TRUE(op.Deserialize(*i).value == 'B');
 
-  tail->Erase(i.getCurrentRecord());
+  tail->Erase(i.GetRecordIterator());
   
-  ++i;
-  EXPECT_TRUE(op.Deserialize(*i).value == 'A');
-
-  --i;
+  EXPECT_TRUE(i.GetNext());
   EXPECT_TRUE(op.Deserialize(*i).value == 'C');
+  
+  EXPECT_TRUE(i.GetPrevious());
+  EXPECT_TRUE(op.Deserialize(*i).value == 'A');
   
   log.close();
 }

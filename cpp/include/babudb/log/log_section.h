@@ -37,60 +37,39 @@ class LogSection : public SequentialFile {
 public:
 	LogSection(LogStorage*, lsn_t first);
 
-	lsn_t getFirstLSN();
-	lsn_t getLastLSN();
+	lsn_t getFirstLSN() const;
 
-  // Start a new transaction, idempotent
-  lsn_t StartTransaction();
   // Append entry, start a new transaction if necessary
-	lsn_t Append(const Serializable& entry);
+	void Append(const Serializable& entry);
   // Make the current transaction durable
 	void Commit();
-
-  // Commit an empty transaction with a new LSN
-  void SeekForwardTo(babudb::lsn_t);
-
-  // Erase record pointed to by iterator. Iterator becomes
-  // valid again after increment or decrement.
-  void Erase(SequentialFile::iterator it);
+  void Erase(const iterator& it);
 
 private:
-	bool in_transaction;
 	lsn_t first_lsn; // the first lsn in this file
-	lsn_t next_lsn;  // the next lsn to write
 };
 
 class LogSectionIterator {
 public:
   LogSectionIterator(const LogSectionIterator& it); 
+  void operator = (const LogSectionIterator& other);
 
-  static LogSectionIterator begin(std::vector<LogSection*>& sections);
-  static LogSectionIterator last(std::vector<LogSection*>& sections);
-  static LogSectionIterator end(std::vector<LogSection*>& sections);
-  static LogSectionIterator rbegin(std::vector<LogSection*>& sections);
-  static LogSectionIterator rlast(std::vector<LogSection*>& sections);
-  static LogSectionIterator rend(std::vector<LogSection*>& sections);
+  static LogSectionIterator First(std::vector<LogSection*>& sections);
+  static LogSectionIterator Last(std::vector<LogSection*>& sections);
   
-	void operator ++ ();
-	void operator -- ();
+	LogSection* GetNext();
+	LogSection* GetPrevious();
+  bool IsValid() const;
 	bool operator != (const LogSectionIterator& other) const;
 	bool operator == (const LogSectionIterator& other) const;
 
-  void operator = (const LogSectionIterator& other);
-
 	LogSection* operator * ()	const;
 
-  bool IsReverse() const {
-    return direction < 0;
-  }
-
 private:
-  LogSectionIterator(std::vector<LogSection*>& sections);
+  LogSectionIterator(std::vector<LogSection*>& sections,
+                     std::vector<LogSection*>::iterator current);
   std::vector<LogSection*>& sections;
-  int index;
-  int direction;
-  int begin_index;
-  int end_index;
+  std::vector<LogSection*>::iterator current_section;
 };
 
 }

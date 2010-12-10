@@ -12,115 +12,74 @@
 namespace babudb {
 
 LogIterator::LogIterator(const LogIterator& o)
-  : sections_begin(o.sections_begin), sections_end(o.sections_end),
-    current_section(o.current_section), current_record(o.current_record),
-    current_record_data(Buffer::Empty()) {}
+  : current_section(o.current_section), record_iterator(o.record_iterator) {}
 
-LogIterator::LogIterator(const LogSectionIterator& b,
-  const LogSectionIterator& e,
-  const LogSectionIterator& c_s,
-  const RecordIterator& c)
-  : sections_begin(b), sections_end(e), current_section(c_s), current_record(c),
-    current_record_data(Buffer::Empty()) {
+LogIterator::LogIterator(const LogSectionIterator& current_section)
+  : current_section(current_section) {}
 
-  if(current_section != sections_end && current_record.isType(LSN_RECORD_TYPE)) {
-    lsn = *(lsn_t*)*current_record;
-    this->operator ++();
+LogIterator LogIterator::First(const LogSectionIterator& first_section) {
+  LogIterator it(first_section);
+  if (first_section.IsValid()) {
+    it.record_iterator = (*first_section)->First();
+  }
+  return it;
+}
+
+LogIterator LogIterator::Last(const LogSectionIterator& last_section) {
+  LogIterator it(last_section);
+  if (last_section.IsValid()) {
+    it.record_iterator = (*last_section)->Last();
+  }
+  return it;
+}
+
+Buffer LogIterator::GetNext() {
+  if (!record_iterator.GetNext()) {
+    if (!current_section.GetNext()) {
+      return Buffer::Deleted();
+    } else {
+      record_iterator = (*current_section)->First();
+      return GetNext();
+    }
+  } else {
+    ASSERT_TRUE(record_iterator.IsValid());
+    return record_iterator.AsData();
   }
 }
 
-void LogIterator::operator ++ () {
-  ASSERT_FALSE(current_section == sections_end);
-  ++current_record;
-
-  if(current_record == section_end(current_section)) {
-    // at the end of the current section, proceed to the beginning of the next, if any
-    LogSectionIterator next_section(current_section); ++next_section;
-
-    if(next_section == sections_end)
-      current_record = section_end(current_section); // back()->end()
-    else
-      current_record = section_begin(next_section);
-
-    current_section = next_section;
-  }
-
-  // skip LSN records
-  if(current_section != sections_end && current_record != section_end(current_section) && current_record.isType(0)) {
-    lsn = *(lsn_t*)*current_record;
-    this->operator ++();
+Buffer LogIterator::GetPrevious() {
+  if (!record_iterator.GetPrevious()) {
+    if (!current_section.GetPrevious()) {
+      return Buffer::Deleted();
+    } else {
+      record_iterator = (*current_section)->Last();
+      return GetPrevious();
+    }
+  } else {
+    ASSERT_TRUE(record_iterator.IsValid());
+    return record_iterator.AsData();
   }
 }
 
-void LogIterator::operator -- () {
-  if(current_section == sections_end)
-    --current_section;
-
-  if(current_record == section_begin(current_section)) {
-    // at the end of the current section, proceed to the beginning of the next, if any
-    ASSERT_TRUE(current_section != sections_begin);
-    --current_section;
-    current_record = section_end(current_section);
-  }
-
-  --current_record;
-
-  if (current_record.isType(LSN_RECORD_TYPE)) {
-    lsn = *(lsn_t*)*current_record;
-  }
-
-  // skip LSN records
-  if(current_record.isType(LSN_RECORD_TYPE)) {
-    if(current_section != sections_begin || current_record != section_begin(current_section))
-      this->operator --();
-  }
-}
 
 bool LogIterator::operator != (const LogIterator& other) const {
-  return current_section != other.current_section || current_record != other.current_record;
+  return current_section != other.current_section || record_iterator != other.record_iterator;
 }
 
 bool LogIterator::operator == (const LogIterator& other) const {
-  return current_section == other.current_section && current_record == other.current_record;
+  return current_section == other.current_section && record_iterator == other.record_iterator;
 }
 
-Buffer& LogIterator::operator * () const {
-  ASSERT_TRUE(current_record.getType() != LSN_RECORD_TYPE);
-  current_record_data.data = *current_record;
-  current_record_data.size = current_record.getSize();
-  return current_record_data;
+Buffer LogIterator::operator * () const {
+  return record_iterator.AsData();
 }
 
-Buffer* LogIterator::operator -> () const {
-  ASSERT_TRUE(current_record.getType() != LSN_RECORD_TYPE);
-  current_record_data.data = *current_record;
-  current_record_data.size = current_record.getSize();
-  return &current_record_data;
+Buffer LogIterator::GetOperationWithFrame() const {
+  return Buffer(record_iterator.GetRecord(), record_iterator.GetRecord()->GetRecordSize());
 }
 
-Buffer LogIterator::getOperationWithFrame() const {
-  ASSERT_TRUE(current_record.getType() != LSN_RECORD_TYPE);
-  return Buffer(current_record.getRecord(), current_record.getRecord()->getRecordSize());
-}
-
-record_type_t LogIterator::getType() const {
-  return current_record.getType() - USER_RECORD_TYPE;
-}
-
-RecordIterator LogIterator::section_begin(const LogSectionIterator& section) {
-  if (section.IsReverse()) {
-    return (*section)->rbegin(); 
-  } else {
-    return (*section)->begin();
-  }
-}
-
-RecordIterator LogIterator::section_end(const LogSectionIterator& section) {
-  if (section.IsReverse()) {
-    return (*section)->rend(); 
-  } else {
-    return (*section)->end();
-  }
+record_type_t LogIterator::GetType() const {
+  return record_iterator.GetType();
 }
 
 }

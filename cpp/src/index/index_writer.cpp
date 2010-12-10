@@ -104,9 +104,10 @@ void ImmutableIndexWriter::Finalize() {
 }
 
 ImmutableIndexIterator::ImmutableIndexIterator(const SequentialFile& file, bool end)
-  : file(file), offset_table(0), key(file.end()) {
-  if(!end)
-    findNextOffsetTable(file.begin());
+  : file(file), offset_table(0), key(file.Last()) {
+  if (!end) {
+    findNextOffsetTable(file.First());
+  }
 }
 
 ImmutableIndexIterator::ImmutableIndexIterator(const ImmutableIndexIterator& o)
@@ -116,22 +117,22 @@ ImmutableIndexIterator::ImmutableIndexIterator(SequentialFile& file, offset_t* t
   : file(file), offset_table(table), key(i), key_no(n) {}
 
 void ImmutableIndexIterator::operator ++ () {
-  ASSERT_TRUE(key != file.end());
-  ++key;
+  ASSERT_TRUE(key.IsValid());
+  ASSERT_TRUE(key.GetNext() != NULL);
   ++key_no;
 
-  if(key.isType(RECORD_TYPE_INDEX_OFFSETS))
-    key = file.end();
-  else if(!key.isType(RECORD_TYPE_KEY)) {
+  if (key.IsType(RECORD_TYPE_INDEX_OFFSETS)) {
+    key = file.Last();
+  } else if (!key.IsType(RECORD_TYPE_KEY)) {
     findNextOffsetTable(key);
   }
 }
 
 std::pair<Buffer,Buffer> ImmutableIndexIterator::operator * () {
   ASSERT_TRUE(offset_table != NULL);
-  ASSERT_TRUE(key.getRecord()->getType() == RECORD_TYPE_KEY);
-  SequentialFile::Record* key_rec = key.getRecord();
-  SequentialFile::Record* value_rec = file.at(offset_table[key_no]).getRecord();
+  ASSERT_TRUE(key.GetRecord()->getType() == RECORD_TYPE_KEY);
+  SequentialFile::Record* key_rec = key.GetRecord();
+  SequentialFile::Record* value_rec = file.at(offset_table[key_no]).GetRecord();
 
   return std::pair<Buffer,Buffer>(
     Buffer(key_rec->getPayload(), key_rec->getPayloadSize()),
@@ -147,14 +148,14 @@ bool ImmutableIndexIterator::operator == ( const ImmutableIndexIterator& other )
 }
 
 void ImmutableIndexIterator::findNextOffsetTable(SequentialFile::iterator it) {
-  while(it != file.end() && !it.isType(RECORD_TYPE_OFFSETS))
-    ++it;
+  while (it.GetNext() && !it.IsType(RECORD_TYPE_OFFSETS))
+    ;
 
-  if(it != file.end()) {
-    ASSERT_TRUE(it.getRecord()->getType() == RECORD_TYPE_OFFSETS);
-    offset_table = (offset_t*)it.getRecord()->getPayload();
-    ++it;
-    ASSERT_TRUE(it.getRecord()->getType() == RECORD_TYPE_KEY);
+  if (it.IsValid()) {
+    ASSERT_TRUE(it.GetRecord()->getType() == RECORD_TYPE_OFFSETS);
+    offset_table = (offset_t*)it.GetRecord()->getPayload();
+    it.GetNext();
+    ASSERT_TRUE(it.GetRecord()->getType() == RECORD_TYPE_KEY);
     key = it;
     key_no = 0;
   }

@@ -40,10 +40,10 @@ public:
 class StringSetOperation : public Serializable {
 public:
 	StringSetOperation() {}
-	StringSetOperation(const string& db, const string& key, const string& value)
-		: db(db), key(key), value(value) {}
-	StringSetOperation(const string& db, const string& key)
-		: db(db), key(key) {}
+	StringSetOperation(babudb::lsn_t lsn, const string& db, const string& key, const string& value)
+		: lsn(lsn), db(db), key(key), value(value) {}
+	StringSetOperation(babudb::lsn_t lsn, const string& db, const string& key)
+		: lsn(lsn), db(db), key(key) {}
 
 	virtual void ApplyTo(Database& target, lsn_t lsn) const {
 		if(value.empty())
@@ -53,22 +53,28 @@ public:
 	}
 
   size_t GetSize() const {
-    return 2 + db.size() + 1 + key.size() + 1 + value.size() + 1;
+    return sizeof(babudb::lsn_t) + 2 + db.size() + 1 + key.size() + 1 + value.size() + 1;
   }
 
   int GetType() const {
     return STRING_SET_OPERATION_TYPE; 
   }
 
+  babudb::lsn_t GetLSN() const {
+    return lsn;
+  }
+
 	/* serialize to the log */
 	virtual void Serialize(const Buffer& data) const {
+    memcpy((char*)data.data, &lsn, sizeof(babudb::lsn_t));
 		string out = string("s ") + db + ":" + key + "=" + value;
-		memcpy((char*)data.data, out.c_str(), out.size()+1);
+		memcpy((char*)data.data + sizeof(babudb::lsn_t), out.c_str(), out.size() + 1);
 	}
 
 	/* deserialize from the log */
 	void Deserialize(Buffer data) {
-		string op = (char*)data.data;
+    lsn = *(babudb::lsn_t*)data.data;
+		string op = (char*)data.data + sizeof(babudb::lsn_t);
 		size_t del1 = op.find_first_of(":");
 		size_t del2 = op.find_first_of("=");
 
@@ -78,6 +84,7 @@ public:
 	}
 
 	string db, key, value;
+  babudb::lsn_t lsn;
 };
 
 }
