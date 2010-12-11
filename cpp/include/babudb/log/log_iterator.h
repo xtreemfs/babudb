@@ -34,6 +34,7 @@ public:
     return record_iterator;
   }
   record_type_t GetType() const;
+  bool IsValid() const;
 
 private:
   LogIterator(const LogSectionIterator& current_section);

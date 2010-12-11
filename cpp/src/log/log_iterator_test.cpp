@@ -23,15 +23,21 @@ TEST_TMPDIR(LogIteratorEmptyLog,babudb)
     Log log(testPath("testlog"));
 
     Log::iterator i = log.First();	// try an empty log first
+    EXPECT_FALSE(i.IsValid());
     EXPECT_FALSE((bool)i.GetNext());
     EXPECT_FALSE((bool)i.GetNext());
+    EXPECT_FALSE(i.IsValid());
     EXPECT_FALSE((bool)i.GetPrevious());
     EXPECT_FALSE((bool)i.GetPrevious());
+    EXPECT_FALSE(i.IsValid());
     i = log.Last();
+    EXPECT_FALSE(i.IsValid());
     EXPECT_FALSE((bool)i.GetNext());
     EXPECT_FALSE((bool)i.GetNext());
+    EXPECT_FALSE(i.IsValid());
     EXPECT_FALSE((bool)i.GetPrevious());
     EXPECT_FALSE((bool)i.GetPrevious());
+    EXPECT_FALSE(i.IsValid());
   }
 }
 
@@ -61,51 +67,67 @@ TEST_TMPDIR(LogIterator,babudb)
     DummyOperation op(0);
     
     Log::iterator i = log.First();
+    EXPECT_FALSE(i.IsValid());
     EXPECT_TRUE(i.GetNext());
+    EXPECT_TRUE(i.IsValid());
     EXPECT_EQUAL(i.GetType(), DUMMY_OPERATION_TYPE);
     EXPECT_TRUE(op.Deserialize(*i).value == 'A');
     
     EXPECT_TRUE(i.GetNext());
+    EXPECT_TRUE(i.IsValid());
     EXPECT_EQUAL(i.GetType(), DUMMY_OPERATION_TYPE);
     EXPECT_TRUE(op.Deserialize(*i).value == 'B');
     
     EXPECT_TRUE(i.GetNext());
+    EXPECT_TRUE(i.IsValid());
     EXPECT_EQUAL(i.GetType(), DUMMY_OPERATION_TYPE);
     EXPECT_TRUE(op.Deserialize(*i).value == 'C');
     
     EXPECT_TRUE(i.GetNext());
+    EXPECT_TRUE(i.IsValid());
     EXPECT_EQUAL(i.GetType(), DUMMY_OPERATION_TYPE);
     EXPECT_TRUE(op.Deserialize(*i).value == 'D');
     
     EXPECT_FALSE((bool)i.GetNext());
+    EXPECT_FALSE(i.IsValid());
     EXPECT_FALSE((bool)i.GetNext());  // idempotent
+    EXPECT_FALSE(i.IsValid());
     
     EXPECT_TRUE(i.GetPrevious());
+    EXPECT_TRUE(i.IsValid());
     EXPECT_EQUAL(i.GetType(), DUMMY_OPERATION_TYPE);
     EXPECT_TRUE(op.Deserialize(*i).value == 'D');
 
     // now reverse
     i = log.Last();
+    EXPECT_FALSE(i.IsValid());
     EXPECT_TRUE(i.GetPrevious());
+    EXPECT_TRUE(i.IsValid());
     EXPECT_TRUE(i.GetType() != 0);
     EXPECT_TRUE(op.Deserialize(*i).value == 'D');
     
     EXPECT_TRUE(i.GetPrevious());
+    EXPECT_TRUE(i.IsValid());
     EXPECT_TRUE(i.GetType() != 0);
     EXPECT_TRUE(op.Deserialize(*i).value == 'C');
     
     EXPECT_TRUE(i.GetPrevious());
+    EXPECT_TRUE(i.IsValid());
     EXPECT_TRUE(i.GetType() != 0);
     EXPECT_TRUE(op.Deserialize(*i).value == 'B');
     
     EXPECT_TRUE(i.GetPrevious());
+    EXPECT_TRUE(i.IsValid());
     EXPECT_TRUE(i.GetType() != 0);
     EXPECT_TRUE(op.Deserialize(*i).value == 'A');
     
     EXPECT_FALSE((bool)i.GetPrevious());
+    EXPECT_FALSE(i.IsValid());
     EXPECT_FALSE((bool)i.GetPrevious());  // idempotent
+    EXPECT_FALSE(i.IsValid());
     
     EXPECT_TRUE(i.GetNext());
+    EXPECT_TRUE(i.IsValid());
     EXPECT_EQUAL(i.GetType(), DUMMY_OPERATION_TYPE);
     EXPECT_TRUE(op.Deserialize(*i).value == 'A');
 
@@ -124,7 +146,9 @@ TEST_TMPDIR(LogIteratorOneSectionAndErase,babudb)
   
   DummyOperation op(0);
   Log::iterator i = log.First();
+  EXPECT_FALSE(i.IsValid());
   EXPECT_TRUE(i.GetNext());
+  EXPECT_TRUE(i.IsValid());
   EXPECT_TRUE(i.GetNext());
   EXPECT_TRUE(op.Deserialize(*i).value == 'B');
 

@@ -61,6 +61,9 @@ Buffer LogIterator::GetPrevious() {
   }
 }
 
+bool LogIterator::IsValid() const {
+  return record_iterator.IsValid();
+}
 
 bool LogIterator::operator != (const LogIterator& other) const {
   return current_section != other.current_section || record_iterator != other.record_iterator;
