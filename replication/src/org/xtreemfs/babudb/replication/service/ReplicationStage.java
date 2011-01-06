@@ -18,8 +18,6 @@ import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.config.ReplicationConfig;
-import org.xtreemfs.babudb.interfaces.LSNRange;
-import org.xtreemfs.babudb.interfaces.LogEntries;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
@@ -36,7 +34,7 @@ import org.xtreemfs.foundation.LifeCycleThread;
 import org.xtreemfs.foundation.logging.Logging;
 
 import static org.xtreemfs.babudb.replication.service.logic.LogicID.*;
-import static org.xtreemfs.babudb.replication.transmission.dispatcher.ErrNo.*;
+import static org.xtreemfs.babudb.replication.transmission.ErrorCode.*;
 
 /**
  * Stage to perform {@link ReplicationManagerImpl}-{@link Operation}s on the slave.
@@ -60,7 +58,7 @@ public class ReplicationStage extends LifeCycleThread
      * Start of the range will always be the LSN of the last inserted 
      * {@link LogEntry}. End the last entry that was requested to be replicated.
      */
-    public LSNRange                             missing = null;
+    public Range                                missing = null;
     
     /** {@link LogicID} of the {@link Logic} currently used. */
     private LogicID                             logicID = BASIC;
@@ -100,7 +98,7 @@ public class ReplicationStage extends LifeCycleThread
      */
     public ReplicationStage(int max_q, Pacemaker pacemaker, SlaveView slaveView, 
             FileIOInterface fileIO, BabuDBInterface babuInterface, 
-            AtomicReference<LSN> lastOnView) {
+            AtomicReference<LSN> lastOnView, int maxChunkSize) {
         
         super("ReplicationStage");
 
@@ -125,7 +123,8 @@ public class ReplicationStage extends LifeCycleThread
                 babuInterface);
         logics.put(lg.getId(), lg);
         
-        lg = new LoadLogic(this, pacemaker, slaveView, fileIO, babuInterface);
+        lg = new LoadLogic(this, pacemaker, slaveView, fileIO, babuInterface, 
+                           maxChunkSize);
         logics.put(lg.getId(), lg);
     }
 
@@ -265,18 +264,13 @@ public class ReplicationStage extends LifeCycleThread
         
         this.listener = listener;
         
-        org.xtreemfs.babudb.interfaces.LSN start = 
-            new org.xtreemfs.babudb.interfaces.LSN(
-                    from.getViewId(), from.getSequenceNo());
-        
-        org.xtreemfs.babudb.interfaces.LSN end = 
-            new org.xtreemfs.babudb.interfaces.LSN(
+        LSN end = new LSN(
                     // we have to assume, that there is an entry following the
                     // state we would like to establish, because the request
                     // logic will always exclude the 'end' of this range
                     to.getViewId(), to.getSequenceNo() + 1L);
         
-        missing = new LSNRange(start, end);
+        missing = new Range(from, end);
         setLogic(REQUEST, "manually synchronization");
         
         // necessary to wake up the mechanism
@@ -316,12 +310,14 @@ public class ReplicationStage extends LifeCycleThread
     }
 
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.RequestManagement#enqueueOperation(java.lang.Object[])
+     * @see org.xtreemfs.babudb.replication.service.RequestManagement#
+     * enqueueOperation(java.lang.Object[])
      */
     public void enqueueOperation(Object[] args) throws BusyServerException {
         if (numRequests.incrementAndGet()>MAX_Q && MAX_Q != 0){
             numRequests.decrementAndGet();
-            throw new BusyServerException(getName()+": Operation could not be performed.");
+            throw new BusyServerException(getName()+": Operation could not " +
+            		"be performed.");
         } else if (quit) 
             throw new BusyServerException(getName()+": Shutting down.");
         q.add(new StageRequest(args));
@@ -352,9 +348,27 @@ public class ReplicationStage extends LifeCycleThread
         private static final long serialVersionUID = -167881170791343478L;
         int errNo;
         
+        public ConnectionLostException(int errorNumber) {
+            this.errNo = errorNumber;
+        }
+        
         public ConnectionLostException(String string, int errorNumber) {
             super("Connection to the participant is lost: " + string);
             this.errNo = errorNumber;
+        }
+    }
+    
+    /**
+     * @author flangner
+     * @since 01/05/2011
+     */
+    public static final class Range {
+        public final LSN start;
+        public final LSN end;
+        
+        public Range(LSN start, LSN end) {
+            this.start = start;
+            this.end = end;
         }
     }
 }

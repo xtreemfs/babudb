@@ -38,7 +38,6 @@ import java.net.SocketAddress;
 import java.util.Map;
 
 import org.xtreemfs.babudb.config.ReplicationConfig;
-import org.xtreemfs.babudb.pbrpc.ReplicationServiceClient;
 import org.xtreemfs.babudb.replication.Coinable;
 import org.xtreemfs.babudb.replication.Layer;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsVerification;
@@ -122,10 +121,10 @@ public class TransmissionLayer extends Layer implements ClientFactory,
      * getClient(java.net.SocketAddress)
      */
     @Override
-    public ReplicationServiceClient getClient(SocketAddress receiver) {
+    public PBRPCClientAdapter getClient(SocketAddress receiver) {
         assert (receiver instanceof InetSocketAddress);
         
-        return new ReplicationServiceClient(this.rpcClient, 
+        return new PBRPCClientAdapter(this.rpcClient, 
                 (InetSocketAddress) receiver);
     }
     

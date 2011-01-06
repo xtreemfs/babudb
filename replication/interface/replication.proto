@@ -25,12 +25,12 @@ service ReplicationService {
     option(proc_id)=2;
   };
   
-  rpc chunk(Chunk) returns(emptyResponse) {
+  rpc chunk(Chunk) returns(ErrorCodeResponse) {
     option(proc_id)=3;
     option(data_out)=true;
   };
   
-  rpc flease(FLease) returns(emptyResponse) {
+  rpc flease(FLease) returns(ErrorCodeResponse) {
     option(proc_id)=4;
     option(data_in)=true;
   };
@@ -44,11 +44,11 @@ service ReplicationService {
     option(data_out)=true;
   };
   
-  rpc heartbeat(LSN) returns(emptyResponse) {
+  rpc heartbeat(LSN) returns(ErrorCodeResponse) {
     option(proc_id)=7;
   };
   
-  rpc replicate(LSN) returns(emptyResponse) {
+  rpc replicate(LSN) returns(ErrorCodeResponse) {
     option(proc_id)=8;
     option(data_in)=true;
   };

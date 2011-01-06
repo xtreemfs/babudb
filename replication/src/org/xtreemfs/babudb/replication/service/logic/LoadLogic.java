@@ -11,30 +11,29 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.xtreemfs.babudb.api.exception.BabuDBException;
-import org.xtreemfs.babudb.interfaces.Chunk;
-import org.xtreemfs.babudb.interfaces.DBFileMetaData;
-import org.xtreemfs.babudb.interfaces.DBFileMetaDataSet;
-import org.xtreemfs.babudb.interfaces.LSNRange;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
+import org.xtreemfs.babudb.lsmdb.LSMDatabase.DBFileMetaData;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.service.Pacemaker;
 import org.xtreemfs.babudb.replication.service.ReplicationStage;
+import org.xtreemfs.babudb.replication.service.ReplicationStage.Range;
 import org.xtreemfs.babudb.replication.service.SlaveView;
 import org.xtreemfs.babudb.replication.service.ReplicationStage.ConnectionLostException;
+import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture;
+import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.ClientResponseAvailableListener;
 import org.xtreemfs.babudb.replication.service.clients.MasterClient;
+import org.xtreemfs.babudb.replication.transmission.ErrorCode;
 import org.xtreemfs.babudb.replication.transmission.FileIOInterface;
-import org.xtreemfs.babudb.replication.transmission.dispatcher.ErrNo;
+import org.xtreemfs.babudb.replication.transmission.PBRPCClientAdapter.ErrorCodeException;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
-import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
-import org.xtreemfs.foundation.oncrpc.client.RPCResponseAvailableListener;
-import org.xtreemfs.foundation.oncrpc.utils.ONCRPCException;
 
 import static org.xtreemfs.babudb.replication.service.logic.LogicID.*;
 
@@ -47,6 +46,8 @@ import static org.xtreemfs.babudb.replication.service.logic.LogicID.*;
 
 public class LoadLogic extends Logic {
     
+    private final int maxChunkSize;
+    
     /**
      * @param stage
      * @param pacemaker
@@ -56,8 +57,10 @@ public class LoadLogic extends Logic {
      */
     public LoadLogic(ReplicationStage stage, Pacemaker pacemaker, 
             SlaveView slaveView, FileIOInterface fileIO, 
-            BabuDBInterface babuInterface) {
+            BabuDBInterface babuInterface, int maxChunkSize) {
         super(stage, pacemaker, slaveView, fileIO, babuInterface);
+        
+        this.maxChunkSize = maxChunkSize;
     }
 
     /*
@@ -76,28 +79,24 @@ public class LoadLogic extends Logic {
     @Override
     public void run() throws ConnectionLostException, InterruptedException{
         LSN until = (stage.missing == null) ? 
-                new LSN(stage.lastInserted.getViewId()+1,0L) :
-                new LSN(stage.missing.getEnd());
+                new LSN(stage.lastInserted.getViewId()+1,0L) : 
+                    stage.missing.end;
                 
         MasterClient master = this.slaveView.getSynchronizationPartner(until);
         
         // make the request and get the result synchronously
         Logging.logMessage(Logging.LEVEL_INFO, stage, "Loading DB since %s from %s.", 
                 stage.lastInserted.toString(), master.getDefaultServerAddress().toString());
-        RPCResponse<DBFileMetaDataSet> rp = master.load(stage.lastInserted);
+        ClientResponseFuture<DBFileMetaDataSet> rp = master.load(stage.lastInserted);
         DBFileMetaDataSet result = null;
         try {
             result = rp.get();  
-        } catch (ONCRPCException e) {
+        } catch (ErrorCodeException e) {
             // connection is lost
-            int errNo = (e != null && e instanceof errnoException) ? 
-                    ((errnoException) e).getError_code() : ErrNo.UNKNOWN;
-            throw new ConnectionLostException(e.getTypeName()+": "+e.getMessage(),errNo);
+            throw new ConnectionLostException(e.getMessage(), e.getCode());
         } catch (IOException e) {
             // failure on transmission --> retry
-            throw new ConnectionLostException(e.getMessage(),ErrNo.UNKNOWN);
-        } finally {
-            if (rp!=null) rp.freeBuffers();
+            throw new ConnectionLostException(e.getMessage(),ErrorCode.UNKNOWN);
         }
         
         // switch log file by triggering a manual checkpoint, 
@@ -146,7 +145,7 @@ public class LoadLogic extends Logic {
         for (DBFileMetaData fileData : result) {
             
             // validate the informations
-            String fileName = fileData.getFileName();
+            final String fileName = fileData.file;
             String parentName = new File(fileName).getParentFile().getName();
             if (LSMDatabase.isSnapshotFilename(parentName)) {
                 if (lsn == null) 
@@ -159,8 +158,7 @@ public class LoadLogic extends Logic {
                     return;
                 }
             }
-            long fileSize = fileData.getFileSize();
-            long maxChunkSize = fileData.getMaxChunkSize();
+            long fileSize = fileData.size;
             
             // if we got an empty file, that cannot be right, so try again
             if (!(fileSize > 0L)) return;
@@ -176,69 +174,76 @@ public class LoadLogic extends Logic {
             // calculate chunks, request them and add them to the list
             long begin = 0L;
             for (long end = maxChunkSize; end < (fileSize+maxChunkSize); end += maxChunkSize) {
-                final Chunk chunk = new Chunk(fileName, begin, (end>fileSize) ? fileSize : end);
-                begin = end;
-                
+                                
                 // request the chunk
-                final RPCResponse<ReusableBuffer> chunkRp = master.chunk(chunk);       
-                chunkRp.registerListener(new RPCResponseAvailableListener<ReusableBuffer>() {
+                final long pos1 = begin;
+                final long size = (end > fileSize) ? fileSize : end;
+                final ClientResponseFuture<ReusableBuffer> chunkRp = 
+                    master.chunk(fileName, pos1, size);       
+                begin = end;
+                chunkRp.registerListener(new ClientResponseAvailableListener<ReusableBuffer>() {
                 
                     @Override
-                    public void responseAvailable(RPCResponse<ReusableBuffer> r) {
+                    public void responseAvailable(ReusableBuffer buffer) {
+                        // insert the chunk
+                        FileChannel fChannel = null;
                         try {
-                            // insert the chunk
-                            ReusableBuffer buffer = r.get();
-                            
-                            FileChannel fChannel = null;
-                            try {
-                                if (buffer.remaining() == 0){
-                                    Logging.logMessage(Logging.LEVEL_ERROR, this, 
-                                        "CHUNK ERROR: Empty buffer received!");
-                                    
-                                    stage.interrupt();
-                                }
-                                // insert the file input
-                                File f = fileIO.getFile(chunk);
-                                Logging.logMessage(Logging.LEVEL_INFO, this, 
-                                        "SAVING %s to %s.", chunk.toString(), 
-                                        f.getPath());
-                                
-                                assert (f.exists()) : 
-                                    "File was not created properly: " + 
-                                    chunk.toString();
-                                fChannel = new FileOutputStream(f).getChannel();
-                                fChannel.write(buffer.getBuffer(), 
-                                        chunk.getBegin());
-                            } finally {
-                                if (fChannel!=null) fChannel.close();
-                                if (buffer!=null) BufferPool.free(buffer);
-                            }
-                            
-                            // notify, if the last chunk was inserted
-                            synchronized (openChunks) {
-                                if (openChunks.get() != -1 && openChunks.
-                                        decrementAndGet() == 0) 
-                                    openChunks.notify();
-                            }
-                        } catch (Exception e) {
-                            if (e instanceof errnoException) {
-                                errnoException err = (errnoException) e;
-                                Logging.logMessage(Logging.LEVEL_ERROR, this,
-                                       "Chunk request (%s) failed: (%d) %s", 
-                                       chunk.toString(), err.getError_code(), 
-                                       err.getError_message());
-                            } else {
+                            if (buffer.remaining() == 0){
                                 Logging.logMessage(Logging.LEVEL_ERROR, this, 
-                                    "Chunk request (%s) failed: %s", 
-                                    chunk.toString(), e.getMessage());
+                                    "CHUNK ERROR: Empty buffer received!");
+                                
+                                stage.interrupt();
                             }
+                            // insert the file input
+                            File f = fileIO.getFile(fileName);
+                            Logging.logMessage(Logging.LEVEL_INFO, this, 
+                                    "SAVING %s to %s.", fileName, f.getPath());
                             
-                            synchronized (openChunks) {
-                                openChunks.set(-1);
-                                openChunks.notify();
-                            }
+                            assert (f.exists()) : "File '" + fileName + 
+                                    "' was not created properly.";
+                            fChannel = new FileOutputStream(f).getChannel();
+                            fChannel.write(buffer.getBuffer(), pos1);
+                        } catch (IOException e) {
+                            Logging.logMessage(Logging.LEVEL_ERROR, this, 
+                                    "Chunk request (%s,%d,%d) failed: %s", 
+                                    fileName, pos1, e.getMessage());
                         } finally {
-                            if (r!=null) r.freeBuffers();
+                            if (fChannel!=null) {
+                                try {
+                                    fChannel.close();
+                                } catch (IOException e) {
+                                    Logging.logError(Logging.LEVEL_ERROR, 
+                                            this, e);
+                                    
+                                }
+                            }
+                            if (buffer!=null) BufferPool.free(buffer);
+                        }
+                        
+                        // notify, if the last chunk was inserted
+                        synchronized (openChunks) {
+                            if (openChunks.get() != -1 && openChunks.
+                                    decrementAndGet() == 0) 
+                                openChunks.notify();
+                        }
+                    }
+
+                    @Override
+                    public void requestFailed(Exception e) {
+                        if (e instanceof ErrorCodeException) {
+                            ErrorCodeException err = (ErrorCodeException) e;
+                            Logging.logMessage(Logging.LEVEL_ERROR, this,
+                                   "Chunk request (%s,%d,%d) failed: (%d) %s", 
+                                   fileName, pos1, err.getCode());
+                        } else {
+                            Logging.logMessage(Logging.LEVEL_ERROR, this, 
+                                "Chunk request (%s,%d,%d) failed: %s", 
+                                fileName, pos1, e.getMessage());
+                        }
+                        
+                        synchronized (openChunks) {
+                            openChunks.set(-1);
+                            openChunks.notify();
                         }
                     }
                 });
@@ -276,13 +281,9 @@ public class LoadLogic extends Logic {
                 stage.lastInserted.getSequenceNo() + 1L);
 
         if (stage.missing != null && 
-            next.compareTo(new LSN(stage.missing.getEnd())) < 0) {
+            next.compareTo(stage.missing.end) < 0) {
             
-            stage.missing = new LSNRange(
-                    new org.xtreemfs.babudb.interfaces.LSN(
-                            stage.lastInserted.getViewId(),
-                            stage.lastInserted.getSequenceNo()), 
-                    stage.missing.getEnd());
+            stage.missing = new Range(stage.lastInserted, stage.missing.end);
             
             stage.setLogic(REQUEST, "There are still some logEntries " +
                     "missing after loading the database.");
@@ -292,6 +293,17 @@ public class LoadLogic extends Logic {
                     "Only the viewId changed, we can go on with the basicLogic.";
             stage.missing = null;
             stage.setLogic(BASIC, msg, loaded);
+        }
+    }
+    
+    public final static class DBFileMetaDataSet extends ArrayList<DBFileMetaData> {
+        private static final long serialVersionUID = -6430317150111369328L;
+        
+        final int chunkSize;
+        
+        public DBFileMetaDataSet(int chunkSize, Collection<DBFileMetaData> c) {
+            super(c);
+            this.chunkSize = chunkSize;
         }
     }
 }

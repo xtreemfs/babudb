@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -9,7 +9,7 @@ package org.xtreemfs.babudb.replication.service.operations;
 
 import java.net.InetSocketAddress;
 
-import org.xtreemfs.babudb.pbrpc.Common.emptyResponse;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.FLease;
 import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
 import org.xtreemfs.babudb.replication.FleaseMessageReceiver;
@@ -57,14 +57,16 @@ public class FleaseOperation extends Operation {
 
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
-     * parseRPCMessage(org.xtreemfs.babudb.replication.transmission.dispatcher.Request)
+     * parseRPCMessage(
+     *          org.xtreemfs.babudb.replication.transmission.dispatcher.Request)
      */
     @Override
     public ErrorResponse parseRPCMessage(Request rq) { 
         ErrorResponse resp = super.parseRPCMessage(rq);
-        if (resp == null) {
         
-            FleaseMessage message = new FleaseMessage(rq.getRpcRequest().getData());
+        if (resp == null) {
+            FleaseMessage message = new FleaseMessage(
+                    rq.getRpcRequest().getData());
             FLease rpcrq = (FLease) rq.getRequestMessage();
             assert (message != null);
             
@@ -75,28 +77,21 @@ public class FleaseOperation extends Operation {
             
             rq.setAttachment(message);
         }
+        rq.getRpcRequest().freeBuffers();
         // TODO where is rq.getRpcRequest().getData() freed?
+        
         return resp;
     }
 
     /*
      * (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.service.operations.Operation#
-     * startInternalEvent(java.lang.Object[])
-     */
-    @Override
-    public void startInternalEvent(Object[] args) {
-        throw new UnsupportedOperationException();
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#startRequest(org.xtreemfs.babudb.replication.Request)
+     * startRequest(org.xtreemfs.babudb.replication.Request)
      */
     @Override
     public void startRequest(final Request rq) {
 
         this.receiver.receive((FleaseMessage) rq.getAttachment());
-        rq.sendSuccess(emptyResponse.getDefaultInstance());
+        rq.sendSuccess(ErrorCodeResponse.getDefaultInstance());
     }
 }

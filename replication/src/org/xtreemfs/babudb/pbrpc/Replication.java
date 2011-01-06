@@ -247,12 +247,12 @@ public final class Replication {
       public abstract void chunk(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.GlobalTypes.Chunk request,
-          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done);
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done);
       
       public abstract void flease(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.GlobalTypes.FLease request,
-          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done);
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done);
       
       public abstract void localTime(
           com.google.protobuf.RpcController controller,
@@ -267,12 +267,12 @@ public final class Replication {
       public abstract void heartbeat(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request,
-          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done);
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done);
       
       public abstract void replicate(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request,
-          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done);
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done);
       
     }
     
@@ -299,7 +299,7 @@ public final class Replication {
         public  void chunk(
             com.google.protobuf.RpcController controller,
             org.xtreemfs.babudb.pbrpc.GlobalTypes.Chunk request,
-            com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done) {
+            com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done) {
           impl.chunk(controller, request, done);
         }
         
@@ -307,7 +307,7 @@ public final class Replication {
         public  void flease(
             com.google.protobuf.RpcController controller,
             org.xtreemfs.babudb.pbrpc.GlobalTypes.FLease request,
-            com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done) {
+            com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done) {
           impl.flease(controller, request, done);
         }
         
@@ -331,7 +331,7 @@ public final class Replication {
         public  void heartbeat(
             com.google.protobuf.RpcController controller,
             org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request,
-            com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done) {
+            com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done) {
           impl.heartbeat(controller, request, done);
         }
         
@@ -339,7 +339,7 @@ public final class Replication {
         public  void replicate(
             com.google.protobuf.RpcController controller,
             org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request,
-            com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done) {
+            com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done) {
           impl.replicate(controller, request, done);
         }
         
@@ -430,17 +430,17 @@ public final class Replication {
             case 1:
               return org.xtreemfs.babudb.pbrpc.GlobalTypes.DBFileMetaDatas.getDefaultInstance();
             case 2:
-              return org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance();
+              return org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance();
             case 3:
-              return org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance();
+              return org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance();
             case 4:
               return org.xtreemfs.babudb.pbrpc.GlobalTypes.Timestamp.getDefaultInstance();
             case 5:
               return org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntries.getDefaultInstance();
             case 6:
-              return org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance();
+              return org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance();
             case 7:
-              return org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance();
+              return org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -462,12 +462,12 @@ public final class Replication {
     public abstract void chunk(
         com.google.protobuf.RpcController controller,
         org.xtreemfs.babudb.pbrpc.GlobalTypes.Chunk request,
-        com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done);
+        com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done);
     
     public abstract void flease(
         com.google.protobuf.RpcController controller,
         org.xtreemfs.babudb.pbrpc.GlobalTypes.FLease request,
-        com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done);
+        com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done);
     
     public abstract void localTime(
         com.google.protobuf.RpcController controller,
@@ -482,12 +482,12 @@ public final class Replication {
     public abstract void heartbeat(
         com.google.protobuf.RpcController controller,
         org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request,
-        com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done);
+        com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done);
     
     public abstract void replicate(
         com.google.protobuf.RpcController controller,
         org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request,
-        com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done);
+        com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done);
     
     public static final
         com.google.protobuf.Descriptors.ServiceDescriptor
@@ -523,12 +523,12 @@ public final class Replication {
           return;
         case 2:
           this.chunk(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.Chunk)request,
-            com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.Common.emptyResponse>specializeCallback(
+            com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse>specializeCallback(
               done));
           return;
         case 3:
           this.flease(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.FLease)request,
-            com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.Common.emptyResponse>specializeCallback(
+            com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse>specializeCallback(
               done));
           return;
         case 4:
@@ -543,12 +543,12 @@ public final class Replication {
           return;
         case 6:
           this.heartbeat(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN)request,
-            com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.Common.emptyResponse>specializeCallback(
+            com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse>specializeCallback(
               done));
           return;
         case 7:
           this.replicate(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN)request,
-            com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.Common.emptyResponse>specializeCallback(
+            com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse>specializeCallback(
               done));
           return;
         default:
@@ -600,17 +600,17 @@ public final class Replication {
         case 1:
           return org.xtreemfs.babudb.pbrpc.GlobalTypes.DBFileMetaDatas.getDefaultInstance();
         case 2:
-          return org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance();
+          return org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance();
         case 3:
-          return org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance();
+          return org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance();
         case 4:
           return org.xtreemfs.babudb.pbrpc.GlobalTypes.Timestamp.getDefaultInstance();
         case 5:
           return org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntries.getDefaultInstance();
         case 6:
-          return org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance();
+          return org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance();
         case 7:
-          return org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance();
+          return org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -665,31 +665,31 @@ public final class Replication {
       public  void chunk(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.GlobalTypes.Chunk request,
-          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done) {
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done) {
         channel.callMethod(
           getDescriptor().getMethods().get(2),
           controller,
           request,
-          org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance(),
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance(),
           com.google.protobuf.RpcUtil.generalizeCallback(
             done,
-            org.xtreemfs.babudb.pbrpc.Common.emptyResponse.class,
-            org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance()));
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.class,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance()));
       }
       
       public  void flease(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.GlobalTypes.FLease request,
-          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done) {
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done) {
         channel.callMethod(
           getDescriptor().getMethods().get(3),
           controller,
           request,
-          org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance(),
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance(),
           com.google.protobuf.RpcUtil.generalizeCallback(
             done,
-            org.xtreemfs.babudb.pbrpc.Common.emptyResponse.class,
-            org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance()));
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.class,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance()));
       }
       
       public  void localTime(
@@ -725,31 +725,31 @@ public final class Replication {
       public  void heartbeat(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request,
-          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done) {
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done) {
         channel.callMethod(
           getDescriptor().getMethods().get(6),
           controller,
           request,
-          org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance(),
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance(),
           com.google.protobuf.RpcUtil.generalizeCallback(
             done,
-            org.xtreemfs.babudb.pbrpc.Common.emptyResponse.class,
-            org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance()));
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.class,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance()));
       }
       
       public  void replicate(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request,
-          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.Common.emptyResponse> done) {
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done) {
         channel.callMethod(
           getDescriptor().getMethods().get(7),
           controller,
           request,
-          org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance(),
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance(),
           com.google.protobuf.RpcUtil.generalizeCallback(
             done,
-            org.xtreemfs.babudb.pbrpc.Common.emptyResponse.class,
-            org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance()));
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.class,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance()));
       }
     }
     
@@ -769,12 +769,12 @@ public final class Replication {
           org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request)
           throws com.google.protobuf.ServiceException;
       
-      public org.xtreemfs.babudb.pbrpc.Common.emptyResponse chunk(
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse chunk(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.GlobalTypes.Chunk request)
           throws com.google.protobuf.ServiceException;
       
-      public org.xtreemfs.babudb.pbrpc.Common.emptyResponse flease(
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse flease(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.GlobalTypes.FLease request)
           throws com.google.protobuf.ServiceException;
@@ -789,12 +789,12 @@ public final class Replication {
           org.xtreemfs.babudb.pbrpc.GlobalTypes.LSNRange request)
           throws com.google.protobuf.ServiceException;
       
-      public org.xtreemfs.babudb.pbrpc.Common.emptyResponse heartbeat(
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse heartbeat(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request)
           throws com.google.protobuf.ServiceException;
       
-      public org.xtreemfs.babudb.pbrpc.Common.emptyResponse replicate(
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse replicate(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request)
           throws com.google.protobuf.ServiceException;
@@ -831,27 +831,27 @@ public final class Replication {
       }
       
       
-      public org.xtreemfs.babudb.pbrpc.Common.emptyResponse chunk(
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse chunk(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.GlobalTypes.Chunk request)
           throws com.google.protobuf.ServiceException {
-        return (org.xtreemfs.babudb.pbrpc.Common.emptyResponse) channel.callBlockingMethod(
+        return (org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse) channel.callBlockingMethod(
           getDescriptor().getMethods().get(2),
           controller,
           request,
-          org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance());
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance());
       }
       
       
-      public org.xtreemfs.babudb.pbrpc.Common.emptyResponse flease(
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse flease(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.GlobalTypes.FLease request)
           throws com.google.protobuf.ServiceException {
-        return (org.xtreemfs.babudb.pbrpc.Common.emptyResponse) channel.callBlockingMethod(
+        return (org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse) channel.callBlockingMethod(
           getDescriptor().getMethods().get(3),
           controller,
           request,
-          org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance());
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance());
       }
       
       
@@ -879,27 +879,27 @@ public final class Replication {
       }
       
       
-      public org.xtreemfs.babudb.pbrpc.Common.emptyResponse heartbeat(
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse heartbeat(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request)
           throws com.google.protobuf.ServiceException {
-        return (org.xtreemfs.babudb.pbrpc.Common.emptyResponse) channel.callBlockingMethod(
+        return (org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse) channel.callBlockingMethod(
           getDescriptor().getMethods().get(6),
           controller,
           request,
-          org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance());
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance());
       }
       
       
-      public org.xtreemfs.babudb.pbrpc.Common.emptyResponse replicate(
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse replicate(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request)
           throws com.google.protobuf.ServiceException {
-        return (org.xtreemfs.babudb.pbrpc.Common.emptyResponse) channel.callBlockingMethod(
+        return (org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse) channel.callBlockingMethod(
           getDescriptor().getMethods().get(7),
           controller,
           request,
-          org.xtreemfs.babudb.pbrpc.Common.emptyResponse.getDefaultInstance());
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance());
       }
       
     }
@@ -921,25 +921,25 @@ public final class Replication {
       "RemoteAccessService\022b\n\016makePersistent\022 ." +
       "org.xtreemfs.pbrpc.emptyRequest\032!.org.xt" +
       "reemfs.pbrpc.emptyResponse\"\013\215\265\030\001\000\000\000\240\265\030\001\032" +
-      "\007\225\265\030\021\'\000\0002\270\005\n\022ReplicationService\022K\n\005state" +
+      "\007\225\265\030\021\'\000\0002\310\005\n\022ReplicationService\022K\n\005state" +
       "\022 .org.xtreemfs.pbrpc.emptyRequest\032\027.org" +
       ".xtreemfs.pbrpc.LSN\"\007\215\265\030\001\000\000\000\022M\n\004load\022\027.o",
       "rg.xtreemfs.pbrpc.LSN\032#.org.xtreemfs.pbr" +
-      "pc.DBFileMetaDatas\"\007\215\265\030\002\000\000\000\022R\n\005chunk\022\031.o" +
-      "rg.xtreemfs.pbrpc.Chunk\032!.org.xtreemfs.p" +
-      "brpc.emptyResponse\"\013\215\265\030\003\000\000\000\230\265\030\001\022T\n\006fleas" +
-      "e\022\032.org.xtreemfs.pbrpc.FLease\032!.org.xtre" +
-      "emfs.pbrpc.emptyResponse\"\013\215\265\030\004\000\000\000\240\265\030\001\022U\n" +
-      "\tlocalTime\022 .org.xtreemfs.pbrpc.emptyReq" +
-      "uest\032\035.org.xtreemfs.pbrpc.Timestamp\"\007\215\265\030" +
-      "\005\000\000\000\022T\n\007replica\022\034.org.xtreemfs.pbrpc.LSN" +
-      "Range\032\036.org.xtreemfs.pbrpc.LogEntries\"\013\215",
-      "\265\030\006\000\000\000\230\265\030\001\022P\n\theartbeat\022\027.org.xtreemfs.p" +
-      "brpc.LSN\032!.org.xtreemfs.pbrpc.emptyRespo" +
-      "nse\"\007\215\265\030\007\000\000\000\022T\n\treplicate\022\027.org.xtreemfs" +
-      ".pbrpc.LSN\032!.org.xtreemfs.pbrpc.emptyRes" +
-      "ponse\"\013\215\265\030\010\000\000\000\240\265\030\001\032\007\225\265\030!N\000\000B\033\n\031org.xtree" +
-      "mfs.babudb.pbrpc"
+      "pc.DBFileMetaDatas\"\007\215\265\030\002\000\000\000\022V\n\005chunk\022\031.o" +
+      "rg.xtreemfs.pbrpc.Chunk\032%.org.xtreemfs.p" +
+      "brpc.ErrorCodeResponse\"\013\215\265\030\003\000\000\000\230\265\030\001\022X\n\006f" +
+      "lease\022\032.org.xtreemfs.pbrpc.FLease\032%.org." +
+      "xtreemfs.pbrpc.ErrorCodeResponse\"\013\215\265\030\004\000\000" +
+      "\000\240\265\030\001\022U\n\tlocalTime\022 .org.xtreemfs.pbrpc." +
+      "emptyRequest\032\035.org.xtreemfs.pbrpc.Timest" +
+      "amp\"\007\215\265\030\005\000\000\000\022T\n\007replica\022\034.org.xtreemfs.p" +
+      "brpc.LSNRange\032\036.org.xtreemfs.pbrpc.LogEn",
+      "tries\"\013\215\265\030\006\000\000\000\230\265\030\001\022T\n\theartbeat\022\027.org.xt" +
+      "reemfs.pbrpc.LSN\032%.org.xtreemfs.pbrpc.Er" +
+      "rorCodeResponse\"\007\215\265\030\007\000\000\000\022X\n\treplicate\022\027." +
+      "org.xtreemfs.pbrpc.LSN\032%.org.xtreemfs.pb" +
+      "rpc.ErrorCodeResponse\"\013\215\265\030\010\000\000\000\240\265\030\001\032\007\225\265\030!" +
+      "N\000\000B\033\n\031org.xtreemfs.babudb.pbrpc"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {

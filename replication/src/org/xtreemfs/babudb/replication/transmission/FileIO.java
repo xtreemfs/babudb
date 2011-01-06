@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -18,9 +18,8 @@ import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.DiskLogIterator;
 import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
+import org.xtreemfs.babudb.lsmdb.LSMDatabase.DBFileMetaData;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.pbrpc.GlobalTypes.Chunk;
-import org.xtreemfs.babudb.pbrpc.GlobalTypes.DBFileMetaData;
 import org.xtreemfs.foundation.util.FSUtils;
 
 /**
@@ -55,9 +54,9 @@ public class FileIO implements FileIOInterface {
  * Overridden methods
  */
     
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.transmission.FileIOInterface#getConfigFileLength()
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.FileIOInterface#
+     * getConfigFileMetaData()
      */
     @Override
     public DBFileMetaData getConfigFileMetaData() {        
@@ -66,19 +65,17 @@ public class FileIO implements FileIOInterface {
         
         long length = new File(path).length();
         
-        return DBFileMetaData.newBuilder()
-                .setFileName(path)
-                .setFileSize(length)
-                .setMaxChunkSize(this.configuration.getChunkSize()).build();
+        return new DBFileMetaData(path, length);
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.transmission.FileIOInterface#getFile(org.xtreemfs.babudb.interfaces.Chunk)
+     * @see org.xtreemfs.babudb.replication.transmission.FileIOInterface#
+     * getFile(java.lang.String)
      */
     @Override
-    public File getFile(Chunk chunk) throws IOException {
+    public File getFile(String fileName) throws IOException {
         
-        File chnk = new File(chunk.getFileName());
+        File chnk = new File(fileName);
         String fName = chnk.getName();
         String pName = chnk.getParentFile().getName();
         File result;
@@ -105,7 +102,8 @@ public class FileIO implements FileIOInterface {
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.transmission.FileIOInterface#getLogEntryIterator(org.xtreemfs.babudb.lsmdb.LSN)
+     * @see org.xtreemfs.babudb.replication.transmission.FileIOInterface#
+     * getLogEntryIterator(org.xtreemfs.babudb.lsmdb.LSN)
      */
     @Override
     public DiskLogIterator getLogEntryIterator(LSN from) 
@@ -114,7 +112,8 @@ public class FileIO implements FileIOInterface {
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.transmission.FileIOInterface#removeBackupFiles()
+     * @see org.xtreemfs.babudb.replication.transmission.FileIOInterface#
+     * removeBackupFiles()
      */
     @Override
     public void removeBackupFiles() {
@@ -128,7 +127,8 @@ public class FileIO implements FileIOInterface {
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.transmission.FileIOInterface#replayBackupFiles()
+     * @see org.xtreemfs.babudb.replication.transmission.FileIOInterface#
+     * replayBackupFiles()
      */
     @Override
     public void replayBackupFiles() throws IOException {
@@ -158,7 +158,8 @@ public class FileIO implements FileIOInterface {
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.transmission.FileIOInterface#backupFiles()
+     * @see org.xtreemfs.babudb.replication.transmission.FileIOInterface#
+     * backupFiles()
      */
     @Override
     public void backupFiles() throws IOException {

@@ -46,8 +46,8 @@ import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
 import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
+import org.xtreemfs.babudb.lsmdb.LSMDatabase.DBFileMetaData;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.pbrpc.GlobalTypes.DBFileMetaData;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
 
@@ -253,10 +253,7 @@ public class BabuDBInterface {
         
         for (Database db : getDBMan().getDatabaseList()) {
             result.addAll(
-                    ((DatabaseImpl) db).getLSMDB().getLastestSnapshotFiles(
-                            ((ReplicationConfig) this.dbs.getConfig())
-                                .getChunkSize())
-                         );
+                    ((DatabaseImpl) db).getLSMDB().getLastestSnapshotFiles());
         }
         
         return result;

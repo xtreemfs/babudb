@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -12,18 +12,15 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
-import org.xtreemfs.babudb.pbrpc.Common.emptyResponse;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.Chunk;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
+import org.xtreemfs.babudb.replication.transmission.ErrorCode;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
-import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestDispatcher;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
-import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.ErrorType;
-import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.RPCHeader.ErrorResponse;
-import org.xtreemfs.foundation.util.OutputUtils;
 
 import com.google.protobuf.Message;
 
@@ -53,17 +50,7 @@ public class ChunkOperation extends Operation {
     public Message getDefaultRequest() {
         return Chunk.getDefaultInstance();
     }
-
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#
-     * startInternalEvent(java.lang.Object[])
-     */
-    @Override
-    public void startInternalEvent(Object[] args) {
-        throw new UnsupportedOperationException();
-    }
-
+    
     /*
      * (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.service.operations.Operation#
@@ -89,16 +76,21 @@ public class ChunkOperation extends Operation {
             
             buffer.flip();
             payload = new ReusableBuffer(buffer);
-            rq.sendSuccess(emptyResponse.getDefaultInstance(), payload);
+            rq.sendSuccess(ErrorCodeResponse.getDefaultInstance(), payload);
             
         } catch (Exception e) {
-            // TODO fix exceptionhandling!
-            rq.sendReplicationException(ErrNo.FILE_UNAVAILABLE, 
-                    "The requested chunk ("+chunk.toString()+") is not" +
-                    " available anymore, because: "+e.getMessage(), e);
             
-            if (e.getMessage() == null) 
-                Logging.logError(Logging.LEVEL_INFO, this, e);
+            if (e.getMessage() == null) {
+                Logging.logError(Logging.LEVEL_WARN, this, e);
+            } else {
+                Logging.logMessage(Logging.LEVEL_INFO, this, 
+                        "The requested chunk (%s) is not" +
+                        " available anymore, because: %s", 
+                        chunk.toString(), e.getMessage());
+            }
+            rq.sendSuccess(
+                    ErrorCodeResponse.newBuilder().setErrorCode(
+                            ErrorCode.FILE_UNAVAILABLE).build());
         } finally {
             try {
                 if (channel != null) channel.close();

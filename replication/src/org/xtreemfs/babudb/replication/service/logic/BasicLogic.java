@@ -10,13 +10,13 @@ package org.xtreemfs.babudb.replication.service.logic;
 import java.util.concurrent.BlockingQueue;
 
 import org.xtreemfs.babudb.api.exception.BabuDBException;
-import org.xtreemfs.babudb.interfaces.LSNRange;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.service.Pacemaker;
 import org.xtreemfs.babudb.replication.service.ReplicationStage;
+import org.xtreemfs.babudb.replication.service.ReplicationStage.Range;
 import org.xtreemfs.babudb.replication.service.SlaveView;
 import org.xtreemfs.babudb.replication.service.StageRequest;
 import org.xtreemfs.babudb.replication.transmission.FileIOInterface;
@@ -86,19 +86,8 @@ public class BasicLogic extends Logic {
             return;
         } else if(!lsn.equals(expected)){
             // we missed one or more entries
-            
-            org.xtreemfs.babudb.interfaces.LSN start = 
-                new org.xtreemfs.babudb.interfaces.LSN(
-                        stage.lastInserted.getViewId(),
-                        stage.lastInserted.getSequenceNo());
-
-            org.xtreemfs.babudb.interfaces.LSN end =
-                new org.xtreemfs.babudb.interfaces.LSN(
-                        lsn.getViewId(), 
-                        lsn.getSequenceNo());
-            
             queue.add(op);
-            stage.missing = new LSNRange(start, end);
+            stage.missing = new Range(stage.lastInserted, lsn);
             stage.setLogic(REQUEST, "We missed some LogEntries from " +
                     stage.lastInserted.toString() + " to "+ lsn.toString() + 
                     ".");

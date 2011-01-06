@@ -1,5 +1,5 @@
-//automatically generated from replication.proto at Wed Nov 17 15:07:16 CET 2010
-//(c) 2010. See LICENSE file for details.
+//automatically generated from replication.proto at Wed Jan 05 14:46:41 CET 2011
+//(c) 2011. See LICENSE file for details.
 
 package org.xtreemfs.babudb.pbrpc;
 
@@ -36,12 +36,12 @@ public class ReplicationServiceConstants {
         switch (procId) {
            case 1: return GlobalTypes.LSN.getDefaultInstance();
            case 2: return GlobalTypes.DBFileMetaDatas.getDefaultInstance();
-           case 3: return null;
-           case 4: return null;
+           case 3: return GlobalTypes.ErrorCodeResponse.getDefaultInstance();
+           case 4: return GlobalTypes.ErrorCodeResponse.getDefaultInstance();
            case 5: return GlobalTypes.Timestamp.getDefaultInstance();
            case 6: return GlobalTypes.LogEntries.getDefaultInstance();
-           case 7: return null;
-           case 8: return null;
+           case 7: return GlobalTypes.ErrorCodeResponse.getDefaultInstance();
+           case 8: return GlobalTypes.ErrorCodeResponse.getDefaultInstance();
            default: throw new RuntimeException("unknown procedure id");
         }
     }

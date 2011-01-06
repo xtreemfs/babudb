@@ -1,5 +1,5 @@
-//automatically generated from replication.proto at Wed Nov 17 15:07:16 CET 2010
-//(c) 2010. See LICENSE file for details.
+//automatically generated from replication.proto at Wed Jan 05 14:46:41 CET 2011
+//(c) 2011. See LICENSE file for details.
 
 package org.xtreemfs.babudb.pbrpc;
 
@@ -49,28 +49,28 @@ public class ReplicationServiceClient {
          return load(server, authHeader, userCreds,msg);
     }
 
-    public RPCResponse chunk(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, GlobalTypes.Chunk input) throws IOException {
+    public RPCResponse<GlobalTypes.ErrorCodeResponse> chunk(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, GlobalTypes.Chunk input) throws IOException {
          if (server == null) server = defaultServer;
          if (server == null) throw new IllegalArgumentException("defaultServer must be set in constructor if you want to pass null as server in calls");
-         RPCResponse response = new RPCResponse(null);
+         RPCResponse<GlobalTypes.ErrorCodeResponse> response = new RPCResponse<GlobalTypes.ErrorCodeResponse>(GlobalTypes.ErrorCodeResponse.getDefaultInstance());
          client.sendRequest(server, authHeader, userCreds, 20001, 3, input, null, response, false);
          return response;
     }
 
-    public RPCResponse chunk(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, String file_name, long start, long end) throws IOException {
+    public RPCResponse<GlobalTypes.ErrorCodeResponse> chunk(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, String file_name, long start, long end) throws IOException {
          final GlobalTypes.Chunk msg = GlobalTypes.Chunk.newBuilder().setFileName(file_name).setStart(start).setEnd(end).build();
          return chunk(server, authHeader, userCreds,msg);
     }
 
-    public RPCResponse flease(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, GlobalTypes.FLease input, ReusableBuffer data) throws IOException {
+    public RPCResponse<GlobalTypes.ErrorCodeResponse> flease(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, GlobalTypes.FLease input, ReusableBuffer data) throws IOException {
          if (server == null) server = defaultServer;
          if (server == null) throw new IllegalArgumentException("defaultServer must be set in constructor if you want to pass null as server in calls");
-         RPCResponse response = new RPCResponse(null);
+         RPCResponse<GlobalTypes.ErrorCodeResponse> response = new RPCResponse<GlobalTypes.ErrorCodeResponse>(GlobalTypes.ErrorCodeResponse.getDefaultInstance());
          client.sendRequest(server, authHeader, userCreds, 20001, 4, input, data, response, false);
          return response;
     }
 
-    public RPCResponse flease(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, String host, int port, ReusableBuffer data) throws IOException {
+    public RPCResponse<GlobalTypes.ErrorCodeResponse> flease(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, String host, int port, ReusableBuffer data) throws IOException {
          final GlobalTypes.FLease msg = GlobalTypes.FLease.newBuilder().setHost(host).setPort(port).build();
          return flease(server, authHeader, userCreds,msg, data);
     }
@@ -101,28 +101,28 @@ public class ReplicationServiceClient {
          return replica(server, authHeader, userCreds,msg);
     }
 
-    public RPCResponse heartbeat(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, GlobalTypes.LSN input) throws IOException {
+    public RPCResponse<GlobalTypes.ErrorCodeResponse> heartbeat(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, GlobalTypes.LSN input) throws IOException {
          if (server == null) server = defaultServer;
          if (server == null) throw new IllegalArgumentException("defaultServer must be set in constructor if you want to pass null as server in calls");
-         RPCResponse response = new RPCResponse(null);
+         RPCResponse<GlobalTypes.ErrorCodeResponse> response = new RPCResponse<GlobalTypes.ErrorCodeResponse>(GlobalTypes.ErrorCodeResponse.getDefaultInstance());
          client.sendRequest(server, authHeader, userCreds, 20001, 7, input, null, response, false);
          return response;
     }
 
-    public RPCResponse heartbeat(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, int view_id, long sequence_no) throws IOException {
+    public RPCResponse<GlobalTypes.ErrorCodeResponse> heartbeat(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, int view_id, long sequence_no) throws IOException {
          final GlobalTypes.LSN msg = GlobalTypes.LSN.newBuilder().setViewId(view_id).setSequenceNo(sequence_no).build();
          return heartbeat(server, authHeader, userCreds,msg);
     }
 
-    public RPCResponse replicate(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, GlobalTypes.LSN input, ReusableBuffer data) throws IOException {
+    public RPCResponse<GlobalTypes.ErrorCodeResponse> replicate(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, GlobalTypes.LSN input, ReusableBuffer data) throws IOException {
          if (server == null) server = defaultServer;
          if (server == null) throw new IllegalArgumentException("defaultServer must be set in constructor if you want to pass null as server in calls");
-         RPCResponse response = new RPCResponse(null);
+         RPCResponse<GlobalTypes.ErrorCodeResponse> response = new RPCResponse<GlobalTypes.ErrorCodeResponse>(GlobalTypes.ErrorCodeResponse.getDefaultInstance());
          client.sendRequest(server, authHeader, userCreds, 20001, 8, input, data, response, false);
          return response;
     }
 
-    public RPCResponse replicate(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, int view_id, long sequence_no, ReusableBuffer data) throws IOException {
+    public RPCResponse<GlobalTypes.ErrorCodeResponse> replicate(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, int view_id, long sequence_no, ReusableBuffer data) throws IOException {
          final GlobalTypes.LSN msg = GlobalTypes.LSN.newBuilder().setViewId(view_id).setSequenceNo(sequence_no).build();
          return replicate(server, authHeader, userCreds,msg, data);
     }

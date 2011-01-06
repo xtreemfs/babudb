@@ -7,31 +7,28 @@
  */
 package org.xtreemfs.babudb.replication.service.operations;
 
-import org.xtreemfs.babudb.interfaces.LSN;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.stateRequest;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.stateResponse;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN;
+import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
 import org.xtreemfs.foundation.logging.Logging;
 
+import com.google.protobuf.Message;
+
 /**
- * {@link Operation} to request the latest {@link org.xtreemfs.babudb.lsmdb.LSN} 
- * on a {@link BabuDB} server.
+ * {@link Operation} to request the latest LSN at a {@link BabuDB} server.
  * 
  * @since 05/03/2009
  * @author flangner
  */
 
 public class StateOperation extends Operation {
-
-    private final int             procId;
     
     private final BabuDBInterface dbInterface;
     
     public StateOperation(BabuDBInterface dbInterface) {
         this.dbInterface = dbInterface;
-        this.procId = new stateRequest().getTag();
     }
 
     /*
@@ -40,28 +37,15 @@ public class StateOperation extends Operation {
      */
     @Override
     public int getProcedureId() {
-        return this.procId;
+        return ReplicationServiceConstants.PROC_ID_STATE;
     }
-
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#parseRPCMessage(org.xtreemfs.babudb.replication.Request)
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#getDefaultRequest()
      */
     @Override
-    public yidl.runtime.Object parseRPCMessage(Request rq) {
-        stateRequest rpcrq = new stateRequest();
-        rq.deserializeMessage(rpcrq);
-        
-        return null;
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#startInternalEvent(java.lang.Object[])
-     */
-    @Override
-    public void startInternalEvent(Object[] args) {
-        throw new UnsupportedOperationException("Not supported yet.");
+    public Message getDefaultRequest() {
+        return LSN.getDefaultInstance();
     }
 
     /*
@@ -73,15 +57,10 @@ public class StateOperation extends Operation {
         org.xtreemfs.babudb.lsmdb.LSN state = this.dbInterface.getState();
         Logging.logMessage(Logging.LEVEL_INFO, this, "StateOperation:" +
         		" reporting %s to %s.", state.toString(),
-        		rq.getRPCRequest().getClientIdentity().toString());
+        		rq.getRPCRequest().getSenderAddress().toString());
         
-        rq.sendSuccess(
-                new stateResponse(
-                        new LSN(
-                                state.getViewId(),
-                                state.getSequenceNo()
-                                )
-                        )
-                );
+        rq.sendSuccess(LSN.newBuilder().setViewId(
+                state.getViewId()).setSequenceNo(
+                state.getSequenceNo()).build());
     }
 }

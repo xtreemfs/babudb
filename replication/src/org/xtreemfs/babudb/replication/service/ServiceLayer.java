@@ -62,6 +62,8 @@ import org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates;
 import org.xtreemfs.babudb.replication.service.accounting.ReplicateResponse;
 import org.xtreemfs.babudb.replication.service.clients.ClientInterface;
+import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture;
+import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.ClientResponseAvailableListener;
 import org.xtreemfs.babudb.replication.service.clients.ConditionClient;
 import org.xtreemfs.babudb.replication.service.clients.MasterClient;
 import org.xtreemfs.babudb.replication.service.clients.SlaveClient;
@@ -83,8 +85,6 @@ import org.xtreemfs.foundation.TimeSync;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.flease.Flease;
 import org.xtreemfs.foundation.logging.Logging;
-import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
-import org.xtreemfs.foundation.oncrpc.client.RPCResponseAvailableListener;
 
 /**
  * Contains the service logic for all necessary operations used by the 
@@ -118,6 +118,8 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
     /** interface to the underlying layer */
     private final TransmissionToServiceInterface transmissionInterface;
         
+    private final int maxChunkSize;
+    
     /**
      * 
      * @param config
@@ -129,6 +131,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
     public ServiceLayer(ReplicationConfig config, BabuDBInterface babuDB,
             TransmissionToServiceInterface transLayer) throws IOException {
         
+        this.maxChunkSize = config.getChunkSize();
         this.transmissionInterface = transLayer;
         this.babuDBInterface = babuDB;
         
@@ -151,7 +154,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
         this.replicationStage = new ReplicationStage(
                 config.getBabuDBConfig().getMaxQueueLength(), 
                 this.heartbeatThread, this, transLayer.getFileIOInterface(), 
-                this.babuDBInterface, this.lastOnView);
+                this.babuDBInterface, this.lastOnView, maxChunkSize);
     }
     
 /*
@@ -180,29 +183,27 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
                     "BabuDB runs if it would be in non-replicated mode.");
         } else {  
             for (final SlaveClient slave : slaves) {
-                ((RPCResponse<Object>) slave.replicate(le.getLSN(), 
+                ((ClientResponseFuture<Object>) slave.replicate(le.getLSN(), 
                         payload.createViewBuffer())).registerListener(
-                                new RPCResponseAvailableListener<Object>() {
+                                new ClientResponseAvailableListener<Object>() {
                 
                     @Override
-                    public void responseAvailable(RPCResponse<Object> r) {
+                    public void responseAvailable(Object r) {
                         // evaluate the response
-                        try {
-                            r.get();
-                            participantsStates.requestFinished(slave);
-                        } catch (Exception e) {
-                            participantsStates.markAsDead(slave);
-                            result.decrementPermittedFailures();
-                            
-                            Logging.logMessage(Logging.LEVEL_INFO, this, 
-                                    "'%s' was marked as dead, because %s", 
-                                    slave.getDefaultServerAddress().toString(), 
-                                    e.getMessage());
-                            if (e.getMessage() == null)
-                                Logging.logError(Logging.LEVEL_DEBUG, this, e);
-                        } finally {
-                            if (r!=null) r.freeBuffers();
-                        }
+                        participantsStates.requestFinished(slave);
+                    }
+
+                    @Override
+                    public void requestFailed(Exception e) {
+                        participantsStates.markAsDead(slave);
+                        result.decrementPermittedFailures();
+                        
+                        Logging.logMessage(Logging.LEVEL_INFO, this, 
+                                "'%s' was marked as dead, because %s", 
+                                slave.getDefaultServerAddress().toString(), 
+                                e.getMessage());
+                        if (e.getMessage() == null)
+                            Logging.logError(Logging.LEVEL_DEBUG, this, e);
                     }
                 });
             }
@@ -564,7 +565,8 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
                 fileIO);
         result.put(op.getProcedureId(),op);
         
-        op = new LoadOperation(this.lastOnView, this.babuDBInterface, fileIO);
+        op = new LoadOperation(this.lastOnView, this.maxChunkSize, 
+                               this.babuDBInterface, fileIO);
         result.put(op.getProcedureId(),op);
         
         op = new ChunkOperation();
@@ -583,20 +585,21 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
      * @return the LSNs of the latest written LogEntries for the <code>babuDBs
      *         </code> that were available.
      */
-    @SuppressWarnings("unchecked")
     private Map<ClientInterface, LSN> getStates(List<ConditionClient> clients) {
         int numRqs = clients.size();
         Map<ClientInterface, LSN> result = 
             new HashMap<ClientInterface, LSN>();
-        RPCResponse<LSN>[] rps = new RPCResponse[numRqs];
+        
+        @SuppressWarnings("unchecked")
+        ClientResponseFuture<LSN>[] rps = new ClientResponseFuture[numRqs];
         
         // send the requests
         for (int i=0; i<numRqs; i++) {
-            rps[i] = (RPCResponse<LSN>) clients.get(i).state();
+            rps[i] = clients.get(i).state();
         }
         
         // get the responses
-        for (int i=0;i<numRqs;i++) {
+        for (int i = 0; i < numRqs; i++) {
             try{
                 LSN val = rps[i].get();
                 result.put(clients.get(i), val);
@@ -606,9 +609,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
                         clients.get(i), e.getMessage());
                 if (e.getMessage() == null)
                     Logging.logError(Logging.LEVEL_INFO, this, e);
-            } finally {
-                if (rps[i]!=null) rps[i].freeBuffers();
-            }
+            } 
         }
         
         return result;

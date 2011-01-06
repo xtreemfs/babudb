@@ -48,10 +48,8 @@ import org.xtreemfs.babudb.replication.service.clients.MasterClient;
 public interface ParticipantsOverview {
 
     /**
-     * This set will not change after {@link ParticipantsStates} 
-     * has been initialized.
-     * 
-     * @return a set of all available {@link ConditionClient}s.
+     * @return a list of all available {@link ConditionClient}s 
+     *         descending sorted by the last acknowledged LSN of their servers.
      */
     public List<ConditionClient> getConditionClients();
 

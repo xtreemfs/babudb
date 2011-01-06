@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -10,13 +10,14 @@ package org.xtreemfs.babudb.replication.service.accounting;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Vector;
 import java.util.Map.Entry;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
@@ -27,7 +28,7 @@ import org.xtreemfs.babudb.replication.service.clients.ConditionClient;
 import org.xtreemfs.babudb.replication.service.clients.MasterClient;
 import org.xtreemfs.babudb.replication.service.clients.SlaveClient;
 import org.xtreemfs.babudb.replication.transmission.ClientFactory;
-import org.xtreemfs.babudb.replication.transmission.client.Client;
+import org.xtreemfs.babudb.replication.transmission.PBRPCClientAdapter;
 import org.xtreemfs.foundation.TimeSync;
 import org.xtreemfs.foundation.logging.Logging;
 
@@ -52,19 +53,19 @@ public class ParticipantsStates implements ParticipantsOverview,
      * @since 05/03/2009
      * @author flangner
      */
-    private static final class State {
+    private static final class State implements Comparable<State>{
         long lastUpdate;
         boolean dead;
         LSN lastAcknowledged;
         int openRequests;
-        final Client client;
+        final PBRPCClientAdapter client;
         
         /**
          * initial state
          * 
          * @param client
          */
-        State(Client client) {
+        State(PBRPCClientAdapter client) {
             this.client = client;
             reset();
         }
@@ -77,6 +78,25 @@ public class ParticipantsStates implements ParticipantsOverview,
             dead = false;
             lastAcknowledged = new LSN(0,0L);
             openRequests = 0;
+        }
+        
+        /* (non-Javadoc)
+         * @see java.lang.Object#equals(java.lang.Object)
+         */
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof State && client.equals(((State) obj).client)) {
+                return true;
+            }
+            return false;
+        }
+        
+        /* (non-Javadoc)
+         * @see java.lang.Comparable#compareTo(java.lang.Object)
+         */
+        @Override
+        public int compareTo(State o) {
+            return lastAcknowledged.compareTo(o.lastAcknowledged);
         }
         
         /* (non-Javadoc)
@@ -317,7 +337,8 @@ public class ParticipantsStates implements ParticipantsOverview,
 
     /*
      * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview#getMaster()
+     * @see org.xtreemfs.babudb.replication.service.accounting.
+     *          ParticipantsOverview#getMaster()
      */
     @Override
     public MasterClient getMaster() {
@@ -325,7 +346,9 @@ public class ParticipantsStates implements ParticipantsOverview,
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.accounting.StatesManipulation#update(java.net.SocketAddress, org.xtreemfs.babudb.lsmdb.LSN, long)
+     * @see org.xtreemfs.babudb.replication.service.accounting.
+     *          StatesManipulation#update(java.net.SocketAddress, 
+     *                                    org.xtreemfs.babudb.lsmdb.LSN, long)
      */
     @Override
     public void update(SocketAddress participant, LSN acknowledgedLSN, 
@@ -386,7 +409,9 @@ public class ParticipantsStates implements ParticipantsOverview,
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.accounting.StatesManipulation#markAsDead(org.xtreemfs.babudb.replication.transmission.client.Client)
+     * @see org.xtreemfs.babudb.replication.service.accounting.
+     *          StatesManipulation#markAsDead(
+     *               org.xtreemfs.babudb.replication.transmission.client.Client)
      */
     @Override
     public void markAsDead(SlaveClient slave) {
@@ -411,7 +436,9 @@ public class ParticipantsStates implements ParticipantsOverview,
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.accounting.StatesManipulation#requestFinished(org.xtreemfs.babudb.replication.transmission.client.Client)
+     * @see org.xtreemfs.babudb.replication.service.accounting.
+     *          StatesManipulation#requestFinished(
+     *               org.xtreemfs.babudb.replication.transmission.client.Client)
      */
     @Override
     public void requestFinished(SlaveClient slave) {
@@ -430,17 +457,22 @@ public class ParticipantsStates implements ParticipantsOverview,
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview#getConditionClients()
+     * @see org.xtreemfs.babudb.replication.service.accounting.
+     *          ParticipantsOverview#getConditionClients()
      */
     @Override
     public List<ConditionClient> getConditionClients() {
-        List<ConditionClient> result = new Vector<ConditionClient>();
-        for (State s : stateTable.values()) result.add(s.client);
+        List<ConditionClient> result = new ArrayList<ConditionClient>();
+        List<State> states = new ArrayList<State>(stateTable.values());
+        Collections.sort(states);
+        Collections.reverse(states);
+        for (State s : states) result.add(s.client);
         return result;
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview#getByAddress(java.net.InetAddress)
+     * @see org.xtreemfs.babudb.replication.service.accounting.
+     *          ParticipantsOverview#getByAddress(java.net.InetAddress)
      */
     @Override
     public ConditionClient getByAddress(InetAddress address) {
@@ -448,7 +480,8 @@ public class ParticipantsStates implements ParticipantsOverview,
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.accounting.ParticipantsVerification#isMaster(java.net.SocketAddress)
+     * @see org.xtreemfs.babudb.replication.service.accounting.
+     *          ParticipantsVerification#isMaster(java.net.SocketAddress)
      */
     @Override
     public boolean isMaster(SocketAddress address) {
@@ -462,7 +495,8 @@ public class ParticipantsStates implements ParticipantsOverview,
     
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.accounting.ParticipantsVerification#isRegistered(java.net.SocketAddress)
+     * @see org.xtreemfs.babudb.replication.service.accounting.
+     *          ParticipantsVerification#isRegistered(java.net.SocketAddress)
      */
     @Override
     public boolean isRegistered(SocketAddress address) {

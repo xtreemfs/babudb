@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2010-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -41,15 +41,6 @@ public class LocalTimeOperation extends Operation {
     @Override
     public Message getDefaultRequest() {
         return null;
-    }
-    
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#startInternalEvent(java.lang.Object[])
-     */
-    @Override
-    public void startInternalEvent(Object[] args) {
-        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     /*

@@ -12,11 +12,11 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import org.xtreemfs.babudb.config.ReplicationConfig;
+import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture;
 import org.xtreemfs.babudb.replication.service.clients.ConditionClient;
 import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.TimeSync;
 import org.xtreemfs.foundation.logging.Logging;
-import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
 
 /**
  * Component that checks regularly the time-drift of all available replication
@@ -156,7 +156,7 @@ import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
             long end;
             long cTime;
             for (ConditionClient client : participants) {
-                RPCResponse<Long> rp = null;
+                ClientResponseFuture<Long> rp = null;
                 try {
                     start = TimeSync.getGlobalTime();
                     rp = client.time();
@@ -173,9 +173,7 @@ import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
                     Logging.logMessage(Logging.LEVEL_DEBUG, timer, 
                             "Local time of '%s' could not be fetched.", 
                             client.toString());
-                } finally {
-                    if (rp != null) rp.freeBuffers();
-                }
+                } 
             }
         }
     }

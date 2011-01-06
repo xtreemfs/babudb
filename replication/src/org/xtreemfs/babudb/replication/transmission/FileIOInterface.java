@@ -39,9 +39,8 @@ import org.xtreemfs.babudb.api.BabuDB;
 import org.xtreemfs.babudb.log.DiskLogIterator;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
+import org.xtreemfs.babudb.lsmdb.LSMDatabase.DBFileMetaData;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.pbrpc.GlobalTypes.Chunk;
-import org.xtreemfs.babudb.pbrpc.GlobalTypes.DBFileMetaData;
 
 /**
  * Interface for accessing files provided by {@link BabuDB}.
@@ -58,13 +57,13 @@ public interface FileIOInterface {
     public DBFileMetaData getConfigFileMetaData();
     
     /**
-     * Prepares the file to the given chunk.
+     * Prepares the file for transmitting its data.
      * 
-     * @param chunk
-     * @return the {@link File} to the given {@link Chunk}.
+     * @param fileName
+     * @return the {@link File} for the given fileName.
      * @throws IOException
      */
-    public File getFile(Chunk chunk) throws IOException;
+    public File getFile(String fileName) throws IOException;
     
     /**
      * @param from - {@link LSN} of the first {@link LogEntry} of this iterator.

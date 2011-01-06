@@ -13,11 +13,11 @@ package org.xtreemfs.babudb.replication.control;
 import java.net.InetSocketAddress;
 
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview;
+import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture;
 import org.xtreemfs.babudb.replication.service.clients.ConditionClient;
 import org.xtreemfs.foundation.flease.FleaseMessageSenderInterface;
 import org.xtreemfs.foundation.flease.comm.FleaseMessage;
 import org.xtreemfs.foundation.logging.Logging;
-import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
 
 /**
  * Interface for sending {@link FleaseMessage}s to a distinct receiver.
@@ -46,7 +46,7 @@ class FleaseMessageSender implements FleaseMessageSenderInterface {
         assert (c != null) : "could not retrieve client for " + 
                              recipient.toString();
         
-        RPCResponse<Object> rp = c.flease(message);
+        ClientResponseFuture<?> rp = c.flease(message);
         try {
             rp.get();
         } catch (Exception e) {
@@ -56,8 +56,6 @@ class FleaseMessageSender implements FleaseMessageSenderInterface {
                     message.toString(), recipient.toString(), e.getMessage());
             if (e.getMessage() == null) 
                 Logging.logError(Logging.LEVEL_DEBUG, this, e);
-        } finally {
-            if (rp != null) rp.freeBuffers();
         }
     }
 }

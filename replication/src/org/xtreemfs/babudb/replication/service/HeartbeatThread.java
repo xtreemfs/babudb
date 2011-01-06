@@ -11,11 +11,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview;
+import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture;
+import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.ClientResponseAvailableListener;
 import org.xtreemfs.babudb.replication.service.clients.ConditionClient;
 import org.xtreemfs.foundation.LifeCycleThread;
 import org.xtreemfs.foundation.logging.Logging;
-import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
-import org.xtreemfs.foundation.oncrpc.client.RPCResponseAvailableListener;
 
 /**
  * <p>Simple Thread for sending acknowledged {@link LSN}s to the master.</p>
@@ -110,25 +110,25 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
     /**
      * Sends a heartBeat message to the master.
      */
-    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @SuppressWarnings({ "unchecked"})
     private void processHeartbeat() {
         final ConditionClient c = this.pOverview.getMaster();
         if (c != null) {
-            c.heartbeat(latestLSN).registerListener(
-                    new RPCResponseAvailableListener() {
-            
+            ((ClientResponseFuture<Object>) c.heartbeat(latestLSN))
+                .registerListener(new ClientResponseAvailableListener<Object>() {
+              
                 @Override
-                public void responseAvailable(RPCResponse r) { 
-                    try {
-                        r.get();
-                    } catch (Throwable t) {
-                        Logging.logMessage(Logging.LEVEL_WARN, this, 
-                                "Heartbeat could not be send to %s, because %s", 
-                        	c.toString(), t.getMessage());
-                        Logging.logError(Logging.LEVEL_DEBUG, this, t);
-                    } finally {
-                        if (r!=null) r.freeBuffers(); 
-                    }
+                public void responseAvailable(Object r) { 
+                    Logging.logMessage(Logging.LEVEL_NOTICE, this, 
+                            "Heartbeat successfully send.");
+                }
+
+                @Override
+                public void requestFailed(Exception e) {
+                    Logging.logMessage(Logging.LEVEL_WARN, this, 
+                            "Heartbeat could not be send to %s, because %s", 
+                            c.toString(), e.getMessage());
+                    Logging.logError(Logging.LEVEL_DEBUG, this, e);
                 }
             });
         }

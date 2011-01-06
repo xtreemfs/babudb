@@ -46,8 +46,8 @@ public interface ClientFactory {
 
     /**
      * @param receiver
-     * @return the {@link ReplicationServiceClient}, an abstraction from the 
+     * @return the {@link PBRPCClientAdapter}, an abstraction from the 
      *         underlying RPC architecture.
      */
-    public ReplicationServiceClient getClient(SocketAddress receiver);
+    public PBRPCClientAdapter getClient(SocketAddress receiver);
 }

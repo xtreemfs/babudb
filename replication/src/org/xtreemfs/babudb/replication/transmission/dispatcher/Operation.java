@@ -39,8 +39,6 @@ public abstract class Operation {
      * @param rq the new request
      */
     public abstract void startRequest(Request rq);
-
-    public abstract void startInternalEvent(Object[] args);
     
     /**
      * @return an empty message of the type of expected request message. may be

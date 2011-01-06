@@ -13,9 +13,6 @@ import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
 import org.xtreemfs.babudb.api.exception.BabuDBException;
-import org.xtreemfs.babudb.interfaces.LSNRange;
-import org.xtreemfs.babudb.interfaces.LogEntries;
-import org.xtreemfs.babudb.interfaces.ReplicationInterface.errnoException;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.log.SyncListener;
@@ -23,15 +20,17 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.service.Pacemaker;
 import org.xtreemfs.babudb.replication.service.ReplicationStage;
+import org.xtreemfs.babudb.replication.service.ReplicationStage.Range;
 import org.xtreemfs.babudb.replication.service.SlaveView;
 import org.xtreemfs.babudb.replication.service.ReplicationStage.ConnectionLostException;
+import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture;
 import org.xtreemfs.babudb.replication.service.clients.MasterClient;
+import org.xtreemfs.babudb.replication.transmission.ErrorCode;
 import org.xtreemfs.babudb.replication.transmission.FileIOInterface;
-import org.xtreemfs.babudb.replication.transmission.dispatcher.ErrNo;
+import org.xtreemfs.babudb.replication.transmission.PBRPCClientAdapter.ErrorCodeException;
 import org.xtreemfs.foundation.buffer.BufferPool;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
-import org.xtreemfs.foundation.oncrpc.client.RPCResponse;
-import org.xtreemfs.foundation.oncrpc.utils.ONCRPCException;
 
 import static org.xtreemfs.babudb.replication.service.logic.LogicID.*;
 /**
@@ -75,16 +74,16 @@ public class RequestLogic extends Logic {
      */
     @Override
     public void run() throws InterruptedException, ConnectionLostException{
-        LSN lsnAtLeast = new LSN(stage.missing.getEnd());
+        LSN lsnAtLeast = stage.missing.end;
         
         Logging.logMessage(Logging.LEVEL_INFO, this, 
                 "Replica-range is missing: from %s to %s", 
-                new LSN(stage.missing.getStart()).toString(),
+                stage.missing.start.toString(),
                 lsnAtLeast.toString());
         
         // get the missing logEntries
-        RPCResponse<LogEntries> rp = null;    
-        LogEntries logEntries = null;
+        ClientResponseFuture<ReusableBuffer[]> rp = null;    
+        ReusableBuffer[] logEntries = null;
         
         
         MasterClient master = this.slaveView.getSynchronizationPartner(
@@ -94,11 +93,11 @@ public class RequestLogic extends Logic {
         		" retrieved from %s.", master.getDefaultServerAddress());
         
         try {
-            rp = master.replica(stage.missing);
-            logEntries = (LogEntries) rp.get();
+            rp = master.replica(stage.missing.start, stage.missing.end);
+            logEntries = rp.get();
             
             // enhancement if the request had detected a master-failover
-            if (logEntries.size() == 0) {
+            if (logEntries.length == 0) {
                 this.stage.lastOnView.set(this.babuInterface.getState());
                 this.babuInterface.checkpoint();
                 this.stage.lastInserted = this.babuInterface.getState();
@@ -106,13 +105,13 @@ public class RequestLogic extends Logic {
                 return;
             }
             
-            final AtomicInteger count = new AtomicInteger(logEntries.size());
+            final AtomicInteger count = new AtomicInteger(logEntries.length);
             // insert all logEntries
             LSN check = null;
-            for (org.xtreemfs.babudb.interfaces.LogEntry le : logEntries) {
+            for (ReusableBuffer le : logEntries) {
                 try {
                     final LogEntry logentry = 
-                        LogEntry.deserialize(le.getPayload(), this.checksum);
+                        LogEntry.deserialize(le, this.checksum);
                     final LSN lsn = logentry.getLSN();
                     
                     // assertion whether the received entry does match the order 
@@ -177,17 +176,12 @@ public class RequestLogic extends Logic {
             if (Thread.interrupted()) 
                 throw new InterruptedException("Replication was interrupted" +
                 		" after executing a replicaOperation.");
-        } catch (errnoException e) {
+        } catch (ErrorCodeException e) {
             // server-side error
-            throw new ConnectionLostException(e.getError_message(), 
-                                              e.getError_code());
-        } catch (ONCRPCException e) {
-            // remote failure (connection lost)
-            throw new ConnectionLostException(e.getTypeName() + ": " + 
-                                              e.getMessage(), ErrNo.UNKNOWN);
+            throw new ConnectionLostException(e.getCode());
         } catch (IOException ioe) {
             // failure on transmission (connection lost or request timed out)
-            throw new ConnectionLostException(ioe.getMessage(), ErrNo.BUSY);
+            throw new ConnectionLostException(ioe.getMessage(), ErrorCode.BUSY);
         } catch (LogEntryException lee) {
             // decoding failed --> retry with new range
             Logging.logError(Logging.LEVEL_WARN, this, lee);
@@ -195,17 +189,14 @@ public class RequestLogic extends Logic {
         } catch (BabuDBException be) {
             // the insert failed due an DB error
             Logging.logError(Logging.LEVEL_WARN, this, be);
-            stage.missing = new LSNRange(
-                    new org.xtreemfs.babudb.interfaces.LSN(
-                            stage.lastInserted.getViewId(),
-                            stage.lastInserted.getSequenceNo()), 
-                    stage.missing.getEnd());
+            stage.missing = new Range(stage.lastInserted, stage.missing.end);
             stage.setLogic(LOAD, be.getMessage());
         } finally {
-            if (rp!=null) rp.freeBuffers();
-            if (logEntries!=null) 
-                for (org.xtreemfs.babudb.interfaces.LogEntry le : logEntries) 
-                    if (le.getPayload()!=null) BufferPool.free(le.getPayload());
+            if (logEntries!=null) {
+                for (ReusableBuffer buf : logEntries) {
+                    if (buf != null) BufferPool.free(buf);
+                }
+            }
         }
     }
     
@@ -218,12 +209,9 @@ public class RequestLogic extends Logic {
         
         // we are still missing some entries (the request was too large)
         // update the missing entries
-        if (next.compareTo(new LSN (stage.missing.getEnd())) < 0) {
-            stage.missing = new LSNRange(
-                    new org.xtreemfs.babudb.interfaces.LSN(
-                            stage.lastInserted.getViewId(),
-                            stage.lastInserted.getSequenceNo()), 
-                    stage.missing.getEnd());
+        if (next.compareTo(stage.missing.end) < 0) {
+            stage.missing = new Range(stage.lastInserted, stage.missing.end); 
+
          // all went fine --> back to basic
         } else {
             stage.missing = null;

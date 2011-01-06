@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -8,7 +8,7 @@
 package org.xtreemfs.babudb.replication.service.operations;
 
 import org.xtreemfs.babudb.log.LogEntry;
-import org.xtreemfs.babudb.pbrpc.Common.emptyResponse;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN;
 import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
 import org.xtreemfs.babudb.replication.service.accounting.StatesManipulation;
@@ -16,6 +16,7 @@ import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates.Unk
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
 import org.xtreemfs.foundation.TimeSync;
+import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.ErrorType;
 import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.RPCHeader.ErrorResponse;
 
 import com.google.protobuf.Message;
@@ -60,16 +61,6 @@ public class HeartbeatOperation extends Operation {
     /*
      * (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.service.operations.Operation#
-     * startInternalEvent(java.lang.Object[])
-     */
-    @Override
-    public void startInternalEvent(Object[] args) {
-        throw new UnsupportedOperationException();
-    }
-
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#
      * startRequest(org.xtreemfs.babudb.replication.Request)
      */
     @Override
@@ -77,12 +68,17 @@ public class HeartbeatOperation extends Operation {
         LSN lsn = (LSN) rq.getRequestMessage();
         try {
             this.sManipulator.update(rq.getRPCRequest().getSenderAddress(), 
-                    lsn, TimeSync.getGlobalTime());
+                    new org.xtreemfs.babudb.lsmdb.LSN(lsn.getViewId(), 
+                                                      lsn.getSequenceNo()), 
+                    TimeSync.getGlobalTime());
             
-            rq.sendSuccess(emptyResponse.getDefaultInstance());
+            rq.sendSuccess(ErrorCodeResponse.getDefaultInstance());
         } catch (UnknownParticipantException e) {
-            rq.sendReplicationException(ErrNo.NO_ACCESS, "You are not allowed" +
-            		" to request that!");
+            
+            rq.sendError(ErrorResponse.newBuilder()
+                    .setErrorMessage("The sender address of the received " 
+                            + "request did not match any expected address.")
+                    .setErrorType(ErrorType.AUTH_FAILED).build());
         } 
     }
 }

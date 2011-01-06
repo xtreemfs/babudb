@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -9,7 +9,8 @@ package org.xtreemfs.babudb.replication.service.operations;
 
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN;
+import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.DBFileMetaData;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.DBFileMetaDatas;
 import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
@@ -35,10 +36,13 @@ public class LoadOperation extends Operation {
     
     private final FileIOInterface       fileIO;
     
-    public LoadOperation(AtomicReference<LSN> lastOnView, 
+    private final int                   maxChunkSize;
+    
+    public LoadOperation(AtomicReference<LSN> lastOnView, int maxChunkSize, 
             BabuDBInterface babuInterface, FileIOInterface fileIO) {
         
         this.fileIO = fileIO;
+        this.maxChunkSize = maxChunkSize;
         this.babuInterface = babuInterface;
         this.lastOnView = lastOnView;
     }
@@ -57,19 +61,9 @@ public class LoadOperation extends Operation {
      */
     @Override
     public Message getDefaultRequest() {
-        return LSN.getDefaultInstance();
+        return org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.getDefaultInstance();
     }
-
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#
-     * startInternalEvent(java.lang.Object[])
-     */
-    @Override
-    public void startInternalEvent(Object[] args) {
-        throw new UnsupportedOperationException();
-    }
-
+    
     /*
      * (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.service.operations.Operation#
@@ -77,7 +71,6 @@ public class LoadOperation extends Operation {
      */
     @Override
     public void startRequest(Request rq) {
-        DBFileMetaDatas.Builder result = DBFileMetaDatas.newBuilder();
         LSN request = (LSN) rq.getRequestMessage();
         
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "LOAD from %s, by %s", 
@@ -90,20 +83,32 @@ public class LoadOperation extends Operation {
             
             rq.sendSuccess(DBFileMetaDatas.getDefaultInstance());
         } else {
+            DBFileMetaDatas.Builder result = DBFileMetaDatas.newBuilder();
+            result.setMaxChunkSize(maxChunkSize);
+            
             synchronized (this.babuInterface.getDBModificationLock()) {
                 synchronized (this.babuInterface.getCheckpointerLock()) {
                     
                     // add the DB-structure-file metadata
-                    result.addDbFileMetadatas(
-                            this.fileIO.getConfigFileMetaData());
+                    result.addDbFileMetadatas(convert(
+                            this.fileIO.getConfigFileMetaData()));
                     
                     // add the latest snapshot files for every DB,
                     // if available
-                    result.addAllDbFileMetadatas(
-                            this.babuInterface.getAllSnapshotFiles());
+                    for (org.xtreemfs.babudb.lsmdb.LSMDatabase.DBFileMetaData md 
+                            : this.babuInterface.getAllSnapshotFiles()) {
+                        result.addDbFileMetadatas(convert(md));
+                    }
                 }
             }
             rq.sendSuccess(result.build());
         }
+    }
+    
+    private DBFileMetaData convert(
+            org.xtreemfs.babudb.lsmdb.LSMDatabase.DBFileMetaData metaData) {
+        return DBFileMetaData.newBuilder()
+                .setFileName(metaData.file)
+                .setFileSize(metaData.size).build();
     }
 }

@@ -94,24 +94,6 @@ public class Request {
             Logging.logError(Logging.LEVEL_ERROR, this, cause);
         }
     }
-    
-    public void sendReplicationException(int errno, String message) {
-        if (Logging.isDebug()) {
-            Logging.logMessage(Logging.LEVEL_DEBUG, Category.stage, this,
-                    "sending errno exception #"+errno);
-        }
-        rpcRequest.sendError(ErrorType.IO_ERROR, POSIXErrno.POSIX_ERROR_NONE, 
-                message);
-    }
-    
-    public void sendReplicationException(int errno, String message, Throwable t) {
-        if (Logging.isDebug()) {
-            Logging.logMessage(Logging.LEVEL_DEBUG, Category.stage, this,
-                    "sending errno exception #"+errno);
-        }
-        rpcRequest.sendError(ErrorType.IO_ERROR, POSIXErrno.POSIX_ERROR_NONE, 
-                message, OutputUtils.stackTraceToString(t));
-    }
 
     public void sendError(ErrorType type, String message) {
         if (Logging.isDebug()) {
