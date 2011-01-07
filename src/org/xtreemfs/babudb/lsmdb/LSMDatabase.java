@@ -17,11 +17,10 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBException.ErrorCode;
-import org.xtreemfs.babudb.index.ByteRangeComparator;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
-import org.xtreemfs.babudb.interfaces.DBFileMetaData;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.FSUtils;
@@ -479,12 +478,10 @@ public class LSMDatabase {
     }
     
     /**
-     * @param chunkSize
-     * 
      * @return a list of file details from snapshot files that can used to
      *         synchronize master and slave in replication.
      */
-    public ArrayList<DBFileMetaData> getLastestSnapshotFiles(int chunkSize) {
+    public ArrayList<DBFileMetaData> getLastestSnapshotFiles() {
         ArrayList<DBFileMetaData> result = new ArrayList<DBFileMetaData>();
         
         for (int index = 0; index < numIndices; index++) {
@@ -522,12 +519,12 @@ public class LSMDatabase {
                     if (snapshotDir.isDirectory()) {
                         for (File file : snapshotDir.listFiles()) {
                             result.add(new DBFileMetaData(databaseDir + File.separator + fName
-                                + File.separator + file.getName(), file.length(), chunkSize));
+                                + File.separator + file.getName(), file.length()));
                         }
                     } else {
                         // for compatibility with older versions of BabuDB
                         result.add(new DBFileMetaData(databaseDir + File.separator + fName, snapshotDir
-                                .length(), chunkSize));
+                                .length()));
                     }
                 }
             }
@@ -538,5 +535,22 @@ public class LSMDatabase {
     
     public int getDatabaseId() {
         return databaseId;
+    }
+    
+    
+    /**
+     * @author flangner
+     * @since 01/04/2011
+     */
+    public final static class DBFileMetaData {
+
+        public final String file;
+        
+        public final long size;
+        
+        public DBFileMetaData(String file, long size) {
+            this.file = file;
+            this.size = size;
+        }
     }
 }

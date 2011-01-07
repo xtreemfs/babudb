@@ -1,6 +1,0 @@
-module test
-{
-  module test2
-  {
-  };
-};

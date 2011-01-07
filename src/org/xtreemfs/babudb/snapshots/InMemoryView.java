@@ -13,9 +13,9 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Map.Entry;
 
-import org.xtreemfs.babudb.BabuDB;
-import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.BabuDB;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
 
 /**
@@ -33,10 +33,10 @@ public class InMemoryView implements BabuDBView {
     
     private SnapshotConfig        snap;
     
-    public InMemoryView(BabuDB babuDB, String dbName, SnapshotConfig snap, int[] snapIDs)
+    public InMemoryView(BabuDB babuDBImpl, String dbName, SnapshotConfig snap, int[] snapIDs)
         throws BabuDBException {
         
-        this.db = (DatabaseImpl) babuDB.getDatabaseManager().getDatabase(dbName);
+        this.db = (DatabaseImpl) babuDBImpl.getDatabaseManager().getDatabase(dbName);
         this.snap = snap;
         
         snapIDMap = new HashMap<Integer, Integer>();

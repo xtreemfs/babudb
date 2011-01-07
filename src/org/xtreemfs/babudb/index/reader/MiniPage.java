@@ -10,8 +10,8 @@ package org.xtreemfs.babudb.index.reader;
 
 import java.nio.ByteBuffer;
 
+import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.ByteRange;
-import org.xtreemfs.babudb.index.ByteRangeComparator;
 
 public abstract class MiniPage {
     

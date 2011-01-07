@@ -8,12 +8,14 @@
 
 package org.xtreemfs.babudb.lsmdb;
 
+import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
+
 
 /**
  *
  * @author bjko
  */
-public class BabuDBInsertGroup {
+public class BabuDBInsertGroup implements DatabaseInsertGroup {
 
     private final InsertRecordGroup rec;
     
@@ -28,16 +30,18 @@ public class BabuDBInsertGroup {
         return rec;
     }
     
-    /**
-     * Add a new insert operation to this group
-     * @param indexId the index in which the key-value pair is inserted
-     * @param key the key
-     * @param value the value data
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.lsmdb.InsertGroup#addInsert(int, byte[], byte[])
      */
+    @Override
     public void addInsert(int indexId, byte[] key, byte[] value) {
         rec.addInsert(indexId, key, value);
     }
     
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.lsmdb.InsertGroup#addDelete(int, byte[])
+     */
+    @Override
     public void addDelete(int indexId, byte[] key) {
         rec.addInsert(indexId, key, null);
     }

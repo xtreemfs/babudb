@@ -10,11 +10,11 @@ package org.xtreemfs.babudb.snapshots;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBRequest;
-import org.xtreemfs.babudb.BabuDBRequestResult;
-import org.xtreemfs.babudb.UserDefinedLookup;
-import org.xtreemfs.babudb.lsmdb.DatabaseRO;
+import org.xtreemfs.babudb.BabuDBRequestResultImpl;
+import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
+import org.xtreemfs.babudb.api.database.DatabaseRO;
+import org.xtreemfs.babudb.api.database.UserDefinedLookup;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 
 public class Snapshot implements DatabaseRO {
         
@@ -46,8 +46,9 @@ public class Snapshot implements DatabaseRO {
      * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#lookup(int, byte[], java.lang.Object)
      */
     @Override
-    public BabuDBRequestResult<byte[]> lookup(int indexId, byte[] key, Object context) {
-        BabuDBRequest<byte[]> result = new BabuDBRequest<byte[]>(context);
+    public DatabaseRequestResult<byte[]> lookup(int indexId, byte[] key, Object context) {
+        BabuDBRequestResultImpl<byte[]> result = 
+            new BabuDBRequestResultImpl<byte[]>(context);
         byte[] r;
         try {
             r = view.directLookup(indexId, key);
@@ -64,11 +65,12 @@ public class Snapshot implements DatabaseRO {
      * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#prefixLookup(int, byte[], java.lang.Object)
      */
     @Override
-    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> prefixLookup(int indexId, byte[] key,
+    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> prefixLookup(int indexId, byte[] key,
             Object context) {
         
-        BabuDBRequest<Iterator<Entry<byte[], byte[]>>> result = 
-            new BabuDBRequest<Iterator<Entry<byte[], byte[]>>>(context);
+        BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>> result = 
+            new BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>>(
+                    context);
         Iterator<Entry<byte[], byte[]>> r;
         try {
             r = view.directPrefixLookup(indexId, key, true);
@@ -81,11 +83,12 @@ public class Snapshot implements DatabaseRO {
     }
 
     @Override
-    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> reversePrefixLookup(int indexId, byte[] key,
+    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> reversePrefixLookup(int indexId, byte[] key,
             Object context) {
         
-        BabuDBRequest<Iterator<Entry<byte[], byte[]>>> result = 
-            new BabuDBRequest<Iterator<Entry<byte[], byte[]>>>(context);
+        BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>> result = 
+            new BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>>(
+                    context);
         Iterator<Entry<byte[], byte[]>> r;
         try {
             r = view.directPrefixLookup(indexId, key, false);
@@ -98,11 +101,11 @@ public class Snapshot implements DatabaseRO {
     }
     
     @Override
-    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> rangeLookup(int indexId, byte[] from,
+    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> rangeLookup(int indexId, byte[] from,
         byte[] to, Object context) {
         
-        BabuDBRequest<Iterator<Entry<byte[], byte[]>>> result = 
-            new BabuDBRequest<Iterator<Entry<byte[], byte[]>>>(context);
+        BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>> result = 
+            new BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>>(context);
         Iterator<Entry<byte[], byte[]>> r;
         try {
             r = view.directRangeLookup(indexId, from, to, true);
@@ -115,11 +118,12 @@ public class Snapshot implements DatabaseRO {
     }
 
     @Override
-    public BabuDBRequestResult<Iterator<Entry<byte[], byte[]>>> reverseRangeLookup(int indexId, byte[] from,
+    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> reverseRangeLookup(int indexId, byte[] from,
         byte[] to, Object context) {
 
-        BabuDBRequest<Iterator<Entry<byte[], byte[]>>> result = 
-            new BabuDBRequest<Iterator<Entry<byte[], byte[]>>>(context);
+        BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>> result = 
+            new BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>>(
+                    context);
         Iterator<Entry<byte[], byte[]>> r;
         try {
             r = view.directRangeLookup(indexId, from, to, false);
@@ -136,7 +140,7 @@ public class Snapshot implements DatabaseRO {
      * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#userDefinedLookup(org.xtreemfs.babudb.UserDefinedLookup, java.lang.Object)
      */
     @Override
-    public BabuDBRequestResult<Object> userDefinedLookup(UserDefinedLookup udl, Object context) {
+    public DatabaseRequestResult<Object> userDefinedLookup(UserDefinedLookup udl, Object context) {
         throw new UnsupportedOperationException();
     }
 

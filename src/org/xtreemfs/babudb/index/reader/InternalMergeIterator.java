@@ -12,8 +12,8 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Map.Entry;
 
+import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.ByteRange;
-import org.xtreemfs.babudb.index.ByteRangeComparator;
 
 /**
  * Merges an iterator for an in-memory overlay with an iterator for an on-disk

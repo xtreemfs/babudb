@@ -1,7 +1,0 @@
-module test
-{
-  struct TestStruct
-  {
-    int test_int;
-  };
-};

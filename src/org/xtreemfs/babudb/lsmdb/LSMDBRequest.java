@@ -8,8 +8,8 @@
 
 package org.xtreemfs.babudb.lsmdb;
 
-import org.xtreemfs.babudb.BabuDBRequest;
-import org.xtreemfs.babudb.UserDefinedLookup;
+import org.xtreemfs.babudb.BabuDBRequestResultImpl;
+import org.xtreemfs.babudb.api.database.UserDefinedLookup;
 import org.xtreemfs.babudb.lsmdb.LSMDBWorker.RequestOperation;
 
 /**
@@ -19,27 +19,27 @@ import org.xtreemfs.babudb.lsmdb.LSMDBWorker.RequestOperation;
  */
 public class LSMDBRequest<T> {
     
-    private final BabuDBRequest<T>  listener;
+    private final BabuDBRequestResultImpl<T>        listener;
     
-    private final LSMDatabase       database;
+    private final LSMDatabase                   database;
     
-    private final int               indexId;
+    private final int                           indexId;
     
-    private final RequestOperation  operation;
+    private final RequestOperation              operation;
     
-    private final InsertRecordGroup insertData;
+    private final InsertRecordGroup             insertData;
     
-    private final byte[]            lookupKey;
+    private final byte[]                        lookupKey;
     
-    private byte[]                  from;
+    private byte[]                              from;
     
-    private byte[]                  to;
+    private byte[]                              to;
     
-    private boolean                 ascending;
+    private boolean                             ascending;
     
-    private final UserDefinedLookup udLookup;
+    private final UserDefinedLookup             udLookup;
     
-    public LSMDBRequest(BabuDBRequest<T> listener) {
+    public LSMDBRequest(BabuDBRequestResultImpl<T> listener) {
         this.operation = RequestOperation.INSERT;
         this.listener = listener;
         this.udLookup = null;
@@ -49,7 +49,8 @@ public class LSMDBRequest<T> {
         this.database = null;
     }
     
-    public LSMDBRequest(LSMDatabase database, BabuDBRequest<T> listener, InsertRecordGroup insert) {
+    public LSMDBRequest(LSMDatabase database, BabuDBRequestResultImpl<T> listener, 
+            InsertRecordGroup insert) {
         this.operation = RequestOperation.INSERT;
         this.database = database;
         this.indexId = 0;
@@ -59,7 +60,8 @@ public class LSMDBRequest<T> {
         this.udLookup = null;
     }
     
-    public LSMDBRequest(LSMDatabase database, int indexId, BabuDBRequest<T> listener, byte[] key) {
+    public LSMDBRequest(LSMDatabase database, int indexId, 
+            BabuDBRequestResultImpl<T> listener, byte[] key) {
         this.operation = RequestOperation.LOOKUP;
         this.database = database;
         this.indexId = indexId;
@@ -69,8 +71,9 @@ public class LSMDBRequest<T> {
         this.udLookup = null;
     }
     
-    public LSMDBRequest(LSMDatabase database, int indexId, BabuDBRequest<T> listener, byte[] prefix,
-        boolean ascending) {
+    public LSMDBRequest(LSMDatabase database, int indexId, 
+            BabuDBRequestResultImpl<T> listener, byte[] prefix, 
+            boolean ascending) {
         this.operation = RequestOperation.PREFIX_LOOKUP;
         this.database = database;
         this.indexId = indexId;
@@ -81,7 +84,9 @@ public class LSMDBRequest<T> {
         this.ascending = ascending;
     }
     
-    public LSMDBRequest(LSMDatabase database, int indexId, BabuDBRequest<T> listener, byte[] from, byte[] to, boolean ascending) {
+    public LSMDBRequest(LSMDatabase database, int indexId, 
+            BabuDBRequestResultImpl<T> listener, byte[] from, byte[] to, 
+            boolean ascending) {
         this.operation = RequestOperation.RANGE_LOOKUP;
         this.database = database;
         this.indexId = indexId;
@@ -94,7 +99,8 @@ public class LSMDBRequest<T> {
         this.ascending = ascending;
     }
     
-    public LSMDBRequest(LSMDatabase database, BabuDBRequest<T> listener, UserDefinedLookup udLookup) {
+    public LSMDBRequest(LSMDatabase database, 
+            BabuDBRequestResultImpl<T> listener, UserDefinedLookup udLookup) {
         this.operation = RequestOperation.USER_DEFINED_LOOKUP;
         this.database = database;
         this.indexId = 0;
@@ -136,7 +142,7 @@ public class LSMDBRequest<T> {
         return ascending;
     }
     
-    public BabuDBRequest<T> getListener() {
+    public BabuDBRequestResultImpl<T> getListener() {
         return listener;
     }
     

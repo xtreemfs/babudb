@@ -9,10 +9,13 @@ package org.xtreemfs.babudb.config;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.List;
 import java.util.Properties;
+import java.util.Vector;
 
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.config.Config;
 
 /**
  * Reading configurations from the babuDB-config-file.
@@ -109,7 +112,17 @@ public class BabuDBConfig extends Config {
     protected int      mmapLimit;
     
     /**
-     * Crates a new BabuDB configuration.
+     * Paths for optionally plugins used by BabuDB.
+     */
+    protected List<String> pluginPaths;
+    
+    /**
+     * Paths for the configuration files of optionally plugins used by BabuDB.
+     */
+    protected List<String> pluginConfigPaths;
+    
+    /**
+     * Creates a new BabuDB configuration.
      * 
      * @param dbDir
      *            the directory in which persistent checkpoints are stored
@@ -181,7 +194,7 @@ public class BabuDBConfig extends Config {
     }
     
     /**
-     * Crates a new BabuDB configuration.
+     * Creates a new BabuDB configuration.
      * 
      * @param dbDir
      *            the directory in which persistent checkpoints are stored
@@ -253,7 +266,7 @@ public class BabuDBConfig extends Config {
     
     public void read() throws IOException {
         
-        this.debugLevel = readDebugLevel();
+        this.debugLevel = this.readOptionalDebugLevel();
         
         this.debugCategory = this.readOptionalString("babudb.debug.category", "all");
         
@@ -287,45 +300,24 @@ public class BabuDBConfig extends Config {
             System.getProperty("os.arch") != null && !System.getProperty("os.arch").endsWith("64"));
         
         this.mmapLimit = this.readOptionalInt("babudb.mmapLimit", -1);
-    }
-    
-    protected int readDebugLevel() {
-        String level = props.getProperty("debug.level");
-        if (level == null)
-            return Logging.LEVEL_WARN;
-        else {
-            
-            level = level.trim().toUpperCase();
-            
-            if (level.equals("EMERG")) {
-                return Logging.LEVEL_EMERG;
-            } else if (level.equals("ALERT")) {
-                return Logging.LEVEL_ALERT;
-            } else if (level.equals("CRIT")) {
-                return Logging.LEVEL_CRIT;
-            } else if (level.equals("ERR")) {
-                return Logging.LEVEL_ERROR;
-            } else if (level.equals("WARNING")) {
-                return Logging.LEVEL_WARN;
-            } else if (level.equals("NOTICE")) {
-                return Logging.LEVEL_NOTICE;
-            } else if (level.equals("INFO")) {
-                return Logging.LEVEL_INFO;
-            } else if (level.equals("DEBUG")) {
-                return Logging.LEVEL_DEBUG;
-            } else {
-                
-                try {
-                    int levelInt = Integer.valueOf(level);
-                    return levelInt;
-                } catch (NumberFormatException ex) {
-                    throw new RuntimeException("'" + level + "' is not a valid level name nor an integer");
-                }
-                
-            }
-            
+        
+        this.pluginPaths = new Vector<String>(); 
+        int count = 0;
+        String pluginPath = null;
+        while ((pluginPath = this.readOptionalString("plugin" + count++, null)) 
+                != null) {
+            this.pluginPaths.add(pluginPath);
         }
         
+        this.pluginConfigPaths = new Vector<String>(count);
+        for (int i = 0; i < count; i++) {
+            this.pluginConfigPaths.add(this.readOptionalString("pluginConfig"+i, 
+                    null));
+        }
+        
+        checkArgs(this.baseDir, this.dbLogDir, numThreads, maxLogfileSize, 
+                checkInterval, syncMode, pseudoSyncWait, maxQueueLength, 
+                compression, maxNumRecordsPerBlock, maxBlockFileSize, mmapLimit);
     }
     
     public int getDebugLevel() {
@@ -392,6 +384,14 @@ public class BabuDBConfig extends Config {
         return this.mmapLimit;
     }
     
+    public List<String> getPluginPaths() {
+        return this.pluginPaths;
+    }
+    
+    public List<String> getPluginConfigPaths() {
+        return this.pluginConfigPaths;
+    }
+ 
     public String toString() {
         StringBuffer buf = new StringBuffer();
         buf.append("############# CONFIGURATION #############\n");
@@ -410,7 +410,13 @@ public class BabuDBConfig extends Config {
         buf.append("#            mmap disabled: " + disableMMap + "\n");
         if (!disableMMap)
             buf.append("#               mmap limit: " + mmapLimit + "\n");
-        
+        int i = 0;
+        for (String pluginPath : pluginPaths) {
+            buf.append("#               plugin " + (i++) + ": " + pluginPath + 
+                    "\n");
+            buf.append("#               plugin config: " + 
+                    pluginConfigPaths.get(i) + "\n");
+        }
         return buf.toString();
     }
     
