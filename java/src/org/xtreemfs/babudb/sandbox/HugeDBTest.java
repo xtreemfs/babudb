@@ -9,13 +9,13 @@ package org.xtreemfs.babudb.sandbox;
 
 import java.io.IOException;
 
-import org.xtreemfs.babudb.BabuDB;
-import org.xtreemfs.babudb.BabuDBException;
 import org.xtreemfs.babudb.BabuDBFactory;
+import org.xtreemfs.babudb.api.BabuDB;
+import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
-import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
-import org.xtreemfs.babudb.lsmdb.Database;
 
 /**
  * 
@@ -27,7 +27,6 @@ public class HugeDBTest {
         
     private BabuDB             database;
     
-    @SuppressWarnings("unchecked")
     public HugeDBTest(String basedir) throws IOException, BabuDBException {
         
         // checkpoint every 1m and check every 1 min
@@ -46,7 +45,7 @@ public class HugeDBTest {
         for (;;) {
             
             final int numInGroup = (int) Math.round(Math.random() * 9) + 1;
-            final BabuDBInsertGroup ig = db.createInsertGroup();
+            final DatabaseInsertGroup ig = db.createInsertGroup();
             for (int i = 0; i < numInGroup; i++) {
                 final byte[] key = generateData(30);
                 final byte[] value = generateData(10000);

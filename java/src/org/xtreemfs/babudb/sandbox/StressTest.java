@@ -3,12 +3,12 @@ package org.xtreemfs.babudb.sandbox;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import org.xtreemfs.babudb.BabuDB;
 import org.xtreemfs.babudb.BabuDBFactory;
+import org.xtreemfs.babudb.api.BabuDB;
+import org.xtreemfs.babudb.api.DatabaseManager;
+import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
-import org.xtreemfs.babudb.lsmdb.Database;
-import org.xtreemfs.babudb.lsmdb.DatabaseManager;
 
 public class StressTest {
     

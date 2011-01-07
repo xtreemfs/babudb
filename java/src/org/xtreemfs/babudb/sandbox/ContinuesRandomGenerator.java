@@ -236,7 +236,7 @@ public class ContinuesRandomGenerator {
      * Precondition: RandomGenerator has to be initialized!
      * 
      * @param sequenceNo
-     * @return a random-generated {@link InsertGroup} for directInsert into the BabuDB, or null, if the requested call was a meta-operation.
+     * @return a random-generated {@link DatabaseInsertGroup} for directInsert into the BabuDB, or null, if the requested call was a meta-operation.
      * @throws Exception
      */
     public InsertGroup getInsertGroup(long sequenceNo) throws Exception{

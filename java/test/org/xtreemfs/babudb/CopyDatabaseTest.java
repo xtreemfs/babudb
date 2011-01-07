@@ -15,9 +15,10 @@ import junit.textui.TestRunner;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.xtreemfs.babudb.api.BabuDB;
+import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
-import org.xtreemfs.babudb.lsmdb.Database;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.FSUtils;
 

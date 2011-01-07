@@ -287,7 +287,7 @@ public class RandomGenerator {
      * Precondition: RandomGenerator has to be initialized!
      * 
      * @param lsn
-     * @return a random-generated {@link InsertGroup} for directInsert into the BabuDB.
+     * @return a random-generated {@link DatabaseInsertGroup} for directInsert into the BabuDB.
      * @throws Exception
      */
     public InsertGroup getInsertGroup(LSN lsn) throws Exception{
@@ -570,7 +570,7 @@ public class RandomGenerator {
     	}
     	
     	if (lastISG!=null){
-    		string += "Last InsertGroup:\n";
+    		string += "Last DatabaseInsertGroup:\n";
     		string += lastISG.toString();
     	}
     	

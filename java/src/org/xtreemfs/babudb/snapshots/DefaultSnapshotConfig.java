@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -22,7 +22,9 @@ import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
  * 
  */
 public class DefaultSnapshotConfig implements SnapshotConfig {
-    
+
+    private static final long serialVersionUID = -4976962150947558070L;
+
     private int[]                           indices;
     
     private String                          name;

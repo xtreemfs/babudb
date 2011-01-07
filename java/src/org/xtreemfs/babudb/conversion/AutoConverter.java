@@ -17,15 +17,17 @@ import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import org.xtreemfs.babudb.BabuDB;
-import org.xtreemfs.babudb.BabuDBException;
-import org.xtreemfs.babudb.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.BabuDBImpl;
+import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.config.BabuDBConfig;
-import org.xtreemfs.babudb.lsmdb.Database;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.logging.Logging.Category;
 import org.xtreemfs.foundation.util.FSUtils;
 import org.xtreemfs.foundation.util.OutputUtils;
+
+import static org.xtreemfs.babudb.BabuDBFactory.*;
 
 public class AutoConverter {
     
@@ -178,7 +180,7 @@ public class AutoConverter {
         
         if (!DBWriter.checkVersionSupport(dbVer))
             throw new BabuDBException(ErrorCode.IO_ERROR, "on-disk format (version " + dbVer
-                + ") is incompatible with this BabuDB release (version " + BabuDB.BABUDB_DB_FORMAT_VERSION
+                + ") is incompatible with this BabuDB release (version " + BABUDB_DB_FORMAT_VERSION
                 + "); no automatic conversion possible");
         
         else
@@ -243,7 +245,7 @@ public class AutoConverter {
         
     }
     
-    public static void completeConversion(BabuDB babuDB) throws BabuDBException {
+    public static void completeConversion(BabuDBImpl babuDB) throws BabuDBException {
         
         final File targetDir = new File(babuDB.getConfig().getBaseDir(), "/.conversion");
         

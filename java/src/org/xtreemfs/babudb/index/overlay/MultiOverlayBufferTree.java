@@ -11,7 +11,7 @@ package org.xtreemfs.babudb.index.overlay;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import org.xtreemfs.babudb.index.ByteRangeComparator;
+import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 
 public class MultiOverlayBufferTree extends MultiOverlayTree<byte[], byte[]> {
     

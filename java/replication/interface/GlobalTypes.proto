@@ -1,0 +1,59 @@
+package org.xtreemfs.pbrpc;
+option java_package="org.xtreemfs.babudb.pbrpc";
+import "share/foundation/include/Common.proto";
+import "share/foundation/include/PBRPC.proto";
+
+message ErrorCodeResponse {
+  optional fixed32 error_code = 1[default = 0];
+}
+
+message Timestamp {
+  optional fixed32 error_code = 1[default = 0];
+  optional fixed64 value = 2[default = 0];
+}
+
+message DBFileMetaData {
+  required string file_name = 1;
+  required fixed64 file_size = 2;
+}
+
+message DBFileMetaDatas {
+  optional fixed32 error_code = 1[default = 0];
+  optional fixed32 max_chunk_size = 2[default = 5242880];
+  repeated DBFileMetaData db_file_metadatas = 3;
+}
+
+message LogEntry {
+  required fixed64 length = 1;
+}
+
+message LogEntries {
+  optional fixed32 error_code = 1[default = 0];
+  repeated LogEntry log_entries = 2;
+}
+
+message LSN {
+  required fixed32 view_id = 1;
+  required fixed64 sequence_no = 2;
+}
+
+message Chunk {
+  required string file_name = 1;
+  required fixed64 start = 2;
+  required fixed64 end = 3;
+}
+
+message LSNRange {
+  required LSN start = 1;
+  required LSN end = 2;
+}
+
+message InetAddress {
+  required string host = 1;
+  required fixed32 port = 2;
+}
+
+message FLease {
+  required string host = 1;
+  required fixed32 port = 2;
+}

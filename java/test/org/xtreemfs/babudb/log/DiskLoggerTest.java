@@ -55,7 +55,7 @@ public class DiskLoggerTest extends TestCase {
     @Before
     public void setUp() throws IOException {
         FSUtils.delTree(new File(testdir));
-        l = new DiskLogger(testdir, 1, 1, SyncMode.FSYNC, 0, 0, null);
+        l = new DiskLogger(testdir, 1, 1, SyncMode.FSYNC, 0, 0);
         l.start();
     }
     
@@ -315,7 +315,7 @@ public class DiskLoggerTest extends TestCase {
         
         // restart the disk logger and append new log entries
         l.shutdown();
-        l = new DiskLogger(testdir, 1, 200, SyncMode.FSYNC, 0, 0, null);
+        l = new DiskLogger(testdir, 1, 200, SyncMode.FSYNC, 0, 0);
         l.start();
         
         e = null;

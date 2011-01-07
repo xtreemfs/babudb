@@ -18,11 +18,10 @@ import junit.textui.TestRunner;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.xtreemfs.babudb.api.BabuDB;
+import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
-import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
-import org.xtreemfs.babudb.lsmdb.Database;
-import org.xtreemfs.babudb.lsmdb.LSMLookupInterface;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.FSUtils;
 
@@ -59,7 +58,7 @@ public class BackupTest extends TestCase {
     
     @Test
     public void testConsistentWithSingleDB() throws Exception {
-        BabuDB database = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(origDir, origDir, 1, 0, 0,
+        BabuDB database = BabuDBFactory.createBabuDB(new BabuDBConfig(origDir, origDir, 1, 0, 0,
             SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
         
         Database db = database.getDatabaseManager().createDatabase("test", numIndices);
@@ -77,7 +76,7 @@ public class BackupTest extends TestCase {
         System.out.println("Creating backup database...");
         database.getDatabaseManager().dumpAllDatabases(backupDir);
               
-        BabuDB babuBackup = (BabuDB) BabuDBFactory.createBabuDB(new BabuDBConfig(backupDir, backupDir, 1, 0, 0,
+        BabuDB babuBackup = BabuDBFactory.createBabuDB(new BabuDBConfig(backupDir, backupDir, 1, 0, 0,
         		SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
         
         Database backupDB = babuBackup.getDatabaseManager().getDatabase("test");
