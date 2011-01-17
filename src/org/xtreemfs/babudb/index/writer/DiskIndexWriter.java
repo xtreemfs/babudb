@@ -211,6 +211,7 @@ public class DiskIndexWriter {
         Iterator<Object> it = serializedBuf.iterator();
         while (it.hasNext())
             bytesWritten += writeBuffer(out, it.next());
+                
         assert (bytesWritten == serializedBuf.size());
         
         out.close();

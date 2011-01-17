@@ -31,12 +31,12 @@ public final class BabuDBFactory {
     /**
      * Version (name)
      */
-    public static final String           BABUDB_VERSION           = "0.5";
+    public static final String BABUDB_VERSION           = "0.5.0";
     
     /**
      * Version of the DB on-disk format (to detect incompatibilities).
      */
-    public static final int              BABUDB_DB_FORMAT_VERSION = 4;
+    public static final int    BABUDB_DB_FORMAT_VERSION = 4;
     
     /**
      * Initializes a new BabuDB instance.
@@ -45,8 +45,7 @@ public final class BabuDBFactory {
      *            the configuration
      * @throws BabuDBException
      */
-    public final static BabuDB createBabuDB(BabuDBConfig configuration) 
-            throws BabuDBException {       
+    public final static BabuDB createBabuDB(BabuDBConfig configuration) throws BabuDBException {
         return createBabuDB(configuration, null);
     }
     
@@ -58,8 +57,8 @@ public final class BabuDBFactory {
      * @param staticInit
      * @throws BabuDBException
      */
-    public final static BabuDB createBabuDB(BabuDBConfig configuration, 
-            StaticInitialization staticInit) throws BabuDBException {
+    public final static BabuDB createBabuDB(BabuDBConfig configuration, StaticInitialization staticInit)
+        throws BabuDBException {
         
         BabuDBInternal babuDB = new BabuDBImpl(configuration);
         
@@ -67,24 +66,19 @@ public final class BabuDBFactory {
          * initialize the logger
          */
         Logging.start(configuration.getDebugLevel());
-        Logging.logMessage(Logging.LEVEL_INFO, babuDB, 
-                "BabuDB %s", BABUDB_VERSION);
-        Logging.logMessage(Logging.LEVEL_INFO, babuDB, 
-                "\n%s", configuration.toString());
+        Logging.logMessage(Logging.LEVEL_INFO, babuDB, "BabuDB %s", BABUDB_VERSION);
+        Logging.logMessage(Logging.LEVEL_INFO, babuDB, "\n%s", configuration.toString());
         
         /*
          * run automatic database conversion if necessary
          */
         if (babuDB.getDBConfigFile().isConversionRequired()) {
-            Logging.logMessage(Logging.LEVEL_WARN, Category.storage, babuDB, 
-                      "The database version is outdated. The database will be "
+            Logging.logMessage(Logging.LEVEL_WARN, Category.storage, babuDB,
+                "The database version is outdated. The database will be "
                     + "automatically converted to the latest version if "
-                    + "possible. This may take some time, depending on the " 
-                    + "size.");
-                
-            AutoConverter.initiateConversion(
-                    babuDB.getDBConfigFile().getDBFormatVersion(), 
-                    configuration);
+                    + "possible. This may take some time, depending on the " + "size.");
+            
+            AutoConverter.initiateConversion(babuDB.getDBConfigFile().getDBFormatVersion(), configuration);
         }
         
         /*
@@ -93,8 +87,7 @@ public final class BabuDBFactory {
         try {
             babuDB = PluginLoader.init(babuDB);
         } catch (IOException e) {
-            throw new BabuDBException(ErrorCode.BROKEN_PLUGIN, e.getMessage(), 
-                    e.getCause());
+            throw new BabuDBException(ErrorCode.BROKEN_PLUGIN, e.getMessage(), e.getCause());
         }
         
         /*

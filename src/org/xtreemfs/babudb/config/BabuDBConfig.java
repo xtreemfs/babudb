@@ -15,7 +15,6 @@ import java.util.Vector;
 
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.foundation.logging.Logging;
-import org.xtreemfs.foundation.config.Config;
 
 /**
  * Reading configurations from the babuDB-config-file.

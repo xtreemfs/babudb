@@ -204,8 +204,10 @@ public class CompressedBlockReader extends BlockReader {
                     final ByteRange value = values.getEntry(currentIndex);
                     
                     {
+                        // attach the buffer to the last key-value pair, so that
+                        // it can be freed automatically
                         boolean last = !(ascending ? currentIndex < endIndex : currentIndex > startIndex);
-                        if(last)
+                        if (last)
                             value.setReusableBuf(readBuffer);
                     }
                     

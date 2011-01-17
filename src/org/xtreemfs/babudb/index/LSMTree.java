@@ -403,9 +403,13 @@ public class LSMTree {
      *             if an I/O error occurs while writing the snapshot
      */
     public void materializeSnapshot(String targetFile, int snapId) throws IOException {
+        
         DiskIndexWriter writer = new DiskIndexWriter(targetFile, maxEntriesPerBlock, compressed,
             maxBlockFileSize);
-        writer.writeIndex(internalPrefixLookup(null, snapId, true));
+        
+        InternalMergeIterator it = internalPrefixLookup(null, snapId, true);
+        writer.writeIndex(it);
+        it.free();
     }
     
     /**
@@ -424,6 +428,7 @@ public class LSMTree {
      */
     public void materializeSnapshot(String targetFile, final int snapId, final int indexId,
         final SnapshotConfig snap) throws IOException {
+        
         DiskIndexWriter writer = new DiskIndexWriter(targetFile, maxEntriesPerBlock, compressed,
             maxBlockFileSize);
         writer.writeIndex(new ResultSet<Object, Object>() {

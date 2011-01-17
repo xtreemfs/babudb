@@ -190,7 +190,7 @@ public class DiskLogger extends Thread {
         sync = new ReentrantLock();
 
         final String sMode = (pseudoSyncWait == 0) ? "synchronous" : "asynchronous";
-        Logging.logMessage(Logging.LEVEL_INFO, this,"BabuDB disk logger is in "+sMode+" mode");
+        //Logging.logMessage(Logging.LEVEL_INFO, this,"BabuDB disk logger is in "+sMode+" mode");
         Logging.logMessage(Logging.LEVEL_INFO, this,"BabuDB disk logger writes log file with "+syncMode);
     }
 
