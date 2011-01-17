@@ -26,7 +26,9 @@ import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.LSMLookupInterface;
+import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging.Category;
 import org.xtreemfs.foundation.util.FSUtils;
 
 /**
@@ -277,8 +279,10 @@ public class BabuDBTest extends TestCase {
     @Test
     public void testDirectAccess() throws Exception {
         
+        Logging.logMessage(Logging.LEVEL_DEBUG, Category.test, this, BufferPool.getStatus());
+        
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0,
-            SyncMode.ASYNC, 0, 0, compression, maxNumRecs, maxBlockFileSize), null);
+            SyncMode.ASYNC, 0, 50, compression, maxNumRecs, maxBlockFileSize), null);
         Database db = database.getDatabaseManager().createDatabase("test", 2);
         
         for (int i = 0; i < 100000; i++) {
@@ -287,6 +291,8 @@ public class BabuDBTest extends TestCase {
             ir.addInsert(1, (i + "").getBytes(), "bla".getBytes());
             db.insert(ir, null).get();
         }
+        
+        Logging.logMessage(Logging.LEVEL_DEBUG, Category.test, this, BufferPool.getStatus());
         
         database.getCheckpointer().checkpoint();
         
@@ -298,6 +304,8 @@ public class BabuDBTest extends TestCase {
             assertEquals("bla", new String(v0));
             assertEquals("bla", new String(v1));
         }
+        
+        Logging.logMessage(Logging.LEVEL_DEBUG, Category.test, this, BufferPool.getStatus());
     }
     
     @Test

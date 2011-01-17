@@ -15,6 +15,7 @@ import java.util.Map.Entry;
 import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.ByteRange;
+import org.xtreemfs.foundation.buffer.BufferPool;
 
 /**
  * Merges an iterator for an in-memory overlay with an iterator for an on-disk
@@ -105,6 +106,10 @@ public class InternalMergeIterator implements ResultSet<Object, Object> {
             // shift disk index element
             if (nextOverlayEntry != null && nextDiskIndexEntry != null
                 && comp.compare(nextDiskIndexEntry.getKey(), nextOverlayEntry.getKey()) == 0) {
+                
+                // free the buffer if necessary
+                if(nextDiskIndexEntry.getValue().getReusableBuf() != null)
+                    BufferPool.free(nextDiskIndexEntry.getValue().getReusableBuf());
                 
                 if (diskIndexIterator.hasNext())
                     nextDiskIndexEntry = diskIndexIterator.next();

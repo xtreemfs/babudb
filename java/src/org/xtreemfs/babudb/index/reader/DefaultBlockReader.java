@@ -83,7 +83,7 @@ public class DefaultBlockReader extends BlockReader {
         this.position = position;
         this.limit = limit;
         this.comp = comp;
-
+        
         this.readBuffer = BufferPool.allocate(limit - position);
         channel.read(readBuffer.getBuffer(), position);
         
@@ -163,8 +163,10 @@ public class DefaultBlockReader extends BlockReader {
                     final ByteRange value = values.getEntry(currentIndex);
                     
                     {
+                        // attach the buffer to the last key-value pair, so that
+                        // it can be freed automatically
                         boolean last = !(ascending ? currentIndex < endIndex : currentIndex > startIndex);
-                        if(last)
+                        if (last)
                             value.setReusableBuf(readBuffer);
                     }
                     
