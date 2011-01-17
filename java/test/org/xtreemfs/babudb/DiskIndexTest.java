@@ -10,7 +10,6 @@ package org.xtreemfs.babudb;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Random;
@@ -21,6 +20,7 @@ import java.util.Map.Entry;
 import junit.framework.TestCase;
 import junit.textui.TestRunner;
 
+import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.index.reader.DiskIndex;
@@ -30,24 +30,46 @@ import org.xtreemfs.foundation.util.FSUtils;
 
 public class DiskIndexTest extends TestCase {
     
-    private static final String              PATH1               = "/tmp/index1";
+    private static final String                          PATH1               = "/tmp/index1";
     
-    private static final String              PATH2               = "/tmp/index2";
+    private static final String                          PATH2               = "/tmp/index2";
     
-    private static final int                 MAX_BLOCK_ENTRIES   = 16;
+    private static final int                             MAX_BLOCK_ENTRIES   = 16;
     
     // set to >= 1024*8 otherwise number of open files get too large
-    private static final int                 MAX_BLOCK_FILE_SIZE = 1024 * 8;
+    private static final int                             MAX_BLOCK_FILE_SIZE = 1024 * 8;
     
-    private static final int                 NUM_ENTRIES         = 50000;
+    private static final int                             NUM_ENTRIES         = 50000;
     
-    private static final ByteRangeComparator COMP                = DefaultByteRangeComparator.getInstance();
+    private static final ByteRangeComparator             COMP                = DefaultByteRangeComparator
+                                                                                     .getInstance();
     
-    private static final boolean             COMPRESSED          = false;
+    private static final boolean                         COMPRESSED          = false;
     
-    private static final boolean             MMAPED              = true;
+    private static final boolean                         MMAPED              = true;
     
-    private static Random                    rnd;
+    private static final ResultSet<Object, Object> EMPTY_RESULT_SET    = new ResultSet<Object, Object>() {
+                                                                                 
+                                                                                 @Override
+                                                                                 public void remove() {
+                                                                                 }
+                                                                                 
+                                                                                 @Override
+                                                                                 public Entry<Object, Object> next() {
+                                                                                     return null;
+                                                                                 }
+                                                                                 
+                                                                                 @Override
+                                                                                 public boolean hasNext() {
+                                                                                     return false;
+                                                                                 }
+                                                                                 
+                                                                                 @Override
+                                                                                 public void free() {
+                                                                                 }
+                                                                             };
+    
+    private static Random                                rnd;
     
     static {
         // rnd = new Random(1250861954367L);
@@ -201,7 +223,7 @@ public class DiskIndexTest extends TestCase {
         // create a disk index from an empty index file
         FSUtils.delTree(new File(PATH1));
         index = new DiskIndexWriter(PATH1, 4, COMPRESSED, MAX_BLOCK_FILE_SIZE);
-        index.writeIndex(new HashMap().entrySet().iterator());
+        index.writeIndex(EMPTY_RESULT_SET);
         
         diskIndex = new DiskIndex(PATH1, new DefaultByteRangeComparator(), COMPRESSED, MMAPED);
         
@@ -252,8 +274,7 @@ public class DiskIndexTest extends TestCase {
         assertFalse(it.hasNext());
         
         // create an iterator w/ matching start and end buffers
-        it = diskIndex.rangeLookup("ouuou".getBytes(), "oz".getBytes(),
-            false);
+        it = diskIndex.rangeLookup("ouuou".getBytes(), "oz".getBytes(), false);
         for (int i = 4; i >= 4; i--) {
             Entry<byte[], byte[]> entry = it.next();
             assertEquals(keys[i], new String(entry.getKey()));
@@ -291,7 +312,7 @@ public class DiskIndexTest extends TestCase {
         // create a disk index from an empty index file
         FSUtils.delTree(new File(PATH1));
         index = new DiskIndexWriter(PATH1, 4, COMPRESSED, MAX_BLOCK_FILE_SIZE);
-        index.writeIndex(new HashMap().entrySet().iterator());
+        index.writeIndex(EMPTY_RESULT_SET);
         
         diskIndex = new DiskIndex(PATH1, new DefaultByteRangeComparator(), COMPRESSED, MMAPED);
         
@@ -527,10 +548,10 @@ public class DiskIndexTest extends TestCase {
         return result;
     }
     
-    private static Iterator<Entry<Object, Object>> getBufferIterator(
+    private static ResultSet<Object, Object> getBufferIterator(
         final Iterator<Entry<byte[], byte[]>> byteArrayIterator) {
         
-        return new Iterator<Entry<Object, Object>>() {
+        return new ResultSet<Object, Object>() {
             
             @Override
             public boolean hasNext() {
@@ -563,6 +584,11 @@ public class DiskIndexTest extends TestCase {
             @Override
             public void remove() {
                 throw new UnsupportedOperationException();
+            }
+            
+            @Override
+            public void free() {
+                
             }
         };
         

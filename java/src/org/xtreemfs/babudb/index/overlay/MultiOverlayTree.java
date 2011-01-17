@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.Map.Entry;
 
+import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.index.OverlayMergeIterator;
 
 /**
@@ -192,7 +193,7 @@ public class MultiOverlayTree<K, V> {
      *            order; otherwise, they will be returned in descending order
      * @return an iterator with values
      */
-    public Iterator<Entry<K, V>> rangeLookup(K from, K to, boolean includeDeletedEntries, boolean ascending) {
+    public ResultSet<K, V> rangeLookup(K from, K to, boolean includeDeletedEntries, boolean ascending) {
         return rangeLookup(from, to, treeList, includeDeletedEntries, ascending);
     }
     
@@ -219,7 +220,7 @@ public class MultiOverlayTree<K, V> {
      *            order; otherwise, they will be returned in descending order
      * @return an iterator with key-value pairs
      */
-    public Iterator<Entry<K, V>> rangeLookup(K from, K to, int overlayId, boolean includeDeletedEntries,
+    public ResultSet<K, V> rangeLookup(K from, K to, int overlayId, boolean includeDeletedEntries,
         boolean ascending) {
         return rangeLookup(from, to, overlayMap.get(overlayId), includeDeletedEntries, ascending);
     }
@@ -237,7 +238,7 @@ public class MultiOverlayTree<K, V> {
         return null;
     }
     
-    private Iterator<Entry<K, V>> rangeLookup(K from, K to, OverlayTreeList<K, V> treeList,
+    private ResultSet<K, V> rangeLookup(K from, K to, OverlayTreeList<K, V> treeList,
         boolean includeDeletedEntries, boolean ascending) {
         
         // initialize a final list w/ submap iterators of all overlays

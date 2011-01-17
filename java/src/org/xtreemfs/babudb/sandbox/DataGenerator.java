@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.Map.Entry;
 
+import org.xtreemfs.babudb.api.database.ResultSet;
+
 public class DataGenerator {
 
 	public static final Iterator xtreemfsIterator(final ArrayList<byte[]> lookupHits, final int hitrate, final String filename) throws IOException {
@@ -68,7 +70,7 @@ public class DataGenerator {
 		};		
 	}
 	
-	public static final Iterator fileIterator(final ArrayList<byte[]> lookupHits, final int size, final int hitrate, final String filename) throws IOException {
+	public static final ResultSet fileIterator(final ArrayList<byte[]> lookupHits, final int size, final int hitrate, final String filename) throws IOException {
 		final ArrayList<String> lines = new ArrayList<String>();
 		String line = null;
         final Random generator = new Random();
@@ -95,7 +97,7 @@ public class DataGenerator {
 		
 		final Iterator<String> it = sorted.iterator();
 		
-		return new Iterator<Entry<byte[], byte[]>>() {
+		return new ResultSet() {
 			@Override
 			public boolean hasNext() {
 				return it.hasNext();
@@ -128,11 +130,16 @@ public class DataGenerator {
 			public void remove() {
                 throw new UnsupportedOperationException();
 			}
+			
+			@Override
+			public void free() {
+			    
+			}
 		};
 	}
 	
-	public static final Iterator randomIterator(final ArrayList<byte[]> lookupHits, final int size, final int hitrate, final int minStrLen, final int maxStrLen, final char minChar, final char maxChar) {
-		return new Iterator<Entry<byte[], byte[]>>() {
+	public static final ResultSet randomIterator(final ArrayList<byte[]> lookupHits, final int size, final int hitrate, final int minStrLen, final int maxStrLen, final char minChar, final char maxChar) {
+		return new ResultSet() {
 	        final Random generator = new Random();
             private int    count = 0;
             
@@ -177,6 +184,11 @@ public class DataGenerator {
             @Override
             public void remove() {
                 throw new UnsupportedOperationException();
+            }
+            
+            @Override
+            public void free() {
+                
             }
             
         };

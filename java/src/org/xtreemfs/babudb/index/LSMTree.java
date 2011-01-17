@@ -16,10 +16,12 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Map.Entry;
 
+import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.overlay.MultiOverlayBufferTree;
 import org.xtreemfs.babudb.index.reader.DiskIndex;
 import org.xtreemfs.babudb.index.reader.InternalBufferUtil;
+import org.xtreemfs.babudb.index.reader.InternalDiskIndexIterator;
 import org.xtreemfs.babudb.index.reader.InternalMergeIterator;
 import org.xtreemfs.babudb.index.writer.DiskIndexWriter;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
@@ -126,8 +128,10 @@ public class LSMTree {
      * @return the first entry
      */
     public Entry<byte[], byte[]> firstEntry() {
-        Iterator<Entry<byte[], byte[]>> it = prefixLookup(new byte[0]);
-        return it.hasNext() ? it.next() : null;
+        ResultSet<byte[], byte[]> it = prefixLookup(new byte[0]);
+        Entry<byte[], byte[]> result = it.hasNext() ? it.next() : null;
+        it.free();
+        return result;
     }
     
     /**
@@ -138,8 +142,10 @@ public class LSMTree {
      * @return the first entry
      */
     public Entry<byte[], byte[]> firstEntry(int snapId) {
-        Iterator<Entry<byte[], byte[]>> it = prefixLookup(new byte[0], snapId, true);
-        return it.hasNext() ? it.next() : null;
+        ResultSet<byte[], byte[]> it = prefixLookup(new byte[0], snapId, true);
+        Entry<byte[], byte[]> result = it.hasNext() ? it.next() : null;
+        it.free();
+        return result;
     }
     
     /**
@@ -148,8 +154,10 @@ public class LSMTree {
      * @return the last entry
      */
     public Entry<byte[], byte[]> lastEntry() {
-        Iterator<Entry<byte[], byte[]>> it = prefixLookup(new byte[0], false);
-        return it.hasNext() ? it.next() : null;
+        ResultSet<byte[], byte[]> it = prefixLookup(new byte[0], false);
+        Entry<byte[], byte[]> result = it.hasNext() ? it.next() : null;
+        it.free();
+        return result;
     }
     
     /**
@@ -160,8 +168,10 @@ public class LSMTree {
      * @return the last entry
      */
     public Entry<byte[], byte[]> lastEntry(int snapId) {
-        Iterator<Entry<byte[], byte[]>> it = prefixLookup(new byte[0], snapId, false);
-        return it.hasNext() ? it.next() : null;
+        ResultSet<byte[], byte[]> it = prefixLookup(new byte[0], snapId, false);
+        Entry<byte[], byte[]> result = it.hasNext() ? it.next() : null;
+        it.free();
+        return result;
     }
     
     /**
@@ -173,7 +183,7 @@ public class LSMTree {
      *            the prefix
      * @return an iterator with key-value pairs
      */
-    public Iterator<Entry<byte[], byte[]>> prefixLookup(byte[] prefix) {
+    public ResultSet<byte[], byte[]> prefixLookup(byte[] prefix) {
         return prefixLookup(prefix, true);
     }
     
@@ -189,7 +199,7 @@ public class LSMTree {
      *            order; otherwise, they will be returned in descending order
      * @return an iterator with key-value pairs
      */
-    public Iterator<Entry<byte[], byte[]>> prefixLookup(byte[] prefix, boolean ascending) {
+    public ResultSet<byte[], byte[]> prefixLookup(byte[] prefix, boolean ascending) {
         
         if (prefix.length == 0)
             prefix = null;
@@ -215,7 +225,7 @@ public class LSMTree {
      *            the snapshot ID
      * @return an iterator with key-value pairs
      */
-    public Iterator<Entry<byte[], byte[]>> prefixLookup(byte[] prefix, int snapId) {
+    public ResultSet<byte[], byte[]> prefixLookup(byte[] prefix, int snapId) {
         return prefixLookup(prefix, snapId, true);
     }
     
@@ -233,7 +243,7 @@ public class LSMTree {
      *            order; otherwise, they will be returned in descending order
      * @return an iterator with key-value pairs
      */
-    public Iterator<Entry<byte[], byte[]>> prefixLookup(byte[] prefix, int snapId, boolean ascending) {
+    public ResultSet<byte[], byte[]> prefixLookup(byte[] prefix, int snapId, boolean ascending) {
         
         if (prefix != null && prefix.length == 0)
             prefix = null;
@@ -260,7 +270,7 @@ public class LSMTree {
      *            the last key (exclusively)
      * @return an iterator with key-value pairs
      */
-    public Iterator<Entry<byte[], byte[]>> rangeLookup(byte[] from, byte[] to) {
+    public ResultSet<byte[], byte[]> rangeLookup(byte[] from, byte[] to) {
         return rangeLookup(from, to, true);
     }
     
@@ -279,7 +289,7 @@ public class LSMTree {
      *            order; otherwise, they will be returned in descending order
      * @return an iterator with key-value pairs
      */
-    public Iterator<Entry<byte[], byte[]>> rangeLookup(byte[] from, byte[] to, boolean ascending) {
+    public ResultSet<byte[], byte[]> rangeLookup(byte[] from, byte[] to, boolean ascending) {
         
         if (from.length == 0)
             from = null;
@@ -297,9 +307,9 @@ public class LSMTree {
     
     /**
      * Performs a range lookup in a given snapshot. Key-value paris are returned
-     * in an iterator in ascending key order, where only such keys are returned between
-     * <code>from</code> (inclusively) and <code>to</code> (inclusively),
-     * according to the comparator.
+     * in an iterator in ascending key order, where only such keys are returned
+     * between <code>from</code> (inclusively) and <code>to</code>
+     * (inclusively), according to the comparator.
      * 
      * @param from
      *            the first key (inclusively)
@@ -309,15 +319,15 @@ public class LSMTree {
      *            the snapshot ID
      * @return an iterator with key-value pairs
      */
-    public Iterator<Entry<byte[], byte[]>> rangeLookup(byte[] from, byte[] to, int snapId) {
+    public ResultSet<byte[], byte[]> rangeLookup(byte[] from, byte[] to, int snapId) {
         return rangeLookup(from, to, snapId, true);
     }
     
     /**
      * Performs a range lookup in a given snapshot. Key-value pairs are returned
-     * in an iterator in the given key order, where only such keys are returned between
-     * <code>from</code> (inclusively) and <code>to</code> (inclusively),
-     * according to the comparator.
+     * in an iterator in the given key order, where only such keys are returned
+     * between <code>from</code> (inclusively) and <code>to</code>
+     * (inclusively), according to the comparator.
      * 
      * @param from
      *            the first key (inclusively)
@@ -330,7 +340,7 @@ public class LSMTree {
      *            order; otherwise, they will be returned in descending order
      * @return an iterator with key-value pairs
      */
-    public Iterator<Entry<byte[], byte[]>> rangeLookup(byte[] from, byte[] to, int snapId, boolean ascending) {
+    public ResultSet<byte[], byte[]> rangeLookup(byte[] from, byte[] to, int snapId, boolean ascending) {
         
         if (from.length == 0)
             from = null;
@@ -416,9 +426,9 @@ public class LSMTree {
         final SnapshotConfig snap) throws IOException {
         DiskIndexWriter writer = new DiskIndexWriter(targetFile, maxEntriesPerBlock, compressed,
             maxBlockFileSize);
-        writer.writeIndex(new Iterator<Entry<Object, Object>>() {
+        writer.writeIndex(new ResultSet<Object, Object>() {
             
-            private Iterator<Entry<Object, Object>>[] iterators;
+            private ResultSet<Object, Object>[] iterators;
             
             private Entry<Object, Object>             next;
             
@@ -430,11 +440,11 @@ public class LSMTree {
                 currentIt = 0;
                 
                 if (prefixes != null) {
-                    iterators = new Iterator[prefixes.length];
+                    iterators = new ResultSet[prefixes.length];
                     for (int i = 0; i < prefixes.length; i++)
                         iterators[i] = internalPrefixLookup(prefixes[i], snapId, true);
                 } else {
-                    iterators = new Iterator[] { prefixLookup(null, snapId, true) };
+                    iterators = new ResultSet[] { prefixLookup(null, snapId, true) };
                 }
                 
                 getNextElement();
@@ -461,6 +471,12 @@ public class LSMTree {
             @Override
             public void remove() {
                 throw new UnsupportedOperationException();
+            }
+            
+            @Override
+            public void free() {
+                for (ResultSet<Object, Object> it : iterators)
+                    it.free();
             }
             
             private void getNextElement() {
@@ -549,15 +565,14 @@ public class LSMTree {
      *            order; otherwise, they will be returned in descending order
      * @return an iterator with references to internally used buffers
      */
-    protected Iterator<Entry<Object, Object>> internalPrefixLookup(byte[] prefix, int snapId,
-        boolean ascending) {
+    protected InternalMergeIterator internalPrefixLookup(byte[] prefix, int snapId, boolean ascending) {
         
         if (prefix != null && prefix.length == 0)
             prefix = null;
         
         Iterator<Entry<byte[], byte[]>> overlayIterator = overlay.prefixLookup(prefix, snapId, true,
             ascending);
-        Iterator<Entry<ByteRange, ByteRange>> diskIndexIterator = null;
+        InternalDiskIndexIterator diskIndexIterator = null;
         if (index != null) {
             byte[][] rng = comp.prefixToRange(prefix, ascending);
             diskIndexIterator = index.internalRangeLookup(rng[0], rng[1], ascending);

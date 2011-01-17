@@ -84,7 +84,8 @@ class PersistenceManagerImpl implements PersistenceManager {
      */
     @Override
     public void lockService() throws InterruptedException {
-        this.diskLogger.lockLogger();
+        if(this.diskLogger != null)
+            this.diskLogger.lockLogger();
     }
 
     /* (non-Javadoc)
@@ -92,7 +93,8 @@ class PersistenceManagerImpl implements PersistenceManager {
      */
     @Override
     public void unlockService() {
-        if (this.diskLogger.hasLock()) this.diskLogger.unlockLogger();
+        if (this.diskLogger != null && this.diskLogger.hasLock())
+            this.diskLogger.unlockLogger();
     }
 
 }

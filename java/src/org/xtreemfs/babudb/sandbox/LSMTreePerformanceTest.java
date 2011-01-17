@@ -9,12 +9,11 @@
 package org.xtreemfs.babudb.sandbox;
 
 import java.io.File;
-import java.util.Iterator;
 import java.util.Map.Entry;
 
+import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
-import org.xtreemfs.babudb.index.reader.InternalBufferUtil;
 import org.xtreemfs.babudb.index.writer.DiskIndexWriter;
 
 public class LSMTreePerformanceTest {
@@ -50,7 +49,7 @@ public class LSMTreePerformanceTest {
             
             // write the map to a disk index
             DiskIndexWriter index = new DiskIndexWriter(path, entriesPerBlock, false, blockFileSize);
-            index.writeIndex(new Iterator<Entry<Object, Object>>() {
+            index.writeIndex(new ResultSet<Object, Object>() {
                 
                 private int    count;
                 
@@ -90,6 +89,11 @@ public class LSMTreePerformanceTest {
                 @Override
                 public void remove() {
                     throw new UnsupportedOperationException();
+                }
+                
+                @Override
+                public void free() {
+                    
                 }
                 
             });
