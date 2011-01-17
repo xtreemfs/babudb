@@ -10,14 +10,14 @@ package org.xtreemfs.babudb.index.reader;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Map.Entry;
 
+import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.index.ByteRange;
 import org.xtreemfs.foundation.buffer.BufferPool;
 
-public class DiskIndexIterator extends DiskIndexIteratorBase implements Iterator<Entry<byte[], byte[]>> {
+public class DiskIndexIterator extends DiskIndexIteratorBase implements ResultSet<byte[], byte[]> {
     
     /**
      * Disk index iterator for mmap'ed index files.

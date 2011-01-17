@@ -15,6 +15,7 @@ import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
+import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.index.ByteRange;
 import org.xtreemfs.babudb.index.reader.InternalBufferUtil;
 import org.xtreemfs.foundation.buffer.BufferPool;
@@ -186,7 +187,7 @@ public class DiskIndexWriter {
      * @throws IOException
      *             if an I/O error occurs
      */
-    public void writeIndex(Iterator<Entry<Object, Object>> iterator) throws IOException {
+    public void writeIndex(ResultSet<Object, Object> iterator) throws IOException {
         
         BlockWriter blockIndex = new DefaultBlockWriter(true, false);
         
@@ -197,6 +198,8 @@ public class DiskIndexWriter {
             
             blockFileId++;
         }
+        
+        iterator.free();
         
         // write the block index
         new File(path + "blockindex.idx").createNewFile();

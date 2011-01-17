@@ -14,11 +14,9 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
-import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -219,7 +217,7 @@ public class DiskIndex {
             return new DiskIndexIterator(this, blockIndex, from, to, ascending, dbFileChannels);
     }
     
-    public Iterator<Entry<ByteRange, ByteRange>> internalRangeLookup(final byte[] from, final byte[] to,
+    public InternalDiskIndexIterator internalRangeLookup(final byte[] from, final byte[] to,
         final boolean ascending) {
         
         // return iterator for mmap'ed indices

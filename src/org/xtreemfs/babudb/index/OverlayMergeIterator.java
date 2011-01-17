@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Map.Entry;
 
+import org.xtreemfs.babudb.api.database.ResultSet;
+
 /**
  * An iterator that merges a list of overlay trees. If a key occurs in multiple
  * trees, the value associated with the key in the first tree has the highest
@@ -27,7 +29,7 @@ import java.util.Map.Entry;
  * @param <V>
  *            the value type
  */
-public class OverlayMergeIterator<K, V> implements Iterator<Entry<K, V>> {
+public class OverlayMergeIterator<K, V> implements ResultSet<K, V> {
     
     /**
      * the next element to return
@@ -84,6 +86,17 @@ public class OverlayMergeIterator<K, V> implements Iterator<Entry<K, V>> {
     @Override
     public void remove() {
         throw new UnsupportedOperationException();
+    }
+    
+    @Override
+    public void free() {
+        
+        // make sure that all resources attached to result sets in the list are
+        // freed
+        for (Iterator<Entry<K, V>> it : itList)
+            if (it instanceof ResultSet)
+                ((ResultSet) it).free();
+        
     }
     
     private Entry<K, V> getNextElement() {

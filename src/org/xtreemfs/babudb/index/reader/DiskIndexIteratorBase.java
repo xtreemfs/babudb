@@ -41,7 +41,7 @@ public abstract class DiskIndexIteratorBase {
     private int                                     currentBlockIndex;
     
     private BlockReader                             currentBlock;
-        
+    
     protected Iterator<Entry<ByteRange, ByteRange>> currentBlockIterator;
     
     protected DiskIndexIteratorBase(DiskIndex index, BlockReader blockIndexReader, byte[] from, byte[] to,
@@ -97,6 +97,11 @@ public abstract class DiskIndexIteratorBase {
         throw new UnsupportedOperationException();
     }
     
+    public void free() {
+        if (currentBlock != null)
+            currentBlock.free();
+    }
+    
     private void getNextBlockData() {
         
         if (blockIndexStart == -1 && blockIndexEnd == -1)
@@ -119,9 +124,6 @@ public abstract class DiskIndexIteratorBase {
         int startOffset = DiskIndex.getBlockOffset(currentBlockIndex, blockIndexReader);
         // when last block or a single block the offset should be the
         // size of the block
-        // int endOffset = currentBlockIndex ==
-        // itBlockIndex.getNumEntries() - 1 ? -1
-        // : getBlockOffset(currentBlockIndex + 1, itBlockIndex);
         
         int fileId = DiskIndex.getBlockFileId(currentBlockIndex, blockIndexReader);
         int endOffset;

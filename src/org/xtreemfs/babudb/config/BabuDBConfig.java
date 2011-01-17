@@ -191,6 +191,8 @@ public class BabuDBConfig extends Config {
         this.maxBlockFileSize = maxBlockFileSize;
         this.disableMMap = disableMMap;
         this.mmapLimit = mmapLimit;
+        
+        this.pluginPaths = new Vector<String>();
     }
     
     /**

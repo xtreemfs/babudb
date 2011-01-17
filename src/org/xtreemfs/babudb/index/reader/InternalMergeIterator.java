@@ -12,6 +12,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Map.Entry;
 
+import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.ByteRange;
 
@@ -27,26 +28,26 @@ import org.xtreemfs.babudb.index.ByteRange;
  * @author stenjan
  * 
  */
-public class InternalMergeIterator implements Iterator<Entry<Object, Object>> {
+public class InternalMergeIterator implements ResultSet<Object, Object> {
     
-    private Iterator<Entry<byte[], byte[]>>       overlayIterator;
+    private Iterator<Entry<byte[], byte[]>> overlayIterator;
     
-    private Iterator<Entry<ByteRange, ByteRange>> diskIndexIterator;
+    private InternalDiskIndexIterator       diskIndexIterator;
     
-    private Entry<byte[], byte[]>                 nextOverlayEntry;
+    private Entry<byte[], byte[]>           nextOverlayEntry;
     
-    private Entry<ByteRange, ByteRange>           nextDiskIndexEntry;
+    private Entry<ByteRange, ByteRange>     nextDiskIndexEntry;
     
-    private Entry<Object, Object>                 nextEntry;
+    private Entry<Object, Object>           nextEntry;
     
-    private ByteRangeComparator                   comp;
+    private ByteRangeComparator             comp;
     
-    private byte[]                                nullValue;
+    private byte[]                          nullValue;
     
-    private boolean                               ascending;
+    private boolean                         ascending;
     
     public InternalMergeIterator(Iterator<Entry<byte[], byte[]>> overlayIterator,
-        Iterator<Entry<ByteRange, ByteRange>> diskIndexIterator, ByteRangeComparator comp, byte[] nullValue,
+        InternalDiskIndexIterator diskIndexIterator, ByteRangeComparator comp, byte[] nullValue,
         boolean ascending) {
         
         assert (overlayIterator != null);
@@ -80,6 +81,11 @@ public class InternalMergeIterator implements Iterator<Entry<Object, Object>> {
     @Override
     public void remove() {
         throw new UnsupportedOperationException();
+    }
+    
+    public void free() {
+        if (diskIndexIterator != null)
+            diskIndexIterator.free();
     }
     
     private void nextElement() {
