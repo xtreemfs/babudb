@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2008 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -9,7 +9,6 @@
 package org.xtreemfs.babudb.lsmdb;
 
 /**
- *
  * @author bjko
  * @author flangner
  */
@@ -26,13 +25,6 @@ public class LSN implements Comparable<LSN> {
     public LSN(byte[] lsn) throws NumberFormatException{
         this(new String(lsn));
     }
-    
-    /* TODO
-    public LSN(org.xtreemfs.babudb.interfaces.LSN lsn) {
-        this.viewId = lsn.getViewId();
-        this.sequenceNo = lsn.getSequenceNo();
-    }
-    */
     
     /**
      * <p>Gets the LSN from given string representation.</p>

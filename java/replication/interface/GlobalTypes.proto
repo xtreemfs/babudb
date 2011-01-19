@@ -23,6 +23,10 @@ message DBFileMetaDatas {
   repeated DBFileMetaData db_file_metadatas = 3;
 }
 
+message Type {
+  required fixed32 value = 1;
+}
+
 message LogEntry {
   required fixed64 length = 1;
 }

@@ -1,31 +1,9 @@
 /*
- * Copyright (c) 2010, Konrad-Zuse-Zentrum fuer Informationstechnik Berlin
+ * Copyright (c) 2010 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
- * All rights reserved.
+ * Licensed under the BSD License, see LICENSE file for details.
  * 
- * Redistribution and use in source and binary forms, with or without 
- * modification, are permitted provided that the following conditions are met:
- * 
- * Redistributions of source code must retain the above copyright notice, this 
- * list of conditions and the following disclaimer.
- * Redistributions in binary form must reproduce the above copyright notice, 
- * this list of conditions and the following disclaimer in the documentation 
- * and/or other materials provided with the distribution.
- * Neither the name of the Konrad-Zuse-Zentrum fuer Informationstechnik Berlin 
- * nor the names of its contributors may be used to endorse or promote products 
- * derived from this software without specific prior written permission.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE 
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
- * POSSIBILITY OF SUCH DAMAGE.
  */
 /*
  * AUTHORS: Felix Langner (ZIB)
@@ -58,6 +36,7 @@ import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.FleaseMessageReceiver;
 import org.xtreemfs.babudb.replication.Layer;
 import org.xtreemfs.babudb.replication.control.RoleChangeListener;
+import org.xtreemfs.babudb.replication.proxy.RPCRequestHandler;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates;
 import org.xtreemfs.babudb.replication.service.accounting.ReplicateResponse;
@@ -67,18 +46,7 @@ import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.Clie
 import org.xtreemfs.babudb.replication.service.clients.ConditionClient;
 import org.xtreemfs.babudb.replication.service.clients.MasterClient;
 import org.xtreemfs.babudb.replication.service.clients.SlaveClient;
-import org.xtreemfs.babudb.replication.service.operations.ChunkOperation;
-import org.xtreemfs.babudb.replication.service.operations.FleaseOperation;
-import org.xtreemfs.babudb.replication.service.operations.HeartbeatOperation;
-import org.xtreemfs.babudb.replication.service.operations.LoadOperation;
-import org.xtreemfs.babudb.replication.service.operations.LocalTimeOperation;
-import org.xtreemfs.babudb.replication.service.operations.ReplicaOperation;
-import org.xtreemfs.babudb.replication.service.operations.ReplicateOperation;
-import org.xtreemfs.babudb.replication.service.operations.StateOperation;
-import org.xtreemfs.babudb.replication.transmission.FileIOInterface;
-import org.xtreemfs.babudb.replication.transmission.TransmissionLayer;
 import org.xtreemfs.babudb.replication.transmission.TransmissionToServiceInterface;
-import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.TimeSync;
@@ -146,7 +114,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
         // ----------------------------------
         // initialize the heartbeat
         // ----------------------------------
-        this.heartbeatThread = new HeartbeatThread(this.participantsStates);
+        this.heartbeatThread = new HeartbeatThread(participantsStates);
         
         // ----------------------------------
         // initialize replication stage
@@ -155,6 +123,10 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
                 config.getBabuDBConfig().getMaxQueueLength(), 
                 this.heartbeatThread, this, transLayer.getFileIOInterface(), 
                 this.babuDBInterface, this.lastOnView, maxChunkSize);
+        
+        this.transmissionInterface.addRequestHandler(
+                new RPCRequestHandler(participantsStates, 
+                        babuDBInterface.getPersistanceManager()));
     }
     
 /*
@@ -249,7 +221,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
         }
     
         // synchronize with the most up-to-date slave, if necessary
-        LSN localState = this.babuDBInterface.getState();
+        LSN localState = babuDBInterface.getState();
         if (latest != null && latest.compareTo(localState) > 0) {
             for (Entry<ClientInterface, LSN> entry : states.entrySet()) {
                 if (entry.getValue().equals(latest)) {                 
@@ -312,10 +284,11 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
                 // coin the dispatcher of the 
                 // underlying layer
                 // ----------------------------------
-                Map<Integer, Operation> ops = initializeOperations(
-                        this.transmissionInterface.getFileIOInterface(), 
-                        receiver);
-                this.transmissionInterface.coin(ops, this.participantsStates);
+                this.transmissionInterface.addRequestHandler(
+                        new ReplicationRequestHandler(participantsStates, 
+                                receiver, babuDBInterface, replicationStage, 
+                                lastOnView, maxChunkSize, 
+                                transmissionInterface.getFileIOInterface()));
             }
         }
     }
@@ -443,10 +416,10 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
      */
     @Override
     public void changeMaster(InetAddress address) {
-        this.replicationStage.lastInserted = this.babuDBInterface.getState();
+        replicationStage.lastInserted = babuDBInterface.getState();
         // TODO maybe there are still some inserts on the DiskLogger-queue,
         // which might increment the lastOnView LSN.
-        this.participantsStates.setMaster(address);
+        participantsStates.setMaster(address);
     }
     
     /* (non-Javadoc)
@@ -463,7 +436,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
      */
     @Override
     public void start() {
-        LSN latest = this.babuDBInterface.getState();
+        LSN latest = babuDBInterface.getState();
         
         // the sequence number of the initial LSN before incrementing the 
         // viewID must not be 0 
@@ -533,47 +506,6 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
 /*
  * private methods
  */
-    
-    /**
-     * @param receiver - {@link FleaseMessageReceiver}.
-     * @param fileIO
-     * @return a table of {@link Operation}s suitable for the 
-     *         {@link TransmissionLayer}.
-     */
-    private Map<Integer,Operation> initializeOperations(
-            FileIOInterface fileIO, FleaseMessageReceiver receiver) {
-        
-        Map<Integer, Operation> result = new HashMap<Integer, Operation>();
-        
-        Operation op = new LocalTimeOperation();
-        result.put(op.getProcedureId(), op);
-        
-        op = new FleaseOperation(receiver);
-        result.put(op.getProcedureId(), op);
-        
-        op = new StateOperation(this.babuDBInterface);
-        result.put(op.getProcedureId(), op);
-        
-        op = new HeartbeatOperation(this.participantsStates);
-        result.put(op.getProcedureId(), op);
-        
-        op = new ReplicateOperation(this.replicationStage, 
-                this.participantsStates);
-        result.put(op.getProcedureId(),op);
-        
-        op = new ReplicaOperation(this.lastOnView, this.babuDBInterface, 
-                fileIO);
-        result.put(op.getProcedureId(),op);
-        
-        op = new LoadOperation(this.lastOnView, this.maxChunkSize, 
-                               this.babuDBInterface, fileIO);
-        result.put(op.getProcedureId(),op);
-        
-        op = new ChunkOperation();
-        result.put(op.getProcedureId(),op);
-        
-        return result;
-    }
     
     /**
      * <p>

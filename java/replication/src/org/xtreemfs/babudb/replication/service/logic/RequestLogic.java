@@ -98,9 +98,9 @@ public class RequestLogic extends Logic {
             
             // enhancement if the request had detected a master-failover
             if (logEntries.length == 0) {
-                this.stage.lastOnView.set(this.babuInterface.getState());
-                this.babuInterface.checkpoint();
-                this.stage.lastInserted = this.babuInterface.getState();
+                stage.lastOnView.set(babuInterface.getState());
+                babuInterface.checkpoint();
+                stage.lastInserted = babuInterface.getState();
                 finish();
                 return;
             }

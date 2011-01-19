@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -7,7 +7,7 @@
  */
 package org.xtreemfs.babudb.replication;
 
-import java.net.InetAddress;
+import java.net.InetSocketAddress;
 
 import org.xtreemfs.babudb.BabuDBInternal;
 import org.xtreemfs.babudb.config.ReplicationConfig;
@@ -38,8 +38,6 @@ public class ReplicationManagerImpl implements ReplicationManager {
     private final Layer         serviceLayer;
     private final Layer         transmissionLayer;
     
-    private volatile boolean    slaveCheck = false;
-    
     /**
      * <p>For setting up the {@link BabuDB} with replication. 
      * Replication instance will be remaining stopped and in slave-mode.</p>
@@ -49,7 +47,7 @@ public class ReplicationManagerImpl implements ReplicationManager {
      * @throws Exception 
      */
     public ReplicationManagerImpl(BabuDBInternal dbs, ReplicationConfig conf) 
-        throws Exception {
+            throws Exception {
         
         TimeSync.initializeLocal(conf.getTimeSyncInterval(), 
                 conf.getLocalTimeRenew()).setLifeCycleListener(this);
@@ -73,69 +71,52 @@ public class ReplicationManagerImpl implements ReplicationManager {
  */
     
     /**
-     * <p>Approach for a Worker to announce a new {@link LogEntry} <code>le</code> to the {@link ReplicationThread}.</p>
-     * 
-     * @param le - the original {@link LogEntry}.
-     * @param buffer - the serialized {@link LogEntry}.
-     * 
-     * @return the {@link ReplicateResponse}.
-     */
-    public ReplicateResponse replicate(LogEntry le, ReusableBuffer buffer) {
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "Performing requests: replicate...");
-        
-        return this.controlLayer.replicate(le, buffer);
-    }
-    
-    /**
      * Starts the stages if available.
      */
     public void initialize() {
         this.controlLayer.start();
         this.serviceLayer.start();
         this.transmissionLayer.start();
-        
-        this.slaveCheck = true;
-    }
-    
-    /**
-     * <p>
-     * Registers the listener for a replicate call.
-     * </p>
-     * 
-     * @param response
-     */
-    public void subscribeListener(ReplicateResponse response) {
-        this.controlLayer.subscribeListener(response);
-    }
-    
-    /**
-     * @return true if the replication mechanism already has been initialized,
-     *         false otherwise.
-     */
-    public boolean isInitialized() {
-        return this.slaveCheck;
     }
     
 /*
  * Overridden methods
  */
 
-    /*
-     * (non-Javadoc)
+    /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.ReplicationManager#getMaster()
      */
     @Override
-    public InetAddress getMaster() {
-        return this.controlLayer.getLeaseHolder();
+    public InetSocketAddress getMaster() {
+        return controlLayer.getLeaseHolder();
     }
     
-    /*
-     * (non-Javadoc)
+    /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.ReplicationManager#isMaster()
      */
     @Override
     public boolean isMaster() {
         return this.controlLayer.hasLease();
+    }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.ReplicationManager#replicate(
+     *  org.xtreemfs.babudb.log.LogEntry, 
+     *  org.xtreemfs.foundation.buffer.ReusableBuffer)
+     */
+    @Override
+    public ReplicateResponse replicate(LogEntry le, ReusableBuffer buffer) {
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                "Performing requests: replicate...");
+        
+        return controlLayer.replicate(le, buffer);
+    }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.ReplicationManager#subscribeListener(org.xtreemfs.babudb.replication.service.accounting.ReplicateResponse)
+     */
+    public void subscribeListener(ReplicateResponse response) {
+        controlLayer.subscribeListener(response);
     }
 
     /* (non-Javadoc)
@@ -149,21 +130,28 @@ public class ReplicationManagerImpl implements ReplicationManager {
         TimeSync.getInstance().shutdown();
     }
     
-    /*
-     * (non-Javadoc)
+    /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.ReplicationManager#halt()
      */
     @Override
     public void manualFailover() {
         this.controlLayer.suspend();
     }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.ReplicationManager#
+     *  getRemoteAccessClient()
+     */
+    @Override
+    public RemoteAccessClient getRemoteAccessClient() {
+        return ((TransmissionLayer) transmissionLayer).getRemoteAccessClient();
+    }
     
 /*
  * LifeCycleListener for the TimeSync-Thread
  */
     
-    /*
-     * (non-Javadoc)
+    /* (non-Javadoc)
      * @see org.xtreemfs.foundation.LifeCycleListener#crashPerformed(java.lang.Throwable)
      */
     @Override
@@ -180,17 +168,16 @@ public class ReplicationManagerImpl implements ReplicationManager {
         throw new RuntimeException(exc);
     }
 
-    /*
-     * (non-Javadoc)
+    /* (non-Javadoc)
      * @see org.xtreemfs.foundation.LifeCycleListener#shutdownPerformed()
      */
     @Override
     public void shutdownPerformed() {}
 
-    /*
-     * (non-Javadoc)
+    /* (non-Javadoc)
      * @see org.xtreemfs.foundation.LifeCycleListener#startupPerformed()
      */
     @Override
     public void startupPerformed() {}
+
 }

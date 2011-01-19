@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Vector;
 
 import org.xtreemfs.babudb.BabuDBInternal;
+import org.xtreemfs.babudb.api.PersistenceManager;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.DiskLogger;
@@ -257,5 +258,12 @@ public class BabuDBInterface {
         }
         
         return result;
+    }
+
+    /**
+     * @return the {@link PersistenceManager} of the local BabuDB instance.
+     */
+    public PersistenceManager getPersistanceManager() {
+        return dbs.getPersistenceManager();
     }
 }

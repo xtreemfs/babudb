@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2010-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -15,6 +15,7 @@ import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.api.plugin.PluginMain;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.plugin.PluginLoader;
+import org.xtreemfs.babudb.replication.proxy.BabuDBProxy;
 import org.xtreemfs.babudb.replication.transmission.FileIO;
 import org.xtreemfs.foundation.logging.Logging;
 
@@ -61,6 +62,9 @@ public class Main implements PluginMain {
                     e.getMessage(), e.getCause());
         } 
         
-        return new BabuDBStub(babuDB, replMan);
+        // initialize the BabuDB proxy interface
+        return new BabuDBProxy(babuDB, replMan, 
+                configuration.getReplicationPolicy(), 
+                replMan.getRemoteAccessClient());
     }
 }

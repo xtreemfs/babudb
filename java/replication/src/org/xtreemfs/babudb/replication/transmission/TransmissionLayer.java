@@ -1,31 +1,9 @@
 /*
- * Copyright (c) 2010, Konrad-Zuse-Zentrum fuer Informationstechnik Berlin
+ * Copyright (c) 2010 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
- * All rights reserved.
+ * Licensed under the BSD License, see LICENSE file for details.
  * 
- * Redistribution and use in source and binary forms, with or without 
- * modification, are permitted provided that the following conditions are met:
- * 
- * Redistributions of source code must retain the above copyright notice, this 
- * list of conditions and the following disclaimer.
- * Redistributions in binary form must reproduce the above copyright notice, 
- * this list of conditions and the following disclaimer in the documentation 
- * and/or other materials provided with the distribution.
- * Neither the name of the Konrad-Zuse-Zentrum fuer Informationstechnik Berlin 
- * nor the names of its contributors may be used to endorse or promote products 
- * derived from this software without specific prior written permission.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE 
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
- * POSSIBILITY OF SUCH DAMAGE.
  */
 /*
  * AUTHORS: Felix Langner (ZIB)
@@ -35,14 +13,12 @@ package org.xtreemfs.babudb.replication.transmission;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.util.Map;
 
 import org.xtreemfs.babudb.config.ReplicationConfig;
-import org.xtreemfs.babudb.replication.Coinable;
 import org.xtreemfs.babudb.replication.Layer;
-import org.xtreemfs.babudb.replication.service.accounting.ParticipantsVerification;
-import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
+import org.xtreemfs.babudb.replication.RemoteAccessClient;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestDispatcher;
+import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestHandler;
 import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.pbrpc.client.RPCNIOSocketClient;
 
@@ -56,8 +32,7 @@ import org.xtreemfs.foundation.pbrpc.client.RPCNIOSocketClient;
  * @since 04/12/2010
  */
 public class TransmissionLayer extends Layer implements ClientFactory, 
-    Coinable<Map<Integer, Operation>, ParticipantsVerification>, 
-    TransmissionToServiceInterface {
+        TransmissionToServiceInterface {
         
     /** low level client for outgoing RPCs */
     private final RPCNIOSocketClient    rpcClient;
@@ -74,7 +49,8 @@ public class TransmissionLayer extends Layer implements ClientFactory,
      * @throws IOException if the {@link RPCNIOSocketClient} could not be 
      *                     started.
      */
-    public TransmissionLayer(ReplicationConfig config) throws IOException {
+    public TransmissionLayer(ReplicationConfig config) 
+            throws IOException {
         this.fileIO = new FileIO(config);
         
         // ---------------------------------
@@ -101,19 +77,6 @@ public class TransmissionLayer extends Layer implements ClientFactory,
     @Override
     public FileIOInterface getFileIOInterface() {
         return this.fileIO;
-    }
-    
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.transmission.Coinable#
-     * coinDispatcher(java.util.Map, org.xtreemfs.babudb.replication.service.
-     * accounting.ParticipantsVerification)
-     */
-    @Override
-    public void coin(Map<Integer, Operation> operations, 
-            ParticipantsVerification verificator) {
-        
-        this.dispatcher.setOperations(operations);
-        this.dispatcher.registerVerificator(verificator);
     }
     
     /* (non-Javadoc)
@@ -178,5 +141,17 @@ public class TransmissionLayer extends Layer implements ClientFactory,
         } catch (Exception e) {
             this.listener.crashPerformed(e);
         }
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.TransmissionToServiceInterface#addRequestHandler(org.xtreemfs.babudb.replication.transmission.dispatcher.RequestHandler)
+     */
+    @Override
+    public void addRequestHandler(RequestHandler handler) {
+        dispatcher.addHandler(handler);
+    }
+    
+    public RemoteAccessClient getRemoteAccessClient() {
+        return new RemoteClientAdapter(rpcClient);
     }
 }

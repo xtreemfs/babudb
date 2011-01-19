@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2010 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -45,11 +45,15 @@ class PersistenceManagerImpl implements PersistenceManager {
     public <T> DatabaseRequestResult<T> makePersistent(byte type, 
             ReusableBuffer load) throws BabuDBException {
         
-        final BabuDBRequestResultImpl<T> result =
-            new BabuDBRequestResultImpl<T>();
-        
         // build the entry
-        LogEntry entry = new LogEntry(load, new SyncListener() {
+        LogEntry entry = new LogEntry(load, null, type);
+        
+        // setup the result
+        final BabuDBRequestResultImpl<T> result =
+            new BabuDBRequestResultImpl<T>(entry);
+        
+        // define the listener
+        entry.setListener(new SyncListener() {
             
             @Override
             public void synced(LogEntry entry) {
@@ -64,9 +68,9 @@ class PersistenceManagerImpl implements PersistenceManager {
                         (BabuDBException) ex : new BabuDBException(
                                 ErrorCode.INTERNAL_ERROR, ex.getMessage()));
             }
-        }, type);
+        });
         
-        // append it to the DiskLogger
+        // append the entry to the DiskLogger
         try {
             this.diskLogger.append(entry);
         } catch (InterruptedException ie) {

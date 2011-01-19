@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 - 2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -137,8 +137,6 @@ public class DatabaseManagerImpl implements DatabaseManager {
     }
     
     /**
-     * TODO
-     * 
      * @param databaseName
      * @param numIndices
      * @param comparators
@@ -202,8 +200,6 @@ public class DatabaseManagerImpl implements DatabaseManager {
     }
     
     /**
-     * TODO
-     * 
      * @param databaseName
      * @throws BabuDBException
      */
@@ -250,7 +246,6 @@ public class DatabaseManagerImpl implements DatabaseManager {
     }
     
     /**
-     * TODO
      * @param sourceDB
      * @param destDB
      * @throws BabuDBException

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009 - 2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -613,17 +613,15 @@ public class DatabaseImpl implements Database {
      * @param cfg
      *            the snapshot configuration
      * @throws BabuDBException
-     *             if the snapshot cannot be written, or isSlave_check was
-     *             positive
+     *             if the snapshot cannot be written
      */
     public void writeSnapshot(int[] snapIds, String directory, SnapshotConfig cfg) throws BabuDBException {
-        // TODO dbs.slaveCheck();
         
         proceedWriteSnapshot(snapIds, directory, cfg);
     }
     
     /**
-     * Writes a snapshot to disk. Without isSlave protection.
+     * Writes a snapshot to disk.
      * 
      * NOTE: this method should only be invoked by the framework
      * 
@@ -655,17 +653,15 @@ public class DatabaseImpl implements Database {
      * @param snapIds
      *            the snapshot Ids (obtained via createSnapshot).
      * @throws BabuDBException
-     *             if a snapshot cannot be written, or BabuDB is running in
-     *             slave-mode.
+     *             if a snapshot cannot be written
      */
     public void writeSnapshot(int viewId, long sequenceNo, int[] snapIds) throws BabuDBException {
-        // TODO dbs.slaveCheck();
         
         proceedWriteSnapshot(viewId, sequenceNo, snapIds);
     }
     
     /**
-     * Writes the snapshots to disk. Without slave-protection.
+     * Writes the snapshots to disk.
      * 
      * @param viewId
      *            current viewId (i.e. of the last write)
@@ -697,14 +693,13 @@ public class DatabaseImpl implements Database {
      *             if snapshots cannot be cleaned up
      */
     public void cleanupSnapshot(final int viewId, final long sequenceNo) throws BabuDBException {
-        // TODO dbs.slaveCheck();
         
         proceedCleanupSnapshot(viewId, sequenceNo);
     }
     
     /**
      * Links the indices to the latest on-disk snapshot, cleans up any
-     * unnecessary in-memory and on-disk data. Without slave-protection.
+     * unnecessary in-memory and on-disk data. 
      * 
      * @param viewId
      *            the viewId of the snapshot

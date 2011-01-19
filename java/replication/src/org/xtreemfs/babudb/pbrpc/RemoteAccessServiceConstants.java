@@ -1,4 +1,4 @@
-//automatically generated from replication.proto at Wed Jan 05 14:46:41 CET 2011
+//automatically generated from replication.proto at Wed Jan 19 14:43:57 CET 2011
 //(c) 2011. See LICENSE file for details.
 
 package org.xtreemfs.babudb.pbrpc;
@@ -12,7 +12,7 @@ public class RemoteAccessServiceConstants {
 
     public static Message getRequestMessage(int procId) {
         switch (procId) {
-           case 1: return null;
+           case 1: return GlobalTypes.Type.getDefaultInstance();
            default: throw new RuntimeException("unknown procedure id");
         }
     }
@@ -20,7 +20,7 @@ public class RemoteAccessServiceConstants {
 
     public static Message getResponseMessage(int procId) {
         switch (procId) {
-           case 1: return null;
+           case 1: return GlobalTypes.ErrorCodeResponse.getDefaultInstance();
            default: throw new RuntimeException("unknown procedure id");
         }
     }
