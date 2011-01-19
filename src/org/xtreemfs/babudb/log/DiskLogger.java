@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2008-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -118,8 +118,6 @@ public class DiskLogger extends Thread {
     private final SyncMode               syncMode;
 
     private final int 	                 pseudoSyncWait;
-    
-    // private final ReplicationManagerImpl replMan; TODO
         
     /**
      * Max number of LogEntries to write before sync.
@@ -137,7 +135,6 @@ public class DiskLogger extends Thread {
             int pseudoSyncWait, int maxQ) throws FileNotFoundException, IOException {
 
         super("DiskLogger thr.");
-        // this.replMan = replicationManager; TODO
         
         if (logfileDir == null) {
             throw new RuntimeException("expected a non-null logfile directory name!");
@@ -166,7 +163,6 @@ public class DiskLogger extends Thread {
         }
 
         this.syncMode = syncMode;
-        //fos = new FileOutputStream(lf, false);
         String openMode = "";
         switch (syncMode) {
             case ASYNC:
@@ -189,7 +185,7 @@ public class DiskLogger extends Thread {
 
         sync = new ReentrantLock();
 
-        final String sMode = (pseudoSyncWait == 0) ? "synchronous" : "asynchronous";
+        //final String sMode = (pseudoSyncWait == 0) ? "synchronous" : "asynchronous";
         //Logging.logMessage(Logging.LEVEL_INFO, this,"BabuDB disk logger is in "+sMode+" mode");
         Logging.logMessage(Logging.LEVEL_INFO, this,"BabuDB disk logger writes log file with "+syncMode);
     }
@@ -282,10 +278,7 @@ public class DiskLogger extends Thread {
     public void run() {
 
         ArrayList<LogEntry> tmpE = new ArrayList<LogEntry>(MAX_ENTRIES_PER_BLOCK);
-        /* TODO
-        ArrayList<ReplicateResponse> responses = 
-            new ArrayList<ReplicateResponse>(MAX_ENTRIES_PER_BLOCK); */
-        
+                
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "operational");
 
         CRC32 csumAlgo = new CRC32();
@@ -318,9 +311,6 @@ public class DiskLogger extends Thread {
                             "unexpected LSN: " + le.getLSN() + "\n" + viewID +
                             ":" + seqNo + " was expected instead.";
                         
-                        // logEntries with attached LSN were replicated by a 
-                        // master TODO
-                        // boolean replicate = (le.getLSN() == null);
                         le.assignId(viewID, seqNo);
                         
                         ReusableBuffer buffer = null;
@@ -329,16 +319,6 @@ public class DiskLogger extends Thread {
                                                
                             // write the LogEntry to the local disk
                             channel.write(buffer.getBuffer());
-                        
-                            // replicate the LogEntry, if replication is enabled,
-                            // initialized and the entry does not have been 
-                            // replicated yet
-                            /* TODO
-                            if (replMan != null && 
-                                replicate && 
-                                replMan.isInitialized()) {
-                                responses.add(replMan.replicate(le,buffer));
-                            } */
                         } finally {
                             csumAlgo.reset();
                             if (buffer != null) BufferPool.free(buffer);
@@ -349,27 +329,10 @@ public class DiskLogger extends Thread {
                         channel.force(true);
                     else if (this.syncMode == SyncMode.FDATASYNC)
                         channel.force(false);
-                    
-                    // setup the responses
-                    /* TODO
-                    if (responses.size() != 0) {
-                        for (ReplicateResponse rp : responses) {
-                            if (!rp.hasFailed()) {
-                                replMan.subscribeListener(rp);
-                            }
-                        }
-                        
-                        if (responses.size() != tmpE.size())
-                            for (ReplicateResponse rp : responses)
-                                tmpE.remove(rp.getLogEntry());
-                        else 
-                            tmpE.clear();
-                    } */
-                    
+                                     
                     for (LogEntry le : tmpE) { 
                         le.getListener().synced(le); 
                     }  
-                    // responses.clear(); TODO
                     tmpE.clear();
                     
                     if (pseudoSyncWait > 0) {
@@ -381,13 +344,6 @@ public class DiskLogger extends Thread {
                 
             } catch (IOException ex) {
                 Logging.logError(Logging.LEVEL_ERROR, this, ex);
-                /* TODO
-                for (ReplicateResponse re : responses) {
-                    tmpE.remove(re.getLogEntry());
-                    re.failed();
-                }
-                responses.clear();
-                */
                 
                 for (LogEntry le : tmpE) {
                     le.getListener().failed(le, ex);

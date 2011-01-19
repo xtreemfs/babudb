@@ -181,30 +181,14 @@ public class ReplicationController extends LifeCycleThread
      * @see org.xtreemfs.babudb.replication.control.ControlListener#notifyForHandover()
      */
     @Override
-    public void notifyForHandover() {
-        
-        boolean success = false;
-        InetSocketAddress newOwner;
-        int index = 0;
-        List<InetSocketAddress> clients = ctrlLayer.getClients();
-        do {
-            newOwner = clients.get(index++);
-            index %= clients.size();
-            success = this.ctrlLayer.handOverLease(
-                    new ASCIIString(FleaseHolder.getIdentity(newOwner)));
-        } while (hasLease());
-        
-        if (success) {
-            becomeSlave(newOwner.getAddress());
+    public void notifyForHandover() {        
+        if (this.handoverInProgress.get() && !this.fleaseHolder.amIOwner()) {
+            synchronized (this.handoverInProgress) {
+                if (this.handoverInProgress.compareAndSet(true, false)) {
+                    this.handoverInProgress.notify();
+                }
+            }
         }
-        
-//        if (this.handoverInProgress.get() && !this.fleaseHolder.amIOwner()) {
-//            synchronized (this.handoverInProgress) {
-//                if (this.handoverInProgress.compareAndSet(true, false)) {
-//                    this.handoverInProgress.notify();
-//                }
-//            }
-//        }
     }
 
     /* (non-Javadoc)
@@ -285,6 +269,36 @@ public class ReplicationController extends LifeCycleThread
 /*
  * private methods
  */
+    
+    /**
+     * This server gives up its master privileges. The lease is handed over
+     * to a server depending on the latest acknowledged LSN received by it.
+     * The local instance will also become slave of the new master, if handover
+     * was successful.
+     * 
+     * @throws InterruptedException
+     * 
+     * @return true, if handover was successful, false if this server loast the
+     *         ownership of the lease because of a timeout.
+     */
+    private boolean handover() throws InterruptedException {
+        boolean success = false;
+        InetSocketAddress newOwner;
+        int index = 0;
+        List<InetSocketAddress> clients = ctrlLayer.getClients();
+        do {
+            newOwner = clients.get(index++);
+            index %= clients.size();
+            success = this.ctrlLayer.handOverLease(
+                    new ASCIIString(FleaseHolder.getIdentity(newOwner)));
+        } while (hasLease());
+        
+        if (success) {
+            becomeSlave(newOwner.getAddress());
+        }
+        
+        return success;
+    }
     
     /**
      * This server has to become the new master.

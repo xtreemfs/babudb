@@ -30,48 +30,49 @@
 /*
  * AUTHORS: Felix Langner (ZIB)
  */
-package org.xtreemfs.babudb.replication.control;
-
-import java.net.InetSocketAddress;
-
-import org.xtreemfs.babudb.log.LogEntry;
-import org.xtreemfs.babudb.replication.service.accounting.ReplicateResponse;
-import org.xtreemfs.foundation.buffer.ReusableBuffer;
+package org.xtreemfs.babudb.replication.policy;
 
 /**
- *
- * <br>15.04.2010
+ * Using this policy there is to guaranty that your databases will remain in a
+ * consistent state, because any of your servers will be allowed to accept 
+ * requests of any kind and perform them locally whether they have the master 
+ * privilege or not.
+ * 
+ * @author flangner
+ * @since 01/19/2011
  */
-public interface ControlToBabuDBInterface extends RoleChangeListener{
+public final class NoRestriction implements Policy {
 
-    /**
-     * Performs a valid replicate-operation on all available slaves.
-     * 
-     * @param le
-     * @param buffer
-     * 
-     * @return the {@link ReplicateResponse} future.
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.policy.Policy#insertIsMasterRestricted()
      */
-    public ReplicateResponse replicate(LogEntry le, ReusableBuffer buffer);
+    @Override
+    public boolean insertIsMasterRestricted() {
+        return false;
+    }
 
-    /**
-     * <p>
-     * Registers the listener for a replicate call.
-     * </p>
-     * 
-     * @param response
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.policy.Policy#snapshotManipultationIsMasterRestricted()
      */
-    public void subscribeListener(ReplicateResponse rp);
+    @Override
+    public boolean snapshotManipultationIsMasterRestricted() {
+        return false;
+    }
 
-    /**
-     * @return true, if this server has the lease and is not suspended, 
-     *         false otherwise.
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.policy.Policy#dbModificationIsMasterRestricted()
      */
-    public boolean hasLease();
+    @Override
+    public boolean dbModificationIsMasterRestricted() {
+        return false;
+    }
 
-    /**
-     * @return the address of the current lease holder, or null if the lease is 
-     *         not available at the moment.
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.policy.Policy#lookUpIsMasterRestricted()
      */
-    public InetSocketAddress getLeaseHolder();
+    @Override
+    public boolean lookUpIsMasterRestricted() {
+        return false;
+    }
+
 }

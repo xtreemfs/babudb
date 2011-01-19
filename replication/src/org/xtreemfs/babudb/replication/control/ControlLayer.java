@@ -12,7 +12,6 @@ package org.xtreemfs.babudb.replication.control;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -305,9 +304,9 @@ public class ControlLayer extends TopLayer implements RoleChangeListener,
     public ReplicateResponse replicate(LogEntry le, ReusableBuffer buffer)  {  
         String errorMsg = null;
         try {
-            if (this.replicationController.hasLease()) {              
-                if (!this.replicationController.isSuspended()) {
-                    return this.serviceInterface.replicate(le, buffer);
+            if (replicationController.hasLease()) {              
+                if (!replicationController.isSuspended()) {
+                    return serviceInterface.replicate(le, buffer);
                 } else {
                     errorMsg = "Replication is suspended at the moment. " +
                                "Try again later.";
@@ -343,10 +342,8 @@ public class ControlLayer extends TopLayer implements RoleChangeListener,
      * @see org.xtreemfs.babudb.replication.control.ControlToBabuDBInterface#getLeaseHolder()
      */
     @Override
-    public InetAddress getLeaseHolder() {
-        InetSocketAddress address = this.leaseHolder.getLeaseHolderAddress();
-        
-        return (address != null) ? address.getAddress() : null;
+    public InetSocketAddress getLeaseHolder() {
+        return leaseHolder.getLeaseHolderAddress();
     }
     
     /*

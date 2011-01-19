@@ -54,7 +54,7 @@ public class StateOperation extends Operation {
      */
     @Override
     public void startRequest(Request rq) {
-        org.xtreemfs.babudb.lsmdb.LSN state = this.dbInterface.getState();
+        org.xtreemfs.babudb.lsmdb.LSN state = dbInterface.getState();
         Logging.logMessage(Logging.LEVEL_INFO, this, "StateOperation:" +
         		" reporting %s to %s.", state.toString(),
         		rq.getRPCRequest().getSenderAddress().toString());

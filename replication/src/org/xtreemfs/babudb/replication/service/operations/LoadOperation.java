@@ -86,8 +86,8 @@ public class LoadOperation extends Operation {
             DBFileMetaDatas.Builder result = DBFileMetaDatas.newBuilder();
             result.setMaxChunkSize(maxChunkSize);
             
-            synchronized (this.babuInterface.getDBModificationLock()) {
-                synchronized (this.babuInterface.getCheckpointerLock()) {
+            synchronized (babuInterface.getDBModificationLock()) {
+                synchronized (babuInterface.getCheckpointerLock()) {
                     
                     // add the DB-structure-file metadata
                     result.addDbFileMetadatas(convert(

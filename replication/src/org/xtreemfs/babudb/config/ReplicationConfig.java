@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2008-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -18,8 +18,9 @@ import java.util.Properties;
 import java.util.Set;
 
 import org.xtreemfs.babudb.replication.control.FleaseHolder;
+import org.xtreemfs.babudb.replication.policy.Policy;
 import org.xtreemfs.foundation.SSLOptions;
-import org.xtreemfs.foundation.config.Config;
+import org.xtreemfs.babudb.config.Config;
 import org.xtreemfs.foundation.flease.FleaseConfig;
 
 /**
@@ -31,6 +32,9 @@ import org.xtreemfs.foundation.flease.FleaseConfig;
  */
 
 public class ReplicationConfig extends Config {
+    
+    private final static String POLICY_PACKAGE = 
+        "org.xtreemfs.babudb.replication.policy.";
     
     protected final BabuDBConfig     babuDBConfig;
     
@@ -45,6 +49,9 @@ public class ReplicationConfig extends Config {
     protected int                    timeSyncInterval;
     
     protected final FleaseConfig     fleaseConfig;
+    
+    protected String                 policyName;
+    protected final Policy           replicationPolicy;
     
     /** 
      * longest duration a message can live on the wire, before it becomes void 
@@ -102,6 +109,16 @@ public class ReplicationConfig extends Config {
         this.fleaseConfig = new FleaseConfig(LEASE_TIMEOUT, this.localTimeRenew, 
                 MESSAGE_TIMEOUT, this.address, 
                 FleaseHolder.getIdentity(this.address), MAX_RETRIES);
+        
+        // get the replication policy
+        try {
+            this.replicationPolicy = (Policy) Policy.class.getClassLoader().
+                        loadClass(POLICY_PACKAGE + policyName).newInstance();
+            
+        } catch (Exception e) {
+            throw new IOException("ReplicationPolicy could not be " +
+            		"instantiated, because: " + e.getMessage());
+        }
     }
     
     public ReplicationConfig(String filename, BabuDBConfig babuConf) 
@@ -113,11 +130,21 @@ public class ReplicationConfig extends Config {
         this.fleaseConfig = new FleaseConfig(LEASE_TIMEOUT, this.localTimeRenew,
                 MESSAGE_TIMEOUT, this.address,
                 FleaseHolder.getIdentity(this.address), MAX_RETRIES);
+        
+        // get the replication policy
+        try {
+            this.replicationPolicy = (Policy) Policy.class.getClassLoader().
+                        loadClass(POLICY_PACKAGE + policyName).newInstance();
+            
+        } catch (Exception e) {
+            throw new IOException("ReplicationPolicy could not be " +
+                        "instantiated, because: " + e.getMessage());
+        }
     }
     
     public ReplicationConfig(Set<InetSocketAddress> participants, 
             int localTimeRenew, SSLOptions sslOptions, int syncN, 
-            String tempDir, BabuDBConfig babuConf) {
+            String tempDir, BabuDBConfig babuConf) throws IOException {
         
         this.babuDBConfig = babuConf;
         this.participants = new HashSet<InetSocketAddress>();
@@ -153,7 +180,17 @@ public class ReplicationConfig extends Config {
         
         checkArgs(babuDBConfig, address, sslOptions, participants, 
                 localTimeRenew, timeSyncInterval, syncN, chunkSize, 
-                this.tempDir);
+                this.tempDir, policyName);
+        
+        // get the replication policy
+        try {
+            this.replicationPolicy = (Policy) Policy.class.getClassLoader().
+                        loadClass(POLICY_PACKAGE + policyName).newInstance();
+            
+        } catch (Exception e) {
+            throw new IOException("ReplicationPolicy could not be " +
+                        "instantiated, because: " + e.getMessage());
+        }
     }
     
     public void read() throws IOException {
@@ -219,9 +256,12 @@ public class ReplicationConfig extends Config {
             number++;
         }
         
+        this.policyName = this.readOptionalString("babudb.repl.policy", 
+                                                  "MasterOnly");
+        
         checkArgs(babuDBConfig, address, sslOptions, participants, 
                   localTimeRenew, timeSyncInterval, syncN, chunkSize, 
-                  this.tempDir);
+                  this.tempDir, policyName);
     }
     
     public InetSocketAddress getInetSocketAddress() {
@@ -272,6 +312,10 @@ public class ReplicationConfig extends Config {
         return babuDBConfig;
     }
     
+    public Policy getReplicationPolicy() {
+        return replicationPolicy;
+    }
+    
     @Override
     public String toString() {
         StringBuffer buf = new StringBuffer();
@@ -288,6 +332,7 @@ public class ReplicationConfig extends Config {
                     participant.toString() + "\n");
         }
         buf.append("#        sync N: " + syncN + "\n");
+        buf.append("#        policy: " + policyName + "\n");
         buf.append("#        local time renew: " + localTimeRenew + "\n");
         buf.append("#        time sync interval: " + timeSyncInterval + "\n");
         buf.append("#        temporary directory: " + tempDir + "\n");
@@ -298,7 +343,7 @@ public class ReplicationConfig extends Config {
     private static void checkArgs(BabuDBConfig conf, InetSocketAddress address, 
             SSLOptions options, Set<InetSocketAddress> participants, 
             int localTimeRenew, int timeSyncInterval, int syncN, int chunkSize, 
-            String tempDir) {
+            String tempDir, String policyName) {
         
         if (tempDir.equals(conf.baseDir) || tempDir.equals(conf.dbLogDir))
             throw new IllegalArgumentException("The backup-directory has to be"
@@ -319,5 +364,19 @@ public class ReplicationConfig extends Config {
                     "inconsistent behavior, because there are '" + 
                     participants.size() + "' participants. The sync-N " + 
                     "has to be at least '" + (participants.size() / 2) + "'!");
+        
+        if (policyName != null && policyName == "") {
+            try {
+                Policy.class.getClassLoader().loadClass(
+                        POLICY_PACKAGE + policyName);
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Policy with name '" + 
+                        policyName + "' could not be found at classpath.");
+            }
+        } else {
+            throw new IllegalArgumentException("It is not possible to use " +
+            		"replication without replication policy. The policy " +
+            		"has at least to be set to default (MasterOnly)!");
+        }
     }
 }

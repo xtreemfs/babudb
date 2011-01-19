@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -363,17 +363,24 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
         
         Logging.logMessage(Logging.LEVEL_INFO, this, "shutting down ...");
         
-        if (worker != null)
-            for (LSMDBWorker w : worker)
+        if (worker != null) {
+            for (LSMDBWorker w : worker) {
                 w.shutdown();
+            }
+        }
         
-        /*
-         * stop the plugin threads TODO retrieve LifeCycleListener from trunk
-         * for (LifeCycleThread p : plugins) { p.shutdown(); try {
-         * p.waitForShutdown(); } catch (Exception e) { throw new
-         * BabuDBException(ErrorCode.BROKEN_PLUGIN, e.getMessage(),
-         * e.getCause()); } }
-         */
+        //stop the plugin threads TODO add shutdown method to LifeCycleThread
+//        for (LifeCycleThread p : plugins) {
+//            p.shutdown(); 
+//            try {
+//                p.waitForShutdown(); 
+//            } catch (Exception e) { 
+//                throw new BabuDBException(ErrorCode.BROKEN_PLUGIN, 
+//                        e.getMessage(), e.getCause()); 
+//            } 
+//        }
+    
+         
 
         try {
             
@@ -642,15 +649,4 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
             e.printStackTrace();
         }
     }
-    
-    /**
-     * TODO
-     * 
-     * @return true, if replication runs in slave-mode, false otherwise.
-     * 
-     *         public void slaveCheck() throws BabuDBException { if
-     *         (replicationManager != null && replicationManager.isInitialized()
-     *         && !replicationManager.isMaster()) { throw new
-     *         BabuDBException(ErrorCode.NO_ACCESS, slaveProtectionMsg); } }
-     */
 }

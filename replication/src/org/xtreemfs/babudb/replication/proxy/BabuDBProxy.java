@@ -1,11 +1,11 @@
 /*
- * Copyright (c) 2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2010-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-package org.xtreemfs.babudb.replication;
+package org.xtreemfs.babudb.replication.proxy;
 
 import org.xtreemfs.babudb.BabuDBInternal;
 import org.xtreemfs.babudb.api.BabuDB;
@@ -19,6 +19,9 @@ import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.lsmdb.DBConfig;
 import org.xtreemfs.babudb.lsmdb.LSMDBWorker;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.replication.RemoteAccessClient;
+import org.xtreemfs.babudb.replication.ReplicationManagerImpl;
+import org.xtreemfs.babudb.replication.policy.Policy;
 import org.xtreemfs.foundation.LifeCycleThread;
 
 /**
@@ -28,17 +31,19 @@ import org.xtreemfs.foundation.LifeCycleThread;
  * @author flangner
  * @since 11/03/2010
  */
-public class BabuDBStub implements BabuDBInternal {
+public class BabuDBProxy implements BabuDBInternal {
     
     private final BabuDBInternal         localBabuDB;
     private final PersistenceManager     persMan;
     private final ReplicationManagerImpl replMan;
     
-    public BabuDBStub(BabuDBInternal localDB, ReplicationManagerImpl replMan) {      
+    public BabuDBProxy(BabuDBInternal localDB, ReplicationManagerImpl replMan, 
+            Policy replicationPolicy, RemoteAccessClient client) {    
+        
         this.localBabuDB = localDB;
         this.replMan = replMan;
-        this.persMan = new ReplicationPersistenceManager(replMan, 
-                localDB.getPersistenceManager());
+        this.persMan = new PersistenceManagerProxy(replMan, 
+                localDB.getPersistenceManager(), replicationPolicy, client);
     }
     
     /* (non-Javadoc)
