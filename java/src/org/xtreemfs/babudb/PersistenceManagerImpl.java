@@ -23,7 +23,7 @@ import org.xtreemfs.babudb.log.SyncListener;
  * @author flangner
  * @since 11/03/2010
  */
-class PersistenceManagerImpl extends PersistenceManager {
+class PersistenceManagerImpl implements PersistenceManager {
 
     private DiskLogger diskLogger;
     

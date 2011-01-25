@@ -16,7 +16,7 @@ import org.xtreemfs.babudb.api.exception.BabuDBException;
  * @author flangner
  * @since 11/03/2010
  */
-public abstract class PersistenceManager {
+public interface PersistenceManager {
     
     /**
      * Method let some operation become persistent. Every operation executed
@@ -31,7 +31,7 @@ public abstract class PersistenceManager {
      * 
      * @return the result listener.
      */
-    public abstract <T> DatabaseRequestResult<T> makePersistent(byte type, 
+    public <T> DatabaseRequestResult<T> makePersistent(byte type, 
             InMemoryProcessing processing) throws BabuDBException;
     
     /**
@@ -41,12 +41,12 @@ public abstract class PersistenceManager {
      * @throws InterruptedException if the lock could not be acquired 
      *                              successfully.
      */
-    public abstract void lockService() throws InterruptedException;
+    public void lockService() throws InterruptedException;
     
     /**
      * Gives the lock away. Other services are allowed to save data persistent
      * to the databases again. If this service is not owner of the lock this
      * method does not effect the lock of another service.
      */
-    public abstract void unlockService();
+    public void unlockService();
 }
