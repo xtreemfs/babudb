@@ -8,13 +8,13 @@
 package org.xtreemfs.babudb;
 
 import org.xtreemfs.babudb.api.PersistenceManager;
+import org.xtreemfs.babudb.api.InMemoryProcessing;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
-import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
 /**
  * Default implementation of the {@link PersistenceManager} interface using
@@ -23,7 +23,7 @@ import org.xtreemfs.foundation.buffer.ReusableBuffer;
  * @author flangner
  * @since 11/03/2010
  */
-class PersistenceManagerImpl implements PersistenceManager {
+class PersistenceManagerImpl extends PersistenceManager {
 
     private DiskLogger diskLogger;
     
@@ -36,17 +36,19 @@ class PersistenceManagerImpl implements PersistenceManager {
     void setLogger(DiskLogger logger) {
         this.diskLogger = logger;
     }
-    
+      
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.PersistenceManager#makePersistent(byte, 
-     *          org.xtreemfs.foundation.buffer.ReusableBuffer)
+     *          org.xtreemfs.foundation.buffer.ReusableBuffer, 
+     *          org.xtreemfs.babudb.api.InMemoryProcessing)
      */
     @Override
     public <T> DatabaseRequestResult<T> makePersistent(byte type, 
-            ReusableBuffer load) throws BabuDBException {
+            final InMemoryProcessing processing) 
+            throws BabuDBException {
         
         // build the entry
-        LogEntry entry = new LogEntry(load, null, type);
+        LogEntry entry = new LogEntry(processing.before(), null, type);
         
         // setup the result
         final BabuDBRequestResultImpl<T> result =
@@ -58,6 +60,7 @@ class PersistenceManagerImpl implements PersistenceManager {
             @Override
             public void synced(LogEntry entry) {
                 if (entry != null) entry.free();
+                processing.after();
                 result.finished();
             }
             
@@ -76,8 +79,8 @@ class PersistenceManagerImpl implements PersistenceManager {
         } catch (InterruptedException ie) {
             if (entry != null) entry.free();
             throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "Operation " +
-            		"could not have been stored persistent to disk an " +
-            		"will therefore be discarded.", ie.getCause());
+                        "could not have been stored persistent to disk an " +
+                        "will therefore be discarded.", ie.getCause());
         } 
         
         return result;
@@ -100,5 +103,4 @@ class PersistenceManagerImpl implements PersistenceManager {
         if (this.diskLogger != null && this.diskLogger.hasLock())
             this.diskLogger.unlockLogger();
     }
-
 }
