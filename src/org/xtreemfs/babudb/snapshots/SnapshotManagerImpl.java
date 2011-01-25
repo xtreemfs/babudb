@@ -15,6 +15,7 @@ import java.util.Set;
 import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.BabuDBImpl;
+import org.xtreemfs.babudb.api.InMemoryProcessing;
 import org.xtreemfs.babudb.api.SnapshotManager;
 import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.database.DatabaseRO;
@@ -170,8 +171,9 @@ public class SnapshotManagerImpl implements SnapshotManager {
         deletePersistentSnapshot(dbName, snapshotName, true);
     }
     
-    public void deletePersistentSnapshot(String dbName, String snapshotName, boolean createLogEntry)
-        throws BabuDBException {
+    public void deletePersistentSnapshot(final String dbName, 
+            final String snapshotName, boolean createLogEntry)
+            throws BabuDBException {
         
         final Map<String, Snapshot> snapMap = snapshotDBs.get(dbName);
         if(snapMap == null)
@@ -205,18 +207,23 @@ public class SnapshotManagerImpl implements SnapshotManager {
         // if required, add deletion request to log
         if (createLogEntry) {
             
-            byte[] data = new byte[1 + dbName.length() + snapshotName.length()];
-            byte[] dbNameBytes = dbName.getBytes();
-            byte[] snapNameBytes = snapshotName.getBytes();
-            
-            assert (dbName.length() <= Byte.MAX_VALUE);
-            data[0] = (byte) dbName.length();
-            System.arraycopy(dbNameBytes, 0, data, 1, dbNameBytes.length);
-            System.arraycopy(snapNameBytes, 0, data, 1 + dbNameBytes.length, snapNameBytes.length);
-            
-            ReusableBuffer buf = ReusableBuffer.wrap(data);
             dbs.getPersistenceManager().makePersistent(
-                    LogEntry.PAYLOAD_TYPE_SNAP_DELETE, buf).get();
+                    LogEntry.PAYLOAD_TYPE_SNAP_DELETE, new InMemoryProcessing() {
+                        
+                        @Override
+                        public ReusableBuffer before() throws BabuDBException {
+                            byte[] data = new byte[1 + dbName.length() + snapshotName.length()];
+                            byte[] dbNameBytes = dbName.getBytes();
+                            byte[] snapNameBytes = snapshotName.getBytes();
+                            
+                            assert (dbName.length() <= Byte.MAX_VALUE);
+                            data[0] = (byte) dbName.length();
+                            System.arraycopy(dbNameBytes, 0, data, 1, dbNameBytes.length);
+                            System.arraycopy(snapNameBytes, 0, data, 1 + dbNameBytes.length, snapNameBytes.length);
+                            
+                            return ReusableBuffer.wrap(data);
+                        }
+                    }).get();
         }
     }
     
