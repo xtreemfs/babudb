@@ -16,7 +16,7 @@ package org.xtreemfs.babudb.api;
  * @author flangner
  * @since 03/03/2010
  */
-
+@Deprecated
 public interface StaticInitialization {
     
     /**

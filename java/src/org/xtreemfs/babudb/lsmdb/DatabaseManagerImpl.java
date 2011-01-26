@@ -131,29 +131,28 @@ public class DatabaseManagerImpl implements DatabaseManager {
      * @see org.xtreemfs.babudb.api.DatabaseManager#createDatabase(java.lang.String, int, org.xtreemfs.babudb.api.index.ByteRangeComparator[])
      */
     @Override
-    public Database createDatabase(String databaseName, int numIndices, ByteRangeComparator[] comparators)
-        throws BabuDBException {
-        
-        return proceedCreate(databaseName, numIndices, comparators);
-    }
-    
-    /**
-     * @param databaseName
-     * @param numIndices
-     * @param comparators
-     *            - if null - default comparators will be used.
-     * @return the newly created database
-     * @throws BabuDBException
-     */
-    public Database proceedCreate(final String databaseName, 
+    public Database createDatabase(final String databaseName, 
             final int numIndices, final ByteRangeComparator[] comparators)
             throws BabuDBException {
                 
-        dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_CREATE, 
-                new InMemoryProcessing() {
+        InMemoryProcessing processing = new InMemoryProcessing() {
             
             @Override
-            public ReusableBuffer before() throws BabuDBException {
+            public ReusableBuffer serializeRequest() throws BabuDBException {
+
+                ReusableBuffer buf = ReusableBuffer.wrap(
+                        new byte[databaseName.getBytes().length
+                                 + (Integer.SIZE * 3 / 8)]);
+                buf.putInt(-1); //TODO remove field (deprecated)
+                buf.putString(databaseName);
+                buf.putInt(numIndices);
+                buf.flip();
+                
+                return buf;
+            }
+            
+            @Override
+            public void before() throws BabuDBException {
                 ByteRangeComparator[] com = comparators;
                 
                 if (com == null) {
@@ -185,18 +184,11 @@ public class DatabaseManagerImpl implements DatabaseManager {
                         dbs.getDBConfigFile().save();
                     }
                 }
-                
-                // append the data to the diskLogger
-                ReusableBuffer buf = ReusableBuffer.wrap(new byte[databaseName.getBytes().length
-                    + (Integer.SIZE * 3 / 8)]);
-                buf.putInt(db.getLSMDB().getDatabaseId());
-                buf.putString(databaseName);
-                buf.putInt(numIndices);
-                buf.flip();
-                
-                return buf;
             }
-        }).get();  
+        };
+        
+        dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_CREATE, 
+                                                   processing).get();  
      
         return dbsByName.get(databaseName);
     }
@@ -209,43 +201,49 @@ public class DatabaseManagerImpl implements DatabaseManager {
     public void deleteDatabase(final String databaseName)
             throws BabuDBException {        
         
-        dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_DELETE, 
-                new InMemoryProcessing() {
-                    
-                    @Override
-                    public ReusableBuffer before() throws BabuDBException {
-                        int dbId = -1;
-                        synchronized (getDBModificationLock()) {
-                            synchronized (dbs.getCheckpointer()) {
-                                if (!dbsByName.containsKey(databaseName)) {
-                                    throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '" + databaseName
-                                        + "' does not exists");
-                                }
-                                final LSMDatabase db = ((DatabaseImpl) dbsByName.get(databaseName)).getLSMDB();
-                                dbId = db.getDatabaseId();
-                                dbsByName.remove(databaseName);
-                                dbsById.remove(dbId);
-                                
-                                ((SnapshotManagerImpl) dbs.getSnapshotManager()).deleteAllSnapshots(databaseName);
-                                
-                                dbs.getDBConfigFile().save();
-                                File dbDir = new File(dbs.getConfig().getBaseDir(), databaseName);
-                                if (dbDir.exists())
-                                    FSUtils.delTree(dbDir);
-                            }
+        InMemoryProcessing processing = new InMemoryProcessing() {
+            
+            @Override
+            public ReusableBuffer serializeRequest() throws BabuDBException {
+                
+                // append the data to the diskLogger
+                ReusableBuffer buf = ReusableBuffer.wrap(
+                        new byte[(Integer.SIZE / 2) 
+                                 + databaseName.getBytes().length]);
+                buf.putInt(-1); //TODO remove field (deprecated)
+                buf.putString(databaseName);
+                buf.flip();
+                
+                return buf;
+            }
+            
+            @Override
+            public void before() throws BabuDBException {
+                int dbId = -1;
+                synchronized (getDBModificationLock()) {
+                    synchronized (dbs.getCheckpointer()) {
+                        if (!dbsByName.containsKey(databaseName)) {
+                            throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '" + databaseName
+                                + "' does not exists");
                         }
+                        final LSMDatabase db = ((DatabaseImpl) dbsByName.get(databaseName)).getLSMDB();
+                        dbId = db.getDatabaseId();
+                        dbsByName.remove(databaseName);
+                        dbsById.remove(dbId);
                         
-                        // append the data to the diskLogger
-                        ReusableBuffer buf = ReusableBuffer
-                                .wrap(new byte[(Integer.SIZE / 2) + databaseName.getBytes().length]);
-                        buf.putInt(dbId);
-                        buf.putString(databaseName);
-                        buf.flip();
+                        ((SnapshotManagerImpl) dbs.getSnapshotManager()).deleteAllSnapshots(databaseName);
                         
-                        return buf;
+                        dbs.getDBConfigFile().save();
+                        File dbDir = new File(dbs.getConfig().getBaseDir(), databaseName);
+                        if (dbDir.exists())
+                            FSUtils.delTree(dbDir);
                     }
-                }).get();
+                }
+            }
+        };
         
+        dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_DELETE, 
+                                                   processing).get();
     }
         
     /* (non-Javadoc)
@@ -254,22 +252,42 @@ public class DatabaseManagerImpl implements DatabaseManager {
     @Override
     public void copyDatabase(final String sourceDB, final String destDB) 
             throws BabuDBException {  
-                
-        dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_COPY, 
-                new InMemoryProcessing() {
+        
+        InMemoryProcessing processing = new InMemoryProcessing() {
             
             @Override
-            public ReusableBuffer before() throws BabuDBException {
-                final DatabaseImpl sDB = (DatabaseImpl) dbsByName.get(sourceDB);
+            public ReusableBuffer serializeRequest() throws BabuDBException {
+
+                ReusableBuffer buf = ReusableBuffer.wrap(
+                        new byte[(Integer.SIZE / 2) 
+                                 + sourceDB.getBytes().length
+                                 + destDB.getBytes().length]);
+                buf.putInt(-1); //TODO remove field (deprecated)
+                buf.putInt(-1); //TODO remove field (deprecated)
+                buf.putString(sourceDB);
+                buf.putString(destDB);
+                buf.flip();
+                
+                return buf;
+            }
+            
+            @Override
+            public void before() throws BabuDBException {
+                
+                DatabaseImpl sDB = (DatabaseImpl) dbsByName.get(sourceDB);
                 if (sDB == null) {
-                    throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '" + sourceDB + "' does not exist");
+                    throw new BabuDBException(
+                            ErrorCode.NO_SUCH_DB, "database '" + 
+                            sourceDB + "' does not exist");
                 }
                 
-                final int dbId;
+                int dbId;
                 synchronized (getDBModificationLock()) {
                     synchronized (dbs.getCheckpointer()) {
                         if (dbsByName.containsKey(destDB)) {
-                            throw new BabuDBException(ErrorCode.DB_EXISTS, "database '" + destDB + "' already exists");
+                            throw new BabuDBException(
+                                    ErrorCode.DB_EXISTS, "database '" + 
+                                    destDB + "' already exists");
                         }
                         dbId = nextDbId++;
                         // just "reserve" the name
@@ -282,7 +300,8 @@ public class DatabaseManagerImpl implements DatabaseManager {
                 try {
                     sDB.proceedSnapshot(destDB);
                 } catch (InterruptedException i) {
-                    throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "Snapshot creation was interrupted.", i);
+                    throw new BabuDBException(ErrorCode.INTERNAL_ERROR, 
+                            "Snapshot creation was interrupted.", i);
                 }
                 
                 // create new DB and load from snapshot
@@ -297,19 +316,11 @@ public class DatabaseManagerImpl implements DatabaseManager {
                     dbsByName.put(destDB, newDB);
                     dbs.getDBConfigFile().save();
                 }
-                
-                // append the data to the diskLogger
-                ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE / 2) + sourceDB.getBytes().length
-                    + destDB.getBytes().length]);
-                buf.putInt(sDB.getLSMDB().getDatabaseId());
-                buf.putInt(dbId);
-                buf.putString(sourceDB);
-                buf.putString(destDB);
-                buf.flip();
-                
-                return buf;
             }
-        }).get();
+        };
+        
+        dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_COPY, 
+                                                   processing).get();
     }
     
     public void shutdown() throws BabuDBException {

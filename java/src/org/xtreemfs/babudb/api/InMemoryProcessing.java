@@ -20,16 +20,22 @@ import org.xtreemfs.foundation.buffer.ReusableBuffer;
 public abstract class InMemoryProcessing {
     
     /**
-     * Method to execute before making an Operation on-disk persistent.
-     * Depending on the implementation of PersistenceManager throwing an
-     * exception might influence the execution of makePersistent() and 
-     * after().
+     * Method to serialize the request before storing it.
      * 
-     * @throws BabuDBException if payload creating fails.
+     * @return serialized operation, ready to be stored to disk.
      * 
-     * @return payload of the operation to store at the disk.
+     * @throws BabuDBException if serialization fails.
      */
-    public abstract ReusableBuffer before() throws BabuDBException;
+    public abstract ReusableBuffer serializeRequest() throws BabuDBException;
+    
+    /**
+     * Optional method to execute before making an Operation on-disk persistent.
+     * Depending on the implementation of PersistenceManager throwing an
+     * exception might influence the execution of makePersistent() and after().
+     * 
+     * @throws BabuDBException if method fails. 
+     */
+    public void before() throws BabuDBException {}
     
     /**
      * Optional method to execute after making an Operation successfully 
