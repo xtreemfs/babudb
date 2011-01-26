@@ -27,13 +27,11 @@ class PersistenceManagerImpl implements PersistenceManager {
 
     private DiskLogger diskLogger;
     
-    /**
-     * Registers the {@link DiskLogger} at this instance of 
-     * {@link PersistenceManager}.
-     * 
-     * @param logger
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.PersistenceManager#setLogger(
+     *          org.xtreemfs.babudb.log.DiskLogger)
      */
-    void setLogger(DiskLogger logger) {
+    public void setLogger(DiskLogger logger) {
         this.diskLogger = logger;
     }
       
@@ -47,8 +45,11 @@ class PersistenceManagerImpl implements PersistenceManager {
             final InMemoryProcessing processing) 
             throws BabuDBException {
         
+        processing.before();
+        
         // build the entry
-        LogEntry entry = new LogEntry(processing.before(), null, type);
+        LogEntry entry = new LogEntry(processing.serializeRequest(), 
+                                      null, type);
         
         // setup the result
         final BabuDBRequestResultImpl<T> result =

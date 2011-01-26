@@ -174,56 +174,90 @@ public class SnapshotManagerImpl implements SnapshotManager {
     public void deletePersistentSnapshot(final String dbName, 
             final String snapshotName, boolean createLogEntry)
             throws BabuDBException {
-        
-        final Map<String, Snapshot> snapMap = snapshotDBs.get(dbName);
-        if(snapMap == null)
-            return;
-        
-        final Snapshot snap = snapMap.get(snapshotName);
-        
-        // if the snapshot does not exist ...
-        if (snap == null) {
-            
-            // if no log entry needs to be created, i.e. the log is being
-            // replayed, ignore the request
-            if (!createLogEntry)
-                return;
-            
-            throw new BabuDBException(ErrorCode.NO_SUCH_SNAPSHOT, "snapshot '" + snapshotName
-                + "' does not exist");
-        }
-        
-        // shut down and remove the view
-        snap.getView().shutdown();
-        snapMap.remove(snapshotName);
-        
-        // if a snapshot materialization request is currently in the
-        // checkpointer queue, remove it
-        ((CheckpointerImpl) dbs.getCheckpointer()).removeSnapshotMaterializationRequest(dbName, snapshotName);
-        
-        // delete the snapshot subdirectory on disk if available
-        FSUtils.delTree(new File(getSnapshotDir(dbName, snapshotName)));
-        
+                
         // if required, add deletion request to log
         if (createLogEntry) {
             
+            InMemoryProcessing processing = new InMemoryProcessing() {
+                
+                @Override
+                public ReusableBuffer serializeRequest() throws BabuDBException {
+                    byte[] data = new byte[1 + dbName.length() + 
+                                           snapshotName.length()];
+                    byte[] dbNameBytes = dbName.getBytes();
+                    byte[] snapNameBytes = snapshotName.getBytes();
+                    
+                    assert (dbName.length() <= Byte.MAX_VALUE);
+                    data[0] = (byte) dbName.length();
+                    System.arraycopy(dbNameBytes, 0, data, 1, 
+                            dbNameBytes.length);
+                    System.arraycopy(snapNameBytes, 0, data, 
+                            1 + dbNameBytes.length, snapNameBytes.length);
+                    
+                    return ReusableBuffer.wrap(data);
+                }
+                
+                @Override
+                public void before() throws BabuDBException {
+                    
+                    final Map<String, Snapshot> snapMap = snapshotDBs.get(dbName);
+                    if(snapMap == null) {
+                        throw new BabuDBException(ErrorCode.NO_SUCH_SNAPSHOT, 
+                                "snapshot '" + snapshotName + 
+                                "' does not exist"); 
+                    }
+                    
+                    final Snapshot snap = snapMap.get(snapshotName);
+                    
+                    // if the snapshot does not exist ...
+                    if (snap == null) {
+                        throw new BabuDBException(ErrorCode.NO_SUCH_SNAPSHOT, 
+                                "snapshot '" + snapshotName + 
+                                "' does not exist");
+                    }
+                    
+                    // shut down and remove the view
+                    snap.getView().shutdown();
+                    snapMap.remove(snapshotName);
+                    
+                    // if a snapshot materialization request is currently in the
+                    // checkpointer queue, remove it
+                    ((CheckpointerImpl) dbs.getCheckpointer()).removeSnapshotMaterializationRequest(dbName, snapshotName);
+                    
+                    // delete the snapshot subdirectory on disk if available
+                    FSUtils.delTree(new File(getSnapshotDir(dbName, snapshotName)));
+                }
+            };
+            
             dbs.getPersistenceManager().makePersistent(
-                    LogEntry.PAYLOAD_TYPE_SNAP_DELETE, new InMemoryProcessing() {
-                        
-                        @Override
-                        public ReusableBuffer before() throws BabuDBException {
-                            byte[] data = new byte[1 + dbName.length() + snapshotName.length()];
-                            byte[] dbNameBytes = dbName.getBytes();
-                            byte[] snapNameBytes = snapshotName.getBytes();
-                            
-                            assert (dbName.length() <= Byte.MAX_VALUE);
-                            data[0] = (byte) dbName.length();
-                            System.arraycopy(dbNameBytes, 0, data, 1, dbNameBytes.length);
-                            System.arraycopy(snapNameBytes, 0, data, 1 + dbNameBytes.length, snapNameBytes.length);
-                            
-                            return ReusableBuffer.wrap(data);
-                        }
-                    }).get();
+                    LogEntry.PAYLOAD_TYPE_SNAP_DELETE, processing).get();
+        } else {
+            
+            final Map<String, Snapshot> snapMap = snapshotDBs.get(dbName);
+            if(snapMap == null)
+                return;
+            
+            final Snapshot snap = snapMap.get(snapshotName);
+            
+            // if the snapshot does not exist ...
+            if (snap == null) {
+                
+                // if no log entry needs to be created, i.e. the log is being
+                // replayed, ignore the request
+                return;
+            }
+            
+            // shut down and remove the view
+            snap.getView().shutdown();
+            snapMap.remove(snapshotName);
+            
+            // if a snapshot materialization request is currently in the
+            // checkpointer queue, remove it
+            ((CheckpointerImpl) dbs.getCheckpointer())
+                    .removeSnapshotMaterializationRequest(dbName, snapshotName);
+            
+            // delete the snapshot sub-directory on disk if available
+            FSUtils.delTree(new File(getSnapshotDir(dbName, snapshotName)));
         }
     }
     

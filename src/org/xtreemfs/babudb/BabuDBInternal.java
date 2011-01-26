@@ -40,10 +40,22 @@ public interface BabuDBInternal extends BabuDB {
     public BabuDBConfig getConfig();
     
     /**
+     * May change during execution so always access the most common instance
+     * by this method.
      * 
-     * @return
+     * @return the {@link PersistenceManager} used by this BabuDB instance to 
+     *         ensure on-disk persistence of database-modifying requests.
      */
     public PersistenceManager getPersistenceManager();
+    
+    /**
+     * The registered {@link PersistenceManager} will be replaced by the given
+     * one. This method is not thread-safe so please ensure there are no race-
+     * conditions accessing the manager while execution. 
+     * 
+     * @param perMan
+     */
+    public void replacePersistenceManager(PersistenceManager perMan);
     
     /**
      * @param dbId

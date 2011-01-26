@@ -141,6 +141,8 @@ public class DatabaseImpl implements Database {
     
     /**
      * Insert an group of inserts in the context of the invoking thread.
+     * Proper insertion is not guaranteed, since the result of the attempt to
+     * make the insert persistent is ignored, if {@link SyncMode} is ASYNC.
      * 
      * @param irg - the group of inserts.
      * @param listener - to notify after insert.
@@ -148,61 +150,62 @@ public class DatabaseImpl implements Database {
     private void directInsert(final BabuDBInsertGroup irg, 
             final BabuDBRequestResultImpl<Object> listener) {
         
+        InMemoryProcessing processing = new InMemoryProcessing() {
+            
+            @Override
+            public ReusableBuffer serializeRequest() throws BabuDBException {
+                
+                int size = irg.getRecord().getSize();
+                ReusableBuffer buf = BufferPool.allocate(size);
+                irg.getRecord().serialize(buf);
+                buf.flip();
+                
+                return buf;
+            }
+            
+            @Override
+            public void before() throws BabuDBException {
+                int numIndices = lsmDB.getIndexCount();
+                
+                for (InsertRecord ir : irg.getRecord().getInserts()) {
+                    if ((ir.getIndexId() >= numIndices) || 
+                        (ir.getIndexId() < 0)) {
+                        throw new BabuDBException(
+                                ErrorCode.NO_SUCH_INDEX, "index " 
+                                + ir.getIndexId() + 
+                                " does not exist");
+                    }
+                }
+            }
+            
+            @Override
+            public void after() {
+                
+                // in case of synchronous inserts, wait until the disk logger 
+                // returns
+                if (dbs.getConfig().getSyncMode() != 
+                    SyncMode.ASYNC) {
+                
+                    // insert into the in-memory-tree
+                    for (InsertRecord ir : irg.getRecord().getInserts()) {
+                        LSMTree index = lsmDB.getIndex(
+                                ir.getIndexId());
+                        
+                        if (ir.getValue() != null) {
+                            index.insert(ir.getKey(), 
+                                         ir.getValue());
+                        } else {
+                            index.delete(ir.getKey());
+                        }
+                    }
+                    listener.finished();
+                }
+            }
+        };
 
         try {
             dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_INSERT, 
-                                new InMemoryProcessing() {
-                            
-                            @Override
-                            public ReusableBuffer before() throws BabuDBException {
-                                int numIndices = lsmDB.getIndexCount();
-                                
-                                for (InsertRecord ir : irg.getRecord().getInserts()) {
-                                    if ((ir.getIndexId() >= numIndices) || 
-                                        (ir.getIndexId() < 0)) {
-                                        throw new BabuDBException(
-                                                ErrorCode.NO_SUCH_INDEX, "index " 
-                                                + ir.getIndexId() + 
-                                                " does not exist");
-                                    }
-                                }
-                                
-                                
-                                int size = irg.getRecord().getSize();
-                                ReusableBuffer buf = BufferPool.allocate(size);
-                                irg.getRecord().serialize(buf);
-                                buf.flip();
-                                
-                                return buf;
-                            }
-                            
-                            /* (non-Javadoc)
-                             * @see org.xtreemfs.babudb.api.InMemoryProcessing#after()
-                             */
-                            @Override
-                            public void after() {
-                                // in case of synchronous inserts, wait until the disk logger 
-                                // returns
-                                if (dbs.getConfig().getSyncMode() != 
-                                    SyncMode.ASYNC) {
-
-                                
-                                    // insert into the in-memory-tree
-                                    for (InsertRecord ir : irg.getRecord().getInserts()) {
-                                        LSMTree index = lsmDB.getIndex(
-                                                ir.getIndexId());
-                                        
-                                        if (ir.getValue() != null) {
-                                            index.insert(ir.getKey(), 
-                                                         ir.getValue());
-                                        } else {
-                                            index.delete(ir.getKey());
-                                        }
-                                    }
-                                    listener.finished();
-                                }
-                            }
-                        }); 
+                                                       processing); 
             
             if (dbs.getConfig().getSyncMode() == SyncMode.ASYNC) {
                 // insert into the in-memory-tree
@@ -603,31 +606,31 @@ public class DatabaseImpl implements Database {
     public int[] createSnapshot(final SnapshotConfig snap, 
         boolean appendLogEntry) throws BabuDBException, InterruptedException {
         
+        InMemoryProcessing processing = new InMemoryProcessing() {
+            
+            @Override
+            public ReusableBuffer serializeRequest() throws BabuDBException {
+                // serialize the snapshot configuration
+                ReusableBuffer buf = null;
+                try {
+                    ByteArrayOutputStream bout = new ByteArrayOutputStream();
+                    ObjectOutputStream oout = new ObjectOutputStream(bout);
+                    oout.writeInt(lsmDB.getDatabaseId());
+                    oout.writeObject(snap);
+                    buf = ReusableBuffer.wrap(bout.toByteArray());
+                    oout.close();
+                } catch (IOException exc) {
+                    throw new BabuDBException(ErrorCode.IO_ERROR, "could not serialize snapshot configuration: "
+                        + snap.getClass(), exc);
+                }
+                
+                return buf;
+            }
+        };
+        
         if (appendLogEntry) {     
             dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_SNAP, 
-                    new InMemoryProcessing() {
-                
-                    /* (non-Javadoc)
-                     * @see org.xtreemfs.babudb.api.PersistenceManager.OptionalInMemoryProcessing#before()
-                     */
-                    @Override
-                    public ReusableBuffer before() throws BabuDBException {
-                        // serialize the snapshot configuration
-                        ReusableBuffer buf = null;
-                        try {
-                            ByteArrayOutputStream bout = new ByteArrayOutputStream();
-                            ObjectOutputStream oout = new ObjectOutputStream(bout);
-                            oout.writeInt(lsmDB.getDatabaseId());
-                            oout.writeObject(snap);
-                            buf = ReusableBuffer.wrap(bout.toByteArray());
-                            oout.close();
-                        } catch (IOException exc) {
-                            throw new BabuDBException(ErrorCode.IO_ERROR, "could not serialize snapshot configuration: "
-                                + snap.getClass(), exc);
-                        }
-                        
-                        return buf;
-                    }}).get();
+                                                       processing).get();
         }
         
         // critical block...

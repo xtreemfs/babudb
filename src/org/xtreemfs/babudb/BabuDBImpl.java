@@ -71,7 +71,7 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
     /**
      * the disk logger is used to write InsertRecordGroups persistently to disk
      */
-    private final PersistenceManagerImpl permMan;
+    private PersistenceManager           permMan;
     
     /**
      * Checkpointer thread for automatic checkpointing
@@ -434,6 +434,14 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
     @Override
     public Checkpointer getCheckpointer() {
         return dbCheckptr;
+    }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.BabuDBInternal#replacePersistenceManager(org.xtreemfs.babudb.api.PersistenceManager)
+     */
+    @Override
+    public void replacePersistenceManager(PersistenceManager perMan) {
+        this.permMan = perMan;
     }
     
     /*

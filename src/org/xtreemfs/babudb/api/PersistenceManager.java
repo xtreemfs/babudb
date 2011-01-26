@@ -9,6 +9,7 @@ package org.xtreemfs.babudb.api;
 
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.log.DiskLogger;
 
 /**
  * Interface between API and the core {@link BabuDB}.
@@ -17,6 +18,13 @@ import org.xtreemfs.babudb.api.exception.BabuDBException;
  * @since 11/03/2010
  */
 public interface PersistenceManager {
+    
+    /**
+     * Register some local logger instance to proceed requests at.
+     * 
+     * @param logger
+     */
+    public void setLogger (DiskLogger logger);
     
     /**
      * Method let some operation become persistent. Every operation executed
