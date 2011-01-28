@@ -7,6 +7,7 @@
  */
 package org.xtreemfs.babudb.replication.proxy.operations;
 
+import org.xtreemfs.babudb.api.InMemoryProcessing;
 import org.xtreemfs.babudb.api.PersistenceManager;
 import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
@@ -17,6 +18,7 @@ import org.xtreemfs.babudb.pbrpc.RemoteAccessServiceConstants;
 import org.xtreemfs.babudb.replication.transmission.ErrorCode;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
 import com.google.protobuf.Message;
 
@@ -52,7 +54,15 @@ public class MakePersistantOperation extends Operation {
         try {
             DatabaseRequestResult<Object> result = 
                 this.local.makePersistent((byte) type.getValue(), 
-                        rq.getRpcRequest().getData());
+                        new InMemoryProcessing() {
+                    
+                    @Override
+                    public ReusableBuffer serializeRequest() 
+                            throws BabuDBException {
+                        
+                        return rq.getRpcRequest().getData();
+                    }
+                });
             
             result.registerListener(new DatabaseRequestListener<Object>() {
                 
@@ -80,5 +90,4 @@ public class MakePersistantOperation extends Operation {
     public Message getDefaultRequest() {
         return Type.getDefaultInstance();
     }
-
 }

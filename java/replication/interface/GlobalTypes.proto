@@ -61,3 +61,23 @@ message FLease {
   required string host = 1;
   required fixed32 port = 2;
 }
+
+message DatabaseNames {
+  repeated string database_name = 1;
+}
+
+message Lookup {
+  required string database_name = 1;
+  required fixed32 index_id = 2;
+}
+
+message RangeLookup {
+  required string database_name = 1;
+  required fixed32 index_id = 2;
+  required fixed32 from_length = 3;
+}
+
+message EntryMap {
+  optional fixed32 error_code = 1[default = 0];
+  repeated fixed64 length = 2;
+}

@@ -15,12 +15,14 @@ import org.xtreemfs.babudb.api.PersistenceManager;
 import org.xtreemfs.babudb.api.SnapshotManager;
 import org.xtreemfs.babudb.api.StaticInitialization;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.lsmdb.DBConfig;
 import org.xtreemfs.babudb.lsmdb.LSMDBWorker;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.RemoteAccessClient;
-import org.xtreemfs.babudb.replication.ReplicationManagerImpl;
+import org.xtreemfs.babudb.replication.ReplicationManager;
+import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.replication.policy.Policy;
 import org.xtreemfs.foundation.LifeCycleThread;
 
@@ -34,16 +36,22 @@ import org.xtreemfs.foundation.LifeCycleThread;
 public class BabuDBProxy implements BabuDBInternal {
     
     private final BabuDBInternal         localBabuDB;
-    private final PersistenceManager     persMan;
-    private final ReplicationManagerImpl replMan;
+    private final PersistenceManager     persManProxy;
+    private final DatabaseManager        dbManProxy;
+    private final ReplicationManager     replMan;
     
-    public BabuDBProxy(BabuDBInternal localDB, ReplicationManagerImpl replMan, 
+    public BabuDBProxy(BabuDBInternal localDB, ReplicationManager replMan, 
             Policy replicationPolicy, RemoteAccessClient client) {    
+        
+        assert (localDB != null);
         
         this.localBabuDB = localDB;
         this.replMan = replMan;
-        this.persMan = new PersistenceManagerProxy(replMan, 
+        this.persManProxy = new PersistenceManagerProxy(replMan, 
                 localDB.getPersistenceManager(), replicationPolicy, client);
+        this.localBabuDB.replacePersistenceManager(this.persManProxy);
+        this.dbManProxy = new DatabaseManagerProxy(localDB.getDatabaseManager(), 
+                replicationPolicy, replMan, client);
     }
     
     /* (non-Javadoc)
@@ -59,7 +67,7 @@ public class BabuDBProxy implements BabuDBInternal {
      */
     @Override
     public DatabaseManager getDatabaseManager() {
-        return localBabuDB.getDatabaseManager();
+        return dbManProxy;
     }
 
     /* (non-Javadoc)
@@ -75,7 +83,14 @@ public class BabuDBProxy implements BabuDBInternal {
      */
     @Override
     public void shutdown() throws BabuDBException {
-        this.localBabuDB.shutdown();
+        try {
+            replMan.shutdown();
+        } catch (Exception e) {
+            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
+                                      e.getMessage());
+        } finally {
+            localBabuDB.shutdown(); 
+        }
     }
 
     /* (non-Javadoc)
@@ -83,7 +98,7 @@ public class BabuDBProxy implements BabuDBInternal {
      */
     @Override
     public PersistenceManager getPersistenceManager() {
-        return persMan;
+        return persManProxy;
     }
     
     /* (non-Javadoc)
@@ -114,7 +129,8 @@ public class BabuDBProxy implements BabuDBInternal {
      */
     @Override
     public DBConfig getDBConfigFile() {
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException("Manually influencing the" +
+        		" DBConfig is forbidden by the replication plugin.");
     }
 
     /* (non-Javadoc)
@@ -122,7 +138,7 @@ public class BabuDBProxy implements BabuDBInternal {
      */
     @Override
     public BabuDBConfig getConfig() {
-        throw new UnsupportedOperationException();
+        return localBabuDB.getConfig();
     }
 
     /* (non-Javadoc)
@@ -130,7 +146,8 @@ public class BabuDBProxy implements BabuDBInternal {
      */
     @Override
     public LSMDBWorker getWorker(int dbId) {
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException("Manually influencing the" +
+                " LSMDBWorker is forbidden by the replication plugin.");
     }
 
     /* (non-Javadoc)
@@ -138,7 +155,7 @@ public class BabuDBProxy implements BabuDBInternal {
      */
     @Override
     public int getWorkerCount() {
-        throw new UnsupportedOperationException();
+        return localBabuDB.getWorkerCount();
     }
 
     /* (non-Javadoc)
@@ -146,7 +163,8 @@ public class BabuDBProxy implements BabuDBInternal {
      */
     @Override
     public void stop() {
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException("Manually stopping the local" +
+        	" BabuDB instance is forbidden by the replication plugin.");
     }
 
     /* (non-Javadoc)
@@ -154,6 +172,17 @@ public class BabuDBProxy implements BabuDBInternal {
      */
     @Override
     public LSN restart() throws BabuDBException {
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException("Manually restarting the local" 
+                + " BabuDB instance is forbidden by the replication plugin.");
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.BabuDBInternal#replacePersistenceManager(org.xtreemfs.babudb.api.PersistenceManager)
+     */
+    @Override
+    public void replacePersistenceManager(PersistenceManager perMan) {
+        throw new UnsupportedOperationException("Manually changing the " +
+        		"persistence manager of the local BabuDB instance" +
+        		" is forbidden by the replication plugin.");
     }
 }

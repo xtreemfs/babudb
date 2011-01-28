@@ -7,8 +7,9 @@
  */
 package org.xtreemfs.babudb.replication.proxy;
 
-import org.xtreemfs.babudb.api.PersistenceManager;
 import org.xtreemfs.babudb.pbrpc.RemoteAccessServiceConstants;
+import org.xtreemfs.babudb.replication.BabuDBInterface;
+import org.xtreemfs.babudb.replication.proxy.operations.GetDatabasesOperation;
 import org.xtreemfs.babudb.replication.proxy.operations.MakePersistantOperation;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsVerification;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
@@ -22,15 +23,15 @@ import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestHandler;
  */
 public class RPCRequestHandler extends RequestHandler {
     
-    /**
-     * @param verificator
-     */
     public RPCRequestHandler(ParticipantsVerification verificator,
-            PersistenceManager localPersMan) {
+            BabuDBInterface dbs) {
         super(verificator);
         
         // setup the operations
-        Operation op = new MakePersistantOperation(localPersMan);
+        Operation op = new MakePersistantOperation(dbs.getPersistanceManager());
+        operations.put(op.getProcedureId(), op);
+        
+        op = new GetDatabasesOperation(dbs);
         operations.put(op.getProcedureId(), op);
     }
 

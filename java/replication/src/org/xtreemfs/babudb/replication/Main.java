@@ -54,9 +54,9 @@ public class Main implements PluginMain {
         }
         
         // initialize the replication services
-        ReplicationManagerImpl replMan;
+        ReplicationManager replMan;
         try {
-            replMan = new ReplicationManagerImpl(babuDB, configuration);           
+            replMan = new ReplicationManager(babuDB, configuration);           
         } catch (Exception e) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
                     e.getMessage(), e.getCause());

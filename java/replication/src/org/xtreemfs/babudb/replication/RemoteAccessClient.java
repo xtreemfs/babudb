@@ -11,8 +11,12 @@
 package org.xtreemfs.babudb.replication;
 
 import java.net.InetSocketAddress;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.api.PersistenceManager;
+import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
@@ -32,8 +36,84 @@ public interface RemoteAccessClient {
      * @param master
      * @param type
      * @param data
-     * @return the request future.
+     * @return the request's response future.
      */
     public ClientResponseFuture<?> makePersistent(InetSocketAddress master, 
             int type, ReusableBuffer data);
+    
+    /**
+     * RPC for requesting a list of available {@link Database} names at the 
+     * master.
+     * 
+     * @param master
+     * @return the request's response future.
+     */
+    public ClientResponseFuture<List<String>> getDatabases(
+            InetSocketAddress master);
+    
+    /**
+     * RPC for looking up a key's value at the master.
+     * 
+     * @param dbName
+     * @param indexId
+     * @param key
+     * @param master
+     * @return the request's response future.
+     */
+    public ClientResponseFuture<byte[]> lookup(String dbName, int indexId, 
+            ReusableBuffer key, InetSocketAddress master);
+    
+    /**
+     * RPC for a prefix-lookup at the master.
+     * 
+     * @param dbName
+     * @param indexId
+     * @param key
+     * @param master
+     * @return the request's response future.
+     */
+    public ClientResponseFuture<Iterator<Entry<byte[], byte[]>>> prefixLookup(
+            String dbName, int indexId, ReusableBuffer key, 
+            InetSocketAddress master);
+    
+    /**
+     * RPC for a reverse prefix-lookup at the master.
+     * 
+     * @param dbName
+     * @param indexId
+     * @param key
+     * @param master
+     * @return the request's response future.
+     */
+    public ClientResponseFuture<Iterator<Entry<byte[], byte[]>>> prefixLookupR(
+            String dbName, int indexId, ReusableBuffer key, 
+            InetSocketAddress master);
+    
+    /**
+     * RPC for a range-lookup at the master.
+     * 
+     * @param dbName
+     * @param indexId
+     * @param from
+     * @param to
+     * @param master
+     * @return the request's response future.
+     */
+    public ClientResponseFuture<Iterator<Entry<byte[], byte[]>>> rangeLookup(
+            String dbName, int indexId, ReusableBuffer from, ReusableBuffer to, 
+            InetSocketAddress master);
+    
+    /**
+     * RPC for a reverse range-lookup at the master.
+     * 
+     * @param dbName
+     * @param indexId
+     * @param from
+     * @param to
+     * @param master
+     * @return the request's response future.
+     */
+    public ClientResponseFuture<Iterator<Entry<byte[], byte[]>>> rangeLookupR(
+            String dbName, int indexId, ReusableBuffer from, ReusableBuffer to, 
+            InetSocketAddress master);
 }

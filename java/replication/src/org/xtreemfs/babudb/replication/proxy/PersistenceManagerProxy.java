@@ -7,13 +7,15 @@
  */
 package org.xtreemfs.babudb.replication.proxy;
 
-import java.net.InetSocketAddress;
+import java.util.concurrent.atomic.AtomicReference;
 
+import org.xtreemfs.babudb.api.InMemoryProcessing;
 import org.xtreemfs.babudb.api.PersistenceManager;
 import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.replication.RemoteAccessClient;
@@ -52,111 +54,168 @@ class PersistenceManagerProxy implements PersistenceManager {
     
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.PersistenceManager#makePersistent(byte, 
-     *          org.xtreemfs.foundation.buffer.ReusableBuffer)
+     *          org.xtreemfs.babudb.api.InMemoryProcessing)
      */
-    @SuppressWarnings("unchecked")
     @Override
     public <T> DatabaseRequestResult<T> makePersistent(byte type, 
-            final ReusableBuffer load) throws BabuDBException {
+            InMemoryProcessing processing) throws BabuDBException {
         
         if (hasPermissionToExecuteLocally(type)) {
             
-            final DatabaseRequestResult<T> result = (DatabaseRequestResult<T>) 
-                    new DatabaseRequestResult<Object>() {
-                
-                @Override
-                public void registerListener(DatabaseRequestListener<Object> listener) {
-                    // TODO Auto-generated method stub
-                    
-                }
-                
-                @Override
-                public Object get() throws BabuDBException {
-                    // TODO Auto-generated method stub
-                    return null;
-                }
-            };
-                
-            localPersMan.makePersistent(type, load).registerListener(
-                    (DatabaseRequestListener<Object>) 
-                    new DatabaseRequestListener<Object>() {
-                
-                @Override
-                public void finished(Object result, Object context) {
-                    LogEntry le = (LogEntry) context;
-                    le.setListener(new SyncListener() {
-                        
-                        @Override
-                        public void synced(LogEntry entry) {
-                            // TODO Auto-generated method stub
-                            
-                        }
-                        
-                        @Override
-                        public void failed(LogEntry entry, Exception ex) {
-                            // TODO Auto-generated method stub
-                            
-                        }
-                    });
-                    
-                    ReplicateResponse rp = replMan.replicate(le, load);
-                    if (!rp.hasFailed()) {
-                        replMan.subscribeListener(rp);
-                    }
-                }
-                
-                @Override
-                public void failed(BabuDBException error, Object context) {
-                    // TODO result.failed
-                }
-            });
-            
-            return result; // TODO return proxy for the real DBRListener
+            return executeLocallyAndReplicate(type, processing);
         } else {      
             
-            InetSocketAddress master = null;// TODO replMan.getMaster();
-            final ClientResponseFuture<T> rp = (ClientResponseFuture<T>) 
-                    client.makePersistent(master, type, load);
-            
-            DatabaseRequestResult<T> result = (DatabaseRequestResult<T>) 
-                    new DatabaseRequestResult<Object>() {
-                
-                @Override
-                public void registerListener(final 
-                        DatabaseRequestListener<Object> listener) {
-                    
-                    rp.registerListener((ClientResponseAvailableListener<T>) 
-                            new ClientResponseAvailableListener<Object>() {
-
-                                @Override
-                                public void responseAvailable(Object r) {
-                                    listener.finished(r, null);
-                                }
-
-                                @Override
-                                public void requestFailed(Exception e) {
-                                    listener.failed(new BabuDBException(
-                                            ErrorCode.IO_ERROR, e.getMessage()), 
-                                            null);
-                                }
-                    });
-                }
-                
-                @Override
-                public Object get() throws BabuDBException {
-                    try {
-                        return rp.get();
-                    } catch (Exception e) {
-                        throw new BabuDBException(ErrorCode.IO_ERROR, 
-                                e.getMessage());
-                    }
-                }
-            };
-            
-            return result;
+            return redirectToMaster(type, processing.serializeRequest());
         }
     }
     
+    /**
+     * Executes the request locally and tries to replicate it on the other 
+     * participating BabuDB instances.
+     * 
+     * @param <T>
+     * @param type
+     * @param load
+     * @return the requests result future.
+     * @throws BabuDBException
+     */
+    @SuppressWarnings("unchecked")
+    private <T> DatabaseRequestResult<T> executeLocallyAndReplicate(byte type,
+                final InMemoryProcessing processing) throws BabuDBException {
+        
+        final ListenerWrapper wrapper = new ListenerWrapper();
+        final AtomicReference<ReusableBuffer> payload = 
+            new AtomicReference<ReusableBuffer>(null);
+                
+        localPersMan.makePersistent(type, new InMemoryProcessing() {
+            
+            @Override
+            public ReusableBuffer serializeRequest() throws BabuDBException {
+                payload.set(processing.serializeRequest());
+                return payload.get();
+            }
+            
+            @Override
+            public void before() throws BabuDBException { processing.before(); }
+            
+            @Override
+            public void after() { processing.after(); }
+            
+        }).registerListener((DatabaseRequestListener<Object>) 
+            new DatabaseRequestListener<Object>() {
+        
+            @Override
+            public void finished(Object result, Object context) {
+                
+                LogEntry le = (LogEntry) context;
+                le.setListener(new SyncListener() {
+                
+                    @Override
+                    public void synced(LogEntry entry) {
+                        wrapper.finished(null);
+                    }
+                    
+                    @Override
+                    public void failed(LogEntry entry, Exception ex) {
+                        wrapper.finished(new BabuDBException(
+                                ErrorCode.REPLICATION_FAILURE, 
+                                ex.getMessage()));
+                    }
+                });
+                
+                ReplicateResponse rp = replMan.replicate(le, payload.get());
+                if (!rp.hasFailed()) {
+                    replMan.subscribeListener(rp);
+                }
+            }
+            
+            @Override
+            public void failed(BabuDBException error, Object context) {
+                wrapper.finished(error);
+            }
+        });
+        
+        DatabaseRequestResult<T> result = (DatabaseRequestResult<T>) 
+            new DatabaseRequestResult<Object>() {
+        
+            @Override
+            public void registerListener(
+                    DatabaseRequestListener<Object> listener) {
+                
+                wrapper.registerListener(listener);
+            }
+            
+            @Override
+            public Object get() throws BabuDBException {
+                
+                wrapper.waitForFinish();
+                return null;
+            }
+        };
+    
+        return result;
+    }
+    
+    /**
+     * Executes the request remotely at the BabuDB instance with master 
+     * privilege.
+     * 
+     * @param <T>
+     * @param type
+     * @param load
+     * @return the request response future.
+     */
+    @SuppressWarnings("unchecked")
+    private <T> DatabaseRequestResult<T> redirectToMaster(byte type, 
+            ReusableBuffer load) {
+        
+        final ClientResponseFuture<T> rp = (ClientResponseFuture<T>) 
+        client.makePersistent(replMan.getMaster(), type, load);
+
+        DatabaseRequestResult<T> result = (DatabaseRequestResult<T>) 
+                new DatabaseRequestResult<Object>() {
+            
+            @Override
+            public void registerListener(final 
+                    DatabaseRequestListener<Object> listener) {
+                
+                rp.registerListener((ClientResponseAvailableListener<T>) 
+                        new ClientResponseAvailableListener<Object>() {
+        
+                    @Override
+                    public void responseAvailable(Object r) {
+                        listener.finished(r, null);
+                    }
+    
+                    @Override
+                    public void requestFailed(Exception e) {
+                        listener.failed(new BabuDBException(
+                                ErrorCode.IO_ERROR, e.getMessage()), 
+                                null);
+                    }
+                });
+            }
+            
+            @Override
+            public Object get() throws BabuDBException {
+                
+                try {
+                    return rp.get();
+                } catch (Exception e) {
+                    throw new BabuDBException(ErrorCode.IO_ERROR, 
+                            e.getMessage());
+                }
+            }
+        };
+        
+        return result;
+    }
+    
+    /**
+     * @param type - of the request.
+     * @return true, if the given type of request may be executed locally. false
+     *         otherwise.
+     */
     private boolean hasPermissionToExecuteLocally (byte type) {
         
         boolean result = false;
@@ -195,5 +254,73 @@ class PersistenceManagerProxy implements PersistenceManager {
     @Override
     public void unlockService() { 
         throw new UnsupportedOperationException();
+    }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.PersistenceManager#setLogger(org.xtreemfs.babudb.log.DiskLogger)
+     */
+    @Override
+    public void setLogger(DiskLogger logger) {
+        localPersMan.setLogger(logger);
+    }
+
+    /**
+     * Wrapper class for encapsulating and updating the 
+     * {@link DatabaseRequestListener} connected to the request results.
+     * 
+     * @author flangner
+     * @since 19.01.2011
+     */
+    private final static class ListenerWrapper {
+        
+        private boolean finished = false;
+        private BabuDBException exception = null;
+        private DatabaseRequestListener<Object> listener = null;
+        
+        private synchronized void finished(BabuDBException e) {
+            
+            if (!finished) {
+                finished = true;
+                exception = e;
+                notifyListener();
+                notifyAll();
+            }
+        }
+        
+        private synchronized void waitForFinish() throws BabuDBException {
+            
+            try {
+                while (!finished) {
+                    wait();
+                }
+            } catch (InterruptedException e) {
+                throw new BabuDBException(
+                        ErrorCode.INTERRUPTED, e.getMessage());
+            }
+            
+            if (exception != null) {
+                throw exception;
+            } 
+        }
+        
+        private synchronized void registerListener(
+                DatabaseRequestListener<Object> listener) {
+            
+            this.listener = listener;
+            
+            if (finished) {
+                notifyListener();
+            }
+        }
+        
+        private void notifyListener() {
+            if (listener != null) {
+                if (exception != null) {
+                    listener.failed(exception, null);
+                } else {
+                    listener.finished(null, null);
+                }
+            }
+        }
     }
 }

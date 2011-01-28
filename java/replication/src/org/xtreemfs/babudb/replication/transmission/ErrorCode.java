@@ -16,13 +16,18 @@ package org.xtreemfs.babudb.replication.transmission;
 public final class ErrorCode {
     public final static int OK = 0;
         
+    // congestion ctrl
     public final static int BUSY = 1;
     
-    public final static int FILE_UNAVAILABLE = 2;
+    public final static int SERVICE_UNAVAILABLE = 2;
     
-    public final static int LOG_UNAVAILABLE = 3;
+    public final static int FILE_UNAVAILABLE = 3;
     
-    public final static int SERVICE_UNAVAILABLE = 4;
+    public final static int LOG_UNAVAILABLE = 4;
+    
+    public final static int DB_UNAVAILABLE = 5;
+    
+    public final static int ENTRY_UNAVAILABLE = 6;
     
     public final static int UNKNOWN = 99;
 }
