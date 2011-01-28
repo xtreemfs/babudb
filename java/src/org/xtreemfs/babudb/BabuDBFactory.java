@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2010 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -45,7 +45,8 @@ public final class BabuDBFactory {
      *            the configuration
      * @throws BabuDBException
      */
-    public final static BabuDB createBabuDB(BabuDBConfig configuration) throws BabuDBException {
+    public final static BabuDB createBabuDB(BabuDBConfig configuration) 
+            throws BabuDBException {
         return createBabuDB(configuration, null);
     }
     
@@ -57,8 +58,8 @@ public final class BabuDBFactory {
      * @param staticInit
      * @throws BabuDBException
      */
-    public final static BabuDB createBabuDB(BabuDBConfig configuration, StaticInitialization staticInit)
-        throws BabuDBException {
+    public final static BabuDB createBabuDB(BabuDBConfig configuration, 
+            StaticInitialization staticInit) throws BabuDBException {
         
         BabuDBInternal babuDB = new BabuDBImpl(configuration);
         

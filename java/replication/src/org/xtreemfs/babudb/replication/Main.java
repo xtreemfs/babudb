@@ -25,7 +25,7 @@ import org.xtreemfs.foundation.logging.Logging;
  * @author flangner
  * @date 11/03/2010
  */
-public class Main implements PluginMain {
+public class Main extends PluginMain {
     
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.plugin.PluginMain#start(
@@ -66,5 +66,13 @@ public class Main implements PluginMain {
         return new BabuDBProxy(babuDB, replMan, 
                 configuration.getReplicationPolicy(), 
                 replMan.getRemoteAccessClient());
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.plugin.PluginMain#compatibleBabuDBVersion()
+     */
+    @Override
+    public String compatibleBabuDBVersion() {
+        return "0.5.0|0.6.0";
     }
 }
