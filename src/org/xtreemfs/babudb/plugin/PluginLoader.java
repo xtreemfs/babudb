@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2010 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -85,7 +85,7 @@ public final class PluginLoader extends ClassLoader {
                 try {
                     Class<?> pluginMain = loadClass(main);
                     this.babuDB = (BabuDBInternal) pluginMain
-                        .getMethod("start", BabuDBInternal.class, String.class)
+                        .getMethod("execute", BabuDBInternal.class, String.class)
                         .invoke(this.babuDB, configPath);
                     
                 } catch (Exception e) {
