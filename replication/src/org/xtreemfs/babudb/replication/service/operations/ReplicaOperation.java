@@ -144,8 +144,15 @@ public class ReplicaOperation extends Operation {
                         result.addLogEntries(
                                 org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry
                                 .newBuilder().setLength(buf.remaining()));
-                        resultPayLoad.enlarge(resultPayLoad.remaining() + 
-                                              buf.remaining());
+                        int newSize = resultPayLoad.remaining() + 
+                                      buf.remaining();
+                        if (!resultPayLoad.enlarge(newSize)) {
+                            ReusableBuffer tmp = BufferPool.allocate(newSize);
+                            
+                            tmp.put(resultPayLoad);
+                            BufferPool.free(resultPayLoad);
+                            resultPayLoad = tmp;
+                        }
                         resultPayLoad.put(buf);
                         BufferPool.free(buf);
                         

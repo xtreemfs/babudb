@@ -471,7 +471,15 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
         }
         
         public int getCode() {
-            return this.code;
+            return code;
+        }
+        
+        /* (non-Javadoc)
+         * @see java.lang.Throwable#getMessage()
+         */
+        @Override
+        public String getMessage() {
+            return "Operation failed with transmitting-error-code: " + code;
         }
     }
 }

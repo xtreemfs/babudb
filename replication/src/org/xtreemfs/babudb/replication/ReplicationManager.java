@@ -9,22 +9,93 @@ package org.xtreemfs.babudb.replication;
 
 import java.net.InetSocketAddress;
 
+import org.xtreemfs.babudb.BabuDBInternal;
+import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.LogEntry;
+import org.xtreemfs.babudb.replication.control.ControlLayer;
+import org.xtreemfs.babudb.replication.service.ServiceLayer;
 import org.xtreemfs.babudb.replication.service.accounting.ReplicateResponse;
-import org.xtreemfs.foundation.LifeCycleListener;
+import org.xtreemfs.babudb.replication.transmission.TransmissionLayer;
+import org.xtreemfs.foundation.TimeSync;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.LifeCycleListener;
+import org.xtreemfs.foundation.logging.Logging;
 
 /**
- * <p>
- * Interface for the replication user operations.
- * </p>
+ * <p>Implements the {@link ReplicationManager} user interface.</p>
+ * <p>Configurable settings.</p>
+ * <p>Used to be one single Instance.</p>
+ * <p>Thread safe.</p>
  * 
+ * @since 06/05/2009
  * @author flangner
- * @since 09/14/2009
  */
 
-public interface ReplicationManager extends LifeCycleListener {
+public class ReplicationManager implements LifeCycleListener {
+        
+    public final static String  VERSION = "1.0.0 (v1.0 RC1)";
+    
+    private final TopLayer      controlLayer;
+    private final Layer         serviceLayer;
+    private final Layer         transmissionLayer;
+    
+    /**
+     * <p>For setting up the {@link BabuDB} with replication. 
+     * Replication instance will be remaining stopped and in slave-mode.</p>
+     * 
+     * @param dbs
+     * @param conf
+     * @throws Exception 
+     */
+    public ReplicationManager(BabuDBInternal dbs, ReplicationConfig conf) 
+            throws Exception {
+        
+        TimeSync.initializeLocal(conf.getTimeSyncInterval(), 
+                conf.getLocalTimeRenew()).setLifeCycleListener(this);
 
+        TransmissionLayer t = new TransmissionLayer(conf);
+        ServiceLayer s = new ServiceLayer(conf, new BabuDBInterface(dbs), t);
+        ControlLayer c = new ControlLayer(s, conf);
+        s.coin(c, c);
+        
+        this.transmissionLayer = t;
+        this.serviceLayer = s;
+        this.controlLayer = c;
+        
+        this.transmissionLayer.setLifeCycleListener(this);
+        this.serviceLayer.setLifeCycleListener(this);
+        this.controlLayer.setLifeCycleListener(this);
+    }
+    
+/*
+ * internal interface for BabuDB
+ */
+    
+    /**
+     * Starts the stages if available.
+     */
+    public void initialize() {
+        this.controlLayer.start();
+        this.serviceLayer.start();
+        this.transmissionLayer.start();
+    }
+
+    /**
+     * @return the currently designated master, or null, if BabuDB is 
+     *         suspended at the moment.
+     */
+    public InetSocketAddress getMaster() {
+        return controlLayer.getLeaseHolder();
+    }
+    
+    /**
+     * @return true, if the replication is running in master mode. 
+     *         false, otherwise.
+     */
+    public boolean isMaster() {
+        return this.controlLayer.hasLease();
+    }
+    
     /**
      * <p>
      * Approach for a Worker to announce a new {@link LogEntry} 
@@ -36,12 +107,12 @@ public interface ReplicationManager extends LifeCycleListener {
      * 
      * @return the {@link ReplicateResponse}.
      */
-    public ReplicateResponse replicate(LogEntry le, ReusableBuffer buffer);
-    
-    /**
-     * @return a client to remotely access the BabuDB with master-privilege.
-     */
-    public RemoteAccessClient getRemoteAccessClient();
+    public ReplicateResponse replicate(LogEntry le, ReusableBuffer buffer) {
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                "Performing requests: replicate...");
+        
+        return controlLayer.replicate(le, buffer);
+    }
     
     /**
      * <p>
@@ -50,7 +121,22 @@ public interface ReplicationManager extends LifeCycleListener {
      * 
      * @param response
      */
-    public void subscribeListener(ReplicateResponse response);
+    public void subscribeListener(ReplicateResponse response) {
+        controlLayer.subscribeListener(response);
+    }
+
+    /**
+     * <p>
+     * Stops the replication process by shutting down the dispatcher.
+     * And resetting the its state.
+     * </p>
+     */
+    public void shutdown() throws Exception {
+        this.controlLayer.shutdown();
+        this.serviceLayer.shutdown();
+        this.transmissionLayer.shutdown();
+        TimeSync.getInstance().shutdown();
+    }
     
     /**
      * <p>
@@ -59,25 +145,48 @@ public interface ReplicationManager extends LifeCycleListener {
      * the replication and want to help BabuDB to recognize it.
      * </p>
      */
-    public void manualFailover();
-    
-    /**
-     * <p>
-     * Stops the replication process by shutting down the dispatcher.
-     * And resetting the its state.
-     * </p>
-     */
-    public void shutdown() throws Exception;
+    public void manualFailover() {
+        this.controlLayer.suspend();
+    }
 
     /**
-     * @return the currently designated master, or null, if BabuDB is 
-     *         suspended at the moment.
+     * @return a client to remotely access the BabuDB with master-privilege.
      */
-    public InetSocketAddress getMaster();
+    public RemoteAccessClient getRemoteAccessClient() {
+        return ((TransmissionLayer) transmissionLayer).getRemoteAccessClient();
+    }
     
-    /**
-     * @return true, if the replication is running in master mode. 
-     *         false, otherwise.
+/*
+ * LifeCycleListener for the TimeSync-Thread
+ */
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.foundation.LifeCycleListener#crashPerformed(java.lang.Throwable)
      */
-    public boolean isMaster();
+    @Override
+    public void crashPerformed(Throwable exc) {
+        Logging.logMessage(Logging.LEVEL_CRIT, this, 
+                "An essential replication component has crashed, because %s.",
+                exc.getMessage());
+        Logging.logError(Logging.LEVEL_CRIT, this, exc);
+        
+        this.controlLayer.suspend();
+        this.controlLayer.asyncShutdown();
+        this.serviceLayer.asyncShutdown();
+        this.transmissionLayer.asyncShutdown();
+        throw new RuntimeException(exc);
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.foundation.LifeCycleListener#shutdownPerformed()
+     */
+    @Override
+    public void shutdownPerformed() {}
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.foundation.LifeCycleListener#startupPerformed()
+     */
+    @Override
+    public void startupPerformed() {}
+
 }

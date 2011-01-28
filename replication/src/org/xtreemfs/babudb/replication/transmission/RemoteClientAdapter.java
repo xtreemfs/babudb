@@ -12,7 +12,14 @@ package org.xtreemfs.babudb.replication.transmission;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.DatabaseNames;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap;
 import org.xtreemfs.babudb.pbrpc.RemoteAccessServiceClient;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.replication.RemoteAccessClient;
@@ -81,6 +88,405 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
             };
         } finally {
             BufferPool.free(data);
+        }
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.RemoteAccessClient#getDatabases(
+     *          java.net.InetSocketAddress)
+     */
+    @Override
+    public ClientResponseFuture<List<String>> getDatabases(
+            InetSocketAddress master) {
+        
+        assert (master != null);
+        
+        try {
+            final RPCResponse<DatabaseNames> result = getDatabaseNames(master, 
+                    Auth.getDefaultInstance(), 
+                    UserCredentials.getDefaultInstance());
+            
+            return new ClientResponseFuture<List<String>>(result) {
+                
+                @Override
+                public List<String> get() throws ErrorCodeException, 
+                        IOException, InterruptedException {
+                    return result.get().getDatabaseNameList();
+                }
+            };
+        } catch (final IOException e) {
+            return new ClientResponseFuture<List<String>>(null) {
+                
+                @Override
+                public List<String> get() throws ErrorCodeException, 
+                        IOException, InterruptedException {
+                    throw e;
+                }
+            };
+        }
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.RemoteAccessClient#lookup(
+     *     java.lang.String, int, org.xtreemfs.foundation.buffer.ReusableBuffer, 
+     *     java.net.InetSocketAddress)
+     */
+    @Override
+    public ClientResponseFuture<byte[]> lookup(String dbName, int indexId, 
+            ReusableBuffer key, InetSocketAddress master) {
+
+        assert (master != null);
+        
+        try {
+            final RPCResponse<ErrorCodeResponse> result = lookup(master, 
+                    Auth.getDefaultInstance(), 
+                    UserCredentials.getDefaultInstance(), dbName, indexId, key);
+            
+            return new ClientResponseFuture<byte[]>(result) {
+                
+                @Override
+                public byte[] get() throws ErrorCodeException, 
+                        IOException, InterruptedException {
+                    int eCode = result.get().getErrorCode();
+                    if (eCode != 0) {
+                        throw new ErrorCodeException(eCode);
+                    }
+                    ReusableBuffer data = result.getData();
+                    try {
+                        return data.array();
+                    } finally {
+                        BufferPool.free(data);
+                    }
+                }
+            };
+        } catch (final IOException e) {
+            return new ClientResponseFuture<byte[]>(null) {
+                
+                @Override
+                public byte[] get() throws ErrorCodeException, 
+                        IOException, InterruptedException {
+                    throw e;
+                }
+            };
+        } finally {
+            BufferPool.free(key);
+        }
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.RemoteAccessClient#prefixLookup(
+     *          java.lang.String, int, 
+     *          org.xtreemfs.foundation.buffer.ReusableBuffer, 
+     *          java.net.InetSocketAddress)
+     */
+    @Override
+    public ClientResponseFuture<Iterator<Entry<byte[], byte[]>>> 
+            prefixLookup(String dbName, int indexId, ReusableBuffer key, 
+                    InetSocketAddress master) {
+
+        assert (master != null);
+        
+        try {
+            final RPCResponse<EntryMap> result = plookup(master, 
+                    Auth.getDefaultInstance(), 
+                    UserCredentials.getDefaultInstance(), dbName, indexId, key);
+            
+            return new ClientResponseFuture<Iterator<Entry<byte[], byte[]>>>(result) {
+                
+                @Override
+                public Iterator<Entry<byte[], byte[]>> get() 
+                        throws ErrorCodeException, IOException, 
+                        InterruptedException {
+                    
+                    EntryMap e = result.get();
+                    if (e.getErrorCode() != 0) {
+                        throw new ErrorCodeException(e.getErrorCode());
+                    }
+                    ReusableBuffer data = result.getData();
+                    
+                    try {
+                        int count = e.getLengthCount();
+                        assert (count % 2 == 0);
+                        
+                        Map<byte[], byte[]> m = new HashMap<byte[], byte[]>();
+                        
+                        int pos = 0;
+                        ReusableBuffer k = null;
+                        for (int i = 0; i < count; i++) {
+                            ReusableBuffer v = 
+                                result.getData().createViewBuffer();
+                            v.position(pos);
+                            pos += e.getLength(i);
+                            v.limit(pos);
+                            
+                            if (i % 2 == 0) {
+                                k = v;
+                            } else {
+                                m.put(k.getData(), v.getData());
+                                BufferPool.free(k);
+                                BufferPool.free(v);
+                            }
+                        }
+                        return m.entrySet().iterator();
+                    
+                    } finally {
+                        BufferPool.free(data);
+                    }
+                }
+            };
+        } catch (final IOException e) {
+            return new ClientResponseFuture<Iterator<Entry<byte[], byte[]>>>(null) {
+                
+                @Override
+                public Iterator<Entry<byte[], byte[]>> get() 
+                        throws ErrorCodeException, IOException, 
+                        InterruptedException {
+                    throw e;
+                }
+            };
+        } finally {
+            BufferPool.free(key);
+        }
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.RemoteAccessClient#prefixLookupR(
+     *          java.lang.String, int, org.xtreemfs.foundation.buffer.ReusableBuffer, 
+     *          java.net.InetSocketAddress)
+     */
+    @Override
+    public ClientResponseFuture<Iterator<Entry<byte[], byte[]>>> prefixLookupR(
+            String dbName, int indexId, ReusableBuffer key, 
+            InetSocketAddress master) {
+
+        assert (master != null);
+        
+        try {
+            final RPCResponse<EntryMap> result = plookupReverse(master, 
+                    Auth.getDefaultInstance(), 
+                    UserCredentials.getDefaultInstance(), dbName, indexId, key);
+            
+            return new ClientResponseFuture<Iterator<Entry<byte[], byte[]>>>(result) {
+                
+                @Override
+                public Iterator<Entry<byte[], byte[]>> get() 
+                        throws ErrorCodeException, IOException, 
+                        InterruptedException {
+                    
+                    EntryMap e = result.get();
+                    if (e.getErrorCode() != 0) {
+                        throw new ErrorCodeException(e.getErrorCode());
+                    }
+                    ReusableBuffer data = result.getData();
+                    
+                    try {
+                        int count = e.getLengthCount();
+                        assert (count % 2 == 0);
+                        
+                        Map<byte[], byte[]> m = new HashMap<byte[], byte[]>();
+                        
+                        int pos = 0;
+                        ReusableBuffer k = null;
+                        for (int i = 0; i < count; i++) {
+                            ReusableBuffer v = 
+                                result.getData().createViewBuffer();
+                            v.position(pos);
+                            pos += e.getLength(i);
+                            v.limit(pos);
+                            
+                            if (i % 2 == 0) {
+                                k = v;
+                            } else {
+                                m.put(k.getData(), v.getData());
+                                BufferPool.free(k);
+                                BufferPool.free(v);
+                            }
+                        }
+                        return m.entrySet().iterator();
+                    
+                    } finally {
+                        BufferPool.free(data);
+                    }
+                }
+            };
+        } catch (final IOException e) {
+            return new ClientResponseFuture<Iterator<Entry<byte[], byte[]>>>(null) {
+                
+                @Override
+                public Iterator<Entry<byte[], byte[]>> get() 
+                        throws ErrorCodeException, IOException, 
+                        InterruptedException {
+                    throw e;
+                }
+            };
+        } finally {
+            BufferPool.free(key);
+        }
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.RemoteAccessClient#rangeLookup(
+     *          java.lang.String, int, org.xtreemfs.foundation.buffer.ReusableBuffer, 
+     *          org.xtreemfs.foundation.buffer.ReusableBuffer, java.net.InetSocketAddress)
+     */
+    @Override
+    public ClientResponseFuture<Iterator<Entry<byte[], byte[]>>> rangeLookup(
+            String dbName, int indexId, ReusableBuffer from, ReusableBuffer to, 
+            InetSocketAddress master) {
+        
+        assert (master != null);
+        
+        ReusableBuffer payload = BufferPool.allocate(from.remaining() + 
+                                                     to.remaining());
+        payload.put(from);
+        payload.put(to);
+        
+        try {
+            final RPCResponse<EntryMap> result = rlookup(master, 
+                    Auth.getDefaultInstance(), 
+                    UserCredentials.getDefaultInstance(), dbName, indexId,  
+                    from.remaining(), payload);
+            
+            return new ClientResponseFuture<Iterator<Entry<byte[], byte[]>>>(result) {
+                
+                @Override
+                public Iterator<Entry<byte[], byte[]>> get() 
+                        throws ErrorCodeException, IOException, 
+                        InterruptedException {
+                    
+                    EntryMap e = result.get();
+                    if (e.getErrorCode() != 0) {
+                        throw new ErrorCodeException(e.getErrorCode());
+                    }
+                    ReusableBuffer data = result.getData();
+                    
+                    try {
+                        int count = e.getLengthCount();
+                        assert (count % 2 == 0);
+                        
+                        Map<byte[], byte[]> m = new HashMap<byte[], byte[]>();
+                        
+                        int pos = 0;
+                        ReusableBuffer k = null;
+                        for (int i = 0; i < count; i++) {
+                            ReusableBuffer v = 
+                                result.getData().createViewBuffer();
+                            v.position(pos);
+                            pos += e.getLength(i);
+                            v.limit(pos);
+                            
+                            if (i % 2 == 0) {
+                                k = v;
+                            } else {
+                                m.put(k.getData(), v.getData());
+                                BufferPool.free(k);
+                                BufferPool.free(v);
+                            }
+                        }
+                        return m.entrySet().iterator();
+                    
+                    } finally {
+                        BufferPool.free(data);
+                    }
+                }
+            };
+        } catch (final IOException e) {
+            return new ClientResponseFuture<Iterator<Entry<byte[], byte[]>>>(null) {
+                
+                @Override
+                public Iterator<Entry<byte[], byte[]>> get() 
+                        throws ErrorCodeException, IOException, 
+                        InterruptedException {
+                    throw e;
+                }
+            };
+        } finally {
+            BufferPool.free(from);
+            BufferPool.free(to);
+            BufferPool.free(payload);
+        }
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.RemoteAccessClient#rangeLookupR(
+     *          java.lang.String, int, org.xtreemfs.foundation.buffer.ReusableBuffer, 
+     *          org.xtreemfs.foundation.buffer.ReusableBuffer, java.net.InetSocketAddress)
+     */
+    @Override
+    public ClientResponseFuture<Iterator<Entry<byte[], byte[]>>> rangeLookupR(
+            String dbName, int indexId, ReusableBuffer from, ReusableBuffer to, 
+            InetSocketAddress master) {
+        
+        assert (master != null);
+        
+        ReusableBuffer payload = BufferPool.allocate(from.remaining() + 
+                                                     to.remaining());
+        payload.put(from);
+        payload.put(to);
+        
+        try {
+            final RPCResponse<EntryMap> result = rlookupReverse(master, 
+                    Auth.getDefaultInstance(), 
+                    UserCredentials.getDefaultInstance(), dbName, indexId,  
+                    from.remaining(), payload);
+            
+            return new ClientResponseFuture<Iterator<Entry<byte[], byte[]>>>(result) {
+                
+                @Override
+                public Iterator<Entry<byte[], byte[]>> get() 
+                        throws ErrorCodeException, IOException, 
+                        InterruptedException {
+                    
+                    EntryMap e = result.get();
+                    if (e.getErrorCode() != 0) {
+                        throw new ErrorCodeException(e.getErrorCode());
+                    }
+                    ReusableBuffer data = result.getData();
+                    
+                    try {
+                        int count = e.getLengthCount();
+                        assert (count % 2 == 0);
+                        
+                        Map<byte[], byte[]> m = new HashMap<byte[], byte[]>();
+                        
+                        int pos = 0;
+                        ReusableBuffer k = null;
+                        for (int i = 0; i < count; i++) {
+                            ReusableBuffer v = 
+                                result.getData().createViewBuffer();
+                            v.position(pos);
+                            pos += e.getLength(i);
+                            v.limit(pos);
+                            
+                            if (i % 2 == 0) {
+                                k = v;
+                            } else {
+                                m.put(k.getData(), v.getData());
+                                BufferPool.free(k);
+                                BufferPool.free(v);
+                            }
+                        }
+                        return m.entrySet().iterator();
+                    
+                    } finally {
+                        BufferPool.free(data);
+                    }
+                }
+            };
+        } catch (final IOException e) {
+            return new ClientResponseFuture<Iterator<Entry<byte[], byte[]>>>(null) {
+                
+                @Override
+                public Iterator<Entry<byte[], byte[]>> get() 
+                        throws ErrorCodeException, IOException, 
+                        InterruptedException {
+                    throw e;
+                }
+            };
+        } finally {
+            BufferPool.free(from);
+            BufferPool.free(to);
+            BufferPool.free(payload);
         }
     }
 }

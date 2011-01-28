@@ -1,31 +1,9 @@
 /*
- * Copyright (c) 2010, Konrad-Zuse-Zentrum fuer Informationstechnik Berlin
+ * Copyright (c) 2010 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
- * All rights reserved.
+ * Licensed under the BSD License, see LICENSE file for details.
  * 
- * Redistribution and use in source and binary forms, with or without 
- * modification, are permitted provided that the following conditions are met:
- * 
- * Redistributions of source code must retain the above copyright notice, this 
- * list of conditions and the following disclaimer.
- * Redistributions in binary form must reproduce the above copyright notice, 
- * this list of conditions and the following disclaimer in the documentation 
- * and/or other materials provided with the distribution.
- * Neither the name of the Konrad-Zuse-Zentrum fuer Informationstechnik Berlin 
- * nor the names of its contributors may be used to endorse or promote products 
- * derived from this software without specific prior written permission.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE 
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
- * POSSIBILITY OF SUCH DAMAGE.
  */
 /*
  * AUTHORS: Felix Langner (ZIB)
@@ -34,9 +12,12 @@ package org.xtreemfs.babudb.replication;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.Vector;
 
 import org.xtreemfs.babudb.BabuDBInternal;
+import org.xtreemfs.babudb.api.BabuDB;
+import org.xtreemfs.babudb.api.InMemoryProcessing;
 import org.xtreemfs.babudb.api.PersistenceManager;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.config.ReplicationConfig;
@@ -51,6 +32,7 @@ import org.xtreemfs.babudb.lsmdb.LSMDatabase.DBFileMetaData;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
 /**
  * Methods that may be executed on BabuDB from the replication mechanisms.
@@ -69,7 +51,7 @@ public class BabuDBInterface {
      * @param babuDB - {@link BabuDB}.
      */
     public BabuDBInterface(BabuDBInternal babuDB) {
-        this.dbs = babuDB;
+        dbs = babuDB;
     }
     
     /**
@@ -79,9 +61,17 @@ public class BabuDBInterface {
      * @throws InterruptedException 
      * @throws BabuDBException 
      */
-    public void appendToDisklogger(LogEntry entry) throws BabuDBException {
-        this.dbs.getPersistenceManager().makePersistent(entry.getPayloadType(), 
-                entry.getPayload());
+    public void appendToDisklogger(final LogEntry entry) throws BabuDBException {
+        dbs.getPersistenceManager().makePersistent(entry.getPayloadType(), 
+                new InMemoryProcessing() {
+                    
+                    @Override
+                    public ReusableBuffer serializeRequest() 
+                            throws BabuDBException {
+                        
+                        return entry.getPayload();
+                    }
+                });
     }
     
     /**
@@ -97,7 +87,7 @@ public class BabuDBInterface {
      * @return the {@link LSN} of the last inserted {@link LogEntry}.
      */
     public LSN getState() {
-        return this.dbs.getLogger().getLatestLSN();
+        return dbs.getLogger().getLatestLSN();
     }
     
     /**
@@ -116,7 +106,7 @@ public class BabuDBInterface {
      * @throws BabuDBException 
      */
     public void createDB(String name, int numOfIndices) throws BabuDBException {
-        getDBMan().proceedCreate(name, numOfIndices, null);
+        getDBMan().createDatabase(name, numOfIndices, null);
     }
     
     /**
@@ -127,7 +117,7 @@ public class BabuDBInterface {
      * @throws BabuDBException 
      */
     public void copyDB(String from, String to) throws BabuDBException {
-        getDBMan().proceedCopy(from, to);
+        getDBMan().copyDatabase(from, to);
     }
     
     /**
@@ -195,7 +185,7 @@ public class BabuDBInterface {
      * Stops BabuDB to restart it later.
      */
     public void stopBabuDB() {
-        this.dbs.stop();
+        dbs.stop();
     }
     
     /**
@@ -205,7 +195,7 @@ public class BabuDBInterface {
      * @throws BabuDBException
      */
     public LSN startBabuDB() throws BabuDBException {
-        return this.dbs.restart();
+        return dbs.restart();
     }
     
     /**
@@ -217,6 +207,22 @@ public class BabuDBInterface {
         getChckPtr().checkpoint(true);
     }
     
+    /**
+     * @return a set of names of all available databases.
+     */
+    public Set<String> getDatabases() {
+        return getDBMan().getDatabases().keySet();
+    }
+    
+    /**
+     * @param dbName
+     * @return an instance of the local database available for the given name.
+     * @throws BabuDBException 
+     */
+    public Database getDatabase(String dbName) throws BabuDBException {
+        return getDBMan().getDatabase(dbName);
+    }
+    
 /*
  * private
  */
@@ -225,7 +231,7 @@ public class BabuDBInterface {
      * @return the {@link CheckpointerImpl} retrieved from the {@link BabuDB}.
      */
     private CheckpointerImpl getChckPtr() {
-        return (CheckpointerImpl) this.dbs.getCheckpointer();
+        return (CheckpointerImpl) dbs.getCheckpointer();
     }
     
     /**
@@ -233,7 +239,7 @@ public class BabuDBInterface {
      *         {@link BabuDB}.
      */
     private DatabaseManagerImpl getDBMan() {
-        return (DatabaseManagerImpl) this.dbs.getDatabaseManager();
+        return (DatabaseManagerImpl) dbs.getDatabaseManager();
     }
     
     /**
@@ -241,7 +247,7 @@ public class BabuDBInterface {
      *         {@link BabuDB}.
      */
     private SnapshotManagerImpl getSnapMan() {
-        return (SnapshotManagerImpl) this.dbs.getSnapshotManager();
+        return (SnapshotManagerImpl) dbs.getSnapshotManager();
     }
 
     /**

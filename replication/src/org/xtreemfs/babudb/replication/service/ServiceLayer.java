@@ -124,9 +124,12 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
                 this.heartbeatThread, this, transLayer.getFileIOInterface(), 
                 this.babuDBInterface, this.lastOnView, maxChunkSize);
         
+        // ----------------------------------
+        // initialize request logic for 
+        // handling BabuDB remote calls
+        // ----------------------------------
         this.transmissionInterface.addRequestHandler(
-                new RPCRequestHandler(participantsStates, 
-                        babuDBInterface.getPersistanceManager()));
+                new RPCRequestHandler(participantsStates, babuDBInterface));
     }
     
 /*
@@ -300,7 +303,8 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
     public void handleLogEntry(LogEntry entry, SyncListener listener) 
         throws BabuDBException, InterruptedException {
 
-        // check the payload type
+        // check the payload type TODO rebuild using the local 
+        // persistenceManager instead of manually executing operations
         switch (entry.getPayloadType()) { 
         
         case PAYLOAD_TYPE_INSERT:
@@ -310,30 +314,38 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
             break;
         
         case PAYLOAD_TYPE_CREATE:
+            
             // deserialize the create call
+            
+            // do not use, deprecated
             int dbId = entry.getPayload().getInt();
+            
             String dbName = entry.getPayload().getString();
             int indices = entry.getPayload().getInt();
-            if (!this.babuDBInterface.dbExists(dbId))
-                this.babuDBInterface.createDB(dbName, indices);
+            this.babuDBInterface.createDB(dbName, indices);
             break;
             
         case PAYLOAD_TYPE_COPY:
+            
             // deserialize the copy call
+            
+            // do not use, deprecated
             entry.getPayload().getInt(); // do not delete!
             dbId = entry.getPayload().getInt();
+            
             String dbSource = entry.getPayload().getString();
             dbName = entry.getPayload().getString();
-            if (!this.babuDBInterface.dbExists(dbId))
-                this.babuDBInterface.copyDB(dbSource, dbName);
+            this.babuDBInterface.copyDB(dbSource, dbName);
             break;
             
         case PAYLOAD_TYPE_DELETE:
             // deserialize the create operation call
+            
+            // do not use, deprecated
             dbId = entry.getPayload().getInt();
+            
             dbName = entry.getPayload().getString();
-            if (this.babuDBInterface.dbExists(dbId))
-                this.babuDBInterface.deleteDB(dbName);
+            this.babuDBInterface.deleteDB(dbName);
             break;
             
         case PAYLOAD_TYPE_SNAP:

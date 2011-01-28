@@ -18,6 +18,36 @@ public final class Replication {
           org.xtreemfs.babudb.pbrpc.GlobalTypes.Type request,
           com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done);
       
+      public abstract void getDatabaseNames(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.Common.emptyRequest request,
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.DatabaseNames> done);
+      
+      public abstract void lookup(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup request,
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done);
+      
+      public abstract void plookup(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup request,
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap> done);
+      
+      public abstract void plookupReverse(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup request,
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap> done);
+      
+      public abstract void rlookup(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.RangeLookup request,
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap> done);
+      
+      public abstract void rlookupReverse(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.RangeLookup request,
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap> done);
+      
     }
     
     public static com.google.protobuf.Service newReflectiveService(
@@ -29,6 +59,54 @@ public final class Replication {
             org.xtreemfs.babudb.pbrpc.GlobalTypes.Type request,
             com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done) {
           impl.makePersistent(controller, request, done);
+        }
+        
+        @Override
+        public  void getDatabaseNames(
+            com.google.protobuf.RpcController controller,
+            org.xtreemfs.babudb.pbrpc.Common.emptyRequest request,
+            com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.DatabaseNames> done) {
+          impl.getDatabaseNames(controller, request, done);
+        }
+        
+        @Override
+        public  void lookup(
+            com.google.protobuf.RpcController controller,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup request,
+            com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done) {
+          impl.lookup(controller, request, done);
+        }
+        
+        @Override
+        public  void plookup(
+            com.google.protobuf.RpcController controller,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup request,
+            com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap> done) {
+          impl.plookup(controller, request, done);
+        }
+        
+        @Override
+        public  void plookupReverse(
+            com.google.protobuf.RpcController controller,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup request,
+            com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap> done) {
+          impl.plookupReverse(controller, request, done);
+        }
+        
+        @Override
+        public  void rlookup(
+            com.google.protobuf.RpcController controller,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.RangeLookup request,
+            com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap> done) {
+          impl.rlookup(controller, request, done);
+        }
+        
+        @Override
+        public  void rlookupReverse(
+            com.google.protobuf.RpcController controller,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.RangeLookup request,
+            com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap> done) {
+          impl.rlookupReverse(controller, request, done);
         }
         
       };
@@ -55,6 +133,18 @@ public final class Replication {
           switch(method.getIndex()) {
             case 0:
               return impl.makePersistent(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.Type)request);
+            case 1:
+              return impl.getDatabaseNames(controller, (org.xtreemfs.babudb.pbrpc.Common.emptyRequest)request);
+            case 2:
+              return impl.lookup(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup)request);
+            case 3:
+              return impl.plookup(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup)request);
+            case 4:
+              return impl.plookupReverse(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup)request);
+            case 5:
+              return impl.rlookup(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.RangeLookup)request);
+            case 6:
+              return impl.rlookupReverse(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.RangeLookup)request);
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -71,6 +161,18 @@ public final class Replication {
           switch(method.getIndex()) {
             case 0:
               return org.xtreemfs.babudb.pbrpc.GlobalTypes.Type.getDefaultInstance();
+            case 1:
+              return org.xtreemfs.babudb.pbrpc.Common.emptyRequest.getDefaultInstance();
+            case 2:
+              return org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup.getDefaultInstance();
+            case 3:
+              return org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup.getDefaultInstance();
+            case 4:
+              return org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup.getDefaultInstance();
+            case 5:
+              return org.xtreemfs.babudb.pbrpc.GlobalTypes.RangeLookup.getDefaultInstance();
+            case 6:
+              return org.xtreemfs.babudb.pbrpc.GlobalTypes.RangeLookup.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -87,6 +189,18 @@ public final class Replication {
           switch(method.getIndex()) {
             case 0:
               return org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance();
+            case 1:
+              return org.xtreemfs.babudb.pbrpc.GlobalTypes.DatabaseNames.getDefaultInstance();
+            case 2:
+              return org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance();
+            case 3:
+              return org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.getDefaultInstance();
+            case 4:
+              return org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.getDefaultInstance();
+            case 5:
+              return org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.getDefaultInstance();
+            case 6:
+              return org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -99,6 +213,36 @@ public final class Replication {
         com.google.protobuf.RpcController controller,
         org.xtreemfs.babudb.pbrpc.GlobalTypes.Type request,
         com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done);
+    
+    public abstract void getDatabaseNames(
+        com.google.protobuf.RpcController controller,
+        org.xtreemfs.babudb.pbrpc.Common.emptyRequest request,
+        com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.DatabaseNames> done);
+    
+    public abstract void lookup(
+        com.google.protobuf.RpcController controller,
+        org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup request,
+        com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done);
+    
+    public abstract void plookup(
+        com.google.protobuf.RpcController controller,
+        org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup request,
+        com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap> done);
+    
+    public abstract void plookupReverse(
+        com.google.protobuf.RpcController controller,
+        org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup request,
+        com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap> done);
+    
+    public abstract void rlookup(
+        com.google.protobuf.RpcController controller,
+        org.xtreemfs.babudb.pbrpc.GlobalTypes.RangeLookup request,
+        com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap> done);
+    
+    public abstract void rlookupReverse(
+        com.google.protobuf.RpcController controller,
+        org.xtreemfs.babudb.pbrpc.GlobalTypes.RangeLookup request,
+        com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap> done);
     
     public static final
         com.google.protobuf.Descriptors.ServiceDescriptor
@@ -127,6 +271,36 @@ public final class Replication {
             com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse>specializeCallback(
               done));
           return;
+        case 1:
+          this.getDatabaseNames(controller, (org.xtreemfs.babudb.pbrpc.Common.emptyRequest)request,
+            com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.GlobalTypes.DatabaseNames>specializeCallback(
+              done));
+          return;
+        case 2:
+          this.lookup(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup)request,
+            com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse>specializeCallback(
+              done));
+          return;
+        case 3:
+          this.plookup(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup)request,
+            com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap>specializeCallback(
+              done));
+          return;
+        case 4:
+          this.plookupReverse(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup)request,
+            com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap>specializeCallback(
+              done));
+          return;
+        case 5:
+          this.rlookup(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.RangeLookup)request,
+            com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap>specializeCallback(
+              done));
+          return;
+        case 6:
+          this.rlookupReverse(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.RangeLookup)request,
+            com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap>specializeCallback(
+              done));
+          return;
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -143,6 +317,18 @@ public final class Replication {
       switch(method.getIndex()) {
         case 0:
           return org.xtreemfs.babudb.pbrpc.GlobalTypes.Type.getDefaultInstance();
+        case 1:
+          return org.xtreemfs.babudb.pbrpc.Common.emptyRequest.getDefaultInstance();
+        case 2:
+          return org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup.getDefaultInstance();
+        case 3:
+          return org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup.getDefaultInstance();
+        case 4:
+          return org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup.getDefaultInstance();
+        case 5:
+          return org.xtreemfs.babudb.pbrpc.GlobalTypes.RangeLookup.getDefaultInstance();
+        case 6:
+          return org.xtreemfs.babudb.pbrpc.GlobalTypes.RangeLookup.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -159,6 +345,18 @@ public final class Replication {
       switch(method.getIndex()) {
         case 0:
           return org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance();
+        case 1:
+          return org.xtreemfs.babudb.pbrpc.GlobalTypes.DatabaseNames.getDefaultInstance();
+        case 2:
+          return org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance();
+        case 3:
+          return org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.getDefaultInstance();
+        case 4:
+          return org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.getDefaultInstance();
+        case 5:
+          return org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.getDefaultInstance();
+        case 6:
+          return org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -194,6 +392,96 @@ public final class Replication {
             org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.class,
             org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance()));
       }
+      
+      public  void getDatabaseNames(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.Common.emptyRequest request,
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.DatabaseNames> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(1),
+          controller,
+          request,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.DatabaseNames.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.DatabaseNames.class,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.DatabaseNames.getDefaultInstance()));
+      }
+      
+      public  void lookup(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup request,
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(2),
+          controller,
+          request,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.class,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance()));
+      }
+      
+      public  void plookup(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup request,
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(3),
+          controller,
+          request,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.class,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.getDefaultInstance()));
+      }
+      
+      public  void plookupReverse(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup request,
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(4),
+          controller,
+          request,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.class,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.getDefaultInstance()));
+      }
+      
+      public  void rlookup(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.RangeLookup request,
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(5),
+          controller,
+          request,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.class,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.getDefaultInstance()));
+      }
+      
+      public  void rlookupReverse(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.RangeLookup request,
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(6),
+          controller,
+          request,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.class,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.getDefaultInstance()));
+      }
     }
     
     public static BlockingInterface newBlockingStub(
@@ -205,6 +493,36 @@ public final class Replication {
       public org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse makePersistent(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.GlobalTypes.Type request)
+          throws com.google.protobuf.ServiceException;
+      
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.DatabaseNames getDatabaseNames(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.Common.emptyRequest request)
+          throws com.google.protobuf.ServiceException;
+      
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse lookup(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup request)
+          throws com.google.protobuf.ServiceException;
+      
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap plookup(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup request)
+          throws com.google.protobuf.ServiceException;
+      
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap plookupReverse(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup request)
+          throws com.google.protobuf.ServiceException;
+      
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap rlookup(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.RangeLookup request)
+          throws com.google.protobuf.ServiceException;
+      
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap rlookupReverse(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.RangeLookup request)
           throws com.google.protobuf.ServiceException;
     }
     
@@ -224,6 +542,78 @@ public final class Replication {
           controller,
           request,
           org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance());
+      }
+      
+      
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.DatabaseNames getDatabaseNames(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.Common.emptyRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.xtreemfs.babudb.pbrpc.GlobalTypes.DatabaseNames) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(1),
+          controller,
+          request,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.DatabaseNames.getDefaultInstance());
+      }
+      
+      
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse lookup(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup request)
+          throws com.google.protobuf.ServiceException {
+        return (org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(2),
+          controller,
+          request,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance());
+      }
+      
+      
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap plookup(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup request)
+          throws com.google.protobuf.ServiceException {
+        return (org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(3),
+          controller,
+          request,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.getDefaultInstance());
+      }
+      
+      
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap plookupReverse(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup request)
+          throws com.google.protobuf.ServiceException {
+        return (org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(4),
+          controller,
+          request,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.getDefaultInstance());
+      }
+      
+      
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap rlookup(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.RangeLookup request)
+          throws com.google.protobuf.ServiceException {
+        return (org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(5),
+          controller,
+          request,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.getDefaultInstance());
+      }
+      
+      
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap rlookupReverse(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.RangeLookup request)
+          throws com.google.protobuf.ServiceException {
+        return (org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(6),
+          controller,
+          request,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap.getDefaultInstance());
       }
       
     }
@@ -917,29 +1307,43 @@ public final class Replication {
       "\n\033interface/replication.proto\022\022org.xtree" +
       "mfs.pbrpc\032\033interface/GlobalTypes.proto\032%" +
       "share/foundation/include/Common.proto\032$s" +
-      "hare/foundation/include/PBRPC.proto2~\n\023R" +
-      "emoteAccessService\022^\n\016makePersistent\022\030.o" +
-      "rg.xtreemfs.pbrpc.Type\032%.org.xtreemfs.pb" +
-      "rpc.ErrorCodeResponse\"\013\215\265\030\001\000\000\000\240\265\030\001\032\007\225\265\030\021" +
-      "\'\000\0002\310\005\n\022ReplicationService\022K\n\005state\022 .or" +
-      "g.xtreemfs.pbrpc.emptyRequest\032\027.org.xtre" +
-      "emfs.pbrpc.LSN\"\007\215\265\030\001\000\000\000\022M\n\004load\022\027.org.xt",
-      "reemfs.pbrpc.LSN\032#.org.xtreemfs.pbrpc.DB" +
-      "FileMetaDatas\"\007\215\265\030\002\000\000\000\022V\n\005chunk\022\031.org.xt" +
-      "reemfs.pbrpc.Chunk\032%.org.xtreemfs.pbrpc." +
-      "ErrorCodeResponse\"\013\215\265\030\003\000\000\000\230\265\030\001\022X\n\006flease" +
-      "\022\032.org.xtreemfs.pbrpc.FLease\032%.org.xtree" +
-      "mfs.pbrpc.ErrorCodeResponse\"\013\215\265\030\004\000\000\000\240\265\030\001" +
-      "\022U\n\tlocalTime\022 .org.xtreemfs.pbrpc.empty" +
-      "Request\032\035.org.xtreemfs.pbrpc.Timestamp\"\007" +
-      "\215\265\030\005\000\000\000\022T\n\007replica\022\034.org.xtreemfs.pbrpc." +
-      "LSNRange\032\036.org.xtreemfs.pbrpc.LogEntries",
-      "\"\013\215\265\030\006\000\000\000\230\265\030\001\022T\n\theartbeat\022\027.org.xtreemf" +
-      "s.pbrpc.LSN\032%.org.xtreemfs.pbrpc.ErrorCo" +
-      "deResponse\"\007\215\265\030\007\000\000\000\022X\n\treplicate\022\027.org.x" +
-      "treemfs.pbrpc.LSN\032%.org.xtreemfs.pbrpc.E" +
-      "rrorCodeResponse\"\013\215\265\030\010\000\000\000\240\265\030\001\032\007\225\265\030!N\000\000B\033" +
-      "\n\031org.xtreemfs.babudb.pbrpc"
+      "hare/foundation/include/PBRPC.proto2\256\005\n\023" +
+      "RemoteAccessService\022^\n\016makePersistent\022\030." +
+      "org.xtreemfs.pbrpc.Type\032%.org.xtreemfs.p" +
+      "brpc.ErrorCodeResponse\"\013\215\265\030\001\000\000\000\240\265\030\001\022`\n\020g" +
+      "etDatabaseNames\022 .org.xtreemfs.pbrpc.emp" +
+      "tyRequest\032!.org.xtreemfs.pbrpc.DatabaseN" +
+      "ames\"\007\215\265\030\002\000\000\000\022\\\n\006lookup\022\032.org.xtreemfs.p",
+      "brpc.Lookup\032%.org.xtreemfs.pbrpc.ErrorCo" +
+      "deResponse\"\017\215\265\030\003\000\000\000\240\265\030\001\230\265\030\001\022T\n\007plookup\022\032" +
+      ".org.xtreemfs.pbrpc.Lookup\032\034.org.xtreemf" +
+      "s.pbrpc.EntryMap\"\017\215\265\030\004\000\000\000\240\265\030\001\230\265\030\001\022[\n\016plo" +
+      "okupReverse\022\032.org.xtreemfs.pbrpc.Lookup\032" +
+      "\034.org.xtreemfs.pbrpc.EntryMap\"\017\215\265\030\005\000\000\000\240\265" +
+      "\030\001\230\265\030\001\022Y\n\007rlookup\022\037.org.xtreemfs.pbrpc.R" +
+      "angeLookup\032\034.org.xtreemfs.pbrpc.EntryMap" +
+      "\"\017\215\265\030\006\000\000\000\240\265\030\001\230\265\030\001\022`\n\016rlookupReverse\022\037.or" +
+      "g.xtreemfs.pbrpc.RangeLookup\032\034.org.xtree",
+      "mfs.pbrpc.EntryMap\"\017\215\265\030\007\000\000\000\240\265\030\001\230\265\030\001\032\007\225\265\030" +
+      "\021\'\000\0002\310\005\n\022ReplicationService\022K\n\005state\022 .o" +
+      "rg.xtreemfs.pbrpc.emptyRequest\032\027.org.xtr" +
+      "eemfs.pbrpc.LSN\"\007\215\265\030\001\000\000\000\022M\n\004load\022\027.org.x" +
+      "treemfs.pbrpc.LSN\032#.org.xtreemfs.pbrpc.D" +
+      "BFileMetaDatas\"\007\215\265\030\002\000\000\000\022V\n\005chunk\022\031.org.x" +
+      "treemfs.pbrpc.Chunk\032%.org.xtreemfs.pbrpc" +
+      ".ErrorCodeResponse\"\013\215\265\030\003\000\000\000\230\265\030\001\022X\n\006fleas" +
+      "e\022\032.org.xtreemfs.pbrpc.FLease\032%.org.xtre" +
+      "emfs.pbrpc.ErrorCodeResponse\"\013\215\265\030\004\000\000\000\240\265\030",
+      "\001\022U\n\tlocalTime\022 .org.xtreemfs.pbrpc.empt" +
+      "yRequest\032\035.org.xtreemfs.pbrpc.Timestamp\"" +
+      "\007\215\265\030\005\000\000\000\022T\n\007replica\022\034.org.xtreemfs.pbrpc" +
+      ".LSNRange\032\036.org.xtreemfs.pbrpc.LogEntrie" +
+      "s\"\013\215\265\030\006\000\000\000\230\265\030\001\022T\n\theartbeat\022\027.org.xtreem" +
+      "fs.pbrpc.LSN\032%.org.xtreemfs.pbrpc.ErrorC" +
+      "odeResponse\"\007\215\265\030\007\000\000\000\022X\n\treplicate\022\027.org." +
+      "xtreemfs.pbrpc.LSN\032%.org.xtreemfs.pbrpc." +
+      "ErrorCodeResponse\"\013\215\265\030\010\000\000\000\240\265\030\001\032\007\225\265\030!N\000\000B" +
+      "\033\n\031org.xtreemfs.babudb.pbrpc"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
