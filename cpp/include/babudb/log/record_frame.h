@@ -30,7 +30,7 @@ typedef unsigned short			record_frame_t; // the length of the frame header/foote
 inline unsigned long long ALIGN(unsigned long long n,int a)		{ return (((n + (a-1)) / a) * a); }
 inline bool ISALIGNED(void* n, int a)							{ return (unsigned long long)n == (((unsigned long long)n)/a)*a; }
 
-#if defined(__i386__) || defined(_M_IX86) || defined(TARGET_RT_LITTLE_ENDIAN) // little endian
+#if defined(__i386__) || defined(_M_IX86) || defined(TARGET_RT_LITTLE_ENDIAN) || defined(__x86_64__)  // little endian
 inline record_frame_t fixEndianess(record_frame_t header ) {
 	return header;
 }
