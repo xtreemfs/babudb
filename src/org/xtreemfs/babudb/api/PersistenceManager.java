@@ -59,6 +59,13 @@ public abstract class PersistenceManager {
     }
     
     /**
+     * @return the registered handlers for the in-memory processing of the persistence manager.
+     */
+    public Map<Byte, InMemoryProcessing> getProcessingLogic() {
+        return inMemoryProcessing;
+    }
+    
+    /**
      * Method let some operation become persistent. Every operation executed
      * on BabuDB has to pass this method first.
      * 
