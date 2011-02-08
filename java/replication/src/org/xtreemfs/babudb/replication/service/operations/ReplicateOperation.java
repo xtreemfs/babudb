@@ -100,7 +100,7 @@ public class ReplicateOperation extends Operation {
         //dezerialize payload (serialized logEntry)
         if (resp == null) {
             
-            ReusableBuffer data = rq.getRpcRequest().getData();
+            ReusableBuffer data = rq.getRpcRequest().getData().createViewBuffer();
             try {
                 rq.setAttachment(LogEntry.deserialize(data, this.checksum));
             } catch (LogEntryException e){
@@ -110,7 +110,7 @@ public class ReplicateOperation extends Operation {
                         .setErrorType(ErrorType.IO_ERROR).build();
             } finally {
                 this.checksum.reset();
-                if (data!=null) BufferPool.free(data);
+                if (data != null) BufferPool.free(data);
             } 
         }
         return resp;
@@ -130,8 +130,7 @@ public class ReplicateOperation extends Operation {
             rq.sendSuccess(ErrorCodeResponse.getDefaultInstance());
         } catch (BusyServerException e) {
             if (le!=null) le.free();
-            rq.sendSuccess(ErrorCodeResponse.newBuilder().setErrorCode(
-                    ErrorCode.BUSY).build());
+            rq.sendSuccess(ErrorCodeResponse.newBuilder().setErrorCode(ErrorCode.BUSY).build());
         }
     }
 }

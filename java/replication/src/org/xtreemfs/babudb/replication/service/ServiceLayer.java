@@ -10,11 +10,7 @@
  */
 package org.xtreemfs.babudb.replication.service;
 
-import static org.xtreemfs.babudb.log.LogEntry.*;
-
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.net.InetAddress;
 import java.util.Collections;
 import java.util.HashMap;
@@ -29,8 +25,6 @@ import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.LogEntry;
-import org.xtreemfs.babudb.log.SyncListener;
-import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.FleaseMessageReceiver;
@@ -47,7 +41,6 @@ import org.xtreemfs.babudb.replication.service.clients.ConditionClient;
 import org.xtreemfs.babudb.replication.service.clients.MasterClient;
 import org.xtreemfs.babudb.replication.service.clients.SlaveClient;
 import org.xtreemfs.babudb.replication.transmission.TransmissionToServiceInterface;
-import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.TimeSync;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
@@ -61,8 +54,7 @@ import org.xtreemfs.foundation.logging.Logging;
  * @author flangner
  * @since 04/12/2010
  */
-public class ServiceLayer extends Layer implements  ServiceToControlInterface, 
-    SlaveView {
+public class ServiceLayer extends Layer implements  ServiceToControlInterface, SlaveView {
     
     /** states of all the other participants */
     private final ParticipantsStates             participantsStates;
@@ -294,100 +286,6 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface,
                                 transmissionInterface.getFileIOInterface()));
             }
         }
-    }
-    
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.SlaveView#handleLogEntry(org.xtreemfs.babudb.log.LogEntry, org.xtreemfs.babudb.log.SyncListener)
-     */
-    @Override
-    public void handleLogEntry(LogEntry entry, SyncListener listener) 
-        throws BabuDBException, InterruptedException {
-
-        // check the payload type TODO rebuild using the local 
-        // persistenceManager instead of manually executing operations
-        switch (entry.getPayloadType()) { 
-        
-        case PAYLOAD_TYPE_INSERT:
-            InsertRecordGroup irg = 
-                InsertRecordGroup.deserialize(entry.getPayload());
-            this.babuDBInterface.insertRecordGroup(irg);
-            break;
-        
-        case PAYLOAD_TYPE_CREATE:
-            
-            // deserialize the create call
-            
-            // do not use, deprecated
-            int dbId = entry.getPayload().getInt();
-            
-            String dbName = entry.getPayload().getString();
-            int indices = entry.getPayload().getInt();
-            this.babuDBInterface.createDB(dbName, indices);
-            break;
-            
-        case PAYLOAD_TYPE_COPY:
-            
-            // deserialize the copy call
-            
-            // do not use, deprecated
-            entry.getPayload().getInt(); // do not delete!
-            dbId = entry.getPayload().getInt();
-            
-            String dbSource = entry.getPayload().getString();
-            dbName = entry.getPayload().getString();
-            this.babuDBInterface.copyDB(dbSource, dbName);
-            break;
-            
-        case PAYLOAD_TYPE_DELETE:
-            // deserialize the create operation call
-            
-            // do not use, deprecated
-            dbId = entry.getPayload().getInt();
-            
-            dbName = entry.getPayload().getString();
-            this.babuDBInterface.deleteDB(dbName);
-            break;
-            
-        case PAYLOAD_TYPE_SNAP:
-            ObjectInputStream oin = null;
-            try {
-                oin = new ObjectInputStream(new ByteArrayInputStream(
-                        entry.getPayload().array()));
-                // deserialize the snapshot configuration
-                dbId = oin.readInt();
-                SnapshotConfig snap = (SnapshotConfig) oin.readObject();
-                this.babuDBInterface.createSnapshot(dbId, snap);
-            } catch (Exception e) {
-                throw new BabuDBException(ErrorCode.REPLICATION_FAILURE,
-                        "Could not deserialize operation of type "+entry.
-                        getPayloadType()+", because: "+e.getMessage(), e);
-            } finally {
-                try {
-                if (oin != null) oin.close();
-                } catch (IOException ioe) {
-                    /* who cares? */
-                }
-            }
-            break;
-            
-        case PAYLOAD_TYPE_SNAP_DELETE:
-
-            byte[] payload = entry.getPayload().array();
-            int offs = payload[0];
-            dbName = new String(payload, 1, offs);
-            String snapName = new String(payload, offs + 1, 
-                                         payload.length - offs - 1);
-            this.babuDBInterface.deleteSnapshot(dbName, snapName);
-            break;
-                
-        default: new BabuDBException(ErrorCode.INTERNAL_ERROR, "unknown " +
-        		"payload-type");
-        }
-        entry.getPayload().flip();
-        entry.setListener(listener);
-        
-        // append logEntry to the logFile
-        this.babuDBInterface.appendToDisklogger(entry);
     }
   
     /*

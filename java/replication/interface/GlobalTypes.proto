@@ -62,8 +62,18 @@ message FLease {
   required fixed32 port = 2;
 }
 
-message DatabaseNames {
-  repeated string database_name = 1;
+message Databases {
+  repeated Database database = 1;
+}
+
+message Database {
+  optional fixed32 error_code = 1[default = 0];
+  required string database_name = 2;
+  required fixed32 database_id = 3;
+}
+
+message DatabaseName {
+  required string database_name = 1;  
 }
 
 message Lookup {

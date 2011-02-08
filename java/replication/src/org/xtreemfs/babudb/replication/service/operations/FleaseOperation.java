@@ -65,8 +65,7 @@ public class FleaseOperation extends Operation {
         ErrorResponse resp = super.parseRPCMessage(rq);
         
         if (resp == null) {
-            FleaseMessage message = new FleaseMessage(
-                    rq.getRpcRequest().getData());
+            FleaseMessage message = new FleaseMessage(rq.getRpcRequest().getData());
             FLease rpcrq = (FLease) rq.getRequestMessage();
             assert (message != null);
             
@@ -77,8 +76,6 @@ public class FleaseOperation extends Operation {
             
             rq.setAttachment(message);
         }
-        rq.getRpcRequest().freeBuffers();
-        // TODO where is rq.getRpcRequest().getData() freed?
         
         return resp;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -9,9 +9,9 @@ package org.xtreemfs.babudb.replication.service.logic;
 
 import java.util.concurrent.BlockingQueue;
 
+import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.log.LogEntry;
-import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.service.Pacemaker;
@@ -97,31 +97,30 @@ public class BasicLogic extends Logic {
         // try to finish the request
         try {     
             // perform the operation
-            this.slaveView.handleLogEntry((LogEntry) op.getArgs()[1], new SyncListener() {
-                
-                @Override
-                public void synced(LogEntry entry) {
-                    stage.finalizeRequest(op);
-                    pacemaker.updateLSN(lsn);
-                }
-            
-                @Override
-                public void failed(LogEntry entry, Exception ex) {
-                    stage.finalizeRequest(op);
-                    stage.lastInserted = new LSN(lsn.getViewId(),
-                            lsn.getSequenceNo()-1L);
-                    Logging.logError(Logging.LEVEL_ERROR, stage, ex);
-                }
-            });
+            this.babuInterface.appendToLocalPersistenceManager((LogEntry) op.getArgs()[1], 
+                    new DatabaseRequestListener<Object>() {
+                        
+                        @Override
+                        public void finished(Object result, Object context) {
+                            stage.finalizeRequest(op);
+                            pacemaker.updateLSN(lsn);
+                        }
+                        
+                        @Override
+                        public void failed(BabuDBException error, Object context) {
+                            stage.finalizeRequest(op);
+                            stage.lastInserted = new LSN(lsn.getViewId(),
+                                    lsn.getSequenceNo()-1L);
+                            Logging.logError(Logging.LEVEL_ERROR, stage, error);
+                        }
+                    });
             stage.lastInserted = lsn;
+            
         } catch (BabuDBException e) {
+            
             // the insert failed due a DB error
             queue.add(op);
             stage.setLogic(LOAD, e.getMessage());            
-        } catch (InterruptedException i) {
-            // crash or shutdown signal received
-            queue.add(op);
-            throw i;
         }
     }
 }

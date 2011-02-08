@@ -74,4 +74,10 @@ public interface ControlToBabuDBInterface extends RoleChangeListener{
      *         not available at the moment.
      */
     public InetSocketAddress getLeaseHolder();
+    
+    /**
+     * @param master - the address to compare with.
+     * @return true, if the given master address is the address of this server. false otherwise.
+     */
+    public boolean amIMaster(InetSocketAddress master);
 }

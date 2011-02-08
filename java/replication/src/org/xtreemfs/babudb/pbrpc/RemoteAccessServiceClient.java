@@ -1,4 +1,4 @@
-//automatically generated from replication.proto at Fri Jan 28 12:07:07 CET 2011
+//automatically generated from replication.proto at Tue Feb 08 12:50:44 CET 2011
 //(c) 2011. See LICENSE file for details.
 
 package org.xtreemfs.babudb.pbrpc;
@@ -36,24 +36,37 @@ public class RemoteAccessServiceClient {
          return makePersistent(server, authHeader, userCreds,msg, data);
     }
 
-    public RPCResponse<GlobalTypes.DatabaseNames> getDatabaseNames(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, Common.emptyRequest input) throws IOException {
+    public RPCResponse<GlobalTypes.Database> getDatabase(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, GlobalTypes.DatabaseName input) throws IOException {
          if (server == null) server = defaultServer;
          if (server == null) throw new IllegalArgumentException("defaultServer must be set in constructor if you want to pass null as server in calls");
-         RPCResponse<GlobalTypes.DatabaseNames> response = new RPCResponse<GlobalTypes.DatabaseNames>(GlobalTypes.DatabaseNames.getDefaultInstance());
+         RPCResponse<GlobalTypes.Database> response = new RPCResponse<GlobalTypes.Database>(GlobalTypes.Database.getDefaultInstance());
          client.sendRequest(server, authHeader, userCreds, 10001, 2, input, null, response, false);
          return response;
     }
 
-    public RPCResponse<GlobalTypes.DatabaseNames> getDatabaseNames(InetSocketAddress server, Auth authHeader, UserCredentials userCreds) throws IOException {
+    public RPCResponse<GlobalTypes.Database> getDatabase(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, String database_name) throws IOException {
+         final GlobalTypes.DatabaseName msg = GlobalTypes.DatabaseName.newBuilder().setDatabaseName(database_name).build();
+         return getDatabase(server, authHeader, userCreds,msg);
+    }
+
+    public RPCResponse<GlobalTypes.Databases> getDatabases(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, Common.emptyRequest input) throws IOException {
+         if (server == null) server = defaultServer;
+         if (server == null) throw new IllegalArgumentException("defaultServer must be set in constructor if you want to pass null as server in calls");
+         RPCResponse<GlobalTypes.Databases> response = new RPCResponse<GlobalTypes.Databases>(GlobalTypes.Databases.getDefaultInstance());
+         client.sendRequest(server, authHeader, userCreds, 10001, 3, input, null, response, false);
+         return response;
+    }
+
+    public RPCResponse<GlobalTypes.Databases> getDatabases(InetSocketAddress server, Auth authHeader, UserCredentials userCreds) throws IOException {
          
-         return getDatabaseNames(server, authHeader, userCreds,null);
+         return getDatabases(server, authHeader, userCreds,null);
     }
 
     public RPCResponse<GlobalTypes.ErrorCodeResponse> lookup(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, GlobalTypes.Lookup input, ReusableBuffer data) throws IOException {
          if (server == null) server = defaultServer;
          if (server == null) throw new IllegalArgumentException("defaultServer must be set in constructor if you want to pass null as server in calls");
          RPCResponse<GlobalTypes.ErrorCodeResponse> response = new RPCResponse<GlobalTypes.ErrorCodeResponse>(GlobalTypes.ErrorCodeResponse.getDefaultInstance());
-         client.sendRequest(server, authHeader, userCreds, 10001, 3, input, data, response, false);
+         client.sendRequest(server, authHeader, userCreds, 10001, 4, input, data, response, false);
          return response;
     }
 
@@ -66,7 +79,7 @@ public class RemoteAccessServiceClient {
          if (server == null) server = defaultServer;
          if (server == null) throw new IllegalArgumentException("defaultServer must be set in constructor if you want to pass null as server in calls");
          RPCResponse<GlobalTypes.EntryMap> response = new RPCResponse<GlobalTypes.EntryMap>(GlobalTypes.EntryMap.getDefaultInstance());
-         client.sendRequest(server, authHeader, userCreds, 10001, 4, input, data, response, false);
+         client.sendRequest(server, authHeader, userCreds, 10001, 5, input, data, response, false);
          return response;
     }
 
@@ -79,7 +92,7 @@ public class RemoteAccessServiceClient {
          if (server == null) server = defaultServer;
          if (server == null) throw new IllegalArgumentException("defaultServer must be set in constructor if you want to pass null as server in calls");
          RPCResponse<GlobalTypes.EntryMap> response = new RPCResponse<GlobalTypes.EntryMap>(GlobalTypes.EntryMap.getDefaultInstance());
-         client.sendRequest(server, authHeader, userCreds, 10001, 5, input, data, response, false);
+         client.sendRequest(server, authHeader, userCreds, 10001, 6, input, data, response, false);
          return response;
     }
 
@@ -92,7 +105,7 @@ public class RemoteAccessServiceClient {
          if (server == null) server = defaultServer;
          if (server == null) throw new IllegalArgumentException("defaultServer must be set in constructor if you want to pass null as server in calls");
          RPCResponse<GlobalTypes.EntryMap> response = new RPCResponse<GlobalTypes.EntryMap>(GlobalTypes.EntryMap.getDefaultInstance());
-         client.sendRequest(server, authHeader, userCreds, 10001, 6, input, data, response, false);
+         client.sendRequest(server, authHeader, userCreds, 10001, 7, input, data, response, false);
          return response;
     }
 
@@ -105,7 +118,7 @@ public class RemoteAccessServiceClient {
          if (server == null) server = defaultServer;
          if (server == null) throw new IllegalArgumentException("defaultServer must be set in constructor if you want to pass null as server in calls");
          RPCResponse<GlobalTypes.EntryMap> response = new RPCResponse<GlobalTypes.EntryMap>(GlobalTypes.EntryMap.getDefaultInstance());
-         client.sendRequest(server, authHeader, userCreds, 10001, 7, input, data, response, false);
+         client.sendRequest(server, authHeader, userCreds, 10001, 8, input, data, response, false);
          return response;
     }
 

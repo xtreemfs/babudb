@@ -12,15 +12,12 @@ package org.xtreemfs.babudb.replication.control;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.replication.service.ServiceToControlInterface;
 import org.xtreemfs.foundation.LifeCycleThread;
 import org.xtreemfs.foundation.TimeSync;
-import org.xtreemfs.foundation.buffer.ASCIIString;
 import org.xtreemfs.foundation.flease.Flease;
 import org.xtreemfs.foundation.logging.Logging;
 
@@ -34,8 +31,7 @@ import org.xtreemfs.foundation.logging.Logging;
  * @author flangner
  * @since 04/15/2010
  */
-public class ReplicationController extends LifeCycleThread 
-    implements ControlListener {
+public class ReplicationController extends LifeCycleThread implements ControlListener {
 
     /** flag that determines if the replication is suspended currently */
     private final AtomicBoolean suspended = new AtomicBoolean(false);
@@ -94,7 +90,7 @@ public class ReplicationController extends LifeCycleThread
         boolean result;
         synchronized (this.failoverInProgress) {
             while ((result = (!this.handoverInProgress.get() && 
-                    this.fleaseHolder.amIOwner())) && 
+                    this.ctrlLayer.amIMaster())) && 
                     this.failoverInProgress.get()) {
                 
                     this.failoverInProgress.wait();
@@ -129,7 +125,7 @@ public class ReplicationController extends LifeCycleThread
             
          // part one: acquire the lock
             synchronized (this.fleaseHolder) {
-                if (this.fleaseHolder.amIOwner()) {
+                if (this.ctrlLayer.amIMaster()) {
                     // set the handover in progress
                     handoverInProgress.set(true);
                     
@@ -159,7 +155,7 @@ public class ReplicationController extends LifeCycleThread
                     // wait for a lease-timeout to be completed
                     long diff = 0;
                     long timeout = this.fleaseHolder.getLeaseTimeout();
-                    if (this.fleaseHolder.amIOwner()) {
+                    if (this.ctrlLayer.amIMaster()) {
                         diff = timeout - TimeSync.getGlobalTime();
                     }
                     if (diff > 0) {
@@ -182,7 +178,7 @@ public class ReplicationController extends LifeCycleThread
      */
     @Override
     public void notifyForHandover() {        
-        if (this.handoverInProgress.get() && !this.fleaseHolder.amIOwner()) {
+        if (this.handoverInProgress.get() && !this.ctrlLayer.amIMaster()) {
             synchronized (this.handoverInProgress) {
                 if (this.handoverInProgress.compareAndSet(true, false)) {
                     this.handoverInProgress.notify();
@@ -270,35 +266,35 @@ public class ReplicationController extends LifeCycleThread
  * private methods
  */
     
-    /**
-     * This server gives up its master privileges. The lease is handed over
-     * to a server depending on the latest acknowledged LSN received by it.
-     * The local instance will also become slave of the new master, if handover
-     * was successful.
-     * 
-     * @throws InterruptedException
-     * 
-     * @return true, if handover was successful, false if this server loast the
-     *         ownership of the lease because of a timeout.
-     */
-    private boolean handover() throws InterruptedException {
-        boolean success = false;
-        InetSocketAddress newOwner;
-        int index = 0;
-        List<InetSocketAddress> clients = ctrlLayer.getClients();
-        do {
-            newOwner = clients.get(index++);
-            index %= clients.size();
-            success = this.ctrlLayer.handOverLease(
-                    new ASCIIString(FleaseHolder.getIdentity(newOwner)));
-        } while (hasLease());
-        
-        if (success) {
-            becomeSlave(newOwner.getAddress());
-        }
-        
-        return success;
-    }
+//    /**
+//     * This server gives up its master privileges. The lease is handed over
+//     * to a server depending on the latest acknowledged LSN received by it.
+//     * The local instance will also become slave of the new master, if handover
+//     * was successful.
+//     * FIXME
+//     * @throws InterruptedException
+//     * 
+//     * @return true, if handover was successful, false if this server loast the
+//     *         ownership of the lease because of a timeout.
+//     */
+//    private boolean handover() throws InterruptedException {
+//        boolean success = false;
+//        InetSocketAddress newOwner;
+//        int index = 0;
+//        List<InetSocketAddress> clients = ctrlLayer.getClients();
+//        do {
+//            newOwner = clients.get(index++);
+//            index %= clients.size();
+//            success = this.ctrlLayer.handOverLease(
+//                    new ASCIIString(FleaseHolder.getIdentity(newOwner)));
+//        } while (hasLease());
+//        
+//        if (success) {
+//            becomeSlave(newOwner.getAddress());
+//        }
+//        
+//        return success;
+//    }
     
     /**
      * This server has to become the new master.

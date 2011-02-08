@@ -54,8 +54,7 @@ public class LookupOperation extends Operation {
         
         try {
             dbs.getDatabase(req.getDatabaseName()).lookup(req.getIndexId(), 
-                            rq.getRpcRequest().getData().array(), null)
-                                .registerListener(
+                            rq.getRpcRequest().getData().array(), null).registerListener(
                                         new DatabaseRequestListener<byte[]>() {
                 
                 @Override

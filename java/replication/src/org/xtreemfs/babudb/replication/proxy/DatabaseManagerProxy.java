@@ -11,10 +11,13 @@
 package org.xtreemfs.babudb.replication.proxy;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.api.DatabaseManager;
+import org.xtreemfs.babudb.api.PersistenceManager;
 import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
@@ -22,6 +25,7 @@ import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.replication.RemoteAccessClient;
 import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.replication.policy.Policy;
+import org.xtreemfs.babudb.replication.transmission.PBRPCClientAdapter.ErrorCodeException;
 
 /**
  * Stub to redirect Database read-only requests to a remote master if necessary.
@@ -33,17 +37,19 @@ import org.xtreemfs.babudb.replication.policy.Policy;
  */
 class DatabaseManagerProxy implements DatabaseManager {
 
-    private final DatabaseManager       localDBMan;
-    private final Policy                replicationPolicy;
-    private final ReplicationManager    replicationManager;
-    private final RemoteAccessClient    client;
+    private final    DatabaseManager    localDBMan;
+    private final    Policy             replicationPolicy;
+    private final    ReplicationManager replicationManager;
+    private final    RemoteAccessClient client;
+    private final    PersistenceManager persManProxy;
+    private volatile InetSocketAddress  master;
 
     public DatabaseManagerProxy(DatabaseManager localDBMan, Policy policy, 
-                                ReplicationManager replMan, 
-                                RemoteAccessClient client) {
+            ReplicationManager replMan, RemoteAccessClient client, PersistenceManager persMan) {
         
         assert (localDBMan != null);
         
+        this.persManProxy = persMan;
         this.localDBMan = localDBMan;
         this.replicationPolicy = policy;
         this.replicationManager = replMan;
@@ -56,13 +62,27 @@ class DatabaseManagerProxy implements DatabaseManager {
      */
     @Override
     public Database getDatabase(String dbName) throws BabuDBException {
+        
         if (hasPermissionToExecuteLocally()) {
-            return new DatabaseProxy(localDBMan.getDatabase(dbName), 
-                    replicationManager, replicationPolicy, this);
+            return new DatabaseProxy(localDBMan.getDatabase(dbName), replicationPolicy, this);
         }
         
-        return new DatabaseProxy(dbName, replicationManager, replicationPolicy, 
-                                 this);
+        try {
+            
+            int dbId = client.getDatabase(dbName, master).get();
+            return new DatabaseProxy(dbName, dbId, replicationPolicy, this);
+            
+        } catch (ErrorCodeException e) {
+            
+            if (org.xtreemfs.babudb.replication.transmission.ErrorCode.DB_UNAVAILABLE == 
+                    e.getCode()) {
+                throw new BabuDBException(ErrorCode.NO_SUCH_DB, e.getMessage());
+            }
+            
+            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
+        } catch (Exception e) {
+            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
+        }
     }
 
     /* (non-Javadoc)
@@ -76,16 +96,16 @@ class DatabaseManagerProxy implements DatabaseManager {
         
         try {
             Map<String, Database> r = new HashMap<String, Database>();
-            for (String dbName : 
-                    client.getDatabases(replicationManager.getMaster()).get()) {
-                
-                r.put(dbName, new DatabaseProxy(dbName, replicationManager, 
-                        replicationPolicy, this));
+            for (Entry<String, Integer> e : 
+                client.getDatabases(master).get().entrySet()) {
+                                
+                r.put(e.getKey(), new DatabaseProxy(e.getKey(), e.getValue(), replicationPolicy, 
+                        this));
             }
             return r; 
         } catch (Exception e) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
-                                      e.getMessage());
+            
+            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
         } 
     }
 
@@ -140,8 +160,9 @@ class DatabaseManagerProxy implements DatabaseManager {
     }
     
     private boolean hasPermissionToExecuteLocally() {
+        master = replicationManager.getMaster();
         return !replicationPolicy.dbModificationIsMasterRestricted() 
-                || replicationManager.isMaster();
+                || replicationManager.amIMaster(master);
     }
 
     Database getLocalDatabase(String name) throws BabuDBException {
@@ -150,5 +171,13 @@ class DatabaseManagerProxy implements DatabaseManager {
     
     RemoteAccessClient getClient() {
         return client;
+    }
+    
+    PersistenceManager getPersistenceManager() {
+        return persManProxy;
+    }
+    
+    ReplicationManager getReplicationManager() {
+        return replicationManager;
     }
 }
