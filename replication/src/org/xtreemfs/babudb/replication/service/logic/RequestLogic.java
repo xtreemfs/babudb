@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -12,10 +12,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
+import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
-import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.service.Pacemaker;
@@ -134,26 +134,27 @@ public class RequestLogic extends Logic {
                         stage.lastInserted = this.babuInterface.getState();
                     }
                     
-                    this.slaveView.handleLogEntry(logentry, new SyncListener() {
-                    
+                    this.babuInterface.appendToLocalPersistenceManager(logentry, 
+                            new DatabaseRequestListener<Object>() {
+                        
                         @Override
-                        public void synced(LogEntry entry) {
+                        public void finished(Object result, Object context) {
                             synchronized (count) {
                                 stage.lastInserted = lsn;
                                 if (count.decrementAndGet() == 0)
                                     count.notify();
                             }
-                            entry.free();
+                            logentry.free();
                         }
-                    
+                        
                         @Override
-                        public void failed(LogEntry entry, Exception ex) {
-                            Logging.logError(Logging.LEVEL_ERROR, stage, ex);
+                        public void failed(BabuDBException error, Object context) {
+                            Logging.logError(Logging.LEVEL_ERROR, stage, error);
                             synchronized (count) {
                                 count.set(-1);
                                 count.notify();
                             }
-                            entry.free();
+                            logentry.free();
                         }
                     });
                 } finally {

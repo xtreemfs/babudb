@@ -63,9 +63,11 @@ public class Main extends PluginMain {
         } 
         
         // initialize the BabuDB proxy interface
-        return new BabuDBProxy(babuDB, replMan, 
+        BabuDBInternal result = new BabuDBProxy(babuDB, replMan, 
                 configuration.getReplicationPolicy(), 
                 replMan.getRemoteAccessClient());
+                
+        return result;
     }
 
     /* (non-Javadoc)
@@ -73,6 +75,6 @@ public class Main extends PluginMain {
      */
     @Override
     public String compatibleBabuDBVersion() {
-        return "0.5.0|0.6.0";
+        return PluginMain.buildCompatibleVersionString(0, 5, 0, 0, 5, 0);
     }
 }

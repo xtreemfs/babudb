@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -43,8 +43,7 @@ import static org.xtreemfs.babudb.replication.transmission.ErrorCode.*;
  * @author flangner
  */
 
-public class ReplicationStage extends LifeCycleThread 
-        implements RequestManagement {
+public class ReplicationStage extends LifeCycleThread implements RequestManagement {
 
     private final static int                    RETRY_DELAY_MS = 500;
         
@@ -162,7 +161,7 @@ public class ReplicationStage extends LifeCycleThread
             boolean infarcted = false;
             try {
                 // sleep if a request shall be retried 
-                if (tries != 0) Thread.sleep(RETRY_DELAY_MS*tries);
+                if (tries != 0) Thread.sleep(RETRY_DELAY_MS * tries);
                 
                 // prevent the heartbeatThread from sending messages as long as
                 // this server is synchronizing with another server
@@ -278,15 +277,15 @@ public class ReplicationStage extends LifeCycleThread
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.RequestManagement#finalizeRequest(org.xtreemfs.babudb.replication.service.StageRequest)
+     * @see org.xtreemfs.babudb.replication.service.RequestManagement#finalizeRequest(
+     *          org.xtreemfs.babudb.replication.service.StageRequest)
      */
-    public void finalizeRequest(StageRequest op) {
-        if (op.getArgs()[1] != null && op.getArgs()[1] instanceof LogEntry)
-            ((LogEntry) op.getArgs()[1]).free();
-        
+    public void finalizeRequest(StageRequest op) {        
         op.free();
+        
         int numRqs = numRequests.decrementAndGet();
-        assert(numRqs >= 0) : "The number of requests cannot be negative, especially not '"+numRqs+"'.";
+        assert(numRqs >= 0) : "The number of requests cannot be negative, especially not '" + 
+                                numRqs + "'.";
     }
 
     /**
@@ -314,12 +313,13 @@ public class ReplicationStage extends LifeCycleThread
      * enqueueOperation(java.lang.Object[])
      */
     public void enqueueOperation(Object[] args) throws BusyServerException {
-        if (numRequests.incrementAndGet()>MAX_Q && MAX_Q != 0){
+        if (numRequests.incrementAndGet() > MAX_Q && MAX_Q != 0){
             numRequests.decrementAndGet();
-            throw new BusyServerException(getName()+": Operation could not " +
+            throw new BusyServerException(getName() + ": Operation could not " +
             		"be performed.");
-        } else if (quit) 
-            throw new BusyServerException(getName()+": Shutting down.");
+        } else if (quit) {
+            throw new BusyServerException(getName() + ": Shutting down.");
+        }
         q.add(new StageRequest(args));
     }
     

@@ -7,7 +7,8 @@
  */
 package org.xtreemfs.babudb.replication.proxy;
 
-import java.util.concurrent.atomic.AtomicReference;
+import java.net.InetSocketAddress;
+import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.api.InMemoryProcessing;
 import org.xtreemfs.babudb.api.PersistenceManager;
@@ -18,6 +19,7 @@ import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
+import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.RemoteAccessClient;
 import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.replication.policy.Policy;
@@ -35,12 +37,13 @@ import static org.xtreemfs.babudb.log.LogEntry.*;
  * @author flangner
  * @since 11/04/2010
  */
-class PersistenceManagerProxy implements PersistenceManager {
+class PersistenceManagerProxy extends PersistenceManager {
 
-    private final ReplicationManager replMan;
-    private final PersistenceManager localPersMan;
-    private final Policy             replicationPolicy;
-    private final RemoteAccessClient client;
+    private final ReplicationManager    replMan;
+    private final PersistenceManager    localPersMan;
+    private final Policy                replicationPolicy;
+    private final RemoteAccessClient    client;
+    private       InetSocketAddress     master;
     
     public PersistenceManagerProxy(ReplicationManager replMan, 
             PersistenceManager localPersMan, Policy replicationPolicy, 
@@ -50,22 +53,26 @@ class PersistenceManagerProxy implements PersistenceManager {
         this.replicationPolicy = replicationPolicy;
         this.replMan = replMan;
         this.localPersMan = localPersMan;
+        
+        for (Entry<Byte, InMemoryProcessing> e : localPersMan.getProcessingLogic().entrySet()) {
+            registerInMemoryProcessing(e.getKey(), e.getValue());
+        }
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.api.PersistenceManager#makePersistent(byte, 
-     *          org.xtreemfs.babudb.api.InMemoryProcessing)
+     * @see org.xtreemfs.babudb.api.PersistenceManager#makePersistent(byte, java.lang.Object[], 
+     *          org.xtreemfs.foundation.buffer.ReusableBuffer)
      */
     @Override
-    public <T> DatabaseRequestResult<T> makePersistent(byte type, 
-            InMemoryProcessing processing) throws BabuDBException {
+    public <T> DatabaseRequestResult<T> makePersistent(byte type, Object[] args, 
+            ReusableBuffer serialized) throws BabuDBException {
         
         if (hasPermissionToExecuteLocally(type)) {
             
-            return executeLocallyAndReplicate(type, processing);
+            return executeLocallyAndReplicate(type, serialized);
         } else {      
             
-            return redirectToMaster(type, processing.serializeRequest());
+            return redirectToMaster(type, serialized, replMan.getMaster());
         }
     }
     
@@ -80,34 +87,19 @@ class PersistenceManagerProxy implements PersistenceManager {
      * @throws BabuDBException
      */
     @SuppressWarnings("unchecked")
-    private <T> DatabaseRequestResult<T> executeLocallyAndReplicate(byte type,
-                final InMemoryProcessing processing) throws BabuDBException {
+    private <T> DatabaseRequestResult<T> executeLocallyAndReplicate(byte type, 
+            final ReusableBuffer payload) throws BabuDBException {
         
         final ListenerWrapper wrapper = new ListenerWrapper();
-        final AtomicReference<ReusableBuffer> payload = 
-            new AtomicReference<ReusableBuffer>(null);
                 
-        localPersMan.makePersistent(type, new InMemoryProcessing() {
-            
-            @Override
-            public ReusableBuffer serializeRequest() throws BabuDBException {
-                payload.set(processing.serializeRequest());
-                return payload.get();
-            }
-            
-            @Override
-            public void before() throws BabuDBException { processing.before(); }
-            
-            @Override
-            public void after() { processing.after(); }
-            
-        }).registerListener((DatabaseRequestListener<Object>) 
-            new DatabaseRequestListener<Object>() {
+        localPersMan.makePersistent(type, payload).registerListener(
+                (DatabaseRequestListener<Object>) new DatabaseRequestListener<Object>() {
         
             @Override
             public void finished(Object result, Object context) {
                 
                 LogEntry le = (LogEntry) context;
+                                
                 le.setListener(new SyncListener() {
                 
                     @Override
@@ -123,7 +115,7 @@ class PersistenceManagerProxy implements PersistenceManager {
                     }
                 });
                 
-                ReplicateResponse rp = replMan.replicate(le, payload.get());
+                ReplicateResponse rp = replMan.replicate(le, payload);
                 if (!rp.hasFailed()) {
                     replMan.subscribeListener(rp);
                 }
@@ -163,14 +155,15 @@ class PersistenceManagerProxy implements PersistenceManager {
      * @param <T>
      * @param type
      * @param load
+     * @param master
      * @return the request response future.
      */
     @SuppressWarnings("unchecked")
-    private <T> DatabaseRequestResult<T> redirectToMaster(byte type, 
-            ReusableBuffer load) {
+    <T> DatabaseRequestResult<T> redirectToMaster(byte type, ReusableBuffer load, 
+            InetSocketAddress master) {
         
         final ClientResponseFuture<T> rp = (ClientResponseFuture<T>) 
-        client.makePersistent(replMan.getMaster(), type, load);
+                client.makePersistent(master, type, load);
 
         DatabaseRequestResult<T> result = (DatabaseRequestResult<T>) 
                 new DatabaseRequestResult<Object>() {
@@ -189,8 +182,7 @@ class PersistenceManagerProxy implements PersistenceManager {
     
                     @Override
                     public void requestFailed(Exception e) {
-                        listener.failed(new BabuDBException(
-                                ErrorCode.IO_ERROR, e.getMessage()), 
+                        listener.failed(new BabuDBException(ErrorCode.IO_ERROR, e.getMessage()), 
                                 null);
                     }
                 });
@@ -219,8 +211,9 @@ class PersistenceManagerProxy implements PersistenceManager {
     private boolean hasPermissionToExecuteLocally (byte type) {
         
         boolean result = false;
+        master = replMan.getMaster();
         
-        result |= replMan.isMaster();
+        result |= (replMan.amIMaster(master));
         
         result |= (type == PAYLOAD_TYPE_INSERT &&
                   !replicationPolicy.insertIsMasterRestricted());
@@ -303,8 +296,7 @@ class PersistenceManagerProxy implements PersistenceManager {
             } 
         }
         
-        private synchronized void registerListener(
-                DatabaseRequestListener<Object> listener) {
+        private synchronized void registerListener(DatabaseRequestListener<Object> listener) {
             
             this.listener = listener;
             
@@ -322,5 +314,21 @@ class PersistenceManagerProxy implements PersistenceManager {
                 }
             }
         }
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.PersistenceManager#getLatestOnDiskLSN()
+     */
+    @Override
+    public LSN getLatestOnDiskLSN() {
+        return localPersMan.getLatestOnDiskLSN();
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.PersistenceManager#init(org.xtreemfs.babudb.lsmdb.LSN)
+     */
+    @Override
+    public void init(LSN initial) {
+        localPersMan.init(initial);
     }
 }

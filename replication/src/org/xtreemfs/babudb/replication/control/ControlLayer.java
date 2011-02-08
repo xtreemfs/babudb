@@ -70,6 +70,9 @@ public class ControlLayer extends TopLayer implements RoleChangeListener,
     /** interface to the underlying layer */
     private final ServiceToControlInterface serviceInterface;
     
+    /** the local address of this server to compare with the leaseHolders address */
+    private final InetSocketAddress         id;
+    
     private final FleaseHolder              leaseHolder;
     
     private final AtomicInteger             viewID;
@@ -97,8 +100,8 @@ public class ControlLayer extends TopLayer implements RoleChangeListener,
         // initialize the replication 
         // controller
         // ---------------------------------- 
-        this.leaseHolder = new FleaseHolder(REPLICATION_CELL, 
-                config.getFleaseConfig().getIdentity());
+        this.id = FleaseHolder.getAddress(config.getFleaseConfig().getIdentity());
+        this.leaseHolder = new FleaseHolder(REPLICATION_CELL);
         
         this.replicationController = 
             new ReplicationController(this.leaseHolder, this.serviceInterface, 
@@ -294,6 +297,10 @@ public class ControlLayer extends TopLayer implements RoleChangeListener,
         return this.timeDriftDetector;
     }
     
+    boolean amIMaster() {
+        return amIMaster(leaseHolder.getLeaseHolderAddress());
+    }
+    
 /*
  * Overridden methods
  */
@@ -344,6 +351,19 @@ public class ControlLayer extends TopLayer implements RoleChangeListener,
     @Override
     public InetSocketAddress getLeaseHolder() {
         return leaseHolder.getLeaseHolderAddress();
+    }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.control.ControlToBabuDBInterface#amIMaster(
+     *          java.net.InetSocketAddress)
+     */
+    @Override
+    public boolean amIMaster(InetSocketAddress master) {
+        if (master != null) {
+            return this.id.equals(master);
+        }
+        
+        return false;
     }
     
     /*
@@ -429,11 +449,12 @@ public class ControlLayer extends TopLayer implements RoleChangeListener,
     @Override
     public boolean hasLease() {
         return !this.replicationController.isSuspended() && 
-                this.leaseHolder.amIOwner();
+                this.id.equals(this.leaseHolder.getLeaseHolderAddress());
     }
 
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.FleaseMessageReceiver#receive(org.xtreemfs.foundation.flease.comm.FleaseMessage)
+     * @see org.xtreemfs.babudb.replication.FleaseMessageReceiver#receive(
+     *          org.xtreemfs.foundation.flease.comm.FleaseMessage)
      */
     @Override
     public void receive(FleaseMessage message) {

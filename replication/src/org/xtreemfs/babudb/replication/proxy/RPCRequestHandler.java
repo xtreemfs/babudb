@@ -9,8 +9,14 @@ package org.xtreemfs.babudb.replication.proxy;
 
 import org.xtreemfs.babudb.pbrpc.RemoteAccessServiceConstants;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
+import org.xtreemfs.babudb.replication.proxy.operations.GetDatabaseOperation;
 import org.xtreemfs.babudb.replication.proxy.operations.GetDatabasesOperation;
+import org.xtreemfs.babudb.replication.proxy.operations.LookupOperation;
 import org.xtreemfs.babudb.replication.proxy.operations.MakePersistantOperation;
+import org.xtreemfs.babudb.replication.proxy.operations.PrefixLookupOperation;
+import org.xtreemfs.babudb.replication.proxy.operations.PrefixLookupReverseOperation;
+import org.xtreemfs.babudb.replication.proxy.operations.RangeLookupOperation;
+import org.xtreemfs.babudb.replication.proxy.operations.RangeLookupReverseOperation;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsVerification;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestHandler;
@@ -23,15 +29,37 @@ import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestHandler;
  */
 public class RPCRequestHandler extends RequestHandler {
     
-    public RPCRequestHandler(ParticipantsVerification verificator,
-            BabuDBInterface dbs) {
+    /**
+     * 
+     * @param verificator
+     * @param dbs - interface for local BabuDB operations.
+     */
+    public RPCRequestHandler(ParticipantsVerification verificator, BabuDBInterface dbs) {
+        
         super(verificator);
         
-        // setup the operations
-        Operation op = new MakePersistantOperation(dbs.getPersistanceManager());
+        Operation op = new MakePersistantOperation(dbs); 
+        operations.put(op.getProcedureId(), op);
+        
+        op = new GetDatabaseOperation(dbs);
         operations.put(op.getProcedureId(), op);
         
         op = new GetDatabasesOperation(dbs);
+        operations.put(op.getProcedureId(), op);
+        
+        op = new LookupOperation(dbs);
+        operations.put(op.getProcedureId(), op);
+        
+        op = new PrefixLookupOperation(dbs);
+        operations.put(op.getProcedureId(), op);
+        
+        op = new PrefixLookupReverseOperation(dbs);
+        operations.put(op.getProcedureId(), op);
+        
+        op = new RangeLookupOperation(dbs);
+        operations.put(op.getProcedureId(), op);
+        
+        op = new RangeLookupReverseOperation(dbs);
         operations.put(op.getProcedureId(), op);
     }
 

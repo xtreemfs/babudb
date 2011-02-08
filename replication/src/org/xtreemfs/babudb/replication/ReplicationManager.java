@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -89,11 +89,12 @@ public class ReplicationManager implements LifeCycleListener {
     }
     
     /**
+     * @param master - the address to compare with.
      * @return true, if the replication is running in master mode. 
      *         false, otherwise.
      */
-    public boolean isMaster() {
-        return this.controlLayer.hasLease();
+    public boolean amIMaster(InetSocketAddress master) {
+        return this.controlLayer.amIMaster(master);
     }
     
     /**

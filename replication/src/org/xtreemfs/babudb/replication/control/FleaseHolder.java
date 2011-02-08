@@ -32,36 +32,30 @@ public class FleaseHolder implements FleaseStatusListener {
     /** the currently valid lease */
     private final AtomicReference<Flease> flease;
     
-    /** the ID of this server to compare with the lease ID */
-    private final ASCIIString             id;
-    
     /** listener to inform about certain lease changes */
     private volatile ControlListener      listener;
 
     /**
      * @param cellId
-     * @param ownId
      */
-    FleaseHolder(ASCIIString cellId, ASCIIString ownId) {
+    FleaseHolder(ASCIIString cellId) {
         
         this.flease = new AtomicReference<Flease>(Flease.EMPTY_LEASE);
-        this.id = ownId;
     }
     
     synchronized void registerListener(ControlListener listener) {
-        if (this.listener == null)
-            this.listener = listener;
+        if (this.listener == null) this.listener = listener;
     }
-    
-    /**
-     * Determines if this server is owner of the given lease or not.
-     * 
-     * @return true if this server is owner of the lease, false otherwise.
-     */
-    boolean amIOwner() {
-        Flease lease = this.flease.get();
-        return lease.isValid() && this.id.equals(lease.getLeaseHolder());
-    }
+//    
+//    /**
+//     * Determines if this server is owner of the given lease or not.
+//     * FIXME
+//     * @return true if this server is owner of the lease, false otherwise.
+//     */
+//    boolean amIOwner() {
+//        Flease lease = this.flease.get();
+//        return lease.isValid() && this.id.equals(lease.getLeaseHolder());
+//    }
     
     /**
      * @return the timeout for the currently valid lease.

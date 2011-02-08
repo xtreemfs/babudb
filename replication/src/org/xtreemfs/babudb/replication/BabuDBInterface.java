@@ -12,27 +12,22 @@ package org.xtreemfs.babudb.replication;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.Vector;
 
 import org.xtreemfs.babudb.BabuDBInternal;
 import org.xtreemfs.babudb.api.BabuDB;
-import org.xtreemfs.babudb.api.InMemoryProcessing;
 import org.xtreemfs.babudb.api.PersistenceManager;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
-import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
 import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
 import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
 import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
-import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase.DBFileMetaData;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.snapshots.SnapshotConfig;
-import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
-import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
 /**
  * Methods that may be executed on BabuDB from the replication mechanisms.
@@ -42,127 +37,51 @@ import org.xtreemfs.foundation.buffer.ReusableBuffer;
  */
 public class BabuDBInterface {
    
-    /** reference to {@link BabuDB} */
-    private final BabuDBInternal dbs;
+    /** reference to {@link BabuDB}, will use the persistence manager proxy, when plugin is initialized */
+    private final BabuDBInternal        dbs;
     
+    /** the persistence manager using the local DiskLogger: NOT THE PROXY */
+    private final PersistenceManager    localPersMan;
+        
     /**
-     * Registers the reference of {@link BabuDB}.
+     * Registers the reference of local {@link BabuDB}.
      * 
      * @param babuDB - {@link BabuDB}.
      */
     public BabuDBInterface(BabuDBInternal babuDB) {
+        localPersMan = babuDB.getPersistenceManager();
         dbs = babuDB;
     }
     
     /**
-     * Appends the given entry to the local {@link DiskLogger}.
+     * Appends the given entry to the <b>local</b> {@link DiskLogger} using the 
+     * <b>local</b> {@link PersistenceManager}.
      * 
      * @param entry - {@link LogEntry}.
-     * @throws InterruptedException 
+     * @param listener - awaiting the result for this insert.
+     *
      * @throws BabuDBException 
      */
-    public void appendToDisklogger(final LogEntry entry) throws BabuDBException {
-        dbs.getPersistenceManager().makePersistent(entry.getPayloadType(), 
-                new InMemoryProcessing() {
-                    
-                    @Override
-                    public ReusableBuffer serializeRequest() 
-                            throws BabuDBException {
-                        
-                        return entry.getPayload();
-                    }
-                });
-    }
-    
-    /**
-     * Inserts the given {@link InsertRecordGroup} into the database.
-     * 
-     * @param irg - {@link InsertRecordGroup}.
-     */
-    public void insertRecordGroup(InsertRecordGroup irg) {
-        getDBMan().insert(irg);
+    public void appendToLocalPersistenceManager(LogEntry entry, 
+            DatabaseRequestListener<Object> listener) 
+            throws BabuDBException {
+        
+        localPersMan.makePersistent(entry.getPayloadType(), 
+                                    entry.getPayload()).registerListener(listener);
     }
     
     /**
      * @return the {@link LSN} of the last inserted {@link LogEntry}.
-     */
+     */ 
     public LSN getState() {
-        return dbs.getLogger().getLatestLSN();
-    }
-    
-    /**
-     * @param dbId
-     * @return true if the database with the given ID exists, false otherwise.
-     */
-    public boolean dbExists(int dbId) {
-        return (getDBMan().getDatabase(dbId) != null);
-    }
-    
-    /**
-     * Creates a new database using name and numOfIndices as parameters.
-     * 
-     * @param name
-     * @param numOfIndices
-     * @throws BabuDBException 
-     */
-    public void createDB(String name, int numOfIndices) throws BabuDBException {
-        getDBMan().createDatabase(name, numOfIndices, null);
-    }
-    
-    /**
-     * Copies database from to.
-     * 
-     * @param from
-     * @param to
-     * @throws BabuDBException 
-     */
-    public void copyDB(String from, String to) throws BabuDBException {
-        getDBMan().copyDatabase(from, to);
-    }
-    
-    /**
-     * Deletes the database given by name.
-     * 
-     * @param name
-     * @throws BabuDBException
-     */
-    public void deleteDB(String name) throws BabuDBException {
-        getDBMan().deleteDatabase(name);
-    }
-   
-    
-    /**
-     * Creates a new snapshot for the given parameters.
-     * 
-     * @param dbId
-     * @param snapConf
-     * @throws BabuDBException
-     */
-    public void createSnapshot(int dbId, SnapshotConfig snapConf) 
-        throws BabuDBException {
-        
-        getSnapMan().createPersistentSnapshot(getDBMan().getDatabase(dbId).
-                getName(),snapConf, false);
-    }
-    
-    /**
-     * Deletes an existing snapshot.
-     * 
-     * @param dbName
-     * @param snapName
-     * @throws BabuDBException
-     */
-    public void deleteSnapshot(String dbName, String snapName) 
-        throws BabuDBException {
-        
-        getSnapMan().deletePersistentSnapshot(dbName, snapName, false);    
+        return localPersMan.getLatestOnDiskLSN();
     }
     
     /**
      * @return the {@link CheckpointerImpl} lock object.
      */
     public Object getCheckpointerLock() {
-        return getChckPtr().getCheckpointerLock();
+        return getChckPtr();
     }
     
     /**
@@ -208,10 +127,10 @@ public class BabuDBInterface {
     }
     
     /**
-     * @return a set of names of all available databases.
+     * @return a map of all available databases identified by their names.
      */
-    public Set<String> getDatabases() {
-        return getDBMan().getDatabases().keySet();
+    public Map<String, Database> getDatabases() {
+        return getDBMan().getDatabases();
     }
     
     /**
@@ -240,14 +159,6 @@ public class BabuDBInterface {
      */
     private DatabaseManagerImpl getDBMan() {
         return (DatabaseManagerImpl) dbs.getDatabaseManager();
-    }
-    
-    /**
-     * @return the {@link SnapshotManagerImpl} retrieved from the 
-     *         {@link BabuDB}.
-     */
-    private SnapshotManagerImpl getSnapMan() {
-        return (SnapshotManagerImpl) dbs.getSnapshotManager();
     }
 
     /**

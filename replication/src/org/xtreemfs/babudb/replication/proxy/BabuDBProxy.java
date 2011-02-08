@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2010 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -49,9 +49,9 @@ public class BabuDBProxy implements BabuDBInternal {
         this.replMan = replMan;
         this.persManProxy = new PersistenceManagerProxy(replMan, 
                 localDB.getPersistenceManager(), replicationPolicy, client);
-        this.localBabuDB.replacePersistenceManager(this.persManProxy);
+        this.localBabuDB.replacePersistenceManager(persManProxy);
         this.dbManProxy = new DatabaseManagerProxy(localDB.getDatabaseManager(), 
-                replicationPolicy, replMan, client);
+                replicationPolicy, replMan, client, persManProxy);
     }
     
     /* (non-Javadoc)
@@ -75,7 +75,7 @@ public class BabuDBProxy implements BabuDBInternal {
      */
     @Override
     public SnapshotManager getSnapshotManager() {
-        return localBabuDB.getSnapshotManager()                                                       ;
+        return localBabuDB.getSnapshotManager();
     }
 
     /* (non-Javadoc)
@@ -146,8 +146,7 @@ public class BabuDBProxy implements BabuDBInternal {
      */
     @Override
     public LSMDBWorker getWorker(int dbId) {
-        throw new UnsupportedOperationException("Manually influencing the" +
-                " LSMDBWorker is forbidden by the replication plugin.");
+        return localBabuDB.getWorker(dbId);
     }
 
     /* (non-Javadoc)
@@ -177,7 +176,8 @@ public class BabuDBProxy implements BabuDBInternal {
     }
 
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.BabuDBInternal#replacePersistenceManager(org.xtreemfs.babudb.api.PersistenceManager)
+     * @see org.xtreemfs.babudb.BabuDBInternal#replacePersistenceManager(
+     *          org.xtreemfs.babudb.api.PersistenceManager)
      */
     @Override
     public void replacePersistenceManager(PersistenceManager perMan) {

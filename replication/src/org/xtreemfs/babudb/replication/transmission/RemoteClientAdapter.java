@@ -14,11 +14,11 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.xtreemfs.babudb.pbrpc.GlobalTypes.DatabaseNames;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.Database;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.Databases;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap;
 import org.xtreemfs.babudb.pbrpc.RemoteAccessServiceClient;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
@@ -90,35 +90,74 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
             BufferPool.free(data);
         }
     }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.RemoteAccessClient#getDatabase(java.lang.String, 
+     *          java.net.InetSocketAddress)
+     */
+    @Override
+    public ClientResponseFuture<Integer> getDatabase(String dbName, InetSocketAddress master) {
+ 
+        assert (master != null);
+        
+        try {
+            final RPCResponse<Database> result = getDatabase(master, 
+                    Auth.getDefaultInstance(), 
+                    UserCredentials.getDefaultInstance(), dbName);
+            
+            return new ClientResponseFuture<Integer>(result) {
+                
+                @Override
+                public Integer get() throws ErrorCodeException, 
+                        IOException, InterruptedException {
+                    return result.get().getDatabaseId();
+                }
+            };
+        } catch (final IOException e) {
+            return new ClientResponseFuture<Integer>(null) {
+                
+                @Override
+                public Integer get() throws ErrorCodeException, 
+                        IOException, InterruptedException {
+                    throw e;
+                }
+            };
+        }
+    }
 
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.RemoteAccessClient#getDatabases(
      *          java.net.InetSocketAddress)
      */
     @Override
-    public ClientResponseFuture<List<String>> getDatabases(
+    public ClientResponseFuture<Map<String,Integer>> getDatabases(
             InetSocketAddress master) {
         
         assert (master != null);
         
         try {
-            final RPCResponse<DatabaseNames> result = getDatabaseNames(master, 
+            final RPCResponse<Databases> result = getDatabases(master, 
                     Auth.getDefaultInstance(), 
                     UserCredentials.getDefaultInstance());
             
-            return new ClientResponseFuture<List<String>>(result) {
+            return new ClientResponseFuture<Map<String, Integer>>(result) {
                 
                 @Override
-                public List<String> get() throws ErrorCodeException, 
+                public Map<String, Integer> get() throws ErrorCodeException, 
                         IOException, InterruptedException {
-                    return result.get().getDatabaseNameList();
+                    Map<String, Integer> r = new HashMap<String, Integer>();
+                    Databases dbs = result.get();
+                    for (Database db : dbs.getDatabaseList()) {
+                        r.put(db.getDatabaseName(), db.getDatabaseId());
+                    }
+                    return r;
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<List<String>>(null) {
+            return new ClientResponseFuture<Map<String,Integer>>(null) {
                 
                 @Override
-                public List<String> get() throws ErrorCodeException, 
+                public Map<String, Integer> get() throws ErrorCodeException, 
                         IOException, InterruptedException {
                     throw e;
                 }
