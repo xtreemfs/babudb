@@ -291,6 +291,8 @@ public class SnapshotManagerImpl implements SnapshotManager {
                 int offs = payload[0];
                 String dbName = new String(payload, 1, offs);
                 String snapName = new String(payload, offs + 1, payload.length - offs - 1);
+                serialized.flip();
+                
                 return new Object[] { dbName, snapName };
             }
             
