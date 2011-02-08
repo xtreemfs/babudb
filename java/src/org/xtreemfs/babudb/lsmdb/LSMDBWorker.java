@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2008 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -15,23 +15,21 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.xtreemfs.babudb.BabuDBInternal;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
 import org.xtreemfs.babudb.api.database.UserDefinedLookup;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.index.LSMTree;
-import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
-import org.xtreemfs.babudb.log.SyncListener;
-import org.xtreemfs.foundation.buffer.BufferPool;
-import org.xtreemfs.foundation.buffer.ReusableBuffer;
+import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.foundation.logging.Logging;
 
 /**
  * 
  * @author bjko
  */
-public class LSMDBWorker extends Thread implements SyncListener {
+public class LSMDBWorker extends Thread {
     
     public static enum RequestOperation {
         INSERT, LOOKUP, PREFIX_LOOKUP, RANGE_LOOKUP, USER_DEFINED_LOOKUP
@@ -42,20 +40,17 @@ public class LSMDBWorker extends Thread implements SyncListener {
     private transient boolean                    quit;
     
     private final AtomicBoolean                  down;
+            
+    private final BabuDBInternal                 dbs;
     
-    private final DiskLogger                     logger;
-    
-    private final boolean                        pseudoSync;
-    
-    public LSMDBWorker(DiskLogger logger, int id, boolean pseudoSync, int maxQ) {
+    public LSMDBWorker(BabuDBInternal babuDB, int id, int maxQ) {
         super("LSMDBWrkr#" + id);
         this.down = new AtomicBoolean(false);
         if (maxQ > 0)
             requests = new LinkedBlockingQueue<LSMDBRequest<?>>(maxQ);
         else
             requests = new LinkedBlockingQueue<LSMDBRequest<?>>();
-        this.logger = logger;
-        this.pseudoSync = pseudoSync;
+        this.dbs = babuDB;
     }
     
     public void addRequest(LSMDBRequest<?> request) throws InterruptedException {
@@ -153,18 +148,30 @@ public class LSMDBWorker extends Thread implements SyncListener {
     }
     
     private void doInsert(final LSMDBRequest<?> r) throws InterruptedException {
-        final InsertRecordGroup irec = r.getInsertData();
-        int size = irec.getSize();
-        ReusableBuffer buf = BufferPool.allocate(size);
-        irec.serialize(buf);
-        buf.flip();
-        LogEntry e = new LogEntry(buf, this, LogEntry.PAYLOAD_TYPE_INSERT);
-        e.setAttachment(r);
-        logger.append(e);
-        
-        if (pseudoSync) {
-            insertIntoIndex(r);
-            finish(e);
+
+        try {
+            dbs.getPersistenceManager().makePersistent(LogEntry.PAYLOAD_TYPE_INSERT, 
+                    new Object[] { r.getInsertData(), r.getDatabase(), r.getListener() });
+            
+            if (dbs.getConfig().getSyncMode() == SyncMode.ASYNC) {
+                
+                InsertRecordGroup irg = r.getInsertData();
+                LSMDatabase db = r.getDatabase();
+                
+                // insert into the in-memory-tree
+                for (InsertRecord ir : irg.getInserts()) {
+                    LSMTree index = db.getIndex(ir.getIndexId());
+                    
+                    if (ir.getValue() != null) {
+                        index.insert(ir.getKey(), ir.getValue());
+                    } else {
+                        index.delete(ir.getKey());
+                    }
+                }
+                r.getListener().finished();
+            }
+        } catch (BabuDBException e) {
+            r.getListener().failed(e);
         }
     }
     
@@ -199,51 +206,5 @@ public class LSMDBWorker extends Thread implements SyncListener {
                 new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + r.getIndexId() + " does not exist"));
         else
             r.getListener().finished(db.getIndex(r.getIndexId()).rangeLookup(r.getFrom(), r.getTo()));
-    }
-    
-    public void synced(LogEntry entry) {
-        
-        if (!pseudoSync) {
-            final LSMDBRequest<?> r = entry.getAttachment();
-            insertIntoIndex(r);
-            finish(entry);
-        }
-        
-        entry.free();
-    }
-    
-    private void insertIntoIndex(final LSMDBRequest<?> r) {
-        final InsertRecordGroup irg = r.getInsertData();
-        final LSMDatabase db = r.getDatabase();
-        final int numIndices = db.getIndexCount();
-        try {
-            for (InsertRecord ir : irg.getInserts()) {
-                if ((ir.getIndexId() >= numIndices) || (ir.getIndexId() < 0))
-                    r.getListener().failed(
-                        new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + 
-                                r.getIndexId() + " does not exist"));
-                final LSMTree index = db.getIndex(ir.getIndexId());
-                if (ir.getValue() != null)
-                    index.insert(ir.getKey(), ir.getValue());
-                else
-                    index.delete(ir.getKey());
-            }
-        } catch (Exception ex) {
-            r.getListener()
-                    .failed(
-                        new BabuDBException(ErrorCode.NO_SUCH_INDEX,
-                            "cannot insert, because of unexpected error", ex));
-        }
-    }
-    
-    private void finish(LogEntry le) {
-        final LSMDBRequest<?> r = le.getAttachment();
-        r.getListener().finished();
-    }
-    
-    public void failed(LogEntry entry, Exception ex) {
-        entry.getAttachment().getListener().failed(new BabuDBException(
-            ErrorCode.IO_ERROR, "could not execute insert because of IO problem", 
-            ex));
     }
 }

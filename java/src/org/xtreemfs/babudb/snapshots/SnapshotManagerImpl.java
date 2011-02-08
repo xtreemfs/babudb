@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -21,13 +21,14 @@ import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.database.DatabaseRO;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
-import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
 import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
 import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.FSUtils;
+
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_SNAP_DELETE;
 
 public class SnapshotManagerImpl implements SnapshotManager {
     
@@ -40,6 +41,8 @@ public class SnapshotManagerImpl implements SnapshotManager {
     public SnapshotManagerImpl(BabuDBImpl dbs) {
         this.dbs = dbs;
         this.snapshotDBs = Collections.synchronizedMap(new HashMap<String, Map<String, Snapshot>>());
+        
+        initializePerisistenceManager();
     }
     
     public void init() throws BabuDBException {
@@ -171,66 +174,13 @@ public class SnapshotManagerImpl implements SnapshotManager {
         deletePersistentSnapshot(dbName, snapshotName, true);
     }
     
-    public void deletePersistentSnapshot(final String dbName, 
-            final String snapshotName, boolean createLogEntry)
+    public void deletePersistentSnapshot(String dbName, String snapshotName, boolean createLogEntry)
             throws BabuDBException {
                 
         // if required, add deletion request to log
-        if (createLogEntry) {
-            
-            InMemoryProcessing processing = new InMemoryProcessing() {
-                
-                @Override
-                public ReusableBuffer serializeRequest() throws BabuDBException {
-                    byte[] data = new byte[1 + dbName.length() + 
-                                           snapshotName.length()];
-                    byte[] dbNameBytes = dbName.getBytes();
-                    byte[] snapNameBytes = snapshotName.getBytes();
-                    
-                    assert (dbName.length() <= Byte.MAX_VALUE);
-                    data[0] = (byte) dbName.length();
-                    System.arraycopy(dbNameBytes, 0, data, 1, 
-                            dbNameBytes.length);
-                    System.arraycopy(snapNameBytes, 0, data, 
-                            1 + dbNameBytes.length, snapNameBytes.length);
-                    
-                    return ReusableBuffer.wrap(data);
-                }
-                
-                @Override
-                public void before() throws BabuDBException {
-                    
-                    final Map<String, Snapshot> snapMap = snapshotDBs.get(dbName);
-                    if(snapMap == null) {
-                        throw new BabuDBException(ErrorCode.NO_SUCH_SNAPSHOT, 
-                                "snapshot '" + snapshotName + 
-                                "' does not exist"); 
-                    }
-                    
-                    final Snapshot snap = snapMap.get(snapshotName);
-                    
-                    // if the snapshot does not exist ...
-                    if (snap == null) {
-                        throw new BabuDBException(ErrorCode.NO_SUCH_SNAPSHOT, 
-                                "snapshot '" + snapshotName + 
-                                "' does not exist");
-                    }
-                    
-                    // shut down and remove the view
-                    snap.getView().shutdown();
-                    snapMap.remove(snapshotName);
-                    
-                    // if a snapshot materialization request is currently in the
-                    // checkpointer queue, remove it
-                    ((CheckpointerImpl) dbs.getCheckpointer()).removeSnapshotMaterializationRequest(dbName, snapshotName);
-                    
-                    // delete the snapshot subdirectory on disk if available
-                    FSUtils.delTree(new File(getSnapshotDir(dbName, snapshotName)));
-                }
-            };
-            
-            dbs.getPersistenceManager().makePersistent(
-                    LogEntry.PAYLOAD_TYPE_SNAP_DELETE, processing).get();
+        if (createLogEntry) {            
+            dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_SNAP_DELETE, 
+                    new Object[] { dbName, snapshotName }).get();
         } else {
             
             final Map<String, Snapshot> snapMap = snapshotDBs.get(dbName);
@@ -305,4 +255,75 @@ public class SnapshotManagerImpl implements SnapshotManager {
             + (snapshotName == null ? "" : snapshotName);
     }
     
+    /**
+     * Feed the persistenceManager with the knowledge on how to handle snapshot related requests.
+     */
+    private void initializePerisistenceManager() {
+        dbs.getPersistenceManager().registerInMemoryProcessing(PAYLOAD_TYPE_SNAP_DELETE, 
+                new InMemoryProcessing() {
+            
+            /* (non-Javadoc)
+             * @see org.xtreemfs.babudb.api.InMemoryProcessing#serializeRequest(java.lang.Object[])
+             */
+            @Override
+            public ReusableBuffer serializeRequest(Object[] args) throws BabuDBException {
+                
+                // parse args
+                String dbName = (String) args[0];
+                String snapshotName = (String) args[1];
+                
+                byte[] data = new byte[1 + dbName.length() + 
+                                       snapshotName.length()];
+                byte[] dbNameBytes = dbName.getBytes();
+                byte[] snapNameBytes = snapshotName.getBytes();
+                
+                assert (dbName.length() <= Byte.MAX_VALUE);
+                data[0] = (byte) dbName.length();
+                System.arraycopy(dbNameBytes, 0, data, 1, 
+                        dbNameBytes.length);
+                System.arraycopy(snapNameBytes, 0, data, 
+                        1 + dbNameBytes.length, snapNameBytes.length);
+                
+                return ReusableBuffer.wrap(data);
+            }
+            
+            /* (non-Javadoc)
+             * @see org.xtreemfs.babudb.api.InMemoryProcessing#before(java.lang.Object[])
+             */
+            @Override
+            public void before(Object[] args) throws BabuDBException {
+                
+                // parse args
+                String dbName = (String) args[0];
+                String snapshotName = (String) args[1];
+                
+                final Map<String, Snapshot> snapMap = snapshotDBs.get(dbName);
+                if(snapMap == null) {
+                    throw new BabuDBException(ErrorCode.NO_SUCH_SNAPSHOT, 
+                            "snapshot '" + snapshotName + 
+                            "' does not exist"); 
+                }
+                
+                final Snapshot snap = snapMap.get(snapshotName);
+                
+                // if the snapshot does not exist ...
+                if (snap == null) {
+                    throw new BabuDBException(ErrorCode.NO_SUCH_SNAPSHOT, 
+                            "snapshot '" + snapshotName + 
+                            "' does not exist");
+                }
+                
+                // shut down and remove the view
+                snap.getView().shutdown();
+                snapMap.remove(snapshotName);
+                
+                // if a snapshot materialization request is currently in the
+                // checkpointer queue, remove it
+                ((CheckpointerImpl) dbs.getCheckpointer()).removeSnapshotMaterializationRequest(dbName, snapshotName);
+                
+                // delete the snapshot subdirectory on disk if available
+                FSUtils.delTree(new File(getSnapshotDir(dbName, snapshotName)));
+            }
+        });
+    }
 }

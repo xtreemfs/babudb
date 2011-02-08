@@ -8,17 +8,14 @@
 
 package org.xtreemfs.babudb.lsmdb;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.nio.channels.ClosedByInterruptException;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.BabuDBInternal;
 import org.xtreemfs.babudb.BabuDBRequestResultImpl;
-import org.xtreemfs.babudb.api.InMemoryProcessing;
 import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
 import org.xtreemfs.babudb.api.database.Database;
@@ -31,8 +28,6 @@ import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
-import org.xtreemfs.foundation.buffer.BufferPool;
-import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
 
 import static org.xtreemfs.babudb.log.LogEntry.*;
@@ -147,67 +142,15 @@ public class DatabaseImpl implements Database {
      * @param irg - the group of inserts.
      * @param listener - to notify after insert.
      */
-    private void directInsert(final BabuDBInsertGroup irg, 
-            final BabuDBRequestResultImpl<Object> listener) {
-        
-        InMemoryProcessing processing = new InMemoryProcessing() {
-            
-            @Override
-            public ReusableBuffer serializeRequest() throws BabuDBException {
-                
-                int size = irg.getRecord().getSize();
-                ReusableBuffer buf = BufferPool.allocate(size);
-                irg.getRecord().serialize(buf);
-                buf.flip();
-                
-                return buf;
-            }
-            
-            @Override
-            public void before() throws BabuDBException {
-                int numIndices = lsmDB.getIndexCount();
-                
-                for (InsertRecord ir : irg.getRecord().getInserts()) {
-                    if ((ir.getIndexId() >= numIndices) || 
-                        (ir.getIndexId() < 0)) {
-                        throw new BabuDBException(
-                                ErrorCode.NO_SUCH_INDEX, "index " 
-                                + ir.getIndexId() + 
-                                " does not exist");
-                    }
-                }
-            }
-            
-            @Override
-            public void after() {
-                
-                // in case of synchronous inserts, wait until the disk logger 
-                // returns
-                if (dbs.getConfig().getSyncMode() != 
-                    SyncMode.ASYNC) {
-                
-                    // insert into the in-memory-tree
-                    for (InsertRecord ir : irg.getRecord().getInserts()) {
-                        LSMTree index = lsmDB.getIndex(
-                                ir.getIndexId());
-                        
-                        if (ir.getValue() != null) {
-                            index.insert(ir.getKey(), 
-                                         ir.getValue());
-                        } else {
-                            index.delete(ir.getKey());
-                        }
-                    }
-                    listener.finished();
-                }
-            }
-        };
+    private void directInsert(BabuDBInsertGroup irg, BabuDBRequestResultImpl<Object> listener) {
 
         try {
             dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_INSERT, 
-                                                       processing); 
+                                                       new Object[]{ irg, lsmDB, listener }); 
             
+            // in case of asynchronous inserts, complete the request immediately
             if (dbs.getConfig().getSyncMode() == SyncMode.ASYNC) {
+                
                 // insert into the in-memory-tree
                 for (InsertRecord ir : irg.getRecord().getInserts()) {
                     LSMTree index = lsmDB.getIndex(ir.getIndexId());
@@ -603,34 +546,13 @@ public class DatabaseImpl implements Database {
      * @throws InterruptedException
      * @return an array with the snapshot ID for each index in the database
      */
-    public int[] createSnapshot(final SnapshotConfig snap, 
+    public int[] createSnapshot(SnapshotConfig snap, 
         boolean appendLogEntry) throws BabuDBException, InterruptedException {
-        
-        InMemoryProcessing processing = new InMemoryProcessing() {
-            
-            @Override
-            public ReusableBuffer serializeRequest() throws BabuDBException {
-                // serialize the snapshot configuration
-                ReusableBuffer buf = null;
-                try {
-                    ByteArrayOutputStream bout = new ByteArrayOutputStream();
-                    ObjectOutputStream oout = new ObjectOutputStream(bout);
-                    oout.writeInt(lsmDB.getDatabaseId());
-                    oout.writeObject(snap);
-                    buf = ReusableBuffer.wrap(bout.toByteArray());
-                    oout.close();
-                } catch (IOException exc) {
-                    throw new BabuDBException(ErrorCode.IO_ERROR, "could not serialize snapshot configuration: "
-                        + snap.getClass(), exc);
-                }
                 
-                return buf;
-            }
-        };
-        
         if (appendLogEntry) {     
             dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_SNAP, 
-                                                       processing).get();
+                                                       new Object[]{ lsmDB.getDatabaseId(), snap })
+                                                       .get();
         }
         
         // critical block...

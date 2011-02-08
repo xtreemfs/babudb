@@ -7,6 +7,9 @@
  */
 package org.xtreemfs.babudb;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.xtreemfs.babudb.api.PersistenceManager;
 import org.xtreemfs.babudb.api.InMemoryProcessing;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
@@ -15,6 +18,8 @@ import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
+import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
 /**
  * Default implementation of the {@link PersistenceManager} interface using
@@ -25,7 +30,19 @@ import org.xtreemfs.babudb.log.SyncListener;
  */
 class PersistenceManagerImpl implements PersistenceManager {
 
+    private final Map<Byte, InMemoryProcessing> inMemoryProcessing = 
+        new HashMap<Byte, InMemoryProcessing>();
+    
     private DiskLogger diskLogger;
+    
+    private volatile LSN latestOnDisk;
+        
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.PersistenceManager#init(org.xtreemfs.babudb.lsmdb.LSN)
+     */
+    public void init(LSN initial) {
+        this.latestOnDisk = initial; 
+    }
     
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.PersistenceManager#setLogger(
@@ -34,22 +51,32 @@ class PersistenceManagerImpl implements PersistenceManager {
     public void setLogger(DiskLogger logger) {
         this.diskLogger = logger;
     }
-      
+    
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.api.PersistenceManager#makePersistent(byte, 
-     *          org.xtreemfs.foundation.buffer.ReusableBuffer, 
-     *          org.xtreemfs.babudb.api.InMemoryProcessing)
+     * @see org.xtreemfs.babudb.api.PersistenceManager#makePersistent(byte, java.lang.Object[])
      */
     @Override
-    public <T> DatabaseRequestResult<T> makePersistent(byte type, 
-            final InMemoryProcessing processing) 
+    public <T> DatabaseRequestResult<T> makePersistent(byte type, Object[] args) 
             throws BabuDBException {
         
-        processing.before();
+        return makePersistent(type, args, inMemoryProcessing.get(type).serializeRequest(args));
+    }
+      
+    /*
+     * (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.PersistenceManager#makePersistent(byte, java.lang.Object[], 
+     *          org.xtreemfs.foundation.buffer.ReusableBuffer)
+     */
+    @Override
+    public <T> DatabaseRequestResult<T> makePersistent(byte type, final Object[] args, 
+            ReusableBuffer payload) throws BabuDBException {
+        
+        final InMemoryProcessing processing = inMemoryProcessing.get(type);
+        
+        processing.before(args);
         
         // build the entry
-        LogEntry entry = new LogEntry(processing.serializeRequest(), 
-                                      null, type);
+        LogEntry entry = new LogEntry(payload, null, type);
         
         // setup the result
         final BabuDBRequestResultImpl<T> result =
@@ -61,7 +88,7 @@ class PersistenceManagerImpl implements PersistenceManager {
             @Override
             public void synced(LogEntry entry) {
                 if (entry != null) entry.free();
-                processing.after();
+                processing.after(args);
                 result.finished();
             }
             
@@ -103,5 +130,22 @@ class PersistenceManagerImpl implements PersistenceManager {
     public void unlockService() {
         if (this.diskLogger != null && this.diskLogger.hasLock())
             this.diskLogger.unlockLogger();
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.PersistenceManager#registerInMemoryProcessing(byte, 
+     *          org.xtreemfs.babudb.api.InMemoryProcessing)
+     */
+    @Override
+    public void registerInMemoryProcessing(byte type, InMemoryProcessing processing) {
+        this.inMemoryProcessing.put(type, processing);
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.PersistenceManager#getLatestOnDiskLSN()
+     */
+    @Override
+    public LSN getLatestOnDiskLSN() {
+        return latestOnDisk;
     }
 }

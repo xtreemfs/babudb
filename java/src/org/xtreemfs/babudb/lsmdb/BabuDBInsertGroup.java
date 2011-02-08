@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2008 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -18,15 +18,16 @@ import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
 public class BabuDBInsertGroup implements DatabaseInsertGroup {
 
     private final InsertRecordGroup rec;
-    
-    private boolean freed;
-    
+        
     BabuDBInsertGroup(LSMDatabase db) {
-        rec = new InsertRecordGroup(db.getDatabaseId());
-        freed = false;
+        this(db.getDatabaseId());
     }
     
-    InsertRecordGroup getRecord() {
+    BabuDBInsertGroup(int databaseId) {
+        rec = new InsertRecordGroup(databaseId);
+    }
+    
+    public InsertRecordGroup getRecord() {
         return rec;
     }
     
@@ -48,5 +49,9 @@ public class BabuDBInsertGroup implements DatabaseInsertGroup {
     
     public String toString() {
         return rec.toString();
+    }
+    
+    public static BabuDBInsertGroup createInsertGroup(int dbId) {
+        return new BabuDBInsertGroup(dbId);
     }
 }

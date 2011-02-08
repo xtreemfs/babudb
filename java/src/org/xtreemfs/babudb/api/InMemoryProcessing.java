@@ -12,7 +12,8 @@ import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
 /**
  * In-memory operations directly connected with modifying the on-disk state 
- * of the BabuDB data.
+ * of the BabuDB data. This interface describes an algorithm and therefore
+ * may not be stateful. 
  * 
  * @author flangner
  * @since 25.01.2011
@@ -22,25 +23,31 @@ public abstract class InMemoryProcessing {
     /**
      * Method to serialize the request before storing it.
      * 
+     * @param args - the operation's arguments.
+     * 
      * @return serialized operation, ready to be stored to disk.
      * 
      * @throws BabuDBException if serialization fails.
      */
-    public abstract ReusableBuffer serializeRequest() throws BabuDBException;
+    public abstract ReusableBuffer serializeRequest(Object[] args) throws BabuDBException;
     
     /**
      * Optional method to execute before making an Operation on-disk persistent.
      * Depending on the implementation of PersistenceManager throwing an
      * exception might influence the execution of makePersistent() and after().
      * 
+     * @param args - the operation's arguments.
+     * 
      * @throws BabuDBException if method fails. 
      */
-    public void before() throws BabuDBException {}
+    public void before(Object[] args) throws BabuDBException {}
     
     /**
      * Optional method to execute after making an Operation successfully 
      * on-disk persistent. This behavior depends on the implementation of 
      * the makePersistent() method in {@link PersistenceManager}.
+     * 
+     * @param args - the operation's arguments.
      */
-    public void after() {}
+    public void after(Object[] args) {}
 }
