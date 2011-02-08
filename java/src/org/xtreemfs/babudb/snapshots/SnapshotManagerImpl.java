@@ -262,9 +262,6 @@ public class SnapshotManagerImpl implements SnapshotManager {
         dbs.getPersistenceManager().registerInMemoryProcessing(PAYLOAD_TYPE_SNAP_DELETE, 
                 new InMemoryProcessing() {
             
-            /* (non-Javadoc)
-             * @see org.xtreemfs.babudb.api.InMemoryProcessing#serializeRequest(java.lang.Object[])
-             */
             @Override
             public ReusableBuffer serializeRequest(Object[] args) throws BabuDBException {
                 
@@ -285,6 +282,16 @@ public class SnapshotManagerImpl implements SnapshotManager {
                         1 + dbNameBytes.length, snapNameBytes.length);
                 
                 return ReusableBuffer.wrap(data);
+            }
+            
+            @Override
+            public Object[] deserializeRequest(ReusableBuffer serialized) throws BabuDBException {
+                
+                byte[] payload = serialized.array();
+                int offs = payload[0];
+                String dbName = new String(payload, 1, offs);
+                String snapName = new String(payload, offs + 1, payload.length - offs - 1);
+                return new Object[] { dbName, snapName };
             }
             
             /* (non-Javadoc)

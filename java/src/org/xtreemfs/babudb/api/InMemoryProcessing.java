@@ -32,6 +32,17 @@ public abstract class InMemoryProcessing {
     public abstract ReusableBuffer serializeRequest(Object[] args) throws BabuDBException;
     
     /**
+     * Method to deserialize the request.
+     * 
+     * @param serialized - the serialized operation's arguments.
+     * 
+     * @return deserialized operation's arguments.
+     * 
+     * @throws BabuDBException if deserialization fails.
+     */
+    public abstract Object[] deserializeRequest(ReusableBuffer serialized) throws BabuDBException;
+    
+    /**
      * Optional method to execute before making an Operation on-disk persistent.
      * Depending on the implementation of PersistenceManager throwing an
      * exception might influence the execution of makePersistent() and after().
