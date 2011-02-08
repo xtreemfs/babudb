@@ -10,9 +10,11 @@ package org.xtreemfs.babudb.lsmdb;
 
 import static org.xtreemfs.babudb.log.LogEntry.*;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -230,15 +232,13 @@ public class DatabaseManagerImpl implements DatabaseManager {
         dbs.getPersistenceManager().registerInMemoryProcessing(PAYLOAD_TYPE_CREATE, 
                 new InMemoryProcessing() {
             
-            /* (non-Javadoc)
-             * @see org.xtreemfs.babudb.api.InMemoryProcessing#serializeRequest(java.lang.Object[])
-             */
             @Override
             public ReusableBuffer serializeRequest(Object[] args) throws BabuDBException {
                 
                 // parse args
                 String databaseName = (String) args[0];
                 int numIndices = (Integer) args[1];
+                //ByteRangeComparator[] com = (ByteRangeComparator[]) args[2];
                 
                 ReusableBuffer buf = ReusableBuffer.wrap(
                         new byte[databaseName.getBytes().length
@@ -246,9 +246,21 @@ public class DatabaseManagerImpl implements DatabaseManager {
                 buf.putInt(-1); //TODO remove field (deprecated)
                 buf.putString(databaseName);
                 buf.putInt(numIndices);
+                // TODO add ByteRangeComparators to logEntry - if (com != null) buf.putObject(com);
                 buf.flip();
                 
                 return buf;
+            }
+            
+            @Override
+            public Object[] deserializeRequest(ReusableBuffer serialized) throws BabuDBException {
+
+                serialized.getInt(); // do not use, deprecated
+                
+                String dbName = serialized.getString();
+                int indices = serialized.getInt();
+
+                return new Object[] { dbName, indices, null };
             }
             
             /* (non-Javadoc)
@@ -297,9 +309,6 @@ public class DatabaseManagerImpl implements DatabaseManager {
         dbs.getPersistenceManager().registerInMemoryProcessing(PAYLOAD_TYPE_DELETE, 
                 new InMemoryProcessing() {
             
-            /* (non-Javadoc)
-             * @see org.xtreemfs.babudb.api.InMemoryProcessing#serializeRequest(java.lang.Object[])
-             */
             @Override
             public ReusableBuffer serializeRequest(Object[] args) throws BabuDBException {
                 
@@ -314,6 +323,16 @@ public class DatabaseManagerImpl implements DatabaseManager {
                 buf.flip();
                 
                 return buf;
+            }
+            
+            @Override
+            public Object[] deserializeRequest(ReusableBuffer serialized) throws BabuDBException {
+              
+                serialized.getInt(); // do not use, deprecated
+                
+                String dbName = serialized.getString();
+                
+                return new Object[] { dbName };
             }
             
             /* (non-Javadoc)
@@ -351,9 +370,6 @@ public class DatabaseManagerImpl implements DatabaseManager {
         dbs.getPersistenceManager().registerInMemoryProcessing(PAYLOAD_TYPE_COPY, 
                 new InMemoryProcessing() {
             
-            /* (non-Javadoc)
-             * @see org.xtreemfs.babudb.api.InMemoryProcessing#serializeRequest(java.lang.Object[])
-             */
             @Override
             public ReusableBuffer serializeRequest(Object[] args) throws BabuDBException {
                 
@@ -374,6 +390,17 @@ public class DatabaseManagerImpl implements DatabaseManager {
                 return buf;
             }
             
+            @Override
+            public Object[] deserializeRequest(ReusableBuffer serialized) throws BabuDBException {
+                
+                serialized.getInt(); // do not use, deprecated
+                serialized.getInt(); // do not use, deprecated
+                
+                String sourceDB = serialized.getString();
+                String destDB = serialized.getString();
+                return new Object[] { sourceDB, destDB };
+            }
+            
             /* (non-Javadoc)
              * @see org.xtreemfs.babudb.api.InMemoryProcessing#before(java.lang.Object[])
              */
@@ -384,7 +411,6 @@ public class DatabaseManagerImpl implements DatabaseManager {
                 String sourceDB = (String) args[0];
                 String destDB = (String) args[1];
                 
-
                 DatabaseImpl sDB = (DatabaseImpl) dbsByName.get(sourceDB);
                 if (sDB == null) {
                     throw new BabuDBException(
@@ -433,9 +459,6 @@ public class DatabaseManagerImpl implements DatabaseManager {
         dbs.getPersistenceManager().registerInMemoryProcessing(PAYLOAD_TYPE_SNAP, 
                 new InMemoryProcessing() {
             
-            /* (non-Javadoc)
-             * @see org.xtreemfs.babudb.api.InMemoryProcessing#serializeRequest(java.lang.Object[])
-             */
             @Override
             public ReusableBuffer serializeRequest(Object[] args) throws BabuDBException {
                 
@@ -459,6 +482,28 @@ public class DatabaseManagerImpl implements DatabaseManager {
                 
                 return buf;
             }
+
+            @Override
+            public Object[] deserializeRequest(ReusableBuffer serialized) throws BabuDBException {
+                ObjectInputStream oin = null;
+                try {
+                    oin = new ObjectInputStream(new ByteArrayInputStream(serialized.array()));
+                    int dbId = oin.readInt();
+                    SnapshotConfig snap = (SnapshotConfig) oin.readObject();
+                    
+                    return new Object[] { dbId, snap };
+                } catch (Exception e) {
+                    throw new BabuDBException(ErrorCode.IO_ERROR,
+                            "Could not deserialize operation of type " + PAYLOAD_TYPE_SNAP + 
+                                ", because: "+e.getMessage(), e);
+                } finally {
+                    try {
+                        if (oin != null) oin.close();
+                    } catch (IOException ioe) {
+                        /* who cares? */
+                    }
+                }
+            }
         });
         
         dbs.getPersistenceManager().registerInMemoryProcessing(PAYLOAD_TYPE_INSERT, 
@@ -478,6 +523,14 @@ public class DatabaseManagerImpl implements DatabaseManager {
                 return buf;
             }
             
+            @Override
+            public Object[] deserializeRequest(ReusableBuffer serialized) throws BabuDBException {
+                
+                InsertRecordGroup irg = InsertRecordGroup.deserialize(serialized);
+                
+                return new Object[] { irg, null, null };
+            }
+            
             /* (non-Javadoc)
              * @see org.xtreemfs.babudb.api.InMemoryProcessing#before(java.lang.Object[])
              */
@@ -487,6 +540,9 @@ public class DatabaseManagerImpl implements DatabaseManager {
                 // parse args
                 BabuDBInsertGroup irg = (BabuDBInsertGroup) args[0];
                 LSMDatabase lsmDB = (LSMDatabase) args[1];
+                if (lsmDB == null) {
+                    lsmDB = ((DatabaseImpl) dbsById.get(irg.getRecord().getDatabaseId())).getLSMDB();
+                }
                 
                 int numIndices = lsmDB.getIndexCount();
                 
@@ -512,6 +568,9 @@ public class DatabaseManagerImpl implements DatabaseManager {
                 // parse args
                 BabuDBInsertGroup irg = (BabuDBInsertGroup) args[0];
                 LSMDatabase lsmDB = (LSMDatabase) args[1];
+                if (lsmDB == null) {
+                    lsmDB = ((DatabaseImpl) dbsById.get(irg.getRecord().getDatabaseId())).getLSMDB();
+                }
                 BabuDBRequestResultImpl<Object> listener = 
                     (BabuDBRequestResultImpl<Object>) args[2];
                 
@@ -531,7 +590,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
                             index.delete(ir.getKey());
                         }
                     }
-                    listener.finished();
+                    if (listener != null) listener.finished();
                 }
             }
         });

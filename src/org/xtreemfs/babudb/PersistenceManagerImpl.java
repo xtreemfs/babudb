@@ -7,9 +7,6 @@
  */
 package org.xtreemfs.babudb;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.xtreemfs.babudb.api.PersistenceManager;
 import org.xtreemfs.babudb.api.InMemoryProcessing;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
@@ -28,10 +25,7 @@ import org.xtreemfs.foundation.buffer.ReusableBuffer;
  * @author flangner
  * @since 11/03/2010
  */
-class PersistenceManagerImpl implements PersistenceManager {
-
-    private final Map<Byte, InMemoryProcessing> inMemoryProcessing = 
-        new HashMap<Byte, InMemoryProcessing>();
+class PersistenceManagerImpl extends PersistenceManager {
     
     private DiskLogger diskLogger;
     
@@ -50,16 +44,6 @@ class PersistenceManagerImpl implements PersistenceManager {
      */
     public void setLogger(DiskLogger logger) {
         this.diskLogger = logger;
-    }
-    
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.api.PersistenceManager#makePersistent(byte, java.lang.Object[])
-     */
-    @Override
-    public <T> DatabaseRequestResult<T> makePersistent(byte type, Object[] args) 
-            throws BabuDBException {
-        
-        return makePersistent(type, args, inMemoryProcessing.get(type).serializeRequest(args));
     }
       
     /*
@@ -130,15 +114,6 @@ class PersistenceManagerImpl implements PersistenceManager {
     public void unlockService() {
         if (this.diskLogger != null && this.diskLogger.hasLock())
             this.diskLogger.unlockLogger();
-    }
-
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.api.PersistenceManager#registerInMemoryProcessing(byte, 
-     *          org.xtreemfs.babudb.api.InMemoryProcessing)
-     */
-    @Override
-    public void registerInMemoryProcessing(byte type, InMemoryProcessing processing) {
-        this.inMemoryProcessing.put(type, processing);
     }
 
     /* (non-Javadoc)
