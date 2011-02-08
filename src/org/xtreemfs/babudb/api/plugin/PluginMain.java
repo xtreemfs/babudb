@@ -22,6 +22,9 @@ import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
  */
 public abstract class PluginMain {
     
+    public final static String VERSION_PART_DELIMITER = ".";
+    public final static String VERSION_RANGE_DELIMITER = "-";
+        
     /**
      * The range of BabuDB versions this Plugin is compatible to.
      * 
@@ -52,16 +55,16 @@ public abstract class PluginMain {
     public final BabuDBInternal execute(BabuDBInternal babuDB, String configPath)
             throws BabuDBException {
         
-        String[] comp = compatibleBabuDBVersion().split("|");
-        String[] f = comp[0].split(".");
+        String[] comp = compatibleBabuDBVersion().split(VERSION_RANGE_DELIMITER);
+        String[] f = comp[0].split(VERSION_PART_DELIMITER);
         int[] from = new int[] { Integer.parseInt(f[0]), Integer.parseInt(f[1], 
                                  Integer.parseInt(f[2])) };
         
-        String[] t = comp[1].split(".");
+        String[] t = comp[1].split(VERSION_PART_DELIMITER);
         int[] to = new int[] { Integer.parseInt(t[0]), Integer.parseInt(t[1], 
                                Integer.parseInt(t[2])) };
                              
-        String[] b = BabuDBFactory.BABUDB_VERSION.split(".");
+        String[] b = BabuDBFactory.BABUDB_VERSION.split(VERSION_PART_DELIMITER);
         int[] babu = new int[] { Integer.parseInt(b[0]), Integer.parseInt(b[1]),
                                  Integer.parseInt(b[2])};
         
@@ -75,5 +78,12 @@ public abstract class PluginMain {
             }
         }
         return start(babuDB, configPath);
+    }
+    
+    public static String buildCompatibleVersionString(int from0, int from1,int from2,
+                                                      int to0, int to1, int to2) {
+        return from0 + VERSION_PART_DELIMITER + from1 + VERSION_PART_DELIMITER + from2 + 
+               VERSION_RANGE_DELIMITER +
+               to0 + VERSION_PART_DELIMITER + to1 + VERSION_PART_DELIMITER + to2;
     }
 }

@@ -10,8 +10,10 @@ package org.xtreemfs.babudb.lsmdb;
 
 import static org.xtreemfs.babudb.log.LogEntry.*;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -19,6 +21,7 @@ import java.util.Map;
 
 import org.xtreemfs.babudb.BabuDBImpl;
 import org.xtreemfs.babudb.BabuDBInternal;
+import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.DatabaseManager;
 import org.xtreemfs.babudb.api.InMemoryProcessing;
 import org.xtreemfs.babudb.api.database.Database;
@@ -28,8 +31,11 @@ import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
+import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
+import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
+import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.FSUtils;
@@ -75,13 +81,16 @@ public class DatabaseManagerImpl implements DatabaseManager {
         
         this.nextDbId = 1;
         this.dbModificationLock = new Object();
+        
+        initializePersistenceManager();
     }
     
     public void reset() throws BabuDBException {
         nextDbId = 1;
         
         compInstances.clear();
-        compInstances.put(DefaultByteRangeComparator.class.getName(), new DefaultByteRangeComparator());
+        compInstances.put(DefaultByteRangeComparator.class.getName(), 
+                          new DefaultByteRangeComparator());
         
         dbs.getDBConfigFile().reset();
     }
@@ -128,199 +137,38 @@ public class DatabaseManagerImpl implements DatabaseManager {
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.api.DatabaseManager#createDatabase(java.lang.String, int, org.xtreemfs.babudb.api.index.ByteRangeComparator[])
+     * @see org.xtreemfs.babudb.api.DatabaseManager#createDatabase(java.lang.String, int, 
+     *          org.xtreemfs.babudb.api.index.ByteRangeComparator[])
      */
     @Override
-    public Database createDatabase(final String databaseName, 
-            final int numIndices, final ByteRangeComparator[] comparators)
-            throws BabuDBException {
-                
-        InMemoryProcessing processing = new InMemoryProcessing() {
-            
-            @Override
-            public ReusableBuffer serializeRequest() throws BabuDBException {
-
-                ReusableBuffer buf = ReusableBuffer.wrap(
-                        new byte[databaseName.getBytes().length
-                                 + (Integer.SIZE * 3 / 8)]);
-                buf.putInt(-1); //TODO remove field (deprecated)
-                buf.putString(databaseName);
-                buf.putInt(numIndices);
-                buf.flip();
-                
-                return buf;
-            }
-            
-            @Override
-            public void before() throws BabuDBException {
-                ByteRangeComparator[] com = comparators;
-                
-                if (com == null) {
-                    ByteRangeComparator[] comps = new ByteRangeComparator[numIndices];
-                    final ByteRangeComparator defaultComparator = compInstances.get(DefaultByteRangeComparator.class
-                            .getName());
-                    for (int i = 0; i < numIndices; i++) {
-                        comps[i] = defaultComparator;
-                    }
-                    
-                    com = comps;
-                }
-                
-                DatabaseImpl db = null;
-                synchronized (getDBModificationLock()) {
-                    synchronized (dbs.getCheckpointer()) {
-                        if (dbsByName.containsKey(databaseName)) {
-                            throw new BabuDBException(ErrorCode.DB_EXISTS, "database '" 
-                                    + databaseName + "' already exists");
-                        }
-                        final int dbId = nextDbId++;
-                        db = new DatabaseImpl(dbs,
-                            new LSMDatabase(databaseName, dbId, dbs.getConfig().getBaseDir() + databaseName
-                                + File.separatorChar, numIndices, false, com, dbs.getConfig().getCompression(),
-                                dbs.getConfig().getMaxNumRecordsPerBlock(), dbs.getConfig().getMaxBlockFileSize(), dbs
-                                        .getConfig().getDisableMMap(), dbs.getConfig().getMMapLimit()));
-                        dbsById.put(dbId, db);
-                        dbsByName.put(databaseName, db);
-                        dbs.getDBConfigFile().save();
-                    }
-                }
-            }
-        };
+    public Database createDatabase(String databaseName, int numIndices, 
+            ByteRangeComparator[] comparators) throws BabuDBException {
         
         dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_CREATE, 
-                                                   processing).get();  
+                new Object[] { databaseName, numIndices, comparators }).get();  
      
         return dbsByName.get(databaseName);
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.api.DatabaseManager#deleteDatabase(
-     *                  java.lang.String)
+     * @see org.xtreemfs.babudb.api.DatabaseManager#deleteDatabase(java.lang.String)
      */
     @Override
-    public void deleteDatabase(final String databaseName)
-            throws BabuDBException {        
-        
-        InMemoryProcessing processing = new InMemoryProcessing() {
-            
-            @Override
-            public ReusableBuffer serializeRequest() throws BabuDBException {
-                
-                // append the data to the diskLogger
-                ReusableBuffer buf = ReusableBuffer.wrap(
-                        new byte[(Integer.SIZE / 2) 
-                                 + databaseName.getBytes().length]);
-                buf.putInt(-1); //TODO remove field (deprecated)
-                buf.putString(databaseName);
-                buf.flip();
-                
-                return buf;
-            }
-            
-            @Override
-            public void before() throws BabuDBException {
-                int dbId = -1;
-                synchronized (getDBModificationLock()) {
-                    synchronized (dbs.getCheckpointer()) {
-                        if (!dbsByName.containsKey(databaseName)) {
-                            throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '" + databaseName
-                                + "' does not exists");
-                        }
-                        final LSMDatabase db = ((DatabaseImpl) dbsByName.get(databaseName)).getLSMDB();
-                        dbId = db.getDatabaseId();
-                        dbsByName.remove(databaseName);
-                        dbsById.remove(dbId);
-                        
-                        ((SnapshotManagerImpl) dbs.getSnapshotManager()).deleteAllSnapshots(databaseName);
-                        
-                        dbs.getDBConfigFile().save();
-                        File dbDir = new File(dbs.getConfig().getBaseDir(), databaseName);
-                        if (dbDir.exists())
-                            FSUtils.delTree(dbDir);
-                    }
-                }
-            }
-        };
+    public void deleteDatabase(String databaseName) throws BabuDBException {        
         
         dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_DELETE, 
-                                                   processing).get();
+                new Object[]{ databaseName }).get();
     }
         
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.DatabaseManager#copyDatabase(java.lang.String, java.lang.String)
      */
     @Override
-    public void copyDatabase(final String sourceDB, final String destDB) 
+    public void copyDatabase(String sourceDB, String destDB) 
             throws BabuDBException {  
-        
-        InMemoryProcessing processing = new InMemoryProcessing() {
-            
-            @Override
-            public ReusableBuffer serializeRequest() throws BabuDBException {
-
-                ReusableBuffer buf = ReusableBuffer.wrap(
-                        new byte[(Integer.SIZE / 2) 
-                                 + sourceDB.getBytes().length
-                                 + destDB.getBytes().length]);
-                buf.putInt(-1); //TODO remove field (deprecated)
-                buf.putInt(-1); //TODO remove field (deprecated)
-                buf.putString(sourceDB);
-                buf.putString(destDB);
-                buf.flip();
                 
-                return buf;
-            }
-            
-            @Override
-            public void before() throws BabuDBException {
-                
-                DatabaseImpl sDB = (DatabaseImpl) dbsByName.get(sourceDB);
-                if (sDB == null) {
-                    throw new BabuDBException(
-                            ErrorCode.NO_SUCH_DB, "database '" + 
-                            sourceDB + "' does not exist");
-                }
-                
-                int dbId;
-                synchronized (getDBModificationLock()) {
-                    synchronized (dbs.getCheckpointer()) {
-                        if (dbsByName.containsKey(destDB)) {
-                            throw new BabuDBException(
-                                    ErrorCode.DB_EXISTS, "database '" + 
-                                    destDB + "' already exists");
-                        }
-                        dbId = nextDbId++;
-                        // just "reserve" the name
-                        dbsByName.put(destDB, null);
-                        dbs.getDBConfigFile().save();
-                    }
-                }
-                // materializing the snapshot takes some time, we should not hold the
-                // lock meanwhile!
-                try {
-                    sDB.proceedSnapshot(destDB);
-                } catch (InterruptedException i) {
-                    throw new BabuDBException(ErrorCode.INTERNAL_ERROR, 
-                            "Snapshot creation was interrupted.", i);
-                }
-                
-                // create new DB and load from snapshot
-                Database newDB = new DatabaseImpl(dbs, new LSMDatabase(destDB, dbId, dbs.getConfig().getBaseDir()
-                    + destDB + File.separatorChar, sDB.getLSMDB().getIndexCount(), true, sDB.getComparators(), dbs
-                        .getConfig().getCompression(), dbs.getConfig().getMaxNumRecordsPerBlock(), dbs.getConfig()
-                        .getMaxBlockFileSize(), dbs.getConfig().getDisableMMap(), dbs.getConfig().getMMapLimit()));
-                
-                // insert real database
-                synchronized (dbModificationLock) {
-                    dbsById.put(dbId, newDB);
-                    dbsByName.put(destDB, newDB);
-                    dbs.getDBConfigFile().save();
-                }
-            }
-        };
-        
         dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_COPY, 
-                                                   processing).get();
+                                                   new Object[] { sourceDB, destDB }).get();
     }
     
     public void shutdown() throws BabuDBException {
@@ -372,5 +220,320 @@ public class DatabaseManagerImpl implements DatabaseManager {
         for (Database db : dbsByName.values()) {
             ((DatabaseImpl) db).dumpSnapshot(destPath);
         }
+    }
+    
+    /**
+     * Feed the persistenceManager with the knowledge to handle database-modifying related requests.
+     */
+    private void initializePersistenceManager() {
+        
+        dbs.getPersistenceManager().registerInMemoryProcessing(PAYLOAD_TYPE_CREATE, 
+                new InMemoryProcessing() {
+            
+            /* (non-Javadoc)
+             * @see org.xtreemfs.babudb.api.InMemoryProcessing#serializeRequest(java.lang.Object[])
+             */
+            @Override
+            public ReusableBuffer serializeRequest(Object[] args) throws BabuDBException {
+                
+                // parse args
+                String databaseName = (String) args[0];
+                int numIndices = (Integer) args[1];
+                
+                ReusableBuffer buf = ReusableBuffer.wrap(
+                        new byte[databaseName.getBytes().length
+                                 + (Integer.SIZE * 3 / 8)]);
+                buf.putInt(-1); //TODO remove field (deprecated)
+                buf.putString(databaseName);
+                buf.putInt(numIndices);
+                buf.flip();
+                
+                return buf;
+            }
+            
+            /* (non-Javadoc)
+             * @see org.xtreemfs.babudb.api.InMemoryProcessing#before(java.lang.Object[])
+             */
+            @Override
+            public void before(Object[] args) throws BabuDBException {
+             
+                // parse args
+                String databaseName = (String) args[0];
+                int numIndices = (Integer) args[1];
+                ByteRangeComparator[] com = (ByteRangeComparator[]) args[2];
+                
+                if (com == null) {
+                    ByteRangeComparator[] comps = new ByteRangeComparator[numIndices];
+                    final ByteRangeComparator defaultComparator = compInstances.get(
+                            DefaultByteRangeComparator.class.getName());
+                    for (int i = 0; i < numIndices; i++) {
+                        comps[i] = defaultComparator;
+                    }
+                    
+                    com = comps;
+                }
+                
+                DatabaseImpl db = null;
+                synchronized (getDBModificationLock()) {
+                    synchronized (dbs.getCheckpointer()) {
+                        if (dbsByName.containsKey(databaseName)) {
+                            throw new BabuDBException(ErrorCode.DB_EXISTS, "database '" 
+                                    + databaseName + "' already exists");
+                        }
+                        final int dbId = nextDbId++;
+                        db = new DatabaseImpl(dbs,
+                            new LSMDatabase(databaseName, dbId, dbs.getConfig().getBaseDir() + databaseName
+                                + File.separatorChar, numIndices, false, com, dbs.getConfig().getCompression(),
+                                dbs.getConfig().getMaxNumRecordsPerBlock(), dbs.getConfig().getMaxBlockFileSize(), dbs
+                                        .getConfig().getDisableMMap(), dbs.getConfig().getMMapLimit()));
+                        dbsById.put(dbId, db);
+                        dbsByName.put(databaseName, db);
+                        dbs.getDBConfigFile().save();
+                    }
+                }
+            }
+        });
+        
+        dbs.getPersistenceManager().registerInMemoryProcessing(PAYLOAD_TYPE_DELETE, 
+                new InMemoryProcessing() {
+            
+            /* (non-Javadoc)
+             * @see org.xtreemfs.babudb.api.InMemoryProcessing#serializeRequest(java.lang.Object[])
+             */
+            @Override
+            public ReusableBuffer serializeRequest(Object[] args) throws BabuDBException {
+                
+                // parse args
+                String databaseName = (String) args[0];
+                
+                ReusableBuffer buf = ReusableBuffer.wrap(
+                        new byte[(Integer.SIZE / 2) 
+                                 + databaseName.getBytes().length]);
+                buf.putInt(-1); //TODO remove field (deprecated)
+                buf.putString(databaseName);
+                buf.flip();
+                
+                return buf;
+            }
+            
+            /* (non-Javadoc)
+             * @see org.xtreemfs.babudb.api.InMemoryProcessing#before(java.lang.Object[])
+             */
+            @Override
+            public void before(Object[] args) throws BabuDBException {
+                
+                // parse args
+                String databaseName = (String) args[0];
+                
+                int dbId = -1;
+                synchronized (getDBModificationLock()) {
+                    synchronized (dbs.getCheckpointer()) {
+                        if (!dbsByName.containsKey(databaseName)) {
+                            throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '" + databaseName
+                                + "' does not exists");
+                        }
+                        final LSMDatabase db = ((DatabaseImpl) dbsByName.get(databaseName)).getLSMDB();
+                        dbId = db.getDatabaseId();
+                        dbsByName.remove(databaseName);
+                        dbsById.remove(dbId);
+                        
+                        ((SnapshotManagerImpl) dbs.getSnapshotManager()).deleteAllSnapshots(databaseName);
+                        
+                        dbs.getDBConfigFile().save();
+                        File dbDir = new File(dbs.getConfig().getBaseDir(), databaseName);
+                        if (dbDir.exists())
+                            FSUtils.delTree(dbDir);
+                    }
+                }
+            }
+        });
+        
+        dbs.getPersistenceManager().registerInMemoryProcessing(PAYLOAD_TYPE_COPY, 
+                new InMemoryProcessing() {
+            
+            /* (non-Javadoc)
+             * @see org.xtreemfs.babudb.api.InMemoryProcessing#serializeRequest(java.lang.Object[])
+             */
+            @Override
+            public ReusableBuffer serializeRequest(Object[] args) throws BabuDBException {
+                
+                // parse args
+                String sourceDB = (String) args[0];
+                String destDB = (String) args[1];
+                
+                ReusableBuffer buf = ReusableBuffer.wrap(
+                        new byte[(Integer.SIZE / 2) 
+                                 + sourceDB.getBytes().length
+                                 + destDB.getBytes().length]);
+                buf.putInt(-1); //TODO remove field (deprecated)
+                buf.putInt(-1); //TODO remove field (deprecated)
+                buf.putString(sourceDB);
+                buf.putString(destDB);
+                buf.flip();
+                
+                return buf;
+            }
+            
+            /* (non-Javadoc)
+             * @see org.xtreemfs.babudb.api.InMemoryProcessing#before(java.lang.Object[])
+             */
+            @Override
+            public void before(Object[] args) throws BabuDBException {
+                
+                // parse args
+                String sourceDB = (String) args[0];
+                String destDB = (String) args[1];
+                
+
+                DatabaseImpl sDB = (DatabaseImpl) dbsByName.get(sourceDB);
+                if (sDB == null) {
+                    throw new BabuDBException(
+                            ErrorCode.NO_SUCH_DB, "database '" + 
+                            sourceDB + "' does not exist");
+                }
+                
+                int dbId;
+                synchronized (getDBModificationLock()) {
+                    synchronized (dbs.getCheckpointer()) {
+                        if (dbsByName.containsKey(destDB)) {
+                            throw new BabuDBException(
+                                    ErrorCode.DB_EXISTS, "database '" + 
+                                    destDB + "' already exists");
+                        }
+                        dbId = nextDbId++;
+                        // just "reserve" the name
+                        dbsByName.put(destDB, null);
+                        dbs.getDBConfigFile().save();
+                    }
+                }
+                // materializing the snapshot takes some time, we should not hold the
+                // lock meanwhile!
+                try {
+                    sDB.proceedSnapshot(destDB);
+                } catch (InterruptedException i) {
+                    throw new BabuDBException(ErrorCode.INTERNAL_ERROR, 
+                            "Snapshot creation was interrupted.", i);
+                }
+                
+                // create new DB and load from snapshot
+                Database newDB = new DatabaseImpl(dbs, new LSMDatabase(destDB, dbId, dbs.getConfig().getBaseDir()
+                    + destDB + File.separatorChar, sDB.getLSMDB().getIndexCount(), true, sDB.getComparators(), dbs
+                        .getConfig().getCompression(), dbs.getConfig().getMaxNumRecordsPerBlock(), dbs.getConfig()
+                        .getMaxBlockFileSize(), dbs.getConfig().getDisableMMap(), dbs.getConfig().getMMapLimit()));
+                
+                // insert real database
+                synchronized (dbModificationLock) {
+                    dbsById.put(dbId, newDB);
+                    dbsByName.put(destDB, newDB);
+                    dbs.getDBConfigFile().save();
+                }
+            }
+        });
+        
+        dbs.getPersistenceManager().registerInMemoryProcessing(PAYLOAD_TYPE_SNAP, 
+                new InMemoryProcessing() {
+            
+            /* (non-Javadoc)
+             * @see org.xtreemfs.babudb.api.InMemoryProcessing#serializeRequest(java.lang.Object[])
+             */
+            @Override
+            public ReusableBuffer serializeRequest(Object[] args) throws BabuDBException {
+                
+                // parse args
+                int dbId = (Integer) args[0];
+                SnapshotConfig snap = (SnapshotConfig) args[1];
+                
+                // serialize the snapshot configuration
+                ReusableBuffer buf = null;
+                try {
+                    ByteArrayOutputStream bout = new ByteArrayOutputStream();
+                    ObjectOutputStream oout = new ObjectOutputStream(bout);
+                    oout.writeInt(dbId);
+                    oout.writeObject(snap);
+                    buf = ReusableBuffer.wrap(bout.toByteArray());
+                    oout.close();
+                } catch (IOException exc) {
+                    throw new BabuDBException(ErrorCode.IO_ERROR, "could not serialize snapshot configuration: "
+                        + snap.getClass(), exc);
+                }
+                
+                return buf;
+            }
+        });
+        
+        dbs.getPersistenceManager().registerInMemoryProcessing(PAYLOAD_TYPE_INSERT, 
+                new InMemoryProcessing() {
+            
+            @Override
+            public ReusableBuffer serializeRequest(Object[] args) throws BabuDBException {
+                
+                // parse args
+                BabuDBInsertGroup irg = (BabuDBInsertGroup) args[0];
+                
+                int size = irg.getRecord().getSize();
+                ReusableBuffer buf = BufferPool.allocate(size);
+                irg.getRecord().serialize(buf);
+                buf.flip();
+                
+                return buf;
+            }
+            
+            /* (non-Javadoc)
+             * @see org.xtreemfs.babudb.api.InMemoryProcessing#before(java.lang.Object[])
+             */
+            @Override
+            public void before(Object[] args) throws BabuDBException {
+                
+                // parse args
+                BabuDBInsertGroup irg = (BabuDBInsertGroup) args[0];
+                LSMDatabase lsmDB = (LSMDatabase) args[1];
+                
+                int numIndices = lsmDB.getIndexCount();
+                
+                for (InsertRecord ir : irg.getRecord().getInserts()) {
+                    if ((ir.getIndexId() >= numIndices) || 
+                        (ir.getIndexId() < 0)) {
+                        
+                        throw new BabuDBException(
+                                ErrorCode.NO_SUCH_INDEX, "index " 
+                                + ir.getIndexId() + 
+                                " does not exist");
+                    }
+                }
+            }
+            
+            /* (non-Javadoc)
+             * @see org.xtreemfs.babudb.api.InMemoryProcessing#after(java.lang.Object[])
+             */
+            @SuppressWarnings("unchecked")
+            @Override
+            public void after(Object[] args) {
+                
+                // parse args
+                BabuDBInsertGroup irg = (BabuDBInsertGroup) args[0];
+                LSMDatabase lsmDB = (LSMDatabase) args[1];
+                BabuDBRequestResultImpl<Object> listener = 
+                    (BabuDBRequestResultImpl<Object>) args[2];
+                
+                // in case of synchronous inserts, wait until the disk logger 
+                // returns
+                if (dbs.getConfig().getSyncMode() != SyncMode.ASYNC) {
+                
+                    // insert into the in-memory-tree
+                    for (InsertRecord ir : irg.getRecord().getInserts()) {
+                        LSMTree index = lsmDB.getIndex(
+                                ir.getIndexId());
+                        
+                        if (ir.getValue() != null) {
+                            index.insert(ir.getKey(), 
+                                         ir.getValue());
+                        } else {
+                            index.delete(ir.getKey());
+                        }
+                    }
+                    listener.finished();
+                }
+            }
+        });
     }
 }

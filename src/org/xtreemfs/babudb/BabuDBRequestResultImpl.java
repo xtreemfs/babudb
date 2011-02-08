@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -24,7 +24,7 @@ import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
  * @since 11/11/2009
  * @param <T>
  */
-public class BabuDBRequestResultImpl<T> implements DatabaseRequestResult<T>{
+public class BabuDBRequestResultImpl<T> implements DatabaseRequestResult<T> {
     
     private DatabaseRequestListener<T>  listener; 
 

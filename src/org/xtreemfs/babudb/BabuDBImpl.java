@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -192,13 +192,13 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
         } catch (IOException ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot start database operations logger", ex);
         }
+        this.permMan.init(new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo() - 1L));
         this.permMan.setLogger(this.logger);
         
         if (configuration.getNumThreads() > 0) {
             worker = new LSMDBWorker[configuration.getNumThreads()];
             for (int i = 0; i < configuration.getNumThreads(); i++) {
-                worker[i] = new LSMDBWorker(logger, i, (configuration.getPseudoSyncWait() > 0), configuration
-                        .getMaxQueueLength());
+                worker[i] = new LSMDBWorker(this, i, configuration.getMaxQueueLength());
                 worker[i].start();
             }
         } else {
@@ -330,8 +330,7 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
             if (configuration.getNumThreads() > 0) {
                 worker = new LSMDBWorker[configuration.getNumThreads()];
                 for (int i = 0; i < configuration.getNumThreads(); i++) {
-                    worker[i] = new LSMDBWorker(logger, i, (configuration.getPseudoSyncWait() > 0),
-                        configuration.getMaxQueueLength());
+                    worker[i] = new LSMDBWorker(this, i, configuration.getMaxQueueLength());
                     worker[i].start();
                 }
             } else {
