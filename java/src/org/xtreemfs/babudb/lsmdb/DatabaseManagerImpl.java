@@ -259,6 +259,8 @@ public class DatabaseManagerImpl implements DatabaseManager {
                 
                 String dbName = serialized.getString();
                 int indices = serialized.getInt();
+                
+                serialized.flip();
 
                 return new Object[] { dbName, indices, null };
             }
@@ -331,6 +333,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
                 serialized.getInt(); // do not use, deprecated
                 
                 String dbName = serialized.getString();
+                serialized.flip();
                 
                 return new Object[] { dbName };
             }
@@ -398,6 +401,9 @@ public class DatabaseManagerImpl implements DatabaseManager {
                 
                 String sourceDB = serialized.getString();
                 String destDB = serialized.getString();
+                
+                serialized.flip();
+                
                 return new Object[] { sourceDB, destDB };
             }
             
@@ -498,6 +504,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
                                 ", because: "+e.getMessage(), e);
                 } finally {
                     try {
+                        serialized.flip();
                         if (oin != null) oin.close();
                     } catch (IOException ioe) {
                         /* who cares? */
@@ -527,6 +534,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
             public Object[] deserializeRequest(ReusableBuffer serialized) throws BabuDBException {
                 
                 InsertRecordGroup irg = InsertRecordGroup.deserialize(serialized);
+                serialized.flip();
                 
                 return new Object[] { irg, null, null };
             }
