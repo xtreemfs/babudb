@@ -26,7 +26,9 @@ import org.xtreemfs.foundation.logging.Logging;
  */
 public class ConfigBuilder {
     
-    Map<String, String> changes = new HashMap<String, String>();
+    private Map<String, String> changes = new HashMap<String, String>();
+    
+    private int numOfRegisteredPlugins = 0;
     
     /**
      * Sets the path in which all persistently stored data of BabuDB resides.
@@ -40,6 +42,24 @@ public class ConfigBuilder {
         
         changes.put("babudb.baseDir", dir);
         changes.put("babudb.logDir", dir + "/log");
+        
+        return this;
+    }
+    
+    /**
+     * Registers a path to a plugin for BabuDB, that has to be used with this configuration.
+     * 
+     * @param pluginPath path to the plugin to register
+     * @param configPath - optional (may be null)
+     * @return a reference to this object
+     */
+    public ConfigBuilder putPlugin(String pluginPath, String configPath) {
+        
+        changes.put("babudb.pluginPath." + numOfRegisteredPlugins, pluginPath);
+        if (configPath != null && configPath.length() > 0) {
+            changes.put("babudb.pluginConfig." + numOfRegisteredPlugins, configPath);
+        }
+        numOfRegisteredPlugins++;
         
         return this;
     }
@@ -102,27 +122,6 @@ public class ConfigBuilder {
         return this;
     }
     
-    // /**
-    // * Sets the list of replicas.
-    // *
-    // * @param replicas
-    // * a list of socket addresses for the replicas, including the one
-    // * of the local replica
-    // * @return a reference to this object
-    // */
-    // public ConfigBuilder setReplicas(InetSocketAddress[] replicas) {
-    //        
-    // int i = 0;
-    // for (InetSocketAddress repl : replicas) {
-    // changes.put("babudb.repl.participant." + i, repl.getHostName());
-    // changes.put("babudb.repl.participant." + i + ".port", repl.getPort() +
-    // "");
-    // i++;
-    // }
-    //        
-    // return this;
-    // }
-    
     /**
      * Builds a BabuDB configuration instance.
      * 
@@ -150,32 +149,4 @@ public class ConfigBuilder {
         
         return cfg;
     }
-    
-    // /**
-    // * Builds a configuration instance for a replicated BabuDB installation.
-    // *
-    // * @return @return a <code>ReplicationConfig</code> instance
-    // */
-    // public ReplicationConfig buildRepl() {
-    //        
-    // Properties props = new Properties();
-    // ReplicationConfig cfg = null;
-    // try {
-    // props.load(ConfigBuilder.class.getResourceAsStream("default-config.properties"));
-    //            
-    // props.putAll(changes);
-    //            
-    // cfg = new ReplicationConfig(props);
-    //            
-    // } catch (IOException exc) {
-    // Logging.logError(Logging.LEVEL_ERROR, null, exc);
-    // }
-    //        
-    // if (cfg == null)
-    // throw new NullPointerException();
-    //        
-    // return cfg;
-    //        
-    // }
-    
 }

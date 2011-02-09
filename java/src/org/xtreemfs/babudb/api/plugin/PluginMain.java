@@ -14,24 +14,28 @@ import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 
 /**
- * A plugin has to provide a class named main implementing this interface to be
- * loaded successfully. 
+ * A plugin has to provide a class named <b>Main</b> implementing this interface to be loaded 
+ * successfully. 
  * 
  * @author flangner
  * @date 11/03/2010
  */
 public abstract class PluginMain {
     
-    public final static String VERSION_PART_DELIMITER = ".";
-    public final static String VERSION_RANGE_DELIMITER = "-";
+    private final static String VERSION_PART_DELIMITER = ".";
+    private final static String VERSION_RANGE_DELIMITER = "-";
         
     /**
-     * The range of BabuDB versions this Plugin is compatible to.
-     * 
-     * Pattern: 
-     * from|to
-     * from: 0-9.0-9.0-9
-     * to: 0-9.0-9.0-9
+     * The range of BabuDB versions this Plugin is compatible to.<br>
+     * <br>
+     * Pattern:<br> 
+     * from-to<br>
+     * <br>
+     * from: 0-9.0-9.0-9<br>
+     * to: 0-9.0-9.0-9<br>
+     * <br>
+     * If you are not sure about how to build a valid compatible-version string, please use the 
+     * static method <b>PluginMain.buildCompatibleVersionString()</b>.
      * 
      * @return the pattern of BabuDBVersions this plugin is compatible to.
      */
@@ -80,8 +84,25 @@ public abstract class PluginMain {
         return start(babuDB, configPath);
     }
     
+    /**
+     * Builds a compatible-version string for your plugin with the given boundaries. <br>
+     * <br>
+     * Your string will look like this, if you would provide the same values for the parameters as
+     * given in their description:<br>
+     * <br>
+     * 1.2.3-4.5.6
+     * 
+     * @param from0 - 1
+     * @param from1 - 2
+     * @param from2 - 3
+     * @param to0 - 4
+     * @param to1 - 5
+     * @param to2 - 6
+     * @return a compatible-version string.
+     */
     public static String buildCompatibleVersionString(int from0, int from1,int from2,
                                                       int to0, int to1, int to2) {
+        
         return from0 + VERSION_PART_DELIMITER + from1 + VERSION_PART_DELIMITER + from2 + 
                VERSION_RANGE_DELIMITER +
                to0 + VERSION_PART_DELIMITER + to1 + VERSION_PART_DELIMITER + to2;

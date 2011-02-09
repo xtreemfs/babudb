@@ -11,9 +11,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 
+import org.xtreemfs.babudb.BabuDBImpl;
 import org.xtreemfs.babudb.BabuDBInternal;
 
 import static org.xtreemfs.babudb.BabuDBFactory.*;
@@ -41,24 +43,24 @@ public final class PluginLoader extends ClassLoader {
      * @throws IOException if an I/O error occurred
      */
     private PluginLoader(BabuDBInternal babuDB) throws IOException {
-        super(null);
+        super(BabuDBImpl.class.getClassLoader());
         
         this.babuDB = babuDB;
         
-        String main = null;
-        int index = 0;
-        for (String pluginPath : babuDB.getConfig().getPluginPaths()) {
+        for (Entry<String, String> plugin : babuDB.getConfig().getPlugins().entrySet()) {
+            
+            String pluginPath = plugin.getKey();
+            String configPath = plugin.getValue();
             
             // load all classes from the plugin JARs
-            JarInputStream jis = 
-                new JarInputStream(getClass().getResourceAsStream(
-                        pluginPath + "/" + BABUDB_VERSION + ".jar"));
+            JarInputStream jis = new JarInputStream(getClass().getResourceAsStream(pluginPath)); 
             
             JarEntry next = null;
             while ((next = jis.getNextJarEntry()) != null) {
                 
-                if (!next.getName().endsWith(".class"))
+                if (!next.getName().endsWith(".class")) {
                     continue;
+                }
                 
                 byte[] buf = new byte[4096];
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -69,35 +71,24 @@ public final class PluginLoader extends ClassLoader {
                 }
                 
                 String className = next.getName().substring(0, 
-                        next.getName().length() - ".class".length())
-                        .replace('/', '.');
+                        next.getName().length() - ".class".length()).replace('/', '.');
                 
                 classes.put(className, out.toByteArray());
                 out.close();
             }
             
             jis.close();
-            
-            if (main != null) {
-                String configPath = 
-                    babuDB.getConfig().getPluginConfigPaths().get(index);
-                
-                try {
-                    Class<?> pluginMain = loadClass(main);
-                    this.babuDB = (BabuDBInternal) pluginMain
+                        
+            try {
+                this.babuDB = (BabuDBInternal) loadClass("Main")
                         .getMethod("execute", BabuDBInternal.class, String.class)
-                        .invoke(this.babuDB, configPath);
-                    
-                } catch (Exception e) {
-                    throw new RuntimeException("Plugin at '" + pluginPath + "'" +
-                    		" for version " + BABUDB_VERSION + 
-                    		((configPath != null) ? " with " +
-                    		"config at path " + configPath : "") +
-                    		" could not be initialized!", e.getCause());
-                }
-                main = null;
+                        .invoke(babuDB, configPath);
+                
+            } catch (Exception e) {
+                throw new IOException("Plugin at '" + pluginPath + "' for version " + 
+                        BABUDB_VERSION + ((configPath != null) ? " with config at path " + 
+                        configPath : "") + " could not be initialized!", e.getCause());
             }
-            index++;
         }
     }
 
@@ -105,13 +96,15 @@ public final class PluginLoader extends ClassLoader {
         
         byte[] classBytes = classes.get(name);
         
-        if (classBytes == null)
+        if (classBytes == null) {
             return findSystemClass(name);
+        }
         
         Class<?> clazz = defineClass(name, classBytes, 0, classBytes.length);
         
-        if (resolve)
+        if (resolve) {
             resolveClass(clazz);
+        }
         
         return clazz;
     }
@@ -129,32 +122,30 @@ public final class PluginLoader extends ClassLoader {
         
         JarInputStream jis = null;
         try {
-            jis = new JarInputStream(PluginLoader.class.getResourceAsStream(
-                    path + "/" + BABUDB_VERSION + ".jar"));
+            jis = new JarInputStream(PluginLoader.class.getResourceAsStream(path));
             return true;
         } catch (Exception exc) {
             return false;
         } finally {
-            if (jis != null)
+            if (jis != null) {
                 try {
                     jis.close();
                 } catch (IOException exc) {
                     // ignore
                 }
+            }
         }   
     }
     
     /**
-     * This methods loads all available plugins and allows the plugins to
-     * overload the BabuDB API.
+     * This methods loads all available plugins and allows the plugins to overload the BabuDB API.
      * 
      * @param babuDB
      * @return the overloaded BabuDB.
      * 
      * @throws IOException if a plugin could not be loaded.
      */
-    public final static BabuDBInternal init(BabuDBInternal babuDB) 
-            throws IOException {
+    public final static BabuDBInternal init(BabuDBInternal babuDB) throws IOException {
         
         PluginLoader loader = new PluginLoader(babuDB);
         return loader.babuDB;
