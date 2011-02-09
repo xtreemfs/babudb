@@ -39,3 +39,9 @@
   
 2010-10-21: release 0.4.5
   * fixed issue #12, which caused a failure when trying to initialize a database with an LSN > 2^31
+  
+(outstanding): release 0.5.0
+  * moved all interfaces that may be accessed by user applications into the separated package org.xtreemfs.babudb.api
+  * added plugin support
+  * moved all replication-code into an own plugin downloadable at the BabuDB project page on google code 
+  * replication now has own version number and change log
