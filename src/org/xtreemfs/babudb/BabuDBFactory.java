@@ -62,12 +62,15 @@ public final class BabuDBFactory {
     public final static BabuDB createBabuDB(BabuDBConfig configuration, 
             StaticInitialization staticInit) throws BabuDBException {
         
-        BabuDBInternal babuDB = new BabuDBImpl(configuration);
-        
         /*
          * initialize the logger
          */
         Logging.start(configuration.getDebugLevel());
+        
+        /*
+         * allocate and preload BabuDB
+         */
+        BabuDBInternal babuDB = new BabuDBImpl(configuration);
         Logging.logMessage(Logging.LEVEL_INFO, babuDB, "BabuDB %s", BABUDB_VERSION);
         Logging.logMessage(Logging.LEVEL_INFO, babuDB, "\n%s", configuration.toString());
         
@@ -84,7 +87,7 @@ public final class BabuDBFactory {
         }
         
         /*
-         * load the optionally plugins
+         * load the optional plugins
          */
         try {
             babuDB = PluginLoader.init(babuDB);
