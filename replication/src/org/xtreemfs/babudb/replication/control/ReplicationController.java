@@ -1,12 +1,9 @@
 /*
- * Copyright (c) 2010-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2010 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
- */
-/*
- * AUTHORS: Felix Langner (ZIB)
  */
 package org.xtreemfs.babudb.replication.control;
 
@@ -34,22 +31,22 @@ import org.xtreemfs.foundation.logging.Logging;
 public class ReplicationController extends LifeCycleThread implements ControlListener {
 
     /** flag that determines if the replication is suspended currently */
-    private final AtomicBoolean suspended = new AtomicBoolean(false);
+    private final AtomicBoolean             suspended           = new AtomicBoolean(false);
     
     /** necessary to support mutual exclusion on failover */
-    private final AtomicBoolean failoverInProgress = new AtomicBoolean(false);
+    private final AtomicBoolean             failoverInProgress  = new AtomicBoolean(false);
     
     /** necessary to support mutual exclusion on handover */
-    private final AtomicBoolean handoverInProgress = new AtomicBoolean(false);
+    private final AtomicBoolean             handoverInProgress  = new AtomicBoolean(false);
     
     /** the leaseholder recognized for the failover actually executed */
-    private InetAddress         newLeaseHolder = null;
+    private InetAddress                     newLeaseHolder      = null;
     
     /** boolean to determine if the thread shall be terminated */
-    private volatile boolean    quit = true;
+    private volatile boolean                quit                = true;
     
     /** the local address used for the net-communication */
-    private final InetAddress   thisAddress;
+    private final InetAddress               thisAddress;
     
     /** methods provided by the service-layer */
     private final ServiceToControlInterface serviceInterface;
@@ -266,36 +263,6 @@ public class ReplicationController extends LifeCycleThread implements ControlLis
  * private methods
  */
     
-//    /**
-//     * This server gives up its master privileges. The lease is handed over
-//     * to a server depending on the latest acknowledged LSN received by it.
-//     * The local instance will also become slave of the new master, if handover
-//     * was successful.
-//     * FIXME
-//     * @throws InterruptedException
-//     * 
-//     * @return true, if handover was successful, false if this server loast the
-//     *         ownership of the lease because of a timeout.
-//     */
-//    private boolean handover() throws InterruptedException {
-//        boolean success = false;
-//        InetSocketAddress newOwner;
-//        int index = 0;
-//        List<InetSocketAddress> clients = ctrlLayer.getClients();
-//        do {
-//            newOwner = clients.get(index++);
-//            index %= clients.size();
-//            success = this.ctrlLayer.handOverLease(
-//                    new ASCIIString(FleaseHolder.getIdentity(newOwner)));
-//        } while (hasLease());
-//        
-//        if (success) {
-//            becomeSlave(newOwner.getAddress());
-//        }
-//        
-//        return success;
-//    }
-    
     /**
      * This server has to become the new master.
      * 
@@ -309,7 +276,6 @@ public class ReplicationController extends LifeCycleThread implements ControlLis
         Logging.logMessage(Logging.LEVEL_INFO, this, 
                 "Becoming the replication master.");
         this.serviceInterface.synchronize();
-        this.ctrlLayer.getTimeDriftDetectorControl().start();
         this.serviceInterface.changeMaster(null);
     }
     
@@ -331,7 +297,6 @@ public class ReplicationController extends LifeCycleThread implements ControlLis
     private synchronized void suspendReplication() {
         if (this.suspended.compareAndSet(false, true)) {
             this.serviceInterface.reset();
-            this.ctrlLayer.getTimeDriftDetectorControl().stop();
         }
     }
 }
