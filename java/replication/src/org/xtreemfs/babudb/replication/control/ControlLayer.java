@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2010 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -46,12 +46,11 @@ import org.xtreemfs.foundation.flease.proposer.FleaseListener;
  * @author flangner
  * @since 02/24/2010
  */
-public class ControlLayer extends TopLayer implements RoleChangeListener, 
-    TimeDriftListener, FleaseMessageReceiver {
+public class ControlLayer extends TopLayer implements RoleChangeListener, TimeDriftListener, 
+        FleaseMessageReceiver {
     
     /** designation of the flease-cell */
-    private final static ASCIIString        REPLICATION_CELL = 
-        new ASCIIString("replication");
+    private final static ASCIIString        REPLICATION_CELL = new ASCIIString("replication");
     
     /** always access {@link Flease} from here */
     private final FleaseStage               fleaseStage;
@@ -170,8 +169,7 @@ public class ControlLayer extends TopLayer implements RoleChangeListener,
      * Method to participate at {@link Flease}.
      */
     void joinFlease() {
-        this.fleaseStage.openCell(REPLICATION_CELL, this.fleaseParticipants, 
-                true);
+        this.fleaseStage.openCell(REPLICATION_CELL, this.fleaseParticipants, true);
     }
     
     /**
@@ -288,13 +286,6 @@ public class ControlLayer extends TopLayer implements RoleChangeListener,
      */
     void exitFlease() {
         this.fleaseStage.closeCell(REPLICATION_CELL);
-    }
-    
-    /**
-     * @return a controller for the {@link TimeDriftDetector}.
-     */
-    TimeDriftDetectorControl getTimeDriftDetectorControl() {
-        return this.timeDriftDetector;
     }
     
     boolean amIMaster() {

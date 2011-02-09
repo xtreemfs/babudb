@@ -46,16 +46,6 @@ public class FleaseHolder implements FleaseStatusListener {
     synchronized void registerListener(ControlListener listener) {
         if (this.listener == null) this.listener = listener;
     }
-//    
-//    /**
-//     * Determines if this server is owner of the given lease or not.
-//     * FIXME
-//     * @return true if this server is owner of the lease, false otherwise.
-//     */
-//    boolean amIOwner() {
-//        Flease lease = this.flease.get();
-//        return lease.isValid() && this.id.equals(lease.getLeaseHolder());
-//    }
     
     /**
      * @return the timeout for the currently valid lease.
