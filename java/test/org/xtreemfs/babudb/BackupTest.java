@@ -59,7 +59,7 @@ public class BackupTest extends TestCase {
     @Test
     public void testConsistentWithSingleDB() throws Exception {
         BabuDB database = BabuDBFactory.createBabuDB(new BabuDBConfig(origDir, origDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
+            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize));
         
         Database db = database.getDatabaseManager().createDatabase("test", numIndices);
         
@@ -77,7 +77,7 @@ public class BackupTest extends TestCase {
         database.getDatabaseManager().dumpAllDatabases(backupDir);
               
         BabuDB babuBackup = BabuDBFactory.createBabuDB(new BabuDBConfig(backupDir, backupDir, 1, 0, 0,
-        		SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
+        		SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize));
         
         Database backupDB = babuBackup.getDatabaseManager().getDatabase("test");
         

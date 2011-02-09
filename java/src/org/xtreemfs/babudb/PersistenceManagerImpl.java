@@ -72,8 +72,12 @@ class PersistenceManagerImpl extends PersistenceManager {
             @Override
             public void synced(LogEntry entry) {
                 if (entry != null) entry.free();
-                processing.after(args);
-                result.finished();
+                try {
+                    processing.after(args);
+                    result.finished();
+                } catch (BabuDBException e) {
+                    result.failed(e);
+                }
             }
             
             @Override

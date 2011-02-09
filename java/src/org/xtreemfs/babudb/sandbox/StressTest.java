@@ -55,7 +55,7 @@ public class StressTest {
         
         // start the database
         final BabuDB databaseSystem = BabuDBFactory.createBabuDB(new BabuDBConfig(dbDir, dbDir, numThreads,
-                maxLogFileSize, 10, SyncMode.ASYNC, 1000, 0, false, 16, 1024 * 1024 * 256), null);
+                maxLogFileSize, 10, SyncMode.ASYNC, 1000, 0, false, 16, 1024 * 1024 * 256));
         DatabaseManager dbm = databaseSystem.getDatabaseManager();
         
         // for (int i = 0; i < numDBs; i++)

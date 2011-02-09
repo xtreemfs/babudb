@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -62,7 +62,7 @@ public class SnapshotTest extends TestCase {
     public void testSimpleSnapshot() throws Exception {
         
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
+            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize));
         Database db = database.getDatabaseManager().createDatabase("test", 3);
         
         // add some key-value pairs
@@ -137,7 +137,7 @@ public class SnapshotTest extends TestCase {
     public void testPartialSnapshot() throws Exception {
         
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
+            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize));
         Database db = database.getDatabaseManager().createDatabase("test", 4);
         
         // add some key-value pairs
@@ -213,7 +213,7 @@ public class SnapshotTest extends TestCase {
     
     public void testShutdownRestart() throws Exception {
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
+            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize));
         Database db = database.getDatabaseManager().createDatabase("test", 4);
         
         // add some key-value pairs
@@ -241,7 +241,7 @@ public class SnapshotTest extends TestCase {
         // restart the database
         database.shutdown();
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
+            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize));
         db = database.getDatabaseManager().getDatabase("test");
         snap1 = database.getSnapshotManager().getSnapshotDB("test", "snap1");
         
@@ -255,7 +255,7 @@ public class SnapshotTest extends TestCase {
         database.getCheckpointer().checkpoint();
         database.shutdown();
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
+            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize));
         db = database.getDatabaseManager().getDatabase("test");
         snap1 = database.getSnapshotManager().getSnapshotDB("test", "snap1");
         
@@ -277,7 +277,7 @@ public class SnapshotTest extends TestCase {
         database.getCheckpointer().checkpoint();
         database.shutdown();
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
+            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize));
         
         DatabaseRO snap2 = database.getSnapshotManager().getSnapshotDB("test", "snap2");
         
@@ -291,7 +291,7 @@ public class SnapshotTest extends TestCase {
     
     public void testDelete() throws Exception {
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
+            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize));
         Database db = database.getDatabaseManager().createDatabase("test", 4);
         
         // add some key-value pairs
@@ -324,13 +324,13 @@ public class SnapshotTest extends TestCase {
         // restart the database w/o checkpointing
         database.shutdown();
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
+            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize));
         
         // checkpoint and restart the database
         database.getCheckpointer().checkpoint();
         database.shutdown();
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize),null);
+            SyncMode.SYNC_WRITE, 0, 0, compression, maxNumRecs, maxBlockFileSize));
         
         // check if the formerly deleted snapshot does not exist anymore
         try {

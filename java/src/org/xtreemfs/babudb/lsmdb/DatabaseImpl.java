@@ -26,6 +26,7 @@ import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
+import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.foundation.logging.Logging;
@@ -503,29 +504,11 @@ public class DatabaseImpl implements Database {
     
     /**
      * Creates an in-memory snapshot of all indices in a single database. The
-     * snapshot will be discarded when the system is restarted.
-     * 
-     * NOTE: this method should only be invoked by the framework
-     * 
-     * @throws InterruptedException
-     * @return an array with the snapshot ID for each index in the database
-     */
-    int[] createSnapshot() throws InterruptedException {
-        
-        try {
-            // critical block...
-            dbs.getPersistenceManager().lockService();
-            return proceedCreateSnapshot();
-        } finally {
-            dbs.getPersistenceManager().unlockService();
-        }
-    }
-    
-    /**
-     * Creates an in-memory snapshot of all indices in a single database. The
      * snapshot will be discarded when the system is restarted. This Operation
      * comes without slave-protection. The {@link DiskLogger} has to be locked
      * before executing this method.
+     * 
+     * This method will not generate a {@link LogEntry}.
      * 
      * NOTE: this method should only be invoked by the framework
      * 
@@ -533,37 +516,6 @@ public class DatabaseImpl implements Database {
      */
     public int[] proceedCreateSnapshot() {
         return lsmDB.createSnapshot();
-    }
-    
-    /**
-     * Creates an in-memory snapshot of a given set of indices in a single
-     * database. The snapshot will be restored when the system is restarted.
-     * 
-     * NOTE: this method should only be invoked by the framework
-     * 
-     * @throws BabuDBException
-     *             if the checkpoint was not successful
-     * @throws InterruptedException
-     * @return an array with the snapshot ID for each index in the database
-     */
-    public int[] createSnapshot(SnapshotConfig snap, 
-        boolean appendLogEntry) throws BabuDBException, InterruptedException {
-                
-        if (appendLogEntry) {     
-            dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_SNAP, 
-                                                       new Object[]{ lsmDB.getDatabaseId(), snap })
-                                                       .get();
-        }
-        
-        // critical block...
-        try {
-            dbs.getPersistenceManager().lockService();
-            
-            // create the snapshot
-            return lsmDB.createSnapshot(snap.getIndices());
-        } finally {
-            dbs.getPersistenceManager().unlockService();
-        }
     }
     
     /**
@@ -644,22 +596,6 @@ public class DatabaseImpl implements Database {
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot write snapshot: " + ex, ex);
         }
         
-    }
-    
-    /**
-     * Links the indices to the latest on-disk snapshot, cleans up any
-     * unnecessary in-memory and on-disk data
-     * 
-     * @param viewId
-     *            the viewId of the snapshot
-     * @param sequenceNo
-     *            the sequenceNo of the snaphot
-     * @throws BabuDBException
-     *             if snapshots cannot be cleaned up
-     */
-    public void cleanupSnapshot(final int viewId, final long sequenceNo) throws BabuDBException {
-        
-        proceedCleanupSnapshot(viewId, sequenceNo);
     }
     
     /**

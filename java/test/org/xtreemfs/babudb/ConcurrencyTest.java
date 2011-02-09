@@ -64,7 +64,7 @@ public class ConcurrencyTest extends TestCase {
     public void testLargeIndexWithConcurrentCheckpoint() throws Exception {
         
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 1000, 0,
-            SyncMode.ASYNC, 0, 0, compression, maxNumRecs, maxBlockFileSize, true, 1000, 7), null);
+            SyncMode.ASYNC, 0, 0, compression, maxNumRecs, maxBlockFileSize, true, 1000, 7));
         
         Database db = database.getDatabaseManager().createDatabase("test", 1);
         
