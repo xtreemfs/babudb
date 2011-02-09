@@ -146,7 +146,7 @@ public class DatabaseImpl implements Database {
 
         try {
             dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_INSERT, 
-                                                       new Object[]{ irg, lsmDB, listener }); 
+                           new Object[]{ irg.getRecord(), lsmDB, listener }); 
             
             // in case of asynchronous inserts, complete the request immediately
             if (dbs.getConfig().getSyncMode() == SyncMode.ASYNC) {
