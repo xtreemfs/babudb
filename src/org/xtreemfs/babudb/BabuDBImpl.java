@@ -50,6 +50,8 @@ import org.xtreemfs.foundation.VersionManagement;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
 
+import static org.xtreemfs.babudb.log.LogEntry.*;
+
 /**
  * BabuDB main class.
  * 
@@ -522,12 +524,14 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
     /**
      * Replays the database operations log.
      * 
-     * @param from
-     *            - LSN to replay the logs from.
+     * @param from - LSN to replay the logs from.
+     * 
      * @return the LSN to assign to the next operation
+     * 
      * @throws BabuDBException
      */
     private LSN replayLogs(LSN from) throws BabuDBException {
+        
         try {
             File f = new File(configuration.getDbLogDir());
             File[] logFiles = f.listFiles(new FilenameFilter() {
@@ -553,59 +557,31 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
                     Object[] arguments = processingLogic.deserializeRequest(le.getPayload());
                     
                     // execute the in-memory logic
-                    processingLogic.before(arguments);
-                    processingLogic.after(arguments);
-                    
-//                    
-//                    switch (le.getPayloadType()) {
-//                    
-//                    case LogEntry.PAYLOAD_TYPE_INSERT:
-//                        InsertRecordGroup ai = InsertRecordGroup.deserialize(le.getPayload());
-//                        databaseManager.insert(ai);
-//                        break;
-//                    
-//                    case LogEntry.PAYLOAD_TYPE_SNAP:
-//                        ObjectInputStream oin = null;
-//                        try {
-//                            oin = new ObjectInputStream(new ByteArrayInputStream(le.getPayload().array()));
-//                            
-//                            // deserialize the snapshot configuration
-//                            int dbId = oin.readInt();
-//                            SnapshotConfig snap = (SnapshotConfig) oin.readObject();
-//                            
-//                            Database db = databaseManager.getDatabase(dbId);
-//                            if (db == null)
-//                                break;
-//                            
-//                            snapshotManager.createPersistentSnapshot(db.getName(), snap, false);
-//                        } catch (Exception e) {
-//                            throw new BabuDBException(ErrorCode.IO_ERROR,
-//                                "Snapshot could not be recovered because: " + e.getMessage(), e);
-//                        } finally {
-//                            if (oin != null)
-//                                oin.close();
-//                        }
-//                        break;
-//                    
-//                    case LogEntry.PAYLOAD_TYPE_SNAP_DELETE:
-//
-//                        byte[] payload = le.getPayload().array();
-//                        int offs = payload[0];
-//                        String dbName = new String(payload, 1, offs);
-//                        String snapName = new String(payload, offs + 1, payload.length - offs - 1);
-//                        
-//                        snapshotManager.deletePersistentSnapshot(dbName, snapName, false);
-//                        break;
-//                    
-//                    default: // create, copy and delete are skipped
-//                        break;
-//                    }
+                    try {
+	                    processingLogic.before(arguments);
+	                    processingLogic.after(arguments);
+                    } catch (BabuDBException be) {
+                    	
+                    	// ignore DB_EXIST exception, because we might replay create-database operations here!
+                    	// these databases may already exist, if they could be retrieved from the on-disk LSM trees
+                    	// the same applies to NO_SUCH_SNAPSHOT exceptions and the replay of delete-snapshot operations ... etc.
+                    	if ((be.getErrorCode() != ErrorCode.DB_EXISTS || le.getPayloadType() != PAYLOAD_TYPE_CREATE) &&
+                    	    ((be.getErrorCode() != ErrorCode.DB_EXISTS && be.getErrorCode() != ErrorCode.NO_SUCH_DB)   
+                    	            || le.getPayloadType() != PAYLOAD_TYPE_COPY) &&
+                    	    (be.getErrorCode() != ErrorCode.NO_SUCH_DB || le.getPayloadType() != PAYLOAD_TYPE_DELETE) &&
+                    	    (be.getErrorCode() != ErrorCode.SNAP_EXISTS || le.getPayloadType() != PAYLOAD_TYPE_SNAP) &&
+                    	    (be.getErrorCode() != ErrorCode.NO_SUCH_SNAPSHOT || le.getPayloadType() != PAYLOAD_TYPE_SNAP_DELETE)) {
+                    		
+                    		throw be;
+                    	}
+                    }
                     
                     // set LSN
                     nextLSN = new LSN(le.getViewId(), le.getLogSequenceNo() + 1L);
                 } finally {
-                    if (le != null)
+                    if (le != null) {
                         le.free();
+                    }
                 }
                 
             }
@@ -619,15 +595,18 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
             }
             
         } catch (IOException ex) {
+            
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot load "
                 + "database operations log, file might be corrupted", ex);
         } catch (Exception ex) {
+            
             if (ex.getCause() instanceof LogEntryException) {
                 throw new BabuDBException(ErrorCode.IO_ERROR, "corrupted/incomplete log entry in database "
                     + "operations log", ex.getCause());
-            } else
+            } else {
                 throw new BabuDBException(ErrorCode.IO_ERROR, "corrupted/incomplete log entry in database "
                     + "operations log", ex);
+            }
         }
     }
     

@@ -59,6 +59,8 @@ public abstract class InMemoryProcessing {
      * the makePersistent() method in {@link PersistenceManager}.
      * 
      * @param args - the operation's arguments.
+     * 
+     * @throws BabuDBException if method fails due a software failure.
      */
-    public void after(Object[] args) {}
+    public void after(Object[] args) throws BabuDBException {}
 }

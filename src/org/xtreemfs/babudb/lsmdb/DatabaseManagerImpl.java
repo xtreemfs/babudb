@@ -10,12 +10,8 @@ package org.xtreemfs.babudb.lsmdb;
 
 import static org.xtreemfs.babudb.log.LogEntry.*;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -35,7 +31,6 @@ import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
-import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
@@ -458,57 +453,6 @@ public class DatabaseManagerImpl implements DatabaseManager {
                     dbsById.put(dbId, newDB);
                     dbsByName.put(destDB, newDB);
                     dbs.getDBConfigFile().save();
-                }
-            }
-        });
-        
-        dbs.getPersistenceManager().registerInMemoryProcessing(PAYLOAD_TYPE_SNAP, 
-                new InMemoryProcessing() {
-            
-            @Override
-            public ReusableBuffer serializeRequest(Object[] args) throws BabuDBException {
-                
-                // parse args
-                int dbId = (Integer) args[0];
-                SnapshotConfig snap = (SnapshotConfig) args[1];
-                
-                // serialize the snapshot configuration
-                ReusableBuffer buf = null;
-                try {
-                    ByteArrayOutputStream bout = new ByteArrayOutputStream();
-                    ObjectOutputStream oout = new ObjectOutputStream(bout);
-                    oout.writeInt(dbId);
-                    oout.writeObject(snap);
-                    buf = ReusableBuffer.wrap(bout.toByteArray());
-                    oout.close();
-                } catch (IOException exc) {
-                    throw new BabuDBException(ErrorCode.IO_ERROR, "could not serialize snapshot configuration: "
-                        + snap.getClass(), exc);
-                }
-                
-                return buf;
-            }
-
-            @Override
-            public Object[] deserializeRequest(ReusableBuffer serialized) throws BabuDBException {
-                ObjectInputStream oin = null;
-                try {
-                    oin = new ObjectInputStream(new ByteArrayInputStream(serialized.array()));
-                    int dbId = oin.readInt();
-                    SnapshotConfig snap = (SnapshotConfig) oin.readObject();
-                    
-                    return new Object[] { dbId, snap };
-                } catch (Exception e) {
-                    throw new BabuDBException(ErrorCode.IO_ERROR,
-                            "Could not deserialize operation of type " + PAYLOAD_TYPE_SNAP + 
-                                ", because: "+e.getMessage(), e);
-                } finally {
-                    try {
-                        serialized.flip();
-                        if (oin != null) oin.close();
-                    } catch (IOException ioe) {
-                        /* who cares? */
-                    }
                 }
             }
         });

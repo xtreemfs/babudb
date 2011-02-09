@@ -58,6 +58,7 @@ public final class BabuDBFactory {
      * @param staticInit
      * @throws BabuDBException
      */
+    @Deprecated
     public final static BabuDB createBabuDB(BabuDBConfig configuration, 
             StaticInitialization staticInit) throws BabuDBException {
         

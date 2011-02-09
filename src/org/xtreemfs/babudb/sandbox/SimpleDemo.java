@@ -20,7 +20,7 @@ public class SimpleDemo {
         try {
             // start the database
             BabuDB databaseSystem = BabuDBFactory.createBabuDB(new BabuDBConfig("myDatabase/", "myDatabase/",
-                2, 1024 * 1024 * 16, 5 * 60, SyncMode.SYNC_WRITE, 0, 0, false, 16, 1024 * 1024 * 512),null);
+                2, 1024 * 1024 * 16, 5 * 60, SyncMode.SYNC_WRITE, 0, 0, false, 16, 1024 * 1024 * 512));
             DatabaseManager dbm = databaseSystem.getDatabaseManager();
             
             // create a new database called myDB

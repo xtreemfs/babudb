@@ -7,7 +7,12 @@
  */
 package org.xtreemfs.babudb.snapshots;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -28,6 +33,7 @@ import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.FSUtils;
 
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_SNAP;
 import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_SNAP_DELETE;
 
 public class SnapshotManagerImpl implements SnapshotManager {
@@ -90,69 +96,17 @@ public class SnapshotManagerImpl implements SnapshotManager {
         return snap;
     }
     
-    @Override
-    public void createPersistentSnapshot(String dbName, SnapshotConfig snap) throws BabuDBException {
-        createPersistentSnapshot(dbName, snap, true);
-    }
-    
-    /**
-     * Triggers the creation of a persistent snapshot of a database. Snapshot
-     * properties can be determined in a fine-grained manner, i.e. single key
-     * ranges can be selected from single indices.
-     * 
-     * @param dbName
-     *            the name of the database to create the snapshot from
-     * @param snap
-     *            the snapshot configuration
-     * @throws BabuDBException
-     *             if snapshot creation failed
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.SnapshotManager#createPersistentSnapshot(java.lang.String, org.xtreemfs.babudb.snapshots.SnapshotConfig)
      */
-    public void createPersistentSnapshot(String dbName, SnapshotConfig snap, boolean createLogEntry)
+    @Override
+    public void createPersistentSnapshot(String dbName, SnapshotConfig snap)
         throws BabuDBException {
         
-        try {
-            Map<String, Snapshot> snapMap = snapshotDBs.get(dbName);
-            if (snapMap == null) {
-                snapMap = new HashMap<String, Snapshot>();
-                snapshotDBs.put(dbName, snapMap);
-            }
-            
-            // if the snapshot exists already ...
-            if (snapMap.containsKey(snap.getName())) {
-                
-                // if no log entry needs to be created, i.e. the log is being
-                // replayed, ignore the request
-                if (!createLogEntry)
-                    return;
-                
-                throw new BabuDBException(ErrorCode.SNAP_EXISTS, "snapshot '" + snap.getName()
-                    + "' already exists");
-            }
-            
-            snapMap.put(snap.getName(), new Snapshot(null));
-            
-            // first, create new in-memory snapshots of all indices
-            int[] snapIds = ((DatabaseImpl) dbs.getDatabaseManager().getDatabase(dbName)).createSnapshot(
-                snap, createLogEntry);
-            
-            // then, enqueue a snapshot materialization request in the
-            // checkpointer's queue
-            ((CheckpointerImpl) dbs.getCheckpointer()).addSnapshotMaterializationRequest(dbName, snapIds,
-                snap);
-            
-            // as long as the snapshot has not been persisted yet, add a view on
-            // the
-            // current snapshot in the original database to the snapshot DB map
-            synchronized (snapshotDBs) {
-                Snapshot s = snapMap.get(snap.getName());
-                if (s.getView() == null)
-                    s.setView(new InMemoryView(dbs, dbName, snap, snapIds));
-            }
-            
-        } catch (InterruptedException exc) {
-            throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "an error occurred", exc);
-        }
-        
+        // synchronously executing the request
+        dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_SNAP, 
+                new Object[]{ ((DatabaseImpl) dbs.getDatabaseManager().getDatabase(dbName))
+                                    .getLSMDB().getDatabaseId(), snap }).get();
     }
     
     /**
@@ -259,6 +213,134 @@ public class SnapshotManagerImpl implements SnapshotManager {
      * Feed the persistenceManager with the knowledge on how to handle snapshot related requests.
      */
     private void initializePerisistenceManager() {
+        
+        dbs.getPersistenceManager().registerInMemoryProcessing(PAYLOAD_TYPE_SNAP, 
+                new InMemoryProcessing() {
+            
+            @Override
+            public ReusableBuffer serializeRequest(Object[] args) throws BabuDBException {
+                
+                // parse args
+                int dbId = (Integer) args[0];
+                SnapshotConfig snap = (SnapshotConfig) args[1];
+                
+                // serialize the snapshot configuration
+                ReusableBuffer buf = null;
+                try {
+                    ByteArrayOutputStream bout = new ByteArrayOutputStream();
+                    ObjectOutputStream oout = new ObjectOutputStream(bout);
+                    oout.writeInt(dbId);
+                    // TODO add dbName to simplify the in-memory processing
+                    oout.writeObject(snap);
+                    buf = ReusableBuffer.wrap(bout.toByteArray());
+                    oout.close();
+                } catch (IOException exc) {
+                    throw new BabuDBException(ErrorCode.IO_ERROR, "could not serialize snapshot " +
+                                "configuration: " + snap.getClass(), exc);
+                }
+                
+                return buf;
+            }
+
+            @Override
+            public Object[] deserializeRequest(ReusableBuffer serialized) throws BabuDBException {
+                ObjectInputStream oin = null;
+                try {
+                    oin = new ObjectInputStream(new ByteArrayInputStream(serialized.array()));
+                    int dbId = oin.readInt();
+                    // TODO add dbName to simplify the in-memory processing
+                    SnapshotConfig snap = (SnapshotConfig) oin.readObject();
+                    
+                    return new Object[] { dbId, snap };
+                } catch (Exception e) {
+                    throw new BabuDBException(ErrorCode.IO_ERROR,
+                            "Could not deserialize operation of type " + PAYLOAD_TYPE_SNAP + 
+                                ", because: "+e.getMessage(), e);
+                } finally {
+                    try {
+                        serialized.flip();
+                        if (oin != null) oin.close();
+                    } catch (IOException ioe) {
+                        /* who cares? */
+                    }
+                }
+            }
+            
+            /* (non-Javadoc)
+             * @see org.xtreemfs.babudb.api.InMemoryProcessing#before(java.lang.Object[])
+             */
+            @Override
+            public void before(Object[] args) throws BabuDBException {
+                
+                // parse args
+                int dbId = (Integer) args[0];
+                SnapshotConfig snap = (SnapshotConfig) args[1];
+                // TODO add dbName to simplify the in-memory processing
+                String dbName = 
+                    ((DatabaseManagerImpl) dbs.getDatabaseManager()).getDatabase(dbId).getName();
+                
+                Map<String, Snapshot> snapMap = snapshotDBs.get(dbName);
+                if (snapMap == null) {
+                    snapMap = new HashMap<String, Snapshot>();
+                    snapshotDBs.put(dbName, snapMap);
+                }
+                
+                // if the snapshot exists already ...
+                if (snapMap.containsKey(snap.getName())) {
+                    
+                    throw new BabuDBException(ErrorCode.SNAP_EXISTS, "snapshot '" + snap.getName()
+                        + "' already exists");
+                }
+            }
+            
+            /* (non-Javadoc)
+             * @see org.xtreemfs.babudb.api.InMemoryProcessing#after(java.lang.Object[])
+             */
+            @Override
+            public void after(Object[] args) throws BabuDBException {
+                
+                // parse args
+                int dbId = (Integer) args[0];
+                SnapshotConfig snap = (SnapshotConfig) args[1];
+                // TODO add dbName to simplify the in-memory processing
+                DatabaseImpl org = (DatabaseImpl) 
+                        ((DatabaseManagerImpl) dbs.getDatabaseManager()).getDatabase(dbId);
+                
+                String dbName = org.getName();
+                
+                Map<String, Snapshot> snapMap = snapshotDBs.get(dbName);
+                snapMap.put(snap.getName(), new Snapshot(null));
+                
+                // first, create new in-memory snapshots of all indices
+                int[] snapIds = null;
+                try {
+                    dbs.getPersistenceManager().lockService();
+                    
+                    // create the snapshot
+                    snapIds = org.getLSMDB().createSnapshot(snap.getIndices());
+                } catch (InterruptedException e) {
+                    throw new BabuDBException(ErrorCode.INTERRUPTED, e.getMessage());
+                } finally {
+                    dbs.getPersistenceManager().unlockService();
+                }
+                
+                // then, enqueue a snapshot materialization request in the
+                // checkpointer's queue
+                ((CheckpointerImpl) dbs.getCheckpointer()).addSnapshotMaterializationRequest(
+                        dbName, snapIds, snap);
+                
+                // as long as the snapshot has not been persisted yet, add a view on
+                // the current snapshot in the original database to the snapshot DB map
+                synchronized (snapshotDBs) {
+                    
+                    Snapshot s = snapMap.get(snap.getName());
+                    if (s.getView() == null) {
+                        s.setView(new InMemoryView(dbs, dbName, snap, snapIds));
+                    }
+                }
+            }
+        });
+
         dbs.getPersistenceManager().registerInMemoryProcessing(PAYLOAD_TYPE_SNAP_DELETE, 
                 new InMemoryProcessing() {
             
