@@ -1,17 +1,17 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                   Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * All rights reserved.
  */
-
 package org.xtreemfs.babudb.config;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
-import java.util.Vector;
 
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.foundation.logging.Logging;
@@ -111,14 +111,9 @@ public class BabuDBConfig extends Config {
     protected int      mmapLimit;
     
     /**
-     * Paths for optionally plugins used by BabuDB.
+     * Paths to plugins and their corresponding configurations for optionally plugins used by BabuDB.
      */
-    protected List<String> pluginPaths;
-    
-    /**
-     * Paths for the configuration files of optionally plugins used by BabuDB.
-     */
-    protected List<String> pluginConfigPaths;
+    protected Map<String, String> plugins = new HashMap<String, String>();
     
     /**
      * Creates a new BabuDB configuration.
@@ -190,8 +185,6 @@ public class BabuDBConfig extends Config {
         this.maxBlockFileSize = maxBlockFileSize;
         this.disableMMap = disableMMap;
         this.mmapLimit = mmapLimit;
-        
-        this.pluginPaths = new Vector<String>();
     }
     
     /**
@@ -302,18 +295,11 @@ public class BabuDBConfig extends Config {
         
         this.mmapLimit = this.readOptionalInt("babudb.mmapLimit", -1);
         
-        this.pluginPaths = new Vector<String>(); 
         int count = 0;
         String pluginPath = null;
-        while ((pluginPath = this.readOptionalString("plugin" + count++, null)) 
-                != null) {
-            this.pluginPaths.add(pluginPath);
-        }
-        
-        this.pluginConfigPaths = new Vector<String>(count);
-        for (int i = 0; i < count; i++) {
-            this.pluginConfigPaths.add(this.readOptionalString("pluginConfig"+i, 
-                    null));
+        while ((pluginPath = this.readOptionalString("babudb.pluginPath." + count, null)) != null) {
+            this.plugins.put(pluginPath, readOptionalString("babudb.pluginConfig." + count, null));
+            count++;
         }
         
         checkArgs(this.baseDir, this.dbLogDir, numThreads, maxLogfileSize, 
@@ -385,12 +371,8 @@ public class BabuDBConfig extends Config {
         return this.mmapLimit;
     }
     
-    public List<String> getPluginPaths() {
-        return this.pluginPaths;
-    }
-    
-    public List<String> getPluginConfigPaths() {
-        return this.pluginConfigPaths;
+    public Map<String, String> getPlugins() {
+        return plugins;
     }
  
     public String toString() {
@@ -412,11 +394,9 @@ public class BabuDBConfig extends Config {
         if (!disableMMap)
             buf.append("#               mmap limit: " + mmapLimit + "\n");
         int i = 0;
-        for (String pluginPath : pluginPaths) {
-            buf.append("#               plugin " + (i++) + ": " + pluginPath + 
-                    "\n");
-            buf.append("#               plugin config: " + 
-                    pluginConfigPaths.get(i) + "\n");
+        for (Entry<String, String> e : plugins.entrySet()) {
+            buf.append("#               plugin " + (i++) + ": " + e.getKey() + "\n");
+            buf.append("#               plugin config: " + e.getValue() + "\n");    
         }
         return buf.toString();
     }
