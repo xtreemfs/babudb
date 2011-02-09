@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.xtreemfs.babudb.api.BabuDB;
 import org.xtreemfs.babudb.api.Checkpointer;
 import org.xtreemfs.babudb.api.DatabaseManager;
+import org.xtreemfs.babudb.api.InMemoryProcessing;
 import org.xtreemfs.babudb.api.PersistenceManager;
 import org.xtreemfs.babudb.api.SnapshotManager;
 import org.xtreemfs.babudb.api.StaticInitialization;
@@ -136,11 +137,11 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
     BabuDBImpl(BabuDBConfig configuration) throws BabuDBException {
         
         this.configuration = configuration;
+        this.permMan = new PersistenceManagerImpl();
         this.databaseManager = new DatabaseManagerImpl(this);
         this.dbConfigFile = new DBConfig(this);
         this.snapshotManager = new SnapshotManagerImpl(this);
         this.dbCheckptr = new CheckpointerImpl(this);
-        this.permMan = new PersistenceManagerImpl();
     }
     
     /*
@@ -325,6 +326,7 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
                 throw new BabuDBException(ErrorCode.IO_ERROR,
                     "Cannot start " + "database operations logger!", ex);
             }
+            this.permMan.init(new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo() - 1L));
             this.permMan.setLogger(logger);
             
             if (configuration.getNumThreads() > 0) {
@@ -543,49 +545,61 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
                 try {
                     le = it.next();
                     
-                    switch (le.getPayloadType()) {
+                    // get the processing logic for the dedicated logEntry type
+                    InMemoryProcessing processingLogic = 
+                        permMan.getProcessingLogic().get(le.getPayloadType());
                     
-                    case LogEntry.PAYLOAD_TYPE_INSERT:
-                        InsertRecordGroup ai = InsertRecordGroup.deserialize(le.getPayload());
-                        databaseManager.insert(ai);
-                        break;
+                    // deserialize the arguments retrieved from the logEntry
+                    Object[] arguments = processingLogic.deserializeRequest(le.getPayload());
                     
-                    case LogEntry.PAYLOAD_TYPE_SNAP:
-                        ObjectInputStream oin = null;
-                        try {
-                            oin = new ObjectInputStream(new ByteArrayInputStream(le.getPayload().array()));
-                            
-                            // deserialize the snapshot configuration
-                            int dbId = oin.readInt();
-                            SnapshotConfig snap = (SnapshotConfig) oin.readObject();
-                            
-                            Database db = databaseManager.getDatabase(dbId);
-                            if (db == null)
-                                break;
-                            
-                            snapshotManager.createPersistentSnapshot(db.getName(), snap, false);
-                        } catch (Exception e) {
-                            throw new BabuDBException(ErrorCode.IO_ERROR,
-                                "Snapshot could not be recovered because: " + e.getMessage(), e);
-                        } finally {
-                            if (oin != null)
-                                oin.close();
-                        }
-                        break;
+                    // execute the in-memory logic
+                    processingLogic.before(arguments);
+                    processingLogic.after(arguments);
                     
-                    case LogEntry.PAYLOAD_TYPE_SNAP_DELETE:
-
-                        byte[] payload = le.getPayload().array();
-                        int offs = payload[0];
-                        String dbName = new String(payload, 1, offs);
-                        String snapName = new String(payload, offs + 1, payload.length - offs - 1);
-                        
-                        snapshotManager.deletePersistentSnapshot(dbName, snapName, false);
-                        break;
-                    
-                    default: // create, copy and delete are skipped
-                        break;
-                    }
+//                    
+//                    switch (le.getPayloadType()) {
+//                    
+//                    case LogEntry.PAYLOAD_TYPE_INSERT:
+//                        InsertRecordGroup ai = InsertRecordGroup.deserialize(le.getPayload());
+//                        databaseManager.insert(ai);
+//                        break;
+//                    
+//                    case LogEntry.PAYLOAD_TYPE_SNAP:
+//                        ObjectInputStream oin = null;
+//                        try {
+//                            oin = new ObjectInputStream(new ByteArrayInputStream(le.getPayload().array()));
+//                            
+//                            // deserialize the snapshot configuration
+//                            int dbId = oin.readInt();
+//                            SnapshotConfig snap = (SnapshotConfig) oin.readObject();
+//                            
+//                            Database db = databaseManager.getDatabase(dbId);
+//                            if (db == null)
+//                                break;
+//                            
+//                            snapshotManager.createPersistentSnapshot(db.getName(), snap, false);
+//                        } catch (Exception e) {
+//                            throw new BabuDBException(ErrorCode.IO_ERROR,
+//                                "Snapshot could not be recovered because: " + e.getMessage(), e);
+//                        } finally {
+//                            if (oin != null)
+//                                oin.close();
+//                        }
+//                        break;
+//                    
+//                    case LogEntry.PAYLOAD_TYPE_SNAP_DELETE:
+//
+//                        byte[] payload = le.getPayload().array();
+//                        int offs = payload[0];
+//                        String dbName = new String(payload, 1, offs);
+//                        String snapName = new String(payload, offs + 1, payload.length - offs - 1);
+//                        
+//                        snapshotManager.deletePersistentSnapshot(dbName, snapName, false);
+//                        break;
+//                    
+//                    default: // create, copy and delete are skipped
+//                        break;
+//                    }
                     
                     // set LSN
                     nextLSN = new LSN(le.getViewId(), le.getLogSequenceNo() + 1L);

@@ -520,11 +520,11 @@ public class DatabaseManagerImpl implements DatabaseManager {
             public ReusableBuffer serializeRequest(Object[] args) throws BabuDBException {
                 
                 // parse args
-                BabuDBInsertGroup irg = (BabuDBInsertGroup) args[0];
+                InsertRecordGroup irg = (InsertRecordGroup) args[0];
                 
-                int size = irg.getRecord().getSize();
+                int size = irg.getSize();
                 ReusableBuffer buf = BufferPool.allocate(size);
-                irg.getRecord().serialize(buf);
+                irg.serialize(buf);
                 buf.flip();
                 
                 return buf;
@@ -546,15 +546,15 @@ public class DatabaseManagerImpl implements DatabaseManager {
             public void before(Object[] args) throws BabuDBException {
                 
                 // parse args
-                BabuDBInsertGroup irg = (BabuDBInsertGroup) args[0];
+                InsertRecordGroup irg = (InsertRecordGroup) args[0];
                 LSMDatabase lsmDB = (LSMDatabase) args[1];
                 if (lsmDB == null) {
-                    lsmDB = ((DatabaseImpl) dbsById.get(irg.getRecord().getDatabaseId())).getLSMDB();
+                    lsmDB = ((DatabaseImpl) dbsById.get(irg.getDatabaseId())).getLSMDB();
                 }
                 
                 int numIndices = lsmDB.getIndexCount();
                 
-                for (InsertRecord ir : irg.getRecord().getInserts()) {
+                for (InsertRecord ir : irg.getInserts()) {
                     if ((ir.getIndexId() >= numIndices) || 
                         (ir.getIndexId() < 0)) {
                         
@@ -574,10 +574,10 @@ public class DatabaseManagerImpl implements DatabaseManager {
             public void after(Object[] args) {
                 
                 // parse args
-                BabuDBInsertGroup irg = (BabuDBInsertGroup) args[0];
+                InsertRecordGroup irg = (InsertRecordGroup) args[0];
                 LSMDatabase lsmDB = (LSMDatabase) args[1];
                 if (lsmDB == null) {
-                    lsmDB = ((DatabaseImpl) dbsById.get(irg.getRecord().getDatabaseId())).getLSMDB();
+                    lsmDB = ((DatabaseImpl) dbsById.get(irg.getDatabaseId())).getLSMDB();
                 }
                 BabuDBRequestResultImpl<Object> listener = 
                     (BabuDBRequestResultImpl<Object>) args[2];
@@ -587,7 +587,7 @@ public class DatabaseManagerImpl implements DatabaseManager {
                 if (dbs.getConfig().getSyncMode() != SyncMode.ASYNC) {
                 
                     // insert into the in-memory-tree
-                    for (InsertRecord ir : irg.getRecord().getInserts()) {
+                    for (InsertRecord ir : irg.getInserts()) {
                         LSMTree index = lsmDB.getIndex(
                                 ir.getIndexId());
                         
