@@ -6,7 +6,7 @@
  * 
 */
 
-package org.xtreemfs.babudb;
+package org.xtreemfs.babudb.log;
 
 import org.junit.After;
 import org.junit.AfterClass;

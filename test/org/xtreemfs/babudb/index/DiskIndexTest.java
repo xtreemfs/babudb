@@ -6,7 +6,7 @@
  * 
  */
 
-package org.xtreemfs.babudb;
+package org.xtreemfs.babudb.index;
 
 import java.io.File;
 import java.io.IOException;
