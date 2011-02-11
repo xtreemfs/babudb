@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -7,12 +7,10 @@
  */
 package org.xtreemfs.babudb.snapshots;
 
-import java.util.Iterator;
-import java.util.Map.Entry;
-
 import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
 import org.xtreemfs.babudb.api.database.DatabaseRO;
+import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.api.database.UserDefinedLookup;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 
@@ -60,18 +58,17 @@ public class Snapshot implements DatabaseRO {
         return result;
     }
 
-    /*
-     * (non-Javadoc)
+    /* (non-Javadoc)
      * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#prefixLookup(int, byte[], java.lang.Object)
      */
     @Override
-    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> prefixLookup(int indexId, byte[] key,
+    public DatabaseRequestResult<ResultSet<byte[], byte[]>> prefixLookup(int indexId, byte[] key,
             Object context) {
         
-        BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>> result = 
-            new BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>>(
-                    context);
-        Iterator<Entry<byte[], byte[]>> r;
+        BabuDBRequestResultImpl<ResultSet<byte[], byte[]>> result = 
+            new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(context);
+        
+        ResultSet<byte[], byte[]> r;
         try {
             r = view.directPrefixLookup(indexId, key, true);
             result.finished(r);
@@ -83,13 +80,13 @@ public class Snapshot implements DatabaseRO {
     }
 
     @Override
-    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> reversePrefixLookup(int indexId, byte[] key,
+    public DatabaseRequestResult<ResultSet<byte[], byte[]>> reversePrefixLookup(int indexId, byte[] key,
             Object context) {
         
-        BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>> result = 
-            new BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>>(
+        BabuDBRequestResultImpl<ResultSet<byte[], byte[]>> result = 
+            new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(
                     context);
-        Iterator<Entry<byte[], byte[]>> r;
+        ResultSet<byte[], byte[]> r;
         try {
             r = view.directPrefixLookup(indexId, key, false);
             result.finished(r);
@@ -101,12 +98,12 @@ public class Snapshot implements DatabaseRO {
     }
     
     @Override
-    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> rangeLookup(int indexId, byte[] from,
+    public DatabaseRequestResult<ResultSet<byte[], byte[]>> rangeLookup(int indexId, byte[] from,
         byte[] to, Object context) {
         
-        BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>> result = 
-            new BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>>(context);
-        Iterator<Entry<byte[], byte[]>> r;
+        BabuDBRequestResultImpl<ResultSet<byte[], byte[]>> result = 
+            new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(context);
+        ResultSet<byte[], byte[]> r;
         try {
             r = view.directRangeLookup(indexId, from, to, true);
             result.finished(r);
@@ -118,13 +115,13 @@ public class Snapshot implements DatabaseRO {
     }
 
     @Override
-    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> reverseRangeLookup(int indexId, byte[] from,
+    public DatabaseRequestResult<ResultSet<byte[], byte[]>> reverseRangeLookup(int indexId, byte[] from,
         byte[] to, Object context) {
 
-        BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>> result = 
-            new BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>>(
-                    context);
-        Iterator<Entry<byte[], byte[]>> r;
+        BabuDBRequestResultImpl<ResultSet<byte[], byte[]>> result = 
+            new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(context);
+        
+        ResultSet<byte[], byte[]> r;
         try {
             r = view.directRangeLookup(indexId, from, to, false);
             result.finished(r);

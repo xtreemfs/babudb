@@ -1,11 +1,10 @@
 /*
- * Copyright (c) 2008, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2008 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-
 package org.xtreemfs.babudb.index.reader;
 
 import java.io.File;
@@ -16,11 +15,10 @@ import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
-import java.util.Iterator;
-import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.ByteRange;
 import org.xtreemfs.foundation.logging.Logging;
@@ -198,7 +196,7 @@ public class DiskIndex {
         return firstBlocksEntryCount + lastBlockEntryCount;
     }
     
-    public Iterator<Entry<byte[], byte[]>> rangeLookup(final byte[] from, final byte[] to,
+    public ResultSet<byte[], byte[]> rangeLookup(final byte[] from, final byte[] to,
         final boolean ascending) {
         
         // return iterator for mmap'ed indices
@@ -245,19 +243,19 @@ public class DiskIndex {
     }
     
     public void destroy() throws IOException {
-        // for (FileChannel c : dbFileChannels) {
-        // c.close();
-        // }
+        blockIndex.free();
+        for (FileChannel c : dbFileChannels) {
+            c.close();
+        }
     }
     
-    public void finalize() {
-        for (FileChannel c : dbFileChannels) {
-            try {
-                c.close();
-            } catch (IOException exc) {
-                Logging.logError(Logging.LEVEL_ERROR, this, exc);
-            }
+    public void finalize() throws Throwable {
+        try {
+            destroy();
+        } catch (IOException exc) {
+            Logging.logError(Logging.LEVEL_ERROR, this, exc);
         }
+        super.finalize();
     }
     
     protected BlockReader getBlock(int startBlockOffset, int endBlockOffset, ByteBuffer map) {

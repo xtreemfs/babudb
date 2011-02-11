@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -8,12 +8,12 @@
 package org.xtreemfs.babudb.snapshots;
 
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.api.BabuDB;
+import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
@@ -57,16 +57,16 @@ public class InMemoryView implements BabuDBView {
     }
     
     @Override
-    public Iterator<Entry<byte[], byte[]>> directPrefixLookup(final int indexId, final byte[] key,
+    public ResultSet<byte[], byte[]> directPrefixLookup(final int indexId, final byte[] key,
         final boolean ascending) throws BabuDBException {
         
         final Integer snapId = snapIDMap.get(indexId);
         if (snapId == null)
             throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + indexId + " does not exist");
         
-        return new Iterator<Entry<byte[], byte[]>>() {
+        return new ResultSet<byte[], byte[]>() {
             
-            private Iterator<Entry<byte[], byte[]>> it;
+            private ResultSet<byte[], byte[]> it;
             
             private Entry<byte[], byte[]>           next;
             
@@ -107,21 +107,25 @@ public class InMemoryView implements BabuDBView {
                 
                 next = null;
             }
-            
+
+            @Override
+            public void free() {
+                it.free();
+            }
         };
     }
     
     @Override
-    public Iterator<Entry<byte[], byte[]>> directRangeLookup(final int indexId, final byte[] from,
+    public ResultSet<byte[], byte[]> directRangeLookup(final int indexId, final byte[] from,
         final byte[] to, final boolean ascending) throws BabuDBException {
         
         final Integer snapId = snapIDMap.get(indexId);
         if (snapId == null)
             throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + indexId + " does not exist");
         
-        return new Iterator<Entry<byte[], byte[]>>() {
+        return new ResultSet<byte[], byte[]>() {
             
-            private Iterator<Entry<byte[], byte[]>> it;
+            private ResultSet<byte[], byte[]> it;
             
             private Entry<byte[], byte[]>           next;
             
@@ -161,6 +165,11 @@ public class InMemoryView implements BabuDBView {
                 }
                 
                 next = null;
+            }
+
+            @Override
+            public void free() {
+                it.free();
             }
             
         };

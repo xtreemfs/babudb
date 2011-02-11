@@ -9,11 +9,9 @@ package org.xtreemfs.babudb;
 
 import static org.xtreemfs.babudb.BabuDBFactory.BABUDB_VERSION;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.util.List;
 import java.util.Vector;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -38,11 +36,9 @@ import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
 import org.xtreemfs.babudb.lsmdb.DBConfig;
 import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
 import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
-import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSMDBWorker;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
 import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.LifeCycleThread;
@@ -153,7 +149,7 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
      * org.xtreemfs.babudb.StaticInitialization)
      */
     @Override
-    public void init(final StaticInitialization staticInit) throws BabuDBException {
+    public void init(StaticInitialization staticInit) throws BabuDBException {
         
         snapshotManager.init();
         
@@ -418,15 +414,16 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
     public void __test_killDB_dangerous() {
         try {
             logger.stop();
+            logger.destroy();
             if (worker != null)
                 for (LSMDBWorker w : worker)
                     w.stop();
             dbCheckptr.stop();
             
-        } catch (IllegalMonitorStateException ex) {
+        } catch (Exception ex) {
             // we will probably get that when we kill a thread because we do
             // evil stuff here ;-)
-        }
+        } 
     }
     
     /*
@@ -548,32 +545,35 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
                 LogEntry le = null;
                 try {
                     le = it.next();
+                    byte type = le.getPayloadType();
                     
-                    // get the processing logic for the dedicated logEntry type
-                    InMemoryProcessing processingLogic = 
-                        permMan.getProcessingLogic().get(le.getPayloadType());
+                    // create, copy and delete are not replayed
+                    if (type != PAYLOAD_TYPE_CREATE &&
+                        type != PAYLOAD_TYPE_COPY &&
+                        type != PAYLOAD_TYPE_DELETE) {
                     
-                    // deserialize the arguments retrieved from the logEntry
-                    Object[] arguments = processingLogic.deserializeRequest(le.getPayload());
+                        // get the processing logic for the dedicated logEntry type
+                        InMemoryProcessing processingLogic = permMan.getProcessingLogic().get(type);
+                        
+                        // deserialize the arguments retrieved from the logEntry
+                        Object[] arguments = processingLogic.deserializeRequest(le.getPayload());
                     
-                    // execute the in-memory logic
-                    try {
-	                    processingLogic.before(arguments);
-	                    processingLogic.after(arguments);
-                    } catch (BabuDBException be) {
-                    	
-                    	// ignore DB_EXIST exception, because we might replay create-database operations here!
-                    	// these databases may already exist, if they could be retrieved from the on-disk LSM trees
-                    	// the same applies to NO_SUCH_SNAPSHOT exceptions and the replay of delete-snapshot operations ... etc.
-                    	if ((be.getErrorCode() != ErrorCode.DB_EXISTS || le.getPayloadType() != PAYLOAD_TYPE_CREATE) &&
-                    	    ((be.getErrorCode() != ErrorCode.DB_EXISTS && be.getErrorCode() != ErrorCode.NO_SUCH_DB)   
-                    	            || le.getPayloadType() != PAYLOAD_TYPE_COPY) &&
-                    	    (be.getErrorCode() != ErrorCode.NO_SUCH_DB || le.getPayloadType() != PAYLOAD_TYPE_DELETE) &&
-                    	    (be.getErrorCode() != ErrorCode.SNAP_EXISTS || le.getPayloadType() != PAYLOAD_TYPE_SNAP) &&
-                    	    (be.getErrorCode() != ErrorCode.NO_SUCH_SNAPSHOT || le.getPayloadType() != PAYLOAD_TYPE_SNAP_DELETE)) {
-                    		
-                    		throw be;
-                    	}
+                        // execute the in-memory logic
+                        try {
+                            processingLogic.before(arguments);
+                            processingLogic.after(arguments);
+                        } catch (BabuDBException be) {
+                        	
+                            // ignore NO_SUCH_SNAPSHOT/SNAP_EXIST exception, if we replay snapshot 
+                            // operations
+                            if ((be.getErrorCode() != ErrorCode.SNAP_EXISTS || 
+                                    type != PAYLOAD_TYPE_SNAP) &&
+                                (be.getErrorCode() != ErrorCode.NO_SUCH_SNAPSHOT || 
+                                    type != PAYLOAD_TYPE_SNAP_DELETE)) {
+		
+                                throw be;
+                            }
+                        }
                     }
                     
                     // set LSN

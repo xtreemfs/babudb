@@ -8,9 +8,6 @@
 
 package org.xtreemfs.babudb.api.database;
 
-import java.util.Iterator;
-import java.util.Map.Entry;
-
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 
 public interface DatabaseRO {
@@ -44,7 +41,7 @@ public interface DatabaseRO {
      *            arbitrary context which is passed to the listener.
      * @return a future as proxy for the request result.
      */
-    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> prefixLookup(
+    public DatabaseRequestResult<ResultSet<byte[], byte[]>> prefixLookup(
             int indexId, byte[] key, Object context);
     
     /**
@@ -60,7 +57,7 @@ public interface DatabaseRO {
      *            arbitrary context which is passed to the listener.
      * @return a future as proxy for the request result.
      */
-    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> 
+    public DatabaseRequestResult<ResultSet<byte[], byte[]>> 
             reversePrefixLookup(int indexId, byte[] key, Object context);
     
     /**
@@ -82,7 +79,7 @@ public interface DatabaseRO {
      *            arbitrary context which is passed to the listener.
      * @return a future as proxy for the request result.
      */
-    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> rangeLookup(
+    public DatabaseRequestResult<ResultSet<byte[], byte[]>> rangeLookup(
             int indexId, byte[] from, byte[] to, Object context);
     
     /**
@@ -104,7 +101,7 @@ public interface DatabaseRO {
      *            arbitrary context which is passed to the listener.
      * @return a future as proxy for the request result.
      */
-    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> 
+    public DatabaseRequestResult<ResultSet<byte[], byte[]>> 
             reverseRangeLookup(int indexId, byte[] from, byte[] to, 
                     Object context);
     

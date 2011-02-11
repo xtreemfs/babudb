@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -11,10 +11,9 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.Map.Entry;
 
+import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
@@ -77,7 +76,7 @@ public class DiskIndexView implements BabuDBView {
     }
     
     @Override
-    public Iterator<Entry<byte[], byte[]>> directPrefixLookup(int indexId, byte[] key, boolean ascending) throws BabuDBException {
+    public ResultSet<byte[], byte[]> directPrefixLookup(int indexId, byte[] key, boolean ascending) throws BabuDBException {
         
         DiskIndex index = indexMap.get(indexId);
         if (index == null)
@@ -88,7 +87,7 @@ public class DiskIndexView implements BabuDBView {
     }
     
     @Override
-    public Iterator<Entry<byte[], byte[]>> directRangeLookup(int indexId, byte[] from, byte[] to, boolean ascending) throws BabuDBException {
+    public ResultSet<byte[], byte[]> directRangeLookup(int indexId, byte[] from, byte[] to, boolean ascending) throws BabuDBException {
         
         DiskIndex index = indexMap.get(indexId);
         if (index == null)
@@ -100,8 +99,9 @@ public class DiskIndexView implements BabuDBView {
     @Override
     public void shutdown() throws BabuDBException {
         try {
-            for (DiskIndex index : indexMap.values())
+            for (DiskIndex index : indexMap.values()) {
                 index.destroy();
+            }
         } catch (IOException exc) {
             throw new BabuDBException(ErrorCode.IO_ERROR, "", exc);
         }

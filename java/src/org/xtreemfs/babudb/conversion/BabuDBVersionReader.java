@@ -78,6 +78,7 @@ public class BabuDBVersionReader extends ClassLoader {
                     .replace('/', '.');
             
             classes.put(className, out.toByteArray());
+            out.close();
         }
         
         jis.close();

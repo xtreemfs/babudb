@@ -1,17 +1,15 @@
 /*
- * Copyright (c) 2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2010 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-
 package org.xtreemfs.babudb.index.reader;
 
 import java.nio.ByteBuffer;
-import java.util.Iterator;
-import java.util.Map.Entry;
 
+import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.ByteRange;
 import org.xtreemfs.foundation.buffer.BufferPool;
@@ -57,7 +55,7 @@ public abstract class BlockReader {
     
     public abstract ByteRange lookup(byte[] key);
     
-    public abstract Iterator<Entry<ByteRange, ByteRange>> rangeLookup(byte[] from, byte[] to,
+    public abstract ResultSet<ByteRange, ByteRange> rangeLookup(byte[] from, byte[] to,
         final boolean ascending);
     
     public MiniPage getKeys() {

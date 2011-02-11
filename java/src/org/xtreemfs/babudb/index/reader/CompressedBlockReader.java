@@ -1,20 +1,19 @@
 /*
- * Copyright (c) 2008, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2008 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-
 package org.xtreemfs.babudb.index.reader;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Map.Entry;
 
+import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.ByteRange;
 import org.xtreemfs.foundation.buffer.BufferPool;
@@ -166,7 +165,7 @@ public class CompressedBlockReader extends BlockReader {
         return values.getEntry(index);
     }
     
-    public Iterator<Entry<ByteRange, ByteRange>> rangeLookup(byte[] from, byte[] to, final boolean ascending) {
+    public ResultSet<ByteRange, ByteRange> rangeLookup(byte[] from, byte[] to, final boolean ascending) {
         
         final int startIndex;
         final int endIndex;
@@ -182,7 +181,7 @@ public class CompressedBlockReader extends BlockReader {
             assert (endIndex >= -1) : "invalid block end offset: " + endIndex;
         }
         
-        return new Iterator<Entry<ByteRange, ByteRange>>() {
+        return new ResultSet<ByteRange, ByteRange>() {
             
             int currentIndex = ascending ? startIndex : endIndex;
             
@@ -240,6 +239,9 @@ public class CompressedBlockReader extends BlockReader {
             public void remove() {
                 throw new UnsupportedOperationException();
             }
+
+            @Override
+            public void free() {}
             
         };
     }

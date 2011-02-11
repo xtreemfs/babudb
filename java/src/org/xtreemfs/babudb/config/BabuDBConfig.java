@@ -171,9 +171,26 @@ public class BabuDBConfig extends Config {
         
         this.debugLevel = debugLevel;
         this.debugCategory = "all";
-        this.baseDir = (dbDir.endsWith(File.separator)) ? dbDir : dbDir + File.separator;
+        
+        if (dbDir.endsWith("/") || dbDir.endsWith("\\")) {
+            this.baseDir = dbDir;
+        } else if (dbDir.contains("/")) {
+            this.baseDir = dbDir + "/";
+        } else if (dbDir.contains("\\")) {
+            this.baseDir = dbDir + "\\";
+        } else {
+            this.baseDir = dbDir + File.separator;
+        }
+        if (dbLogDir.endsWith("/") || dbLogDir.endsWith("\\")) {
+            this.dbLogDir = dbLogDir;
+        } else if (dbLogDir.contains("/")) {
+            this.dbLogDir = dbLogDir + "/";
+        } else if (dbLogDir.contains("\\")) {
+            this.dbLogDir = dbLogDir + "\\";
+        } else {
+            this.dbLogDir = dbLogDir + File.separator;
+        }
         this.dbCfgFile = "config.db";
-        this.dbLogDir = (dbLogDir.endsWith(File.separator)) ? dbLogDir : dbLogDir + File.separator;
         this.syncMode = syncMode;
         this.maxQueueLength = maxQ;
         this.numThreads = numThreads;
@@ -266,11 +283,27 @@ public class BabuDBConfig extends Config {
         
         this.dbCfgFile = this.readOptionalString("babudb.cfgFile", "config.db");
         
-        String baseDir = this.readRequiredString("babudb.baseDir");
-        this.baseDir = (baseDir.endsWith(File.separator)) ? baseDir : baseDir + File.separator;
+        String dbDir = this.readRequiredString("babudb.baseDir");
+        if (dbDir.endsWith("/") || dbDir.endsWith("\\")) {
+            this.baseDir = dbDir;
+        } else if (dbDir.contains("/")) {
+            this.baseDir = dbDir + "/";
+        } else if (dbDir.contains("\\")) {
+            this.baseDir = dbDir + "\\";
+        } else {
+            this.baseDir = dbDir + File.separator;
+        }
         
         String dbLogDir = this.readRequiredString("babudb.logDir");
-        this.dbLogDir = (dbLogDir.endsWith(File.separator)) ? dbLogDir : dbLogDir + File.separator;
+        if (dbLogDir.endsWith("/") || dbLogDir.endsWith("\\")) {
+            this.dbLogDir = dbLogDir;
+        } else if (dbLogDir.contains("/")) {
+            this.dbLogDir = dbLogDir + "/";
+        } else if (dbLogDir.contains("\\")) {
+            this.dbLogDir = dbLogDir + "\\";
+        } else {
+            this.dbLogDir = dbLogDir + File.separator;
+        }
         
         this.syncMode = SyncMode.valueOf(this.readRequiredString("babudb.sync"));
         
