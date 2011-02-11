@@ -98,8 +98,14 @@ public abstract class DiskIndexIteratorBase {
     }
     
     public void free() {
-        if (currentBlock != null)
+        if (currentBlock != null) {
             currentBlock.free();
+        }
+    }
+    
+    protected void finalize() throws Throwable {
+        free();
+        super.finalize();
     }
     
     private void getNextBlockData() {

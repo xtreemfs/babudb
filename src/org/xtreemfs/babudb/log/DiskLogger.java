@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 2008-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2008 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
-*/
+ */
 
 package org.xtreemfs.babudb.log;
 
@@ -380,18 +380,28 @@ public class DiskLogger extends Thread {
                 down.wait();
             }
         }
+        destroy();
     }
 
     /**
      * shut down files.
      */
     protected void finalize() throws Throwable {
+        destroy();
+        super.finalize();
+    }
+    
+    public void destroy() {
         try {
             fdes.sync();
-            fos.close();
         } catch (IOException ex) {
+            /* I don't care */
         } finally {
-            super.finalize();
+            try {
+                fos.close();
+            } catch (IOException e) {
+                /* I don't care */
+            }
         }
     }
 

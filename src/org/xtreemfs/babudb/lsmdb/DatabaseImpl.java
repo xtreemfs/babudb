@@ -5,20 +5,18 @@
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-
 package org.xtreemfs.babudb.lsmdb;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.ClosedByInterruptException;
-import java.util.Iterator;
-import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.BabuDBInternal;
 import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
 import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.api.database.UserDefinedLookup;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
@@ -226,26 +224,20 @@ public class DatabaseImpl implements Database {
             listener.finished(lsmDB.getIndex(indexId).lookup(key));
     }
     
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#prefixLookup(int, byte[],
-     * java.lang.Object)
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.database.DatabaseRO#prefixLookup(int, byte[], java.lang.Object)
      */
     @Override
-    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> prefixLookup(
+    public DatabaseRequestResult<ResultSet<byte[], byte[]>> prefixLookup(
             int indexId, byte[] key, Object context) {
         return prefixLookup(indexId, key, context, true);
     }
     
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#reversePrefixLookup(int,
-     * byte[], java.lang.Object)
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.database.DatabaseRO#reversePrefixLookup(int, byte[], java.lang.Object)
      */
     @Override
-    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> 
+    public DatabaseRequestResult<ResultSet<byte[], byte[]>> 
             reversePrefixLookup(int indexId, byte[] key, Object context) {
         return prefixLookup(indexId, key, context, false);
     }
@@ -259,11 +251,11 @@ public class DatabaseImpl implements Database {
      * @param ascending
      * @return the request result object.
      */
-    private DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> prefixLookup(
+    private DatabaseRequestResult<ResultSet<byte[], byte[]>> prefixLookup(
             int indexId, byte[] key, Object context, boolean ascending) {
         
-        final BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>> result = 
-            new BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>>(
+        final BabuDBRequestResultImpl<ResultSet<byte[], byte[]>> result = 
+            new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(
                     context);
         
         // if there are worker threads, delegate the prefix lookup to the
@@ -277,7 +269,7 @@ public class DatabaseImpl implements Database {
             }
             
             try {
-                w.addRequest(new LSMDBRequest<Iterator<Entry<byte[], byte[]>>>(
+                w.addRequest(new LSMDBRequest<ResultSet<byte[], byte[]>>(
                         lsmDB, indexId, result, key, ascending));
             } catch (InterruptedException ex) {
                 result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, 
@@ -299,26 +291,22 @@ public class DatabaseImpl implements Database {
         return result;
     }
     
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#rangeLookup(int, byte[],
-     * byte[], java.lang.Object)
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.database.DatabaseRO#rangeLookup(int, byte[], byte[], 
+     *          java.lang.Object)
      */
     @Override
-    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> rangeLookup(
+    public DatabaseRequestResult<ResultSet<byte[], byte[]>> rangeLookup(
             int indexId, byte[] from, byte[] to, Object context) {
         return rangeLookup(indexId, from, to, context, true);
     }
     
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.xtreemfs.babudb.lsmdb.DatabaseRO#rangeLookup(int, byte[],
-     * byte[], java.lang.Object)
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.database.DatabaseRO#reverseRangeLookup(int, byte[], byte[], 
+     *          java.lang.Object)
      */
     @Override
-    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> 
+    public DatabaseRequestResult<ResultSet<byte[], byte[]>> 
             reverseRangeLookup(int indexId, byte[] from, byte[] to, 
                     Object context) {
         return rangeLookup(indexId, from, to, context, false);
@@ -334,12 +322,12 @@ public class DatabaseImpl implements Database {
      * @param ascending
      * @return the request result object.
      */
-    private DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> rangeLookup(
+    private DatabaseRequestResult<ResultSet<byte[], byte[]>> rangeLookup(
             int indexId, byte[] from, byte[] to, Object context, 
             boolean ascending) {
         
-        final BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>> result = 
-            new BabuDBRequestResultImpl<Iterator<Entry<byte[], byte[]>>>(
+        final BabuDBRequestResultImpl<ResultSet<byte[], byte[]>> result = 
+            new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(
             context);
         
         // if there are worker threads, delegate the range lookup to the
@@ -353,7 +341,7 @@ public class DatabaseImpl implements Database {
             }
             
             try {
-                w.addRequest(new LSMDBRequest<Iterator<Entry<byte[], byte[]>>>(
+                w.addRequest(new LSMDBRequest<ResultSet<byte[], byte[]>>(
                         lsmDB, indexId, result, from, to, ascending));
             } catch (InterruptedException ex) {
                 result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, 
@@ -440,7 +428,7 @@ public class DatabaseImpl implements Database {
         return lsmDB.getIndex(indexId).lookup(key, snapId);
     }
     
-    public Iterator<Entry<byte[], byte[]>> directPrefixLookup(int indexId, 
+    public ResultSet<byte[], byte[]> directPrefixLookup(int indexId, 
             int snapId, byte[] key, boolean ascending) throws BabuDBException {
         
         if ((indexId >= lsmDB.getIndexCount()) || (indexId < 0)) {
@@ -450,7 +438,7 @@ public class DatabaseImpl implements Database {
         return lsmDB.getIndex(indexId).prefixLookup(key, snapId, ascending);
     }
     
-    public Iterator<Entry<byte[], byte[]>> directRangeLookup(int indexId,
+    public ResultSet<byte[], byte[]> directRangeLookup(int indexId,
             int snapId, byte[] from, byte[] to, boolean ascending) 
                 throws BabuDBException {
         
@@ -516,25 +504,6 @@ public class DatabaseImpl implements Database {
      */
     public int[] proceedCreateSnapshot() {
         return lsmDB.createSnapshot();
-    }
-    
-    /**
-     * Writes a snapshot to disk.
-     * 
-     * NOTE: this method should only be invoked by the framework
-     * 
-     * @param snapIds
-     *            the snapshot IDs obtained from createSnapshot
-     * @param directory
-     *            the directory in which the snapshots are written
-     * @param cfg
-     *            the snapshot configuration
-     * @throws BabuDBException
-     *             if the snapshot cannot be written
-     */
-    public void writeSnapshot(int[] snapIds, String directory, SnapshotConfig cfg) throws BabuDBException {
-        
-        proceedWriteSnapshot(snapIds, directory, cfg);
     }
     
     /**
