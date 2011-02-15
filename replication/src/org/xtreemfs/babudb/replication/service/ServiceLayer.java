@@ -5,9 +5,6 @@
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-/*
- * AUTHORS: Felix Langner (ZIB)
- */
 package org.xtreemfs.babudb.replication.service;
 
 import java.io.IOException;
@@ -98,7 +95,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         // ----------------------------------
         // initialize the participants states
         // ----------------------------------
-        int syncN = ((config.getSyncN() > 0) ? config.getSyncN()-1 : 
+        int syncN = ((config.getSyncN() > 0) ? config.getSyncN() - 1 : 
                                                config.getSyncN());
         this.participantsStates = new ParticipantsStates(syncN, 
                 config.getParticipants(), transLayer);
@@ -141,7 +138,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
             return new ReplicateResponse(le, e);
         }  
         final ReplicateResponse result = new ReplicateResponse(le,
-                slaves.size() - this.participantsStates.getSyncN());
+                slaves.size() - participantsStates.getSyncN());
         
         // make the replicate call at the clients
         if (slaves.size() == 0) { 
@@ -200,7 +197,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
             states = getStates(slaves);
         
             // handover the lease, if not enough slaves are available 
-            // to assure consistency
+            // to assure consistency TODO deprecated (return error to client instead)
             if ((states.size()+1) < this.participantsStates.getSyncN()) {
                 throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
                         "Not enough slaves available to synchronize with!");

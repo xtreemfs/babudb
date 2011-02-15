@@ -47,7 +47,9 @@ public class Main extends PluginMain {
         
         // replay the backup, if available
         try {
+            babuDB.stop();
             new FileIO(configuration).replayBackupFiles();
+            babuDB.restart();
         } catch (IOException io) {
             Logging.logMessage(Logging.LEVEL_ERROR, this, "Could not retrieve" +
             		" the slave backup files, because: ", io.getMessage());
@@ -63,11 +65,8 @@ public class Main extends PluginMain {
         } 
         
         // initialize the BabuDB proxy interface
-        BabuDBInternal result = new BabuDBProxy(babuDB, replMan, 
-                configuration.getReplicationPolicy(), 
-                replMan.getRemoteAccessClient());
-                
-        return result;
+        return new BabuDBProxy(babuDB, replMan, configuration.getReplicationPolicy(), 
+                               replMan.getRemoteAccessClient());
     }
 
     /* (non-Javadoc)

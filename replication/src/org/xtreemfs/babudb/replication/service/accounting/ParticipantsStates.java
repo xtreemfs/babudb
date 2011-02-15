@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -44,8 +44,8 @@ import org.xtreemfs.foundation.logging.Logging;
  * @author flangner
  */
 
-public class ParticipantsStates implements ParticipantsOverview, 
-    StatesManipulation, ParticipantsVerification {  
+public class ParticipantsStates implements ParticipantsOverview, StatesManipulation, 
+        ParticipantsVerification {  
     
     /**
      * State of a registered participant.
@@ -242,8 +242,8 @@ public class ParticipantsStates implements ParticipantsOverview,
                                     toString());
                             s.dead = true;
                             availableSlaves--;
-                        } else if ( s.openRequests < 
-                                    MAX_OPEN_REQUESTS_PER_SLAVE ) {
+                        } else if ( s.openRequests < MAX_OPEN_REQUESTS_PER_SLAVE ) {
+                            
                             s.openRequests++;
                             if ( s.openRequests == MAX_OPEN_REQUESTS_PER_SLAVE ) 
                                 availableSlaves--;
@@ -287,10 +287,11 @@ public class ParticipantsStates implements ParticipantsOverview,
         if (getSyncN() == 0){
             latestCommon = listener.lsn;
             listener.upToDate();
+            
         // N-sync-mode
         } else {
             synchronized (stateTable) {
-                if (latestCommon.compareTo(listener.lsn)>=0) {
+                if (latestCommon.compareTo(listener.lsn) >= 0) {
                     listener.upToDate();
                     return;
                 }
@@ -306,11 +307,13 @@ public class ParticipantsStates implements ParticipantsOverview,
      * </p>
      */
     public void clearListeners(){
-        Set<LatestLSNUpdateListener> lSet = 
-            new HashSet<LatestLSNUpdateListener>();
+        
+        Set<LatestLSNUpdateListener> lSet = new HashSet<LatestLSNUpdateListener>();
         
         listeners.drainTo(lSet);
-        for (LatestLSNUpdateListener l : lSet) l.failed();
+        for (LatestLSNUpdateListener l : lSet) {
+            l.failed();
+        }
     }
         
     /**
@@ -323,12 +326,14 @@ public class ParticipantsStates implements ParticipantsOverview,
      *                  instance is owner of the master privilege
      */
     public void setMaster(InetAddress address) {
-        if (address != null)
-            this.masterClient.set(this.stateTable.get(address).client);
-        else
-            this.masterClient.set(null);
         
-        this.reset();
+        if (address != null) {
+            this.masterClient.set(this.stateTable.get(address).client);
+        } else {
+            this.masterClient.set(null);
+        }
+        
+        reset();
     }
     
 /*
@@ -351,8 +356,8 @@ public class ParticipantsStates implements ParticipantsOverview,
      *                                    org.xtreemfs.babudb.lsmdb.LSN, long)
      */
     @Override
-    public void update(SocketAddress participant, LSN acknowledgedLSN, 
-            long receiveTime) throws UnknownParticipantException{
+    public void update(SocketAddress participant, LSN acknowledgedLSN, long receiveTime) 
+            throws UnknownParticipantException{
         
         assert (participant instanceof InetSocketAddress);
         InetAddress host = ((InetSocketAddress) participant).getAddress();
@@ -362,13 +367,16 @@ public class ParticipantsStates implements ParticipantsOverview,
                 participant.toString(), acknowledgedLSN.toString());
         
         synchronized (stateTable) {
+            
             // the latest common LSN is >= the acknowledged one, just update the 
             // participant
             final State old = stateTable.get(host);
             if (old != null) { 
+                
                 // got a prove of life
                 old.lastUpdate = receiveTime;
                 if (old.dead) {
+                    
                     Logging.logMessage(Logging.LEVEL_DEBUG, this, 
                             "%s will be marked as alive!\n%s", 
                             participant.toString(), toString());
@@ -377,18 +385,19 @@ public class ParticipantsStates implements ParticipantsOverview,
                     old.dead = false;
                 }
                 
-                // count the number of LSN ge than the acknowledged 
+                // count the number of LSN greater-than-or-equal than the acknowledged 
                 // to get the latest common
-                if (old.lastAcknowledged.compareTo(acknowledgedLSN)<0) {
+                if (old.lastAcknowledged.compareTo(acknowledgedLSN) < 0) {
                     old.lastAcknowledged = acknowledgedLSN;
                     
                     int count = 0;
                     for (State s : stateTable.values()) {
-                        if (!s.dead && s.lastAcknowledged
-                                .compareTo(acknowledgedLSN) >= 0) {
+                        
+                        if (!s.dead && s.lastAcknowledged.compareTo(acknowledgedLSN) >= 0) {
                             
                             count++;
                             if (count >= getSyncN()) {
+                                
                                 this.latestCommon = acknowledgedLSN;
                                 notifyListeners();
                                 break;
@@ -397,6 +406,7 @@ public class ParticipantsStates implements ParticipantsOverview,
                     }
                 }
             } else {
+                
                 Logging.logMessage(Logging.LEVEL_ERROR, this, "'%s' is not" +
                         " registered at this master. Request received: %d", 
                         participant.toString(), receiveTime);
@@ -415,13 +425,15 @@ public class ParticipantsStates implements ParticipantsOverview,
      */
     @Override
     public void markAsDead(SlaveClient slave) {
+        
         synchronized (stateTable) {
-            final State s = 
-                stateTable.get(slave.getDefaultServerAddress().getAddress());
+            
+            final State s = stateTable.get(slave.getDefaultServerAddress().getAddress());
             s.openRequests = 0;
             
             // the slave has not been marked as dead jet
             if (!s.dead) {
+                
                 Logging.logMessage(Logging.LEVEL_DEBUG, this, 
                         "%s will be marked as dead!\n%s",
                         slave.getDefaultServerAddress().toString(), 
@@ -442,14 +454,16 @@ public class ParticipantsStates implements ParticipantsOverview,
      */
     @Override
     public void requestFinished(SlaveClient slave) {
+        
         synchronized (stateTable) {
-            final State s = 
-                stateTable.get(slave.getDefaultServerAddress().getAddress());
+            
+            final State s = stateTable.get(slave.getDefaultServerAddress().getAddress());
             if (s.openRequests > 0) s.openRequests--;
             
             // the number of open requests for this slave has fallen below the
             // threshold of MAX_OPEN_REQUESTS_PER_SLAVE
             if (s.openRequests == (MAX_OPEN_REQUESTS_PER_SLAVE-1)) {
+                
                 availableSlaves++;
                 stateTable.notify();
             }
@@ -462,11 +476,14 @@ public class ParticipantsStates implements ParticipantsOverview,
      */
     @Override
     public List<ConditionClient> getConditionClients() {
+        
         List<ConditionClient> result = new ArrayList<ConditionClient>();
         List<State> states = new ArrayList<State>(stateTable.values());
         Collections.sort(states);
         Collections.reverse(states);
-        for (State s : states) result.add(s.client);
+        for (State s : states) {
+            result.add(s.client);
+        }
         return result;
     }
     
@@ -485,8 +502,7 @@ public class ParticipantsStates implements ParticipantsOverview,
      */
     @Override
     public boolean isMaster(SocketAddress address) {
-        InetAddress masterAddress = 
-            getMaster().getDefaultServerAddress().getAddress();
+        InetAddress masterAddress = getMaster().getDefaultServerAddress().getAddress();
         
         return (address instanceof InetSocketAddress) &&
                ((InetSocketAddress) address).getAddress().equals(masterAddress);
@@ -500,9 +516,10 @@ public class ParticipantsStates implements ParticipantsOverview,
      */
     @Override
     public boolean isRegistered(SocketAddress address) {
+        
         if (address instanceof InetSocketAddress) {
-            return stateTable.containsKey(
-                    ((InetSocketAddress) address).getAddress());
+            
+            return stateTable.containsKey(((InetSocketAddress) address).getAddress());
         }
         
         Logging.logMessage(Logging.LEVEL_ERROR, this, 
@@ -517,7 +534,9 @@ public class ParticipantsStates implements ParticipantsOverview,
      */
     @Override
     public String toString() {
+        
         synchronized (stateTable) {
+            
             String result = "ParticipantsStates: participants=" + 
                             participantsCount + " - available=" + 
                             availableSlaves + "|dead=" + deadSlaves + "\n";
@@ -539,20 +558,28 @@ public class ParticipantsStates implements ParticipantsOverview,
      * Notifies all registered listeners about the new latest common LSN.
      */
     private void notifyListeners(){
+        
         LatestLSNUpdateListener listener = listeners.poll();
         while (listener != null && listener.lsn.compareTo(latestCommon)<=0) {
+            
             listener.upToDate();
             listener = listeners.poll();
         }
-        if (listener != null) listeners.add(listener);
+        if (listener != null) {
+            listeners.add(listener);
+        }
     }
     
     /**
      * <p>Resets the state of any available participants.</p>
      */
     private void reset() {
+        
         synchronized (stateTable) {
-            for (State s : stateTable.values()) s.reset();
+            
+            for (State s : stateTable.values()) {
+                s.reset();
+            }
         }
     }
     
@@ -565,6 +592,7 @@ public class ParticipantsStates implements ParticipantsOverview,
      * @since 05/03/2009
      */
     public static class UnknownParticipantException extends Exception {
+        
         private static final long serialVersionUID = -2709960657015326930L; 
         
         public UnknownParticipantException(String string) {
@@ -576,8 +604,8 @@ public class ParticipantsStates implements ParticipantsOverview,
      * @author flangner
      * @since 05/03/2009
      */
-    public static class NotEnoughAvailableParticipantsException 
-        extends Exception {
+    public static class NotEnoughAvailableParticipantsException extends Exception {
+        
         private static final long serialVersionUID = 5521213821006794885L;     
         
         public NotEnoughAvailableParticipantsException(String string) {

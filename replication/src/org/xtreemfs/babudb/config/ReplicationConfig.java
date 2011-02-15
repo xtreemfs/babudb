@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -196,8 +196,15 @@ public class ReplicationConfig extends Config {
     public void read() throws IOException {
         
         String tempDir = this.readRequiredString("babudb.repl.backupDir");
-        this.tempDir = (tempDir.endsWith(File.separator)) ? 
-                tempDir : tempDir + File.separator;
+        if (tempDir.endsWith("/") || tempDir.endsWith("\\")) {
+            this.tempDir = tempDir;
+        } else if (tempDir.contains("/")) {
+            this.tempDir = tempDir + "/";
+        } else if (tempDir.contains("\\")) {
+            this.tempDir = tempDir + "\\";
+        } else {
+            this.tempDir = tempDir + File.separator;
+        }
         
         this.localTimeRenew = this.readOptionalInt("babudb.localTimeRenew", 
                                                    3000);
@@ -235,23 +242,23 @@ public class ReplicationConfig extends Config {
                 "babudb.repl.participant." + number,
                 "babudb.repl.participant." + number + ".port", null)) != null) {
             
-            s = new Socket();
-            try {
-                s.bind(addrs);
-                if (this.address == null) {
-                    this.address = addrs;
-                } else {
-                    this.participants.add(addrs);
-                }
-            } catch (Throwable t) {
-                // even if a participant's address is not reachable, or cannot
-                // be resolved, it never will be ignored completely, because
-                // it may become available later
-                this.participants.add(addrs);
-            } finally {
+            if (address == null) {
+                s = new Socket();
                 try {
-                    s.close();
-                } catch (IOException e) { /* ignored */ }
+                    s.bind(addrs);
+                    this.address = addrs;
+                } catch (Throwable t) {
+                    // even if a participant's address is not reachable, or cannot
+                    // be resolved, it never will be ignored completely, because
+                    // it may become available later
+                    this.participants.add(addrs);
+                } finally {
+                    try {
+                        s.close();
+                    } catch (IOException e) { /* ignored */ }
+                }
+            } else {
+                this.participants.add(addrs);
             }
             number++;
         }
@@ -259,9 +266,8 @@ public class ReplicationConfig extends Config {
         this.policyName = this.readOptionalString("babudb.repl.policy", 
                                                   "MasterOnly");
         
-        checkArgs(babuDBConfig, address, sslOptions, participants, 
-                  localTimeRenew, timeSyncInterval, syncN, chunkSize, 
-                  this.tempDir, policyName);
+        checkArgs(babuDBConfig, address, sslOptions, participants, localTimeRenew, timeSyncInterval, 
+                  syncN, chunkSize, tempDir, policyName);
     }
     
     public InetSocketAddress getInetSocketAddress() {
@@ -345,18 +351,35 @@ public class ReplicationConfig extends Config {
             int localTimeRenew, int timeSyncInterval, int syncN, int chunkSize, 
             String tempDir, String policyName) {
         
-        if (tempDir.equals(conf.baseDir) || tempDir.equals(conf.dbLogDir))
-            throw new IllegalArgumentException("The backup-directory has to be"
-            	+ " different to the dbLog-directory and the base-directory!");
+        File base = new File(conf.getBaseDir());
+        File log = new File(conf.getDbLogDir());
+        
+        if (log.equals(base)) {
+            throw new IllegalArgumentException("It is not permitted by the replication plugin to" +
+            		" stored log and base files within the same directory. Please move either" +
+            		"log (" + conf.getDbLogDir() + ") or base (" + conf.getBaseDir() + ").");
+        }
+        
+        File tmp = new File(tempDir);
+        while (tmp != null) {
+            if (tmp.equals(base) || tmp.equals(log)) {
+                throw new IllegalArgumentException("The backup-directory (" + tempDir 
+                        + ") may not be a sub-directory of the dbLog-directory (" 
+                        + conf.getDbLogDir() + ") and the base-directory (" + conf.getBaseDir() 
+                        + ")!");
+            }
+            
+            tmp = tmp.getParentFile();
+        }
         
         if (address == null)
             throw new IllegalArgumentException(
                     "None of the given participants described the localhost!");
         
-        if (syncN < 0 || syncN > participants.size())
+        if (syncN < 0 || syncN > (participants.size() + 1))
             throw new IllegalArgumentException(
                     "Wrong Sync-N! It has to be at least 0 and #of " +
-                    "participants ("+participants.size()+") at the maximum!");
+                    "participants ("+(participants.size() + 1)+") at the maximum!");
         
         if (syncN != 0 && syncN <= participants.size() / 2)
             throw new IllegalArgumentException(
@@ -365,7 +388,7 @@ public class ReplicationConfig extends Config {
                     participants.size() + "' participants. The sync-N " + 
                     "has to be at least '" + (participants.size() / 2) + "'!");
         
-        if (policyName != null && policyName == "") {
+        if (policyName != null && policyName != "") {
             try {
                 Policy.class.getClassLoader().loadClass(
                         POLICY_PACKAGE + policyName);

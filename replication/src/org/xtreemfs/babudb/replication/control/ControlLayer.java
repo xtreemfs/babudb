@@ -133,7 +133,7 @@ public class ControlLayer extends TopLayer implements RoleChangeListener, TimeDr
                         
                         // a master change has just occurred
                         if (oldViewId < viewId && !hasLease()) {
-                            // TODO make the slave load from master
+                            // TODO make the slave load from master --- won't work
                         }
                     }
                 }, this.leaseHolder, new MasterEpochHandlerInterface() {

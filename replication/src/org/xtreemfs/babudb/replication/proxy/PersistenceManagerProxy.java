@@ -238,7 +238,7 @@ class PersistenceManagerProxy extends PersistenceManager {
      */
     @Override
     public void lockService() throws InterruptedException {
-        throw new UnsupportedOperationException();
+        localPersMan.lockService();
     }
 
     /* (non-Javadoc)
@@ -246,7 +246,7 @@ class PersistenceManagerProxy extends PersistenceManager {
      */
     @Override
     public void unlockService() { 
-        throw new UnsupportedOperationException();
+        localPersMan.unlockService();
     }
     
     /* (non-Javadoc)

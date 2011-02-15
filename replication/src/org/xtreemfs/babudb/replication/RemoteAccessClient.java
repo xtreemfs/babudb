@@ -11,12 +11,11 @@
 package org.xtreemfs.babudb.replication;
 
 import java.net.InetSocketAddress;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.api.PersistenceManager;
 import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
@@ -81,7 +80,7 @@ public interface RemoteAccessClient {
      * @param master
      * @return the request's response future.
      */
-    public ClientResponseFuture<Iterator<Entry<byte[], byte[]>>> prefixLookup(
+    public ClientResponseFuture<ResultSet<byte[], byte[]>> prefixLookup(
             String dbName, int indexId, ReusableBuffer key, 
             InetSocketAddress master);
     
@@ -94,7 +93,7 @@ public interface RemoteAccessClient {
      * @param master
      * @return the request's response future.
      */
-    public ClientResponseFuture<Iterator<Entry<byte[], byte[]>>> prefixLookupR(
+    public ClientResponseFuture<ResultSet<byte[], byte[]>> prefixLookupR(
             String dbName, int indexId, ReusableBuffer key, 
             InetSocketAddress master);
     
@@ -108,7 +107,7 @@ public interface RemoteAccessClient {
      * @param master
      * @return the request's response future.
      */
-    public ClientResponseFuture<Iterator<Entry<byte[], byte[]>>> rangeLookup(
+    public ClientResponseFuture<ResultSet<byte[], byte[]>> rangeLookup(
             String dbName, int indexId, ReusableBuffer from, ReusableBuffer to, 
             InetSocketAddress master);
     
@@ -122,7 +121,7 @@ public interface RemoteAccessClient {
      * @param master
      * @return the request's response future.
      */
-    public ClientResponseFuture<Iterator<Entry<byte[], byte[]>>> rangeLookupR(
+    public ClientResponseFuture<ResultSet<byte[], byte[]>> rangeLookupR(
             String dbName, int indexId, ReusableBuffer from, ReusableBuffer to, 
             InetSocketAddress master);
 }
