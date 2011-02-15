@@ -11,13 +11,12 @@
 package org.xtreemfs.babudb.replication.proxy;
 
 import java.net.InetSocketAddress;
-import java.util.Iterator;
-import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
 import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
+import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.api.database.UserDefinedLookup;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
@@ -169,7 +168,7 @@ class DatabaseProxy implements Database {
      *          byte[], java.lang.Object)
      */
     @Override
-    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> prefixLookup(
+    public DatabaseRequestResult<ResultSet<byte[], byte[]>> prefixLookup(
             int indexId, byte[] key, final Object context) {
         
         try {
@@ -178,35 +177,35 @@ class DatabaseProxy implements Database {
                 return localDB.prefixLookup(indexId, key, context);
             }
         } catch (final BabuDBException e) {
-            return new DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>>() {
+            return new DatabaseRequestResult<ResultSet<byte[], byte[]>>() {
                 
                 @Override
                 public void registerListener(
-                        DatabaseRequestListener<Iterator<Entry<byte[], byte[]>>> listener) {
+                        DatabaseRequestListener<ResultSet<byte[], byte[]>> listener) {
                     listener.failed(e, context);
                 }
                 
                 @Override
-                public Iterator<Entry<byte[], byte[]>> get() 
+                public ResultSet<byte[], byte[]> get() 
                         throws BabuDBException {
                     throw e;
                 }
             };
         }
         
-        final ClientResponseFuture<Iterator<Entry<byte[], byte[]>>> r = 
+        final ClientResponseFuture<ResultSet<byte[], byte[]>> r = 
             dbMan.getClient().prefixLookup(name, indexId, ReusableBuffer.wrap(key), master);
         
-        return new DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>>() {
+        return new DatabaseRequestResult<ResultSet<byte[], byte[]>>() {
             
             @Override
             public void registerListener(
-                    final DatabaseRequestListener<Iterator<Entry<byte[], byte[]>>> listener) {
+                    final DatabaseRequestListener<ResultSet<byte[], byte[]>> listener) {
                 
-                r.registerListener(new ClientResponseAvailableListener<Iterator<Entry<byte[], byte[]>>>() {
+                r.registerListener(new ClientResponseAvailableListener<ResultSet<byte[], byte[]>>() {
 
                     @Override
-                    public void responseAvailable(Iterator<Entry<byte[], byte[]>> rp) {
+                    public void responseAvailable(ResultSet<byte[], byte[]> rp) {
                         listener.finished(rp, context);
                     }
 
@@ -232,7 +231,7 @@ class DatabaseProxy implements Database {
             }
             
             @Override
-            public Iterator<Entry<byte[], byte[]>> get() throws BabuDBException {
+            public ResultSet<byte[], byte[]> get() throws BabuDBException {
                 try {
                     return r.get();
                 } catch (ErrorCodeException ece) {
@@ -262,7 +261,7 @@ class DatabaseProxy implements Database {
      *          byte[], java.lang.Object)
      */
     @Override
-    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> 
+    public DatabaseRequestResult<ResultSet<byte[], byte[]>> 
             reversePrefixLookup(int indexId, byte[] key, final Object context) {
         
         try {
@@ -270,35 +269,35 @@ class DatabaseProxy implements Database {
                 return reversePrefixLookup(indexId, key, context);
             }
         } catch (final BabuDBException e) {
-            return new DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>>() {
+            return new DatabaseRequestResult<ResultSet<byte[], byte[]>>() {
                 
                 @Override
                 public void registerListener(
-                        DatabaseRequestListener<Iterator<Entry<byte[], byte[]>>> listener) {
+                        DatabaseRequestListener<ResultSet<byte[], byte[]>> listener) {
                     listener.failed(e, context);
                 }
                 
                 @Override
-                public Iterator<Entry<byte[], byte[]>> get() 
+                public ResultSet<byte[], byte[]> get() 
                         throws BabuDBException {
                     throw e;
                 }
             };
         }
         
-        final ClientResponseFuture<Iterator<Entry<byte[], byte[]>>> r = 
+        final ClientResponseFuture<ResultSet<byte[], byte[]>> r = 
             dbMan.getClient().prefixLookupR(name, indexId, ReusableBuffer.wrap(key), master);
         
-        return new DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>>() {
+        return new DatabaseRequestResult<ResultSet<byte[], byte[]>>() {
             
             @Override
             public void registerListener(
-                    final DatabaseRequestListener<Iterator<Entry<byte[], byte[]>>> listener) {
+                    final DatabaseRequestListener<ResultSet<byte[], byte[]>> listener) {
                 
-                r.registerListener(new ClientResponseAvailableListener<Iterator<Entry<byte[], byte[]>>>() {
+                r.registerListener(new ClientResponseAvailableListener<ResultSet<byte[], byte[]>>() {
 
                     @Override
-                    public void responseAvailable(Iterator<Entry<byte[], byte[]>> rp) {
+                    public void responseAvailable(ResultSet<byte[], byte[]> rp) {
                         listener.finished(rp, context);
                     }
 
@@ -324,7 +323,7 @@ class DatabaseProxy implements Database {
             }
             
             @Override
-            public Iterator<Entry<byte[], byte[]>> get() throws BabuDBException {
+            public ResultSet<byte[], byte[]> get() throws BabuDBException {
                 try {
                     return r.get();
                 } catch (ErrorCodeException ece) {
@@ -354,7 +353,7 @@ class DatabaseProxy implements Database {
      *          byte[], java.lang.Object)
      */
     @Override
-    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> rangeLookup(
+    public DatabaseRequestResult<ResultSet<byte[], byte[]>> rangeLookup(
             int indexId, byte[] from, byte[] to, final Object context) {
         
         try {
@@ -362,36 +361,36 @@ class DatabaseProxy implements Database {
                 return rangeLookup(indexId, from, to, context);
             }
         } catch (final BabuDBException e) {
-            return new DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>>() {
+            return new DatabaseRequestResult<ResultSet<byte[], byte[]>>() {
                 
                 @Override
                 public void registerListener(
-                        DatabaseRequestListener<Iterator<Entry<byte[], byte[]>>> listener) {
+                        DatabaseRequestListener<ResultSet<byte[], byte[]>> listener) {
                     listener.failed(e, context);
                 }
                 
                 @Override
-                public Iterator<Entry<byte[], byte[]>> get() 
+                public ResultSet<byte[], byte[]> get() 
                         throws BabuDBException {
                     throw e;
                 }
             };
         }
         
-        final ClientResponseFuture<Iterator<Entry<byte[], byte[]>>> r = 
+        final ClientResponseFuture<ResultSet<byte[], byte[]>> r = 
             dbMan.getClient().rangeLookup(name, indexId, ReusableBuffer.wrap(from), 
                     ReusableBuffer.wrap(to), master);
         
-        return new DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>>() {
+        return new DatabaseRequestResult<ResultSet<byte[], byte[]>>() {
             
             @Override
             public void registerListener(
-                    final DatabaseRequestListener<Iterator<Entry<byte[], byte[]>>> listener) {
+                    final DatabaseRequestListener<ResultSet<byte[], byte[]>> listener) {
                 
-                r.registerListener(new ClientResponseAvailableListener<Iterator<Entry<byte[], byte[]>>>() {
+                r.registerListener(new ClientResponseAvailableListener<ResultSet<byte[], byte[]>>() {
 
                     @Override
-                    public void responseAvailable(Iterator<Entry<byte[], byte[]>> rp) {
+                    public void responseAvailable(ResultSet<byte[], byte[]> rp) {
                         listener.finished(rp, context);
                     }
 
@@ -417,7 +416,7 @@ class DatabaseProxy implements Database {
             }
             
             @Override
-            public Iterator<Entry<byte[], byte[]>> get() throws BabuDBException {
+            public ResultSet<byte[], byte[]> get() throws BabuDBException {
                 try {
                     return r.get();
                 } catch (ErrorCodeException ece) {
@@ -447,7 +446,7 @@ class DatabaseProxy implements Database {
      *          byte[], byte[], java.lang.Object)
      */
     @Override
-    public DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>> 
+    public DatabaseRequestResult<ResultSet<byte[], byte[]>> 
             reverseRangeLookup(int indexId, byte[] from, byte[] to, 
             final Object context) {
         
@@ -456,36 +455,36 @@ class DatabaseProxy implements Database {
                 return reverseRangeLookup(indexId, from, to, context);
             }
         } catch (final BabuDBException e) {
-            return new DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>>() {
+            return new DatabaseRequestResult<ResultSet<byte[], byte[]>>() {
                 
                 @Override
                 public void registerListener(
-                        DatabaseRequestListener<Iterator<Entry<byte[], byte[]>>> listener) {
+                        DatabaseRequestListener<ResultSet<byte[], byte[]>> listener) {
                     listener.failed(e, context);
                 }
                 
                 @Override
-                public Iterator<Entry<byte[], byte[]>> get() 
+                public ResultSet<byte[], byte[]> get() 
                         throws BabuDBException {
                     throw e;
                 }
             };
         }
         
-        final ClientResponseFuture<Iterator<Entry<byte[], byte[]>>> r = 
+        final ClientResponseFuture<ResultSet<byte[], byte[]>> r = 
             dbMan.getClient().rangeLookupR(name, indexId, 
                     ReusableBuffer.wrap(from), ReusableBuffer.wrap(to), master);
         
-        return new DatabaseRequestResult<Iterator<Entry<byte[], byte[]>>>() {
+        return new DatabaseRequestResult<ResultSet<byte[], byte[]>>() {
             
             @Override
             public void registerListener(
-                    final DatabaseRequestListener<Iterator<Entry<byte[], byte[]>>> listener) {
+                    final DatabaseRequestListener<ResultSet<byte[], byte[]>> listener) {
                 
-                r.registerListener(new ClientResponseAvailableListener<Iterator<Entry<byte[], byte[]>>>() {
+                r.registerListener(new ClientResponseAvailableListener<ResultSet<byte[], byte[]>>() {
 
                     @Override
-                    public void responseAvailable(Iterator<Entry<byte[], byte[]>> rp) {
+                    public void responseAvailable(ResultSet<byte[], byte[]> rp) {
                         listener.finished(rp, context);
                     }
 
@@ -511,7 +510,7 @@ class DatabaseProxy implements Database {
             }
             
             @Override
-            public Iterator<Entry<byte[], byte[]>> get() throws BabuDBException {
+            public ResultSet<byte[], byte[]> get() throws BabuDBException {
                 try {
                     return r.get();
                 } catch (ErrorCodeException ece) {

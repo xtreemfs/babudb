@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -7,10 +7,10 @@
  */
 package org.xtreemfs.babudb.replication.proxy.operations;
 
-import java.util.Iterator;
 import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
+import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
@@ -61,10 +61,10 @@ public class PrefixLookupOperation extends Operation {
             dbs.getDatabase(req.getDatabaseName()).prefixLookup(req.getIndexId(), 
                             rq.getRpcRequest().getData().array(), null)
                                 .registerListener(
-                                        new DatabaseRequestListener<Iterator<Entry<byte[], byte[]>>>() {
+                                        new DatabaseRequestListener<ResultSet<byte[], byte[]>>() {
                 
                 @Override
-                public void finished(Iterator<Entry<byte[], byte[]>> result, Object context) {
+                public void finished(ResultSet<byte[], byte[]> result, Object context) {
                     EntryMap.Builder r = EntryMap.newBuilder();
                     ReusableBuffer data = BufferPool.allocate(0);
                     

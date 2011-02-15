@@ -7,7 +7,7 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
 	<classpathentry kind="lib" path="lib/Flease.jar" sourcepath="C:/Users/flangner/workspace/Flease/src"/>
 	<classpathentry kind="lib" path="/babu/lib/Foundation.jar" sourcepath="C:/Users/flangner/workspace/Foundation_pb_experimental/src"/>
-	<classpathentry kind="lib" path="lib/babu.jar" sourcepath="lib/babu.jar"/>
+	<classpathentry kind="lib" path="/babu/dist/BabuDB-0.5.0.jar" sourcepath="lib/babu.jar"/>
 	<classpathentry kind="lib" path="extlib/protobuf-java-2.3.0.jar" sourcepath="extlib/protobuf-java-2.3.0.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry kind="output" path="bin"/>

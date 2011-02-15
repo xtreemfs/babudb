@@ -1,13 +1,15 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-package org.xtreemfs.babudb.replication;
+package org.xtreemfs.babudb.replication.transmission;
 
 import static org.junit.Assert.*;
+import static org.xtreemfs.babudb.replication.transmission.FileIO.*;
+import static java.io.File.separator;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -50,7 +52,7 @@ public class DirectFileIOTest {
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
         conf = new ReplicationConfig("config/replication.properties", 
-                new BabuDBConfig("config/replication.properties"));
+                new BabuDBConfig("../config/babuDB.properties"));
         fileIO = new FileIO(conf);
     }
     
@@ -72,43 +74,42 @@ public class DirectFileIOTest {
     public void testBackupFiles() throws IOException {
         setupTestdata();
         
-        String baseDirName = new File(conf.getBabuDBConfig().getBaseDir()).getName();
-        String logDirName = new File(conf.getBabuDBConfig().getDbLogDir()).getName();
-        
         fileIO.backupFiles();
         
-        File testFile = new File(conf.getTempDir() + baseDirName);
+        File testFile = new File(conf.getTempDir() + BACKUP_BASE_DIR + separator );
         assertTrue(testFile.exists());
    
-        testFile = new File(conf.getTempDir() + baseDirName + File.separator + baseFile);
+        testFile = new File(conf.getTempDir() + BACKUP_BASE_DIR + separator + baseFile);
         assertTrue(testFile.exists());
         
-        testFile = new File(conf.getTempDir() + baseDirName + File.separator + baseDir);
+        testFile = new File(conf.getTempDir() + BACKUP_BASE_DIR + separator + baseDir);
         assertTrue(testFile.exists());
         
-        testFile = new File(conf.getTempDir() + baseDirName + File.separator + baseDir + File.separator + baseDirFile);
+        testFile = new File(conf.getTempDir() + BACKUP_BASE_DIR + separator + baseDir + separator + baseDirFile);
         assertTrue(testFile.exists());
         
         FileReader r = new FileReader(testFile);
         char[] buf = new char[8];
         r.read(buf);
+        r.close();
         assertEquals(baseTestString, String.valueOf(buf).trim());
         
-        testFile = new File(conf.getTempDir() + logDirName);
+        testFile = new File(conf.getTempDir() + BACKUP_LOG_DIR + separator);
         assertTrue(testFile.exists());
         
-        testFile = new File(conf.getTempDir() + logDirName + File.separator + logFile);
+        testFile = new File(conf.getTempDir() + BACKUP_LOG_DIR + separator + logFile);
         assertTrue(testFile.exists());
         
-        testFile = new File(conf.getTempDir() + logDirName + File.separator + logDir);
+        testFile = new File(conf.getTempDir() + BACKUP_LOG_DIR + separator + logDir);
         assertTrue(testFile.exists());
         
-        testFile = new File(conf.getTempDir() + logDirName + File.separator + logDir + File.separator + logDirFile);
+        testFile = new File(conf.getTempDir() + BACKUP_LOG_DIR + separator + logDir + separator + logDirFile);
         assertTrue(testFile.exists());
         
         r = new FileReader(testFile);
         buf = new char[8];
         r.read(buf);
+        r.close();
         assertEquals(logTestString, String.valueOf(buf).trim());
         
         File empty = new File (conf.getBabuDBConfig().getBaseDir());
@@ -153,7 +154,7 @@ public class DirectFileIOTest {
         assertTrue(bd.exists());
         
         File bdf = new File(conf.getBabuDBConfig().getBaseDir() + baseDir + 
-                File.separator + baseDirFile);
+                separator + baseDirFile);
         assertTrue(bdf.exists());
         
         BufferedReader r = new BufferedReader(new FileReader(bdf));
@@ -171,7 +172,7 @@ public class DirectFileIOTest {
         assertTrue(ld.exists());
         
         File ldf = new File(conf.getBabuDBConfig().getDbLogDir() + logDir + 
-                File.separator + logDirFile);
+                separator + logDirFile);
         assertTrue(ldf.exists());
         
         r = new BufferedReader(new FileReader(ldf));
@@ -195,7 +196,7 @@ public class DirectFileIOTest {
         bd = null;
         
         File bdf = new File(conf.getBabuDBConfig().getBaseDir() + baseDir + 
-                File.separator + baseDirFile);
+                separator + baseDirFile);
         assertTrue(bdf.createNewFile());
         
         FileWriter w = new FileWriter(bdf);
@@ -218,7 +219,7 @@ public class DirectFileIOTest {
         ld = null;
         
         File ldf = new File(conf.getBabuDBConfig().getDbLogDir() + logDir + 
-                File.separator + logDirFile);
+                separator + logDirFile);
         assertTrue(ldf.createNewFile());
         
         w = new FileWriter(ldf);

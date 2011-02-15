@@ -17,6 +17,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.Database;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.Databases;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap;
@@ -219,7 +220,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
      *          java.net.InetSocketAddress)
      */
     @Override
-    public ClientResponseFuture<Iterator<Entry<byte[], byte[]>>> 
+    public ClientResponseFuture<ResultSet<byte[], byte[]>> 
             prefixLookup(String dbName, int indexId, ReusableBuffer key, 
                     InetSocketAddress master) {
 
@@ -230,10 +231,10 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                     Auth.getDefaultInstance(), 
                     UserCredentials.getDefaultInstance(), dbName, indexId, key);
             
-            return new ClientResponseFuture<Iterator<Entry<byte[], byte[]>>>(result) {
+            return new ClientResponseFuture<ResultSet<byte[], byte[]>>(result) {
                 
                 @Override
-                public Iterator<Entry<byte[], byte[]>> get() 
+                public ResultSet<byte[], byte[]> get() 
                         throws ErrorCodeException, IOException, 
                         InterruptedException {
                     
@@ -266,7 +267,28 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                                 BufferPool.free(v);
                             }
                         }
-                        return m.entrySet().iterator();
+                        
+                        final Iterator<Entry<byte[],byte[]>> iter = m.entrySet().iterator();
+                        return new ResultSet<byte[],byte[]>() {
+                            
+                            @Override
+                            public void remove() {
+                                iter.remove();
+                            }
+                            
+                            @Override
+                            public Entry<byte[], byte[]> next() {
+                                return iter.next();
+                            }
+                            
+                            @Override
+                            public boolean hasNext() {
+                                return iter.hasNext();
+                            }
+                            
+                            @Override
+                            public void free() {}
+                        };
                     
                     } finally {
                         BufferPool.free(data);
@@ -274,10 +296,10 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<Iterator<Entry<byte[], byte[]>>>(null) {
+            return new ClientResponseFuture<ResultSet<byte[], byte[]>>(null) {
                 
                 @Override
-                public Iterator<Entry<byte[], byte[]>> get() 
+                public ResultSet<byte[], byte[]> get() 
                         throws ErrorCodeException, IOException, 
                         InterruptedException {
                     throw e;
@@ -294,7 +316,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
      *          java.net.InetSocketAddress)
      */
     @Override
-    public ClientResponseFuture<Iterator<Entry<byte[], byte[]>>> prefixLookupR(
+    public ClientResponseFuture<ResultSet<byte[], byte[]>> prefixLookupR(
             String dbName, int indexId, ReusableBuffer key, 
             InetSocketAddress master) {
 
@@ -305,10 +327,10 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                     Auth.getDefaultInstance(), 
                     UserCredentials.getDefaultInstance(), dbName, indexId, key);
             
-            return new ClientResponseFuture<Iterator<Entry<byte[], byte[]>>>(result) {
+            return new ClientResponseFuture<ResultSet<byte[], byte[]>>(result) {
                 
                 @Override
-                public Iterator<Entry<byte[], byte[]>> get() 
+                public ResultSet<byte[], byte[]> get() 
                         throws ErrorCodeException, IOException, 
                         InterruptedException {
                     
@@ -341,7 +363,28 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                                 BufferPool.free(v);
                             }
                         }
-                        return m.entrySet().iterator();
+                        
+                        final Iterator<Entry<byte[],byte[]>> iter = m.entrySet().iterator();
+                        return new ResultSet<byte[],byte[]>() {
+                            
+                            @Override
+                            public void remove() {
+                                iter.remove();
+                            }
+                            
+                            @Override
+                            public Entry<byte[], byte[]> next() {
+                                return iter.next();
+                            }
+                            
+                            @Override
+                            public boolean hasNext() {
+                                return iter.hasNext();
+                            }
+                            
+                            @Override
+                            public void free() {}
+                        };
                     
                     } finally {
                         BufferPool.free(data);
@@ -349,10 +392,10 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<Iterator<Entry<byte[], byte[]>>>(null) {
+            return new ClientResponseFuture<ResultSet<byte[], byte[]>>(null) {
                 
                 @Override
-                public Iterator<Entry<byte[], byte[]>> get() 
+                public ResultSet<byte[], byte[]> get() 
                         throws ErrorCodeException, IOException, 
                         InterruptedException {
                     throw e;
@@ -369,7 +412,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
      *          org.xtreemfs.foundation.buffer.ReusableBuffer, java.net.InetSocketAddress)
      */
     @Override
-    public ClientResponseFuture<Iterator<Entry<byte[], byte[]>>> rangeLookup(
+    public ClientResponseFuture<ResultSet<byte[], byte[]>> rangeLookup(
             String dbName, int indexId, ReusableBuffer from, ReusableBuffer to, 
             InetSocketAddress master) {
         
@@ -386,10 +429,10 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                     UserCredentials.getDefaultInstance(), dbName, indexId,  
                     from.remaining(), payload);
             
-            return new ClientResponseFuture<Iterator<Entry<byte[], byte[]>>>(result) {
+            return new ClientResponseFuture<ResultSet<byte[], byte[]>>(result) {
                 
                 @Override
-                public Iterator<Entry<byte[], byte[]>> get() 
+                public ResultSet<byte[], byte[]> get() 
                         throws ErrorCodeException, IOException, 
                         InterruptedException {
                     
@@ -422,7 +465,28 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                                 BufferPool.free(v);
                             }
                         }
-                        return m.entrySet().iterator();
+                        
+                        final Iterator<Entry<byte[],byte[]>> iter = m.entrySet().iterator();
+                        return new ResultSet<byte[],byte[]>() {
+                            
+                            @Override
+                            public void remove() {
+                                iter.remove();
+                            }
+                            
+                            @Override
+                            public Entry<byte[], byte[]> next() {
+                                return iter.next();
+                            }
+                            
+                            @Override
+                            public boolean hasNext() {
+                                return iter.hasNext();
+                            }
+                            
+                            @Override
+                            public void free() {}
+                        };
                     
                     } finally {
                         BufferPool.free(data);
@@ -430,10 +494,10 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<Iterator<Entry<byte[], byte[]>>>(null) {
+            return new ClientResponseFuture<ResultSet<byte[], byte[]>>(null) {
                 
                 @Override
-                public Iterator<Entry<byte[], byte[]>> get() 
+                public ResultSet<byte[], byte[]> get() 
                         throws ErrorCodeException, IOException, 
                         InterruptedException {
                     throw e;
@@ -452,7 +516,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
      *          org.xtreemfs.foundation.buffer.ReusableBuffer, java.net.InetSocketAddress)
      */
     @Override
-    public ClientResponseFuture<Iterator<Entry<byte[], byte[]>>> rangeLookupR(
+    public ClientResponseFuture<ResultSet<byte[], byte[]>> rangeLookupR(
             String dbName, int indexId, ReusableBuffer from, ReusableBuffer to, 
             InetSocketAddress master) {
         
@@ -469,10 +533,10 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                     UserCredentials.getDefaultInstance(), dbName, indexId,  
                     from.remaining(), payload);
             
-            return new ClientResponseFuture<Iterator<Entry<byte[], byte[]>>>(result) {
+            return new ClientResponseFuture<ResultSet<byte[], byte[]>>(result) {
                 
                 @Override
-                public Iterator<Entry<byte[], byte[]>> get() 
+                public ResultSet<byte[], byte[]> get() 
                         throws ErrorCodeException, IOException, 
                         InterruptedException {
                     
@@ -505,7 +569,28 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                                 BufferPool.free(v);
                             }
                         }
-                        return m.entrySet().iterator();
+                        
+                        final Iterator<Entry<byte[],byte[]>> iter = m.entrySet().iterator();
+                        return new ResultSet<byte[],byte[]>() {
+                            
+                            @Override
+                            public void remove() {
+                                iter.remove();
+                            }
+                            
+                            @Override
+                            public Entry<byte[], byte[]> next() {
+                                return iter.next();
+                            }
+                            
+                            @Override
+                            public boolean hasNext() {
+                                return iter.hasNext();
+                            }
+                            
+                            @Override
+                            public void free() {}
+                        };
                     
                     } finally {
                         BufferPool.free(data);
@@ -513,10 +598,10 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<Iterator<Entry<byte[], byte[]>>>(null) {
+            return new ClientResponseFuture<ResultSet<byte[], byte[]>>(null) {
                 
                 @Override
-                public Iterator<Entry<byte[], byte[]>> get() 
+                public ResultSet<byte[], byte[]> get() 
                         throws ErrorCodeException, IOException, 
                         InterruptedException {
                     throw e;
