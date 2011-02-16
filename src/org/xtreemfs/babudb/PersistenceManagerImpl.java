@@ -7,6 +7,8 @@
  */
 package org.xtreemfs.babudb;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.xtreemfs.babudb.api.PersistenceManager;
 import org.xtreemfs.babudb.api.InMemoryProcessing;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
@@ -27,7 +29,7 @@ import org.xtreemfs.foundation.buffer.ReusableBuffer;
  */
 class PersistenceManagerImpl extends PersistenceManager {
     
-    private DiskLogger diskLogger;
+    private final AtomicReference<DiskLogger> diskLogger = new AtomicReference<DiskLogger>(null);
     
     private volatile LSN latestOnDisk;
         
@@ -35,7 +37,7 @@ class PersistenceManagerImpl extends PersistenceManager {
      * @see org.xtreemfs.babudb.api.PersistenceManager#init(org.xtreemfs.babudb.lsmdb.LSN)
      */
     public void init(LSN initial) {
-        this.latestOnDisk = initial; 
+        latestOnDisk = initial; 
     }
     
     /* (non-Javadoc)
@@ -43,7 +45,11 @@ class PersistenceManagerImpl extends PersistenceManager {
      *          org.xtreemfs.babudb.log.DiskLogger)
      */
     public void setLogger(DiskLogger logger) {
-        this.diskLogger = logger;
+        
+        DiskLogger old = diskLogger.getAndSet(logger);
+        if (logger == null) {
+            latestOnDisk = old.getLatestLSN();
+        }
     }
       
     /*
@@ -91,13 +97,20 @@ class PersistenceManagerImpl extends PersistenceManager {
         
         // append the entry to the DiskLogger
         try {
-            this.diskLogger.append(entry);
+            DiskLogger logger = diskLogger.get();
+            if (logger != null) {
+                logger.append(entry);
+            } else {
+                if (entry != null) entry.free();
+                throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "BabuDB has currently been " +
+                	"stopped by an internal event. It will be back as soon as possible.");
+            }
         } catch (InterruptedException ie) {
             if (entry != null) entry.free();
-            throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "Operation " +
+            throw new BabuDBException(ErrorCode.INTERRUPTED, "Operation " +
                         "could not have been stored persistent to disk an " +
                         "will therefore be discarded.", ie.getCause());
-        } 
+        }
         
         return result;
     }
@@ -107,8 +120,10 @@ class PersistenceManagerImpl extends PersistenceManager {
      */
     @Override
     public void lockService() throws InterruptedException {
-        if(this.diskLogger != null)
-            this.diskLogger.lockLogger();
+        DiskLogger logger = diskLogger.get();
+        if(logger != null) {
+            logger.lockLogger();
+        }
     }
 
     /* (non-Javadoc)
@@ -116,8 +131,11 @@ class PersistenceManagerImpl extends PersistenceManager {
      */
     @Override
     public void unlockService() {
-        if (this.diskLogger != null && this.diskLogger.hasLock())
-            this.diskLogger.unlockLogger();
+        
+        DiskLogger logger = diskLogger.get();
+        if (logger != null && logger.hasLock()) {
+            logger.unlockLogger();
+        }
     }
 
     /* (non-Javadoc)
@@ -125,6 +143,11 @@ class PersistenceManagerImpl extends PersistenceManager {
      */
     @Override
     public LSN getLatestOnDiskLSN() {
-        return latestOnDisk;
+        DiskLogger logger = diskLogger.get();
+        if (logger != null) {
+            return logger.getLatestLSN();
+        } else {
+            return latestOnDisk;
+        }
     }
 }

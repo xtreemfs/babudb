@@ -23,6 +23,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.zip.CRC32;
 
+import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
@@ -212,11 +214,19 @@ public class DiskLogger extends Thread {
     /**
      * Appends an entry to the write queue.
      * @param entry to write
+     * @throws InterruptedException if the entry could not be 
      */
     public void append(LogEntry entry) throws InterruptedException {
         assert (entry != null);
         
-        entries.put(entry);
+        synchronized (down) {
+            if (!down.get()) {
+                entries.put(entry);
+            } else {
+                throw new InterruptedException("Appending the LogEntry to the DiskLogger's " +
+                		"queue was interrupted, due DiskLogger shutdown.");
+            }
+        }
     }
 
     public void lockLogger() throws InterruptedException {
@@ -239,12 +249,11 @@ public class DiskLogger extends Thread {
         // get last synchronized LSN and increment the viewId if needed
         LSN lastSyncedLSN = null;
         if (incrementViewId){
-            int view = this.currentViewId.getAndIncrement();
-            long seq = this.nextLogSequenceNo.getAndSet(1L) - 1L;
+            int view = currentViewId.getAndIncrement();
+            long seq = nextLogSequenceNo.getAndSet(1L) - 1L;
             lastSyncedLSN = new LSN(view, seq);
         } else {
-            lastSyncedLSN = new LSN(this.currentViewId.get(), 
-                                    this.nextLogSequenceNo.get() - 1L);
+            lastSyncedLSN = new LSN(currentViewId.get(), nextLogSequenceNo.get() - 1L);
         }
         
         final String newFileName = createLogFileName();
@@ -253,7 +262,7 @@ public class DiskLogger extends Thread {
 
         this.currentLogFileName = newFileName;
 
-        File lf = new File(this.currentLogFileName);
+        File lf = new File(currentLogFileName);
         String openMode = "";
         switch (syncMode) {
             case ASYNC:
@@ -369,18 +378,15 @@ public class DiskLogger extends Thread {
             this.interrupt();
         }
     }
-
-    public boolean isDown() {
-        return down.get();
-    }
-
+    
     public void waitForShutdown() throws InterruptedException {
         synchronized (down) {
             if (!down.get()) {
                 down.wait();
             }
+            
+            destroy();
         }
-        destroy();
     }
 
     /**
@@ -391,7 +397,7 @@ public class DiskLogger extends Thread {
         super.finalize();
     }
     
-    public void destroy() {
+    public void destroy() {       
         try {
             fdes.sync();
         } catch (IOException ex) {
@@ -401,6 +407,13 @@ public class DiskLogger extends Thread {
                 fos.close();
             } catch (IOException e) {
                 /* I don't care */
+            }
+            
+            // clear pending requests, if available
+            for (LogEntry le : entries) {
+                le.getListener().failed(le, new BabuDBException(ErrorCode.INTERRUPTED, 
+                    "DiskLogger was shut down, before the entry could be written to the log-file"));
+                le.free();
             }
         }
     }
