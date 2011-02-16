@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2008 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -26,6 +26,7 @@ import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.log.DiskLogger;
+import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
 import org.xtreemfs.foundation.logging.Logging;
@@ -98,6 +99,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
      * Flag to notify the disk-logger about a viewId incrementation.
      */
     private boolean                            incrementViewId    = false;
+    private volatile LSN                       lastWrittenLSN;
     
     /**
      * Creates a new database checkpointer
@@ -168,8 +170,10 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
      * @param incViewId
      *            - set true, if the viewId should be incremented.
      * 
+     * @return {@link LSN} of the last {@link LogEntry} written to the {@link DiskLogger} before the 
+     *         checkpoint.
      */
-    public void checkpoint(boolean incViewId) throws BabuDBException {
+    public LSN checkpoint(boolean incViewId) throws BabuDBException {
         
         incrementViewId = incViewId;
         synchronized (checkpointComplete) {
@@ -186,6 +190,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
         // wait for the checkpoint to complete
         try {
             waitForCheckpoint();
+            return lastWrittenLSN;
         } catch (InterruptedException e) {
             throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "interrupted", e);
         }
@@ -268,7 +273,6 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
             int[][] snapIds = new int[databases.size()][];
             int i = 0;
             
-            LSN lastWrittenLSN = null;
             try {
                 // critical block...
                 logger.lockLogger();
