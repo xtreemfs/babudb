@@ -16,18 +16,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.zip.CRC32;
 
 import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.LogEntry;
+import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.FleaseMessageReceiver;
 import org.xtreemfs.babudb.replication.Layer;
-import org.xtreemfs.babudb.replication.control.RoleChangeListener;
+import org.xtreemfs.babudb.replication.LockableService;
+import org.xtreemfs.babudb.replication.TopLayer;
 import org.xtreemfs.babudb.replication.proxy.RPCRequestHandler;
+import org.xtreemfs.babudb.replication.service.accounting.LatestLSNUpdateListener;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates;
 import org.xtreemfs.babudb.replication.service.accounting.ReplicateResponse;
@@ -39,7 +43,7 @@ import org.xtreemfs.babudb.replication.service.clients.MasterClient;
 import org.xtreemfs.babudb.replication.service.clients.SlaveClient;
 import org.xtreemfs.babudb.replication.transmission.TransmissionToServiceInterface;
 import org.xtreemfs.foundation.LifeCycleListener;
-import org.xtreemfs.foundation.TimeSync;
+import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.flease.Flease;
 import org.xtreemfs.foundation.logging.Logging;
@@ -68,47 +72,46 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
     
     /** interface for operation performed on BabuDB */
     private final BabuDBInterface                babuDBInterface;
-    
-    /** listener to notify about changes of this server's role */
-    private volatile RoleChangeListener          roleChangeListener = null;
-    
+        
     /** interface to the underlying layer */
     private final TransmissionToServiceInterface transmissionInterface;
         
-    private final int maxChunkSize;
+    /** thread safe checksum object for serialization of LogEntries to replicate */
+    private final AtomicReference<CRC32>         checksum = new AtomicReference<CRC32>(new CRC32());
+    
+    private final int                            maxChunkSize;
     
     /**
-     * 
      * @param config
-     * @param underlyingLayer
-     * @param clientFactory
-     * @param latest
+     * @param babuDB
+     * @param transLayer
+     * 
      * @throws IOException if {@link Flease} could not be initialized.
      */
     public ServiceLayer(ReplicationConfig config, BabuDBInterface babuDB,
             TransmissionToServiceInterface transLayer) throws IOException {
         
-        this.maxChunkSize = config.getChunkSize();
-        this.transmissionInterface = transLayer;
-        this.babuDBInterface = babuDB;
+        maxChunkSize = config.getChunkSize();
+        transmissionInterface = transLayer;
+        babuDBInterface = babuDB;
         
         // ----------------------------------
         // initialize the participants states
         // ----------------------------------
         int syncN = ((config.getSyncN() > 0) ? config.getSyncN() - 1 : 
                                                config.getSyncN());
-        this.participantsStates = new ParticipantsStates(syncN, 
+        participantsStates = new ParticipantsStates(syncN, 
                 config.getParticipants(), transLayer);
         
         // ----------------------------------
         // initialize the heartbeat
         // ----------------------------------
-        this.heartbeatThread = new HeartbeatThread(participantsStates);
+        heartbeatThread = new HeartbeatThread(participantsStates);
         
         // ----------------------------------
         // initialize replication stage
         // ----------------------------------
-        this.replicationStage = new ReplicationStage(
+        replicationStage = new ReplicationStage(
                 config.getBabuDBConfig().getMaxQueueLength(), 
                 this.heartbeatThread, this, transLayer.getFileIOInterface(), 
                 this.babuDBInterface, this.lastOnView, maxChunkSize);
@@ -117,8 +120,25 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         // initialize request logic for 
         // handling BabuDB remote calls
         // ----------------------------------
-        this.transmissionInterface.addRequestHandler(
+        transmissionInterface.addRequestHandler(
                 new RPCRequestHandler(participantsStates, babuDBInterface));
+    }
+    
+    public <T extends TopLayer & FleaseMessageReceiver> void init(T receiver) {
+        assert (receiver != null);
+              
+        // ----------------------------------
+        // coin the dispatcher of the 
+        // underlying layer
+        // ----------------------------------
+        this.transmissionInterface.addRequestHandler(
+                new ReplicationRequestHandler(participantsStates, receiver, babuDBInterface, 
+                        replicationStage, lastOnView, maxChunkSize, 
+                        transmissionInterface.getFileIOInterface()));
+    }
+    
+    public LockableService getLockableService() {
+        return replicationStage;
     }
     
 /*
@@ -126,14 +146,14 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
  */
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.ServiceToControlInterface#replicate(org.xtreemfs.babudb.log.LogEntry, org.xtreemfs.foundation.buffer.ReusableBuffer)
+     * @see org.xtreemfs.babudb.replication.service.ServiceToControlInterface#replicate(
+     *          org.xtreemfs.babudb.log.LogEntry)
      */
     @Override
-    @SuppressWarnings("unchecked")
-    public ReplicateResponse replicate(LogEntry le, ReusableBuffer payload) {
+    public ReplicateResponse replicate(LogEntry le) {
         List<SlaveClient> slaves;
         try {
-            slaves = this.participantsStates.getAvailableParticipants();
+            slaves = participantsStates.getAvailableParticipants();
         } catch (Exception e) {
             return new ReplicateResponse(le, e);
         }  
@@ -145,20 +165,34 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
             Logging.logMessage(Logging.LEVEL_DEBUG, this, 
                     "There are no slaves available anymore! " +
                     "BabuDB runs if it would be in non-replicated mode.");
-        } else {  
+        } else {
+            
+            // serialize the LogEntry
+            ReusableBuffer payload = null;
+            synchronized(checksum) {
+                CRC32 csumAlgo = checksum.get();
+                try {
+                    payload = le.serialize(csumAlgo);
+                } finally {
+                    csumAlgo.reset();
+                }
+            }
+            
+            // send the LogEntry to the other servers
             for (final SlaveClient slave : slaves) {
-                ((ClientResponseFuture<Object>) slave.replicate(le.getLSN(), 
-                        payload.createViewBuffer())).registerListener(
-                                new ClientResponseAvailableListener<Object>() {
+                slave.replicate(le.getLSN(), payload).registerListener(
+                        new ClientResponseAvailableListener<Object>() {
                 
                     @Override
                     public void responseAvailable(Object r) {
+                        
                         // evaluate the response
                         participantsStates.requestFinished(slave);
                     }
 
                     @Override
                     public void requestFailed(Exception e) {
+                        
                         participantsStates.markAsDead(slave);
                         result.decrementPermittedFailures();
                         
@@ -166,8 +200,9 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
                                 "'%s' was marked as dead, because %s", 
                                 slave.getDefaultServerAddress().toString(), 
                                 e.getMessage());
-                        if (e.getMessage() == null)
+                        if (e.getMessage() == null) {
                             Logging.logError(Logging.LEVEL_DEBUG, this, e);
+                        }
                     }
                 });
             }
@@ -175,35 +210,31 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         return result;
     }
     
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.ServiceToControlInterface#synchronize()
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.service.ServiceToControlInterface#synchronize(
+     *          org.xtreemfs.babudb.log.SyncListener)
      */
     @Override
-    public void synchronize() throws 
-        BabuDBException, InterruptedException, IOException {
+    public void synchronize(final SyncListener listener) throws BabuDBException, 
+            InterruptedException, IOException {
         
-        List<ConditionClient> slaves = 
-            this.participantsStates.getConditionClients();
- 
-        // get time-stamp to decide when to start the replication
-        long now = TimeSync.getLocalSystemTime();
+        List<ConditionClient> slaves = participantsStates.getConditionClients();
     
         // get the most up-to-date slave
         LSN latest = null;
         Map<ClientInterface ,LSN> states = null;
     
         if (slaves.size() > 0) {
-            states = getStates(slaves);
+            states = getStates(slaves, true);
         
-            // handover the lease, if not enough slaves are available 
-            // to assure consistency TODO deprecated (return error to client instead)
-            if ((states.size()+1) < this.participantsStates.getSyncN()) {
+            // becoming a master has failed
+            if ((states.size() + 1) < participantsStates.getSyncN()) {
                 throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
                         "Not enough slaves available to synchronize with!");
             }
         
             if (states.size() > 0) {
+                
                 // if one of them is more up to date, then synchronize 
                 // with it
                 List<LSN> values = new LinkedList<LSN>(states.values());
@@ -216,16 +247,16 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         LSN localState = babuDBInterface.getState();
         if (latest != null && latest.compareTo(localState) > 0) {
             for (Entry<ClientInterface, LSN> entry : states.entrySet()) {
-                if (entry.getValue().equals(latest)) {                 
+                if (entry.getValue().equals(latest)) {   
+                    
                     // setup a slave dispatcher to synchronize the 
                     // BabuDB with a replicated participant         
                     Logging.logMessage(Logging.LEVEL_INFO, this, 
                             "Starting synchronization from '%s' to '%s'.", 
                             localState.toString(), latest.toString());
                 
-                    BabuDBRequestResultImpl<Boolean> ready = 
-                        new BabuDBRequestResultImpl<Boolean>();
-                    this.replicationStage.manualLoad(ready, localState, latest);
+                    BabuDBRequestResultImpl<Boolean> ready = new BabuDBRequestResultImpl<Boolean>();
+                    replicationStage.manualLoad(ready, localState, latest);
                     ready.get();
                 
                     assert(latest.equals(babuDBInterface.getState())) : 
@@ -237,52 +268,37 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
             }
         }
     
-        // always take a checkpoint on master-failover (incl. viewId inc.)
-        this.lastOnView.set(this.babuDBInterface.getState());
+        // always take a checkpoint on master-failover (inclusive viewId incrementation)
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "taking a checkpoint");
-        // TODO maybe there are still some inserts on the DiskLogger-queue,
-        // which might increment the lastOnView LSN.
-        this.babuDBInterface.checkpoint();
+        lastOnView.set(babuDBInterface.checkpoint());
+        
+        assert (lastOnView.get().compareTo(latest) == 0);
     
-        // wait for the slaves to recognize the master-change, 
-        // before setting up the masterDispatcher (asynchronous)
-        long difference = TimeSync.getLocalSystemTime() - now;
-        long threshold = ReplicationConfig.LEASE_TIMEOUT / 2;
-        Thread.sleep((difference < threshold ? threshold-difference : 0 ));
-        
-        // reset the new master
-        latest = this.babuDBInterface.getState();
-        
-        Logging.logMessage(Logging.LEVEL_INFO, this, "Running in master" +
-                "-mode (%s)", latest.toString());
-    }
-    
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.Coinable#coin(java.lang.Object, java.lang.Object)
-     */
-    @Override
-    public void coin(RoleChangeListener listener, 
-            FleaseMessageReceiver receiver) {
-        assert (receiver != null);
-        assert (listener != null);
-        
-        synchronized (this) {
-            if (this.roleChangeListener == null) {
-                this.roleChangeListener = listener;  
-                this.replicationStage.setRoleChangeListener(listener);
-                
-                // ----------------------------------
-                // coin the dispatcher of the 
-                // underlying layer
-                // ----------------------------------
-                this.transmissionInterface.addRequestHandler(
-                        new ReplicationRequestHandler(participantsStates, 
-                                receiver, babuDBInterface, replicationStage, 
-                                lastOnView, maxChunkSize, 
-                                transmissionInterface.getFileIOInterface()));
-            }
+        // wait for the slaves to recognize the master-change and for at least N servers to 
+        // establish a stable state
+        final LogEntry noop = 
+            new LogEntry(BufferPool.allocate(0), listener, LogEntry.PAYLOAD_TYPE_INSERT);
+        noop.assignId(latest.getViewId(), latest.getSequenceNo());
+        ReplicateResponse rp = replicate(noop);
+        LSN syncState = babuDBInterface.getState();
+        if (!rp.hasFailed()) {
+            subscribeListener(new LatestLSNUpdateListener(syncState){
+
+                @Override
+                public void upToDate() {
+                    listener.synced(noop);
+                }
+
+                @Override
+                public void failed() {
+                    listener.failed(noop, 
+                            new Exception("Servers could not have been synchronized."));
+                }
+            });
         }
+                
+        Logging.logMessage(Logging.LEVEL_INFO, this, "Running in master-mode (%s)", 
+                syncState.toString());
     }
   
     /*
@@ -291,15 +307,14 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
      */
     @Override
     public MasterClient getSynchronizationPartner(LSN progressAtLeast) {
-        MasterClient master = this.participantsStates.getMaster();
+        MasterClient master = participantsStates.getMaster();
         
-        List<ConditionClient> servers = 
-            this.participantsStates.getConditionClients();
+        List<ConditionClient> servers = participantsStates.getConditionClients();
 
         servers.remove(master);
         
         if (servers.size() > 0) {
-            Map<ClientInterface, LSN> states = getStates(servers);
+            Map<ClientInterface, LSN> states = getStates(servers, false);
             
             for (Entry<ClientInterface, LSN> e : states.entrySet()) {
                 if (e.getValue().compareTo(progressAtLeast) >= 0)
@@ -315,7 +330,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
      */
     @Override
     public ParticipantsOverview getParticipantOverview() {
-        return this.participantsStates;
+        return participantsStates;
     }
     
     /* (non-Javadoc)
@@ -323,9 +338,6 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
      */
     @Override
     public void changeMaster(InetAddress address) {
-        replicationStage.lastInserted = babuDBInterface.getState();
-        // TODO maybe there are still some inserts on the DiskLogger-queue,
-        // which might increment the lastOnView LSN.
         participantsStates.setMaster(address);
     }
     
@@ -355,12 +367,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
                 new LSN(0,0L) : latest);
                 
         try {
-            if (this.roleChangeListener == null)
-                throw new Exception("The service layer has not been coined " +
-                		"yet!");
-            
             this.heartbeatThread.start(latest);
-            this.replicationStage.lastInserted = latest;
             this.replicationStage.start();
             this.heartbeatThread.waitForStartup();
             this.replicationStage.waitForStartup();
@@ -395,19 +402,12 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.ServiceToControlInterface#subscribeListener(org.xtreemfs.babudb.replication.service.accounting.ReplicateResponse)
+     * @see org.xtreemfs.babudb.replication.service.ServiceToControlInterface#subscribeListener(
+     *          org.xtreemfs.babudb.replication.service.accounting.LatestLSNUpdateListener)
      */
     @Override
-    public void subscribeListener(ReplicateResponse rp) {
-        this.participantsStates.subscribeListener(rp);
-    }
-    
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.ServiceToControlInterface#reset()
-     */
-    @Override
-    public void reset() {
-        this.participantsStates.clearListeners();
+    public void subscribeListener(LatestLSNUpdateListener rp) {
+        participantsStates.subscribeListener(rp);
     }
     
 /*
@@ -415,16 +415,14 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
  */
     
     /**
-     * <p>
-     * Performs a network broadcast to get the latest LSN from every available 
-     * DB.
-     * </p>
+     * Performs a network broadcast to get the latest LSN from every available DB.
      * 
      * @param clients
+     * @param hard - decide whether the requested state should be preserved (true), or not (false).
      * @return the LSNs of the latest written LogEntries for the <code>babuDBs
      *         </code> that were available.
      */
-    private Map<ClientInterface, LSN> getStates(List<ConditionClient> clients) {
+    private Map<ClientInterface, LSN> getStates(List<ConditionClient> clients, boolean hard) {
         int numRqs = clients.size();
         Map<ClientInterface, LSN> result = 
             new HashMap<ClientInterface, LSN>();
@@ -434,7 +432,11 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         
         // send the requests
         for (int i=0; i<numRqs; i++) {
-            rps[i] = clients.get(i).state();
+            if (hard) {
+                rps[i] = clients.get(i).state();
+            } else {
+                rps[i] = clients.get(i).volatileState();
+            }
         }
         
         // get the responses

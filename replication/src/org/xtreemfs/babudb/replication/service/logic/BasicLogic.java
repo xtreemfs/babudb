@@ -7,13 +7,12 @@
  */
 package org.xtreemfs.babudb.replication.service.logic;
 
-import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.service.Pacemaker;
 import org.xtreemfs.babudb.replication.service.ReplicationStage;
 import org.xtreemfs.babudb.replication.service.ReplicationStage.Range;
@@ -32,23 +31,20 @@ import static org.xtreemfs.babudb.replication.service.logic.LogicID.*;
  */
 
 public class BasicLogic extends Logic {
-    
-    /** queue containing all incoming requests */
-    private final BlockingQueue<StageRequest>   queue;
+        
+    /** LSN of the last entry asynchronously inserted */
+    private final AtomicReference<LSN>          lastAsyncInserted = new AtomicReference<LSN>(null);
     
     /**
      * @param stage
      * @param pacemaker
      * @param slaveView
      * @param fileIO
-     * @param babuInterface
      * @param q
      */
-    public BasicLogic(ReplicationStage stage, Pacemaker pacemaker, 
-            SlaveView slaveView, FileIOInterface fileIO, 
-            BabuDBInterface babuInterface, BlockingQueue<StageRequest> q) {
-        super(stage, pacemaker, slaveView, fileIO, babuInterface);
-        this.queue = q;
+    public BasicLogic(ReplicationStage stage, Pacemaker pacemaker, SlaveView slaveView, 
+            FileIOInterface fileIO) {
+        super(stage, pacemaker, slaveView, fileIO);
     }
     
     /*
@@ -68,7 +64,7 @@ public class BasicLogic extends Logic {
     public void run() throws InterruptedException {     
         assert (stage.missing == null) : "Blame the developer!";
         
-        final StageRequest op = queue.take();
+        final StageRequest op = stage.getQueue().take();
         // filter dummy stage request
         if (op.getLSN() == null) return;
         
@@ -76,28 +72,29 @@ public class BasicLogic extends Logic {
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "Replicate requested: %s", 
                 lsn.toString());
         
-        LSN expected = new LSN(stage.lastInserted.getViewId(), 
-                               stage.lastInserted.getSequenceNo() + 1L);
+        LSN lastAsync = lastAsyncInserted.get();
+        LSN actual = stage.getBabuDB().getState();
+        actual = (lastAsync == null || actual.compareTo(lastAsync) >= 0) ? actual : lastAsync;
+        LSN expected = new LSN(actual.getViewId(), actual.getSequenceNo() + 1L);
         
         // check the LSN of the logEntry to write
-        if (lsn.compareTo(stage.lastInserted) <= 0) {
+        if (lsn.compareTo(actual) <= 0) {
             // entry was already inserted
             stage.finalizeRequest(op);
             return;
         } else if(!lsn.equals(expected)){
             // we missed one or more entries
-            queue.add(op);
-            stage.missing = new Range(stage.lastInserted, lsn);
+            stage.getQueue().add(op);
+            stage.missing = new Range(actual, lsn);
             stage.setLogic(REQUEST, "We missed some LogEntries from " +
-                    stage.lastInserted.toString() + " to "+ lsn.toString() + 
-                    ".");
+                    actual.toString() + " to "+ lsn.toString() + ".");
             return;
         } 
         
         // try to finish the request
         try {     
             // perform the operation
-            this.babuInterface.appendToLocalPersistenceManager((LogEntry) op.getArgs()[1], 
+            stage.getBabuDB().appendToLocalPersistenceManager((LogEntry) op.getArgs()[1], 
                     new DatabaseRequestListener<Object>() {
                         
                         @Override
@@ -108,18 +105,17 @@ public class BasicLogic extends Logic {
                         
                         @Override
                         public void failed(BabuDBException error, Object context) {
+                            lastAsyncInserted.set(null);
                             stage.finalizeRequest(op);
-                            stage.lastInserted = new LSN(lsn.getViewId(),
-                                    lsn.getSequenceNo()-1L);
                             Logging.logError(Logging.LEVEL_ERROR, stage, error);
                         }
                     });
-            stage.lastInserted = lsn;
+            lastAsyncInserted.set(lsn);
             
         } catch (BabuDBException e) {
             
             // the insert failed due a DB error
-            queue.add(op);
+            stage.getQueue().add(op);
             stage.setLogic(LOAD, e.getMessage());            
         }
     }

@@ -5,40 +5,31 @@
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-/*
- * AUTHORS: Felix Langner (ZIB)
- */
 package org.xtreemfs.babudb.replication.control;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
-import org.xtreemfs.babudb.api.exception.BabuDBException;
-import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.LogEntry;
+import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.replication.FleaseMessageReceiver;
+import org.xtreemfs.babudb.replication.LockableService;
 import org.xtreemfs.babudb.replication.TopLayer;
 import org.xtreemfs.babudb.replication.control.TimeDriftDetector.TimeDriftListener;
 import org.xtreemfs.babudb.replication.service.ServiceToControlInterface;
-import org.xtreemfs.babudb.replication.service.accounting.ReplicateResponse;
-import org.xtreemfs.babudb.replication.service.clients.ConditionClient;
 import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.buffer.ASCIIString;
-import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.flease.Flease;
 import org.xtreemfs.foundation.flease.FleaseStage;
 import org.xtreemfs.foundation.flease.FleaseViewChangeListenerInterface;
 import org.xtreemfs.foundation.flease.MasterEpochHandlerInterface;
 import org.xtreemfs.foundation.flease.comm.FleaseMessage;
-import org.xtreemfs.foundation.flease.proposer.FleaseListener;
+import org.xtreemfs.foundation.logging.Logging;
 
 /**
  * Contains the control logic for steering the replication process.
@@ -46,8 +37,8 @@ import org.xtreemfs.foundation.flease.proposer.FleaseListener;
  * @author flangner
  * @since 02/24/2010
  */
-public class ControlLayer extends TopLayer implements RoleChangeListener, TimeDriftListener, 
-        FleaseMessageReceiver {
+public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseMessageReceiver, 
+        FleaseEventListener {
     
     /** designation of the flease-cell */
     private final static ASCIIString        REPLICATION_CELL = new ASCIIString("replication");
@@ -63,50 +54,36 @@ public class ControlLayer extends TopLayer implements RoleChangeListener, TimeDr
      */
     private final TimeDriftDetector         timeDriftDetector;
     
-    /** controller for the replication mechanism */
-    private final ReplicationController     replicationController;
-
     /** interface to the underlying layer */
     private final ServiceToControlInterface serviceInterface;
     
-    /** the local address of this server to compare with the leaseHolders address */
-    private final InetSocketAddress         id;
+    /** the local address used for the net-communication */
+    private final InetAddress               thisAddress;
     
+    /** listener and storage for the up-to-date lease informations */
     private final FleaseHolder              leaseHolder;
     
-    private final AtomicInteger             viewID;
+    /** services that have to be locked during failover */
+    private LockableService                 userInterface;
+    private LockableService                 replicationInterface;
     
-    private final AtomicLong                sequenceNumber;
-    
-    public ControlLayer(ServiceToControlInterface service, 
-            ReplicationConfig config) 
-        throws IOException {
-        
-        this.viewID = new AtomicInteger(0);
-        this.sequenceNumber = new AtomicLong(0L);
-        this.serviceInterface = service;
-        this.fleaseParticipants = new LinkedList<InetSocketAddress>(
-                config.getParticipants());
+    public ControlLayer(ServiceToControlInterface serviceLayer, ReplicationConfig config) 
+            throws IOException {
         
         // ----------------------------------
         // initialize the time drift detector
         // ----------------------------------
-        this.timeDriftDetector = new TimeDriftDetector(this, 
-                service.getParticipantOverview().getConditionClients(), 
+        timeDriftDetector = new TimeDriftDetector(this, 
+                serviceLayer.getParticipantOverview().getConditionClients(), 
                 config.getLocalTimeRenew());
         
         // ----------------------------------
         // initialize the replication 
         // controller
         // ---------------------------------- 
-        this.id = FleaseHolder.getAddress(config.getFleaseConfig().getIdentity());
-        this.leaseHolder = new FleaseHolder(REPLICATION_CELL);
-        
-        this.replicationController = 
-            new ReplicationController(this.leaseHolder, this.serviceInterface, 
-                    config.getAddress(), this);
-        
-        this.leaseHolder.registerListener(this.replicationController);
+        thisAddress = config.getAddress();
+        serviceInterface = serviceLayer;
+        leaseHolder = new FleaseHolder(REPLICATION_CELL, this);
         
         // ----------------------------------
         // initialize Flease
@@ -114,226 +91,56 @@ public class ControlLayer extends TopLayer implements RoleChangeListener, TimeDr
         File bDir = new File(config.getBabuDBConfig().getBaseDir());
         if (!bDir.exists()) bDir.mkdirs();
 
-        this.fleaseStage = new FleaseStage(config.getFleaseConfig(), 
+        fleaseParticipants = new LinkedList<InetSocketAddress>(config.getParticipants());
+        fleaseStage = new FleaseStage(config.getFleaseConfig(), 
                 config.getBabuDBConfig().getBaseDir(), 
-                new FleaseMessageSender(service.getParticipantOverview()), false, 
+                new FleaseMessageSender(serviceLayer.getParticipantOverview()), false, 
                 new FleaseViewChangeListenerInterface() {
-            
-                    /* (non-Javadoc)
-                     * @see org.xtreemfs.foundation.flease.
-                     *          FleaseViewChangeListenerInterface#
-                     * viewIdChangeEvent(
-                     *          org.xtreemfs.foundation.buffer.ASCIIString, int)
-                     */
+                    /* does not influence the replication */
                     @Override
-                    public void viewIdChangeEvent(ASCIIString cellId, 
-                            int viewId) {
-                        
-                        int oldViewId = viewID.getAndSet(viewId);
-                        
-                        // a master change has just occurred
-                        if (oldViewId < viewId && !hasLease()) {
-                            // TODO make the slave load from master --- won't work
-                        }
-                    }
-                }, this.leaseHolder, new MasterEpochHandlerInterface() {
+                    public void viewIdChangeEvent(ASCIIString cellId, int viewId) { }
                     
+                }, leaseHolder, new MasterEpochHandlerInterface() {
+                    /* does not influence the replication */
                     @Override
-                    public void storeMasterEpoch(FleaseMessage request, 
-                                                 Continuation callback) {
-                        
-                        synchronized (sequenceNumber) {
-                            long epoch = request.getMasterEpochNumber();
-                            
-                            if (sequenceNumber.get() < epoch) {
-                                sequenceNumber.set(epoch);
-                                // TODO update (rebuild) last acknowledged
-                            }
-                        }
-                        
+                    public void storeMasterEpoch(FleaseMessage request, Continuation callback) {                        
                         callback.processingFinished();
                     }
                     
                     @Override
-                    public void sendMasterEpoch(FleaseMessage response, 
-                                                Continuation callback) {
-                        // TODO Auto-generated method stub
-                        
-                        
+                    public void sendMasterEpoch(FleaseMessage response, Continuation callback) {
                         callback.processingFinished();
                     }
                 });
     }  
-    
-    /**
-     * Method to participate at {@link Flease}.
-     */
-    void joinFlease() {
-        this.fleaseStage.openCell(REPLICATION_CELL, this.fleaseParticipants, true);
-    }
-    
-    /**
-     * Method to end lease ownership and transfer it to the newOwner.
-     * 
-     * @param newOwner
-     * 
-     * @return true, if the ownership has been transfered successfully, 
-     *         false otherwise.
-     * @throws InterruptedException 
-     */
-    boolean handOverLease(ASCIIString newOwner) throws InterruptedException {
         
-        // this is result and lock to synchronize the request altogether
-        final AtomicBoolean result = new AtomicBoolean();
-        
-        synchronized (result) {
-            this.fleaseStage.handoverLease(REPLICATION_CELL, newOwner, 
-                    new FleaseListener() {
-                
-                @Override
-                public void proposalResult(ASCIIString cellId, 
-                        ASCIIString leaseHolder, long leaseTimeout_ms,
-                        long masterEpochNumber) {
-                    
-                    synchronized (result) {
-                        result.set(true);
-                        result.notify();
-                    }
-                }
-                
-                @Override
-                public void proposalFailed(ASCIIString cellId, 
-                                           Throwable cause) {
-                    
-                    synchronized (result) {
-                        result.set(false);
-                        result.notify();
-                    }
-                }
-            });
-            
-            result.wait();
-        }
-        
-        return result.get();
-    }
-    
-    /**
-     * Method to increment the viewId for this replication cell. This mechanism
-     * is used to notify the slaves about a lease owner switch.
-     * 
-     * @return true, if the viewId has been changed successfully, 
-     *         false otherwise.
-     *         
-     * @throws InterruptedException 
-     */
-    boolean incrementViewID() throws InterruptedException {
-        
-        // this is result and lock to synchronize the request altogether
-        final AtomicBoolean result = new AtomicBoolean();
-        
-        synchronized (result) {
-            this.fleaseStage.setViewId(REPLICATION_CELL, 
-                    this.viewID.incrementAndGet(), new FleaseListener() {
-                
-                @Override
-                public void proposalResult(ASCIIString cellId, 
-                        ASCIIString leaseHolder, long leaseTimeout_ms,
-                        long masterEpochNumber) {
-                    
-                    synchronized (result) {
-                        result.set(true);
-                        result.notify();
-                    }
-                }
-                
-                @Override
-                public void proposalFailed(ASCIIString cellId, 
-                        Throwable cause) {
-                    
-                    synchronized (result) {
-                        
-                        // reset the viewID on failure
-                        viewID.decrementAndGet();
-                        
-                        result.set(false);
-                        result.notify();
-                    }
-                }
-            });
-        
-            result.wait();
-        }
-        
-        return result.get();
-    }
-    
-    /**
-     * @return a list of servers participating, ordered by the latest LSN they
-     *         have acknowledged.
-     */
-    List<InetSocketAddress> getClients() {
-        List<InetSocketAddress> result = new ArrayList<InetSocketAddress>();
-        for (ConditionClient c : 
-            serviceInterface.getParticipantOverview().getConditionClients()) {
-            result.add(c.getDefaultServerAddress());
-        }
-        return result;
-    }
-    
-    /**
-     * Method to exclude this BabuDB instance from {@link Flease}.
-     */
-    void exitFlease() {
-        this.fleaseStage.closeCell(REPLICATION_CELL);
-    }
-    
-    boolean amIMaster() {
-        return amIMaster(leaseHolder.getLeaseHolderAddress());
-    }
-    
 /*
- * Overridden methods
+ * overridden methods
  */
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.control.ControlToBabuDBInterface#replicate(org.xtreemfs.babudb.log.LogEntry, org.xtreemfs.foundation.buffer.ReusableBuffer)
+     * @see org.xtreemfs.babudb.replication.TopLayer#lockAll()
      */
-    public ReplicateResponse replicate(LogEntry le, ReusableBuffer buffer)  {  
-        String errorMsg = null;
-        try {
-            if (replicationController.hasLease()) {              
-                if (!replicationController.isSuspended()) {
-                    return serviceInterface.replicate(le, buffer);
-                } else {
-                    errorMsg = "Replication is suspended at the moment. " +
-                               "Try again later.";
-                }
-            } else {
-                errorMsg = "This BabuDB is not running in master-mode! The " +
-                                "operation could not be replicated.";
-            }
-        } catch (InterruptedException e) {
-            errorMsg = "Checking the lease of this server has been interrupted." +
-                        " It could be still performing a failover.";
-        }   
-        assert (errorMsg != null);
-        return new ReplicateResponse(le, 
-                new BabuDBException(ErrorCode.REPLICATION_FAILURE, errorMsg));
+    @Override
+    public void lockAll() throws InterruptedException {
+        userInterface.lock();
+        replicationInterface.lock();
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.control.ControlToBabuDBInterface#subscribeListener(org.xtreemfs.babudb.replication.service.accounting.ReplicateResponse)
+     * @see org.xtreemfs.babudb.replication.TopLayer#unlockUser()
      */
     @Override
-    public void subscribeListener(ReplicateResponse rp) {
-        synchronized (this.replicationController) {
-            if (this.replicationController.isSuspended() && !rp.hasFailed()) {
-                rp.failed();
-            } else {
-                this.serviceInterface.subscribeListener(rp);
-            }
-        }
+    public void unlockUser() {
+        userInterface.unlock();
+    }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.TopLayer#unlockReplication()
+     */
+    @Override
+    public void unlockReplication() {
+        replicationInterface.unlock();
     }
     
     /* (non-Javadoc)
@@ -350,11 +157,7 @@ public class ControlLayer extends TopLayer implements RoleChangeListener, TimeDr
      */
     @Override
     public boolean amIMaster(InetSocketAddress master) {
-        if (master != null) {
-            return this.id.equals(master);
-        }
-        
-        return false;
+        return thisAddress.equals(master);
     }
     
     /*
@@ -363,15 +166,13 @@ public class ControlLayer extends TopLayer implements RoleChangeListener, TimeDr
      */
     @Override
     public void start() {        
-        this.replicationController.start();
-        this.timeDriftDetector.start();
-        this.fleaseStage.start();
+        timeDriftDetector.start();
+        fleaseStage.start();
         
         try {
-            this.replicationController.waitForStartup();
-            this.fleaseStage.waitForStartup();
+            fleaseStage.waitForStartup();
         } catch (Exception e) {
-            this.listener.crashPerformed(e);
+            listener.crashPerformed(e);
         }
         
         joinFlease();
@@ -383,15 +184,15 @@ public class ControlLayer extends TopLayer implements RoleChangeListener, TimeDr
      */
     @Override
     public void shutdown() {
-        this.replicationController.shutdown();
-        this.timeDriftDetector.shutdown();
-        this.fleaseStage.shutdown();
+        exitFlease();
+        
+        timeDriftDetector.shutdown();
+        fleaseStage.shutdown();
         
         try {
-            this.fleaseStage.waitForShutdown();
-            this.replicationController.waitForShutdown();
+            fleaseStage.waitForShutdown();
         } catch (Exception e) {
-            this.listener.crashPerformed(e);
+            listener.crashPerformed(e);
         }
     }
 
@@ -400,9 +201,8 @@ public class ControlLayer extends TopLayer implements RoleChangeListener, TimeDr
      */
     @Override
     public void _setLifeCycleListener(LifeCycleListener listener) {
-        this.timeDriftDetector.setLifeCycleListener(listener);
-        this.fleaseStage.setLifeCycleListener(listener);
-        this.replicationController.setLifeCycleListener(listener);
+        timeDriftDetector.setLifeCycleListener(listener);
+        fleaseStage.setLifeCycleListener(listener);
     }
 
     /* (non-Javadoc)
@@ -410,9 +210,8 @@ public class ControlLayer extends TopLayer implements RoleChangeListener, TimeDr
      */
     @Override
     public void asyncShutdown() {
-        this.timeDriftDetector.shutdown();
-        this.fleaseStage.shutdown();
-        this.replicationController.shutdown();
+        timeDriftDetector.shutdown();
+        fleaseStage.shutdown();
     }
     
     /* (non-Javadoc)
@@ -420,27 +219,10 @@ public class ControlLayer extends TopLayer implements RoleChangeListener, TimeDr
      */
     @Override
     public void driftDetected() {
-        this.listener.crashPerformed(new Exception("Illegal time-drift " +
+        listener.crashPerformed(new Exception("Illegal time-drift " +
                 "detected! The servers participating at the replication" +
                 " are not synchronized anymore. Mutual exclusion cannot" +
                 " be ensured. Replication is stopped immediately."));
-    }
-
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.control.RoleChangeListener#suspend()
-     */
-    @Override
-    public void suspend() {
-        this.replicationController.notifyForSuspension();
-    }
-
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.control.ControlToBabuDBInterface#hasLease()
-     */
-    @Override
-    public boolean hasLease() {
-        return !this.replicationController.isSuspended() && 
-                this.id.equals(this.leaseHolder.getLeaseHolderAddress());
     }
 
     /* (non-Javadoc)
@@ -449,6 +231,112 @@ public class ControlLayer extends TopLayer implements RoleChangeListener, TimeDr
      */
     @Override
     public void receive(FleaseMessage message) {
-        this.fleaseStage.receiveMessage(message);
+        fleaseStage.receiveMessage(message);
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.TopLayer#registerUserInterface(org.xtreemfs.babudb.replication.LockableService)
+     */
+    @Override
+    public void registerUserInterface(LockableService service) {
+        userInterface = service;
+    }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.TopLayer#registerReplicationInterface(org.xtreemfs.babudb.replication.LockableService)
+     */
+    @Override
+    public void registerReplicationInterface(LockableService service) {
+        replicationInterface = service;
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.control.FleaseEventListener#updateLeaseHolder(java.net.InetAddress)
+     */
+    @Override
+    public void updateLeaseHolder(InetAddress newLeaseholder) throws Exception {
+        if (thisAddress.equals(newLeaseholder)) {
+            becomeMaster();
+        } else {
+            becomeSlave(newLeaseholder);
+        }
+    }
+    
+/*
+ * private methods
+ */
+    
+    /**
+     * This server has to become the new master.
+     * 
+     * @throws Exception
+     */
+    private void becomeMaster() throws Exception {
+        
+        Logging.logMessage(Logging.LEVEL_INFO, this, "Becoming the replication master.");
+        
+        // stop all local executions
+        try {
+            lockAll();
+            serviceInterface.changeMaster(null);
+        } finally {
+            unlockReplication();
+        }
+        
+        // synchronize with other servers
+        serviceInterface.synchronize(new SyncListener() {
+            
+            @Override
+            public void synced(LogEntry entry) {
+                entry.free();
+                unlockUser();
+            }
+            
+            @Override
+            public void failed(LogEntry entry, Exception ex) {
+                entry.free();
+                
+                Logging.logMessage(Logging.LEVEL_WARN, this, 
+                        "Master failover did not succeed! Reseting the local lease and " +
+                        "waiting for a new impulse from FLease. Reason: %s", ex.getMessage());
+                
+                leaseHolder.reset();
+            }
+        });
+    }
+    
+    /**
+     * Another server has become the master and this one has to obey.
+     * 
+     * @param masterAddress
+     * @throws InterruptedException 
+     */
+    private void becomeSlave(InetAddress masterAddress) throws InterruptedException {
+        
+        Logging.logMessage(Logging.LEVEL_INFO, this, "Becoming a slave for %s.", 
+                masterAddress.toString());
+        
+        lockAll();
+        serviceInterface.changeMaster(masterAddress);
+        unlockReplication();
+        
+        // user requests may only be permitted on slaves that have been synchronized with the master
+        // which is only possible after they changed the master the obey internally by this method
+    }
+    
+
+    
+    /**
+     * Method to participate at {@link Flease}.
+     */
+    private void joinFlease() {
+        fleaseStage.openCell(REPLICATION_CELL, fleaseParticipants, false);
+    }
+    
+    /**
+     * Method to exclude this BabuDB instance from {@link Flease}.
+     */
+    private void exitFlease() {
+        fleaseStage.closeCell(REPLICATION_CELL);
     }
 }

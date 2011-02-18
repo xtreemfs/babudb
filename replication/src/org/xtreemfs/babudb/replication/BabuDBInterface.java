@@ -55,7 +55,7 @@ public class BabuDBInterface {
     
     /**
      * Appends the given entry to the <b>local</b> {@link DiskLogger} using the 
-     * <b>local</b> {@link PersistenceManager}.
+     * <b>local</b> {@link PersistenceManager}. For internal usage only!
      * 
      * @param entry - {@link LogEntry}.
      * @param listener - awaiting the result for this insert.
@@ -121,9 +121,11 @@ public class BabuDBInterface {
      * Creates a new checkpoint and increments the viewId.
      * 
      * @throws BabuDBException
+     * 
+     * @return the LSN of the last LogEntry written to the DiskLog.
      */
-    public void checkpoint() throws BabuDBException {
-        getChckPtr().checkpoint(true);
+    public LSN checkpoint() throws BabuDBException {
+        return getChckPtr().checkpoint(true);
     }
     
     /**

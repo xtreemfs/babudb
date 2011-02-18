@@ -36,20 +36,18 @@ package org.xtreemfs.babudb.replication;
  * Methods to configure the implementing layer for its final usage.
  *
  * @param <T1>
- * @param <T2>
  * 
  * @author flangner
  * @since 04/14/2010
  */
-public interface Coinable<T1, T2> {
+public interface Coinable<T1> {
 
     /**
      * <p>
-     * Adds two additional parameters to the coin-able object.
+     * Adds an additional parameter to the coin-able object.
      * </p>
      * 
      * @param par1
-     * @param par2
      */
-    public void coin(T1 par1, T2 par2);
+    public void coin(T1 par1);
 }

@@ -1,12 +1,9 @@
 /*
- * Copyright (c) 2010-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2010 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
- */
-/*
- * AUTHORS: Felix Langner (ZIB)
  */
 package org.xtreemfs.babudb.replication;
 
@@ -36,8 +33,9 @@ public abstract class Layer {
     public synchronized void setLifeCycleListener(LifeCycleListener listener) {
         assert (listener != null);
         
-        if (this.listener == null)
+        if (this.listener == null) {
             this.listener = listener;
+        }
     }
     
     /**

@@ -45,7 +45,7 @@ public class RangeLookupReverseOperation extends Operation {
      */
     @Override
     public int getProcedureId() {
-        return RemoteAccessServiceConstants.PROC_ID_RLOOKUP;
+        return RemoteAccessServiceConstants.PROC_ID_RLOOKUPREVERSE;
     }
     
     /* (non-Javadoc)

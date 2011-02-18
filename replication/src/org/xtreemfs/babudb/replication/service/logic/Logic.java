@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -7,7 +7,6 @@
  */
 package org.xtreemfs.babudb.replication.service.logic;
 
-import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.service.Pacemaker;
 import org.xtreemfs.babudb.replication.service.ReplicationStage;
 import org.xtreemfs.babudb.replication.service.SlaveView;
@@ -28,18 +27,14 @@ public abstract class Logic {
     protected final Pacemaker        pacemaker;
     
     protected final SlaveView        slaveView;
-    
-    protected final BabuDBInterface  babuInterface;
-    
+        
     protected final FileIOInterface  fileIO;
     
     public Logic(ReplicationStage stage, Pacemaker pacemaker, 
-            SlaveView slaveView, FileIOInterface fileIO, 
-            BabuDBInterface babuInterface) {
+            SlaveView slaveView, FileIOInterface fileIO) {
         
         this.pacemaker = pacemaker;
         this.slaveView = slaveView;
-        this.babuInterface = babuInterface;
         this.fileIO = fileIO;
         this.stage = stage;
     }
