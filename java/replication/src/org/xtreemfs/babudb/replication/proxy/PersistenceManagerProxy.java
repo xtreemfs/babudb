@@ -9,6 +9,7 @@ package org.xtreemfs.babudb.replication.proxy;
 
 import java.net.InetSocketAddress;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.xtreemfs.babudb.api.InMemoryProcessing;
 import org.xtreemfs.babudb.api.PersistenceManager;
@@ -20,6 +21,7 @@ import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.replication.LockableService;
 import org.xtreemfs.babudb.replication.RemoteAccessClient;
 import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.replication.policy.Policy;
@@ -37,13 +39,15 @@ import static org.xtreemfs.babudb.log.LogEntry.*;
  * @author flangner
  * @since 11/04/2010
  */
-class PersistenceManagerProxy extends PersistenceManager {
+class PersistenceManagerProxy extends PersistenceManager implements LockableService {
 
     private final ReplicationManager    replMan;
     private final PersistenceManager    localPersMan;
     private final Policy                replicationPolicy;
     private final RemoteAccessClient    client;
     private       InetSocketAddress     master;
+    private final AtomicInteger         accessCounter = new AtomicInteger(0);
+    private boolean                     locked = false;
     
     public PersistenceManagerProxy(ReplicationManager replMan, 
             PersistenceManager localPersMan, Policy replicationPolicy, 
@@ -54,6 +58,7 @@ class PersistenceManagerProxy extends PersistenceManager {
         this.replMan = replMan;
         this.localPersMan = localPersMan;
         
+        // copy in memory processing logic from the local persistence manager
         for (Entry<Byte, InMemoryProcessing> e : localPersMan.getProcessingLogic().entrySet()) {
             registerInMemoryProcessing(e.getKey(), e.getValue());
         }
@@ -69,6 +74,15 @@ class PersistenceManagerProxy extends PersistenceManager {
         
         if (hasPermissionToExecuteLocally(type)) {
             
+            // check if this service has been locked and increment the access counter
+            synchronized (accessCounter) {
+                if (locked) {
+                    throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
+                            "This service has currently been locked by the replication plugin.");
+                } else {
+                    accessCounter.incrementAndGet();
+                }   
+            }
             return executeLocallyAndReplicate(type, serialized);
         } else {      
             
@@ -88,7 +102,7 @@ class PersistenceManagerProxy extends PersistenceManager {
      */
     @SuppressWarnings("unchecked")
     private <T> DatabaseRequestResult<T> executeLocallyAndReplicate(byte type, 
-            final ReusableBuffer payload) throws BabuDBException {
+            ReusableBuffer payload) throws BabuDBException {
         
         final ListenerWrapper wrapper = new ListenerWrapper();
                 
@@ -97,6 +111,13 @@ class PersistenceManagerProxy extends PersistenceManager {
         
             @Override
             public void finished(Object result, Object context) {
+                
+                // request has finished. decrement the access counter
+                synchronized (accessCounter) {
+                    if (accessCounter.decrementAndGet() == 0) {
+                        accessCounter.notify();
+                    }
+                }
                 
                 LogEntry le = (LogEntry) context;
                                 
@@ -115,7 +136,7 @@ class PersistenceManagerProxy extends PersistenceManager {
                     }
                 });
                 
-                ReplicateResponse rp = replMan.replicate(le, payload);
+                ReplicateResponse rp = replMan.replicate(le);
                 if (!rp.hasFailed()) {
                     replMan.subscribeListener(rp);
                 }
@@ -123,6 +144,14 @@ class PersistenceManagerProxy extends PersistenceManager {
             
             @Override
             public void failed(BabuDBException error, Object context) {
+                
+                // request has finished. decrement the access counter
+                synchronized (accessCounter) {
+                    if (accessCounter.decrementAndGet() == 0) {
+                        accessCounter.notify();
+                    }
+                }
+                
                 wrapper.finished(error);
             }
         });
@@ -228,10 +257,6 @@ class PersistenceManagerProxy extends PersistenceManager {
         
         return result;
     }
-
-/*
- * unsupported in distributed context
- */
     
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.PersistenceManager#lockService()
@@ -255,6 +280,47 @@ class PersistenceManagerProxy extends PersistenceManager {
     @Override
     public void setLogger(DiskLogger logger) {
         localPersMan.setLogger(logger);
+    }
+    
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.PersistenceManager#getLatestOnDiskLSN()
+     */
+    @Override
+    public LSN getLatestOnDiskLSN() {
+        return localPersMan.getLatestOnDiskLSN();
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.PersistenceManager#init(org.xtreemfs.babudb.lsmdb.LSN)
+     */
+    @Override
+    public void init(LSN initial) {
+        localPersMan.init(initial);
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.proxy.LockableService#lock()
+     */
+    @Override
+    public void lock() throws InterruptedException {
+        synchronized (accessCounter) {
+            locked = true;
+            while (locked && accessCounter.get() > 0) {
+                accessCounter.wait();
+            }
+        }
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.proxy.LockableService#unlock()
+     */
+    @Override
+    public void unlock() {
+        synchronized (accessCounter) {
+            locked = false;
+            accessCounter.notifyAll();
+        }
     }
 
     /**
@@ -314,21 +380,5 @@ class PersistenceManagerProxy extends PersistenceManager {
                 }
             }
         }
-    }
-
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.api.PersistenceManager#getLatestOnDiskLSN()
-     */
-    @Override
-    public LSN getLatestOnDiskLSN() {
-        return localPersMan.getLatestOnDiskLSN();
-    }
-
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.api.PersistenceManager#init(org.xtreemfs.babudb.lsmdb.LSN)
-     */
-    @Override
-    public void init(LSN initial) {
-        localPersMan.init(initial);
     }
 }

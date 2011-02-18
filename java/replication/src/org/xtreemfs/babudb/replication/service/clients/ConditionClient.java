@@ -19,11 +19,20 @@ import org.xtreemfs.foundation.flease.comm.FleaseMessage;
 public interface ConditionClient extends ClientInterface {
 
     /**
-     * The {@link LSN} of the latest written LogEntry.
+     * The {@link LSN} of the latest written LogEntry. The client is locked to preserve this state
+     * until the next master call.
      * 
      * @return the {@link ClientResponseFuture} receiving a state as {@link LSN}.
      */
     public ClientResponseFuture<LSN> state();
+    
+    /**
+     * The {@link LSN} of the latest written LogEntry. Might have become incremented while receiving
+     * the answer of this call. 
+     * 
+     * @return the {@link ClientResponseFuture} receiving a state as {@link LSN}.
+     */
+    public ClientResponseFuture<LSN> volatileState();
 
     /**
      * The local time-stamp of the registered participant.

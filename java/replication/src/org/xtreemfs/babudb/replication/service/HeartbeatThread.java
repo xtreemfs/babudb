@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -56,7 +56,7 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
      *          org.xtreemfs.babudb.lsmdb.LSN)
      */
     public synchronized void updateLSN(LSN lsn) {
-        if (latestLSN.compareTo(lsn)<0) {
+        if (latestLSN.compareTo(lsn) < 0) {
             latestLSN = lsn;
             synchronized (halted) {
                 if (halted.compareAndSet(true, false)) halted.notify();

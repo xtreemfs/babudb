@@ -22,23 +22,22 @@ public interface Policy {
     /**
      * @return true, if user inserts are only allowed to be performed at the 
      *         replication master. false, if also slaves are allowed to perform
-     *         inserts directly (these are not replicated automatically).
+     *         inserts directly (these are also replicated).
      */
     public boolean insertIsMasterRestricted();
     
     /**
      * @return true, if snapshot manipulations are only allowed to be performed 
      *         at the replication master. false, if also slaves are allowed to 
-     *         perform snapshot operations directly (these are not replicated 
-     *         automatically).
+     *         perform snapshot operations directly (these are also replicated).
      */
     public boolean snapshotManipultationIsMasterRestricted();
     
     /**
      * @return true, if database manipulations are only allowed to be performed 
      *         at the replication master. false, if also slaves are allowed to 
-     *         perform database manipulating operations directly (these are not 
-     *         replicated automatically).
+     *         perform database manipulating operations directly (these are also
+     *         replicated).
      */
     public boolean dbModificationIsMasterRestricted();
     

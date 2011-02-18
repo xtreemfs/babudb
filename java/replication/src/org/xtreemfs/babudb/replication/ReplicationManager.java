@@ -17,7 +17,6 @@ import org.xtreemfs.babudb.replication.service.ServiceLayer;
 import org.xtreemfs.babudb.replication.service.accounting.ReplicateResponse;
 import org.xtreemfs.babudb.replication.transmission.TransmissionLayer;
 import org.xtreemfs.foundation.TimeSync;
-import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.logging.Logging;
 
@@ -36,9 +35,9 @@ public class ReplicationManager implements LifeCycleListener {
     public final static String  VERSION = "1.0.0 (v1.0 RC1)";
     
     private final TopLayer      controlLayer;
-    private final Layer         serviceLayer;
+    private final ServiceLayer  serviceLayer;
     private final Layer         transmissionLayer;
-    
+        
     /**
      * <p>For setting up the {@link BabuDB} with replication. 
      * Replication instance will be remaining stopped and in slave-mode.</p>
@@ -47,24 +46,23 @@ public class ReplicationManager implements LifeCycleListener {
      * @param conf
      * @throws Exception 
      */
-    public ReplicationManager(BabuDBInternal dbs, ReplicationConfig conf) 
-            throws Exception {
+    public ReplicationManager(BabuDBInternal dbs, ReplicationConfig conf) throws Exception {
         
         TimeSync.initializeLocal(conf.getTimeSyncInterval(), 
                                  conf.getLocalTimeRenew()).setLifeCycleListener(this);
 
         TransmissionLayer t = new TransmissionLayer(conf);
-        ServiceLayer s = new ServiceLayer(conf, new BabuDBInterface(dbs), t);
-        ControlLayer c = new ControlLayer(s, conf);
-        s.coin(c, c);
+        serviceLayer = new ServiceLayer(conf, new BabuDBInterface(dbs), t);
+        ControlLayer c = new ControlLayer(serviceLayer, conf);
+        serviceLayer.init(c);
+        c.registerReplicationInterface(serviceLayer.getLockableService());
         
-        this.transmissionLayer = t;
-        this.serviceLayer = s;
-        this.controlLayer = c;
+        transmissionLayer = t;
+        controlLayer = c;
         
-        this.transmissionLayer.setLifeCycleListener(this);
-        this.serviceLayer.setLifeCycleListener(this);
-        this.controlLayer.setLifeCycleListener(this);
+        transmissionLayer.setLifeCycleListener(this);
+        serviceLayer.setLifeCycleListener(this);
+        controlLayer.setLifeCycleListener(this);
     }
     
 /*
@@ -74,10 +72,14 @@ public class ReplicationManager implements LifeCycleListener {
     /**
      * Starts the stages if available.
      */
-    public void initialize() {
-        this.controlLayer.start();
-        this.serviceLayer.start();
-        this.transmissionLayer.start();
+    public void initialize(LockableService babudbProxy) {
+        
+        assert (babudbProxy != null);
+        
+        controlLayer.registerUserInterface(babudbProxy);
+        controlLayer.start();
+        serviceLayer.start();
+        transmissionLayer.start();
     }
 
     /**
@@ -94,7 +96,7 @@ public class ReplicationManager implements LifeCycleListener {
      *         false, otherwise.
      */
     public boolean amIMaster(InetSocketAddress master) {
-        return this.controlLayer.amIMaster(master);
+        return controlLayer.amIMaster(master);
     }
     
     /**
@@ -104,15 +106,14 @@ public class ReplicationManager implements LifeCycleListener {
      * </p>
      * 
      * @param le - the original {@link LogEntry}.
-     * @param buffer - the serialized {@link LogEntry}.
      * 
      * @return the {@link ReplicateResponse}.
      */
-    public ReplicateResponse replicate(LogEntry le, ReusableBuffer buffer) {
+    public ReplicateResponse replicate(LogEntry le) {
         Logging.logMessage(Logging.LEVEL_DEBUG, this, 
                 "Performing requests: replicate...");
         
-        return controlLayer.replicate(le, buffer);
+        return serviceLayer.replicate(le);
     }
     
     /**
@@ -123,7 +124,7 @@ public class ReplicationManager implements LifeCycleListener {
      * @param response
      */
     public void subscribeListener(ReplicateResponse response) {
-        controlLayer.subscribeListener(response);
+        serviceLayer.subscribeListener(response);
     }
 
     /**
@@ -133,21 +134,10 @@ public class ReplicationManager implements LifeCycleListener {
      * </p>
      */
     public void shutdown() throws Exception {
-        this.controlLayer.shutdown();
-        this.serviceLayer.shutdown();
-        this.transmissionLayer.shutdown();
+        controlLayer.shutdown();
+        serviceLayer.shutdown();
+        transmissionLayer.shutdown();
         TimeSync.getInstance().shutdown();
-    }
-    
-    /**
-     * <p>
-     * Changes the database replication master. Uses this, if
-     * your {@link BabuDBRequestListener} recognizes an failure due
-     * the replication and want to help BabuDB to recognize it.
-     * </p>
-     */
-    public void manualFailover() {
-        this.controlLayer.suspend();
     }
 
     /**
@@ -171,10 +161,9 @@ public class ReplicationManager implements LifeCycleListener {
                 exc.getMessage());
         Logging.logError(Logging.LEVEL_CRIT, this, exc);
         
-        this.controlLayer.suspend();
-        this.controlLayer.asyncShutdown();
-        this.serviceLayer.asyncShutdown();
-        this.transmissionLayer.asyncShutdown();
+        controlLayer.asyncShutdown();
+        serviceLayer.asyncShutdown();
+        transmissionLayer.asyncShutdown();
         throw new RuntimeException(exc);
     }
 

@@ -140,7 +140,7 @@ public class ReplicaOperation extends Operation {
                         // add the logEntry to result list
                         assert (le.getPayload().array().length > 0) : 
                             "Empty log-entries are not allowed!";
-                        ReusableBuffer buf = le.serialize(this.checksum);
+                        ReusableBuffer buf = le.serialize(checksum);
                         result.addLogEntries(
                                 org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry
                                 .newBuilder().setLength(buf.remaining()));
@@ -157,7 +157,7 @@ public class ReplicaOperation extends Operation {
                         BufferPool.free(buf);
                         
                     } finally {
-                        this.checksum.reset();
+                        checksum.reset();
                         if (le != null) {
                             le.free();
                             le = null;

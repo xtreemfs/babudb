@@ -1,4 +1,4 @@
-//automatically generated from replication.proto at Tue Feb 08 12:50:44 CET 2011
+//automatically generated from replication.proto at Fri Feb 18 10:56:47 CET 2011
 //(c) 2011. See LICENSE file for details.
 
 package org.xtreemfs.babudb.pbrpc;
@@ -125,6 +125,19 @@ public class ReplicationServiceClient {
     public RPCResponse<GlobalTypes.ErrorCodeResponse> replicate(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, int view_id, long sequence_no, ReusableBuffer data) throws IOException {
          final GlobalTypes.LSN msg = GlobalTypes.LSN.newBuilder().setViewId(view_id).setSequenceNo(sequence_no).build();
          return replicate(server, authHeader, userCreds,msg, data);
+    }
+
+    public RPCResponse<GlobalTypes.LSN> volatileState(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, Common.emptyRequest input) throws IOException {
+         if (server == null) server = defaultServer;
+         if (server == null) throw new IllegalArgumentException("defaultServer must be set in constructor if you want to pass null as server in calls");
+         RPCResponse<GlobalTypes.LSN> response = new RPCResponse<GlobalTypes.LSN>(GlobalTypes.LSN.getDefaultInstance());
+         client.sendRequest(server, authHeader, userCreds, 20001, 9, input, null, response, false);
+         return response;
+    }
+
+    public RPCResponse<GlobalTypes.LSN> volatileState(InetSocketAddress server, Auth authHeader, UserCredentials userCreds) throws IOException {
+         
+         return volatileState(server, authHeader, userCreds,null);
     }
 
     public boolean clientIsAlive() {

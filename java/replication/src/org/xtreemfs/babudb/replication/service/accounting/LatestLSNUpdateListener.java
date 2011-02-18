@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -16,10 +16,10 @@ import org.xtreemfs.babudb.lsmdb.LSN;
  * @since 06/05/2009
  */
 
-abstract class LatestLSNUpdateListener implements Comparable<LatestLSNUpdateListener> {
+public abstract class LatestLSNUpdateListener implements Comparable<LatestLSNUpdateListener> {
     final LSN lsn;
     
-    LatestLSNUpdateListener(LSN lsn) {
+    public LatestLSNUpdateListener(LSN lsn) {
         this.lsn = lsn;
     }
     
@@ -27,12 +27,12 @@ abstract class LatestLSNUpdateListener implements Comparable<LatestLSNUpdateList
      * Function to call, if the latest {@link LSN} has been changed.
      * 
      */
-    abstract void upToDate();
+    public abstract void upToDate();
     
     /**
      * Function to call, if the listener is outdated before its {@link LSN} was reached.
      */
-    abstract void failed();
+    public abstract void failed();
     
     /*
      * (non-Javadoc)

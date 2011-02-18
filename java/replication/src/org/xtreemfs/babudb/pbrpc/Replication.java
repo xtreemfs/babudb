@@ -729,6 +729,11 @@ public final class Replication {
           org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request,
           com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done);
       
+      public abstract void volatileState(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.Common.emptyRequest request,
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN> done);
+      
     }
     
     public static com.google.protobuf.Service newReflectiveService(
@@ -798,6 +803,14 @@ public final class Replication {
           impl.replicate(controller, request, done);
         }
         
+        @Override
+        public  void volatileState(
+            com.google.protobuf.RpcController controller,
+            org.xtreemfs.babudb.pbrpc.Common.emptyRequest request,
+            com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN> done) {
+          impl.volatileState(controller, request, done);
+        }
+        
       };
     }
     
@@ -836,6 +849,8 @@ public final class Replication {
               return impl.heartbeat(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN)request);
             case 7:
               return impl.replicate(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN)request);
+            case 8:
+              return impl.volatileState(controller, (org.xtreemfs.babudb.pbrpc.Common.emptyRequest)request);
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -866,6 +881,8 @@ public final class Replication {
               return org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.getDefaultInstance();
             case 7:
               return org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.getDefaultInstance();
+            case 8:
+              return org.xtreemfs.babudb.pbrpc.Common.emptyRequest.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -896,6 +913,8 @@ public final class Replication {
               return org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance();
             case 7:
               return org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance();
+            case 8:
+              return org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -943,6 +962,11 @@ public final class Replication {
         com.google.protobuf.RpcController controller,
         org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request,
         com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done);
+    
+    public abstract void volatileState(
+        com.google.protobuf.RpcController controller,
+        org.xtreemfs.babudb.pbrpc.Common.emptyRequest request,
+        com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN> done);
     
     public static final
         com.google.protobuf.Descriptors.ServiceDescriptor
@@ -1006,6 +1030,11 @@ public final class Replication {
             com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse>specializeCallback(
               done));
           return;
+        case 8:
+          this.volatileState(controller, (org.xtreemfs.babudb.pbrpc.Common.emptyRequest)request,
+            com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN>specializeCallback(
+              done));
+          return;
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -1036,6 +1065,8 @@ public final class Replication {
           return org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.getDefaultInstance();
         case 7:
           return org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.getDefaultInstance();
+        case 8:
+          return org.xtreemfs.babudb.pbrpc.Common.emptyRequest.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -1066,6 +1097,8 @@ public final class Replication {
           return org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance();
         case 7:
           return org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance();
+        case 8:
+          return org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -1206,6 +1239,21 @@ public final class Replication {
             org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.class,
             org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance()));
       }
+      
+      public  void volatileState(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.Common.emptyRequest request,
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(8),
+          controller,
+          request,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.class,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.getDefaultInstance()));
+      }
     }
     
     public static BlockingInterface newBlockingStub(
@@ -1252,6 +1300,11 @@ public final class Replication {
       public org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse replicate(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request)
+          throws com.google.protobuf.ServiceException;
+      
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN volatileState(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.Common.emptyRequest request)
           throws com.google.protobuf.ServiceException;
     }
     
@@ -1357,6 +1410,18 @@ public final class Replication {
           org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance());
       }
       
+      
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN volatileState(
+          com.google.protobuf.RpcController controller,
+          org.xtreemfs.babudb.pbrpc.Common.emptyRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(8),
+          controller,
+          request,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.getDefaultInstance());
+      }
+      
     }
   }
   
@@ -1392,7 +1457,7 @@ public final class Replication {
       "\"\017\215\265\030\007\000\000\000\240\265\030\001\230\265\030\001\022`\n\016rlookupReverse\022\037.or" +
       "g.xtreemfs.pbrpc.RangeLookup\032\034.org.xtree" +
       "mfs.pbrpc.EntryMap\"\017\215\265\030\010\000\000\000\240\265\030\001\230\265\030\001\032\007\225\265\030" +
-      "\021\'\000\0002\310\005\n\022ReplicationService\022K\n\005state\022 .o" +
+      "\021\'\000\0002\235\006\n\022ReplicationService\022K\n\005state\022 .o" +
       "rg.xtreemfs.pbrpc.emptyRequest\032\027.org.xtr" +
       "eemfs.pbrpc.LSN\"\007\215\265\030\001\000\000\000\022M\n\004load\022\027.org.x" +
       "treemfs.pbrpc.LSN\032#.org.xtreemfs.pbrpc.D" +
@@ -1409,8 +1474,10 @@ public final class Replication {
       "fs.pbrpc.LSN\032%.org.xtreemfs.pbrpc.ErrorC" +
       "odeResponse\"\007\215\265\030\007\000\000\000\022X\n\treplicate\022\027.org." +
       "xtreemfs.pbrpc.LSN\032%.org.xtreemfs.pbrpc.",
-      "ErrorCodeResponse\"\013\215\265\030\010\000\000\000\240\265\030\001\032\007\225\265\030!N\000\000B" +
-      "\033\n\031org.xtreemfs.babudb.pbrpc"
+      "ErrorCodeResponse\"\013\215\265\030\010\000\000\000\240\265\030\001\022S\n\rvolati" +
+      "leState\022 .org.xtreemfs.pbrpc.emptyReques" +
+      "t\032\027.org.xtreemfs.pbrpc.LSN\"\007\215\265\030\t\000\000\000\032\007\225\265\030" +
+      "!N\000\000B\033\n\031org.xtreemfs.babudb.pbrpc"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {

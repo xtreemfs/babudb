@@ -22,7 +22,6 @@ import org.xtreemfs.babudb.lsmdb.LSMDBWorker;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.RemoteAccessClient;
 import org.xtreemfs.babudb.replication.ReplicationManager;
-import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.replication.policy.Policy;
 import org.xtreemfs.foundation.LifeCycleThread;
 
@@ -35,10 +34,10 @@ import org.xtreemfs.foundation.LifeCycleThread;
  */
 public class BabuDBProxy implements BabuDBInternal {
     
-    private final BabuDBInternal         localBabuDB;
-    private final PersistenceManager     persManProxy;
-    private final DatabaseManager        dbManProxy;
-    private final ReplicationManager     replMan;
+    private final BabuDBInternal          localBabuDB;
+    private final PersistenceManagerProxy persManProxy;
+    private final DatabaseManager         dbManProxy;
+    private final ReplicationManager      replMan;
     
     public BabuDBProxy(BabuDBInternal localDB, ReplicationManager replMan, 
             Policy replicationPolicy, RemoteAccessClient client) {    
@@ -107,8 +106,8 @@ public class BabuDBProxy implements BabuDBInternal {
      */
     @Override
     public void init(StaticInitialization staticInit) throws BabuDBException {
-        this.localBabuDB.init(staticInit);
-        this.replMan.initialize();
+        localBabuDB.init(staticInit);
+        replMan.initialize(persManProxy);
     }
     
     /* (non-Javadoc)
@@ -117,7 +116,7 @@ public class BabuDBProxy implements BabuDBInternal {
      */
     @Override
     public void addPluginThread(LifeCycleThread plugin) {
-        this.localBabuDB.addPluginThread(plugin);
+        localBabuDB.addPluginThread(plugin);
     }
     
 /*

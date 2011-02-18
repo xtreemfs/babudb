@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -16,7 +16,6 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
 import org.xtreemfs.babudb.replication.service.RequestManagement;
-import org.xtreemfs.babudb.replication.service.ReplicationStage.BusyServerException;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsVerification;
 import org.xtreemfs.babudb.replication.transmission.ErrorCode;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
@@ -42,11 +41,10 @@ public class ReplicateOperation extends Operation {
     private final Checksum                      checksum = new CRC32();     
         
     private final RequestManagement             rqMan;
-    
+        
     private final ParticipantsVerification      verificator;
         
-    public ReplicateOperation(RequestManagement rqMan, 
-            ParticipantsVerification verificator) {
+    public ReplicateOperation(RequestManagement rqMan, ParticipantsVerification verificator) {
         
         this.verificator = verificator;
         this.rqMan = rqMan;
@@ -102,14 +100,14 @@ public class ReplicateOperation extends Operation {
             
             ReusableBuffer data = rq.getRpcRequest().getData().createViewBuffer();
             try {
-                rq.setAttachment(LogEntry.deserialize(data, this.checksum));
+                rq.setAttachment(LogEntry.deserialize(data, checksum));
             } catch (LogEntryException e){
                 Logging.logError(Logging.LEVEL_WARN, this, e);
                 resp = ErrorResponse.newBuilder()
                         .setErrorMessage(e.getMessage())
                         .setErrorType(ErrorType.IO_ERROR).build();
             } finally {
-                this.checksum.reset();
+                checksum.reset();
                 if (data != null) BufferPool.free(data);
             } 
         }
@@ -126,9 +124,16 @@ public class ReplicateOperation extends Operation {
         LogEntry le = (LogEntry) rq.getAttachment();
         final LSN lsn = le.getLSN();
         try {
-            this.rqMan.enqueueOperation(new Object[]{ lsn, le });
+            // the master requests to synchronize this server to the last stable state
+            if (le.getPayload().remaining() == 0) {
+                rqMan.createStableState(lsn);
+                
+            // this is an ordinary replicate request    
+            } else {
+                rqMan.enqueueOperation(new Object[]{ lsn, le });
+            }
             rq.sendSuccess(ErrorCodeResponse.getDefaultInstance());
-        } catch (BusyServerException e) {
+        } catch (Exception e) {
             if (le!=null) le.free();
             rq.sendSuccess(ErrorCodeResponse.newBuilder().setErrorCode(ErrorCode.BUSY).build());
         }

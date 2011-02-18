@@ -13,7 +13,6 @@ import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -178,9 +177,10 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
          * not be changed during the runtime!
          */
         synchronized (stateTable) {
-            for (InetSocketAddress participant : participants) 
+            for (InetSocketAddress participant : participants) {
                 stateTable.put(participant.getAddress(), 
                         new State(clientFactory.getClient(participant)));
+            }
             
             Logging.logMessage(Logging.LEVEL_DEBUG, this, 
                     "Initial configuration:\n%s", toString());
@@ -299,23 +299,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
             listeners.add(listener);
         }
     }
-    
-    /**
-     * <p>
-     * Removes all available listeners from the queue. The listeners will be 
-     * notified that the operation they are listening for has failed.
-     * </p>
-     */
-    public void clearListeners(){
-        
-        Set<LatestLSNUpdateListener> lSet = new HashSet<LatestLSNUpdateListener>();
-        
-        listeners.drainTo(lSet);
-        for (LatestLSNUpdateListener l : lSet) {
-            l.failed();
-        }
-    }
-        
+
     /**
      * <p>
      * Sets a new master, valid for all replication components. Resets the 
@@ -328,9 +312,9 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
     public void setMaster(InetAddress address) {
         
         if (address != null) {
-            this.masterClient.set(this.stateTable.get(address).client);
+            masterClient.set(stateTable.get(address).client);
         } else {
-            this.masterClient.set(null);
+            masterClient.set(null);
         }
         
         reset();
@@ -428,7 +412,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
         
         synchronized (stateTable) {
             
-            final State s = stateTable.get(slave.getDefaultServerAddress().getAddress());
+            State s = stateTable.get(slave.getDefaultServerAddress().getAddress());
             s.openRequests = 0;
             
             // the slave has not been marked as dead jet
@@ -571,10 +555,21 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
     }
     
     /**
-     * <p>Resets the state of any available participants.</p>
+     * <p>
+     * Resets the state of any available participants and removes all available listeners from the 
+     * queue. The listeners will be notified that the operation they are listening for has failed.
+     * </p>
      */
     private void reset() {
         
+        // deal with the listeners
+        Set<LatestLSNUpdateListener> lSet = Collections.emptySet();
+        listeners.drainTo(lSet);
+        for (LatestLSNUpdateListener l : lSet) {
+            l.failed();
+        }
+        
+        // deal with states
         synchronized (stateTable) {
             
             for (State s : stateTable.values()) {

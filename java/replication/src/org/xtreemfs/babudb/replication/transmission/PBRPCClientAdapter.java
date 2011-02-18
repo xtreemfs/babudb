@@ -129,6 +129,45 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
             };
         }
     }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.service.clients.ConditionClient#
+     * state()
+     */
+    @Override
+    public ClientResponseFuture<org.xtreemfs.babudb.lsmdb.LSN> volatileState() {
+        try {
+            final RPCResponse<LSN> result = volatileState(null, 
+                    Auth.getDefaultInstance(), 
+                    UserCredentials.getDefaultInstance());
+        
+            return new ClientResponseFuture<org.xtreemfs.babudb.lsmdb.LSN>(
+                    result) {
+                
+                @Override
+                public org.xtreemfs.babudb.lsmdb.LSN get() throws IOException, 
+                        InterruptedException {
+                    try {
+                        LSN response = result.get();
+                        
+                        return new org.xtreemfs.babudb.lsmdb.LSN(
+                                response.getViewId(), response.getSequenceNo());
+                    } finally {
+                        result.freeBuffers();
+                    }
+                }
+            };
+        } catch (final IOException e) {
+            return new ClientResponseFuture<org.xtreemfs.babudb.lsmdb.LSN>(
+                    null) {
+                
+                @Override
+                public org.xtreemfs.babudb.lsmdb.LSN get() throws IOException {
+                    throw e;
+                }
+            };
+        }
+    }
 
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.service.clients.ConditionClient#
@@ -421,7 +460,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
      *           org.xtreemfs.foundation.buffer.ReusableBuffer)
      */
     @Override
-    public ClientResponseFuture<?> replicate(org.xtreemfs.babudb.lsmdb.LSN lsn, 
+    public ClientResponseFuture<Object> replicate(org.xtreemfs.babudb.lsmdb.LSN lsn, 
             ReusableBuffer data) {
         try {
             final RPCResponse<ErrorCodeResponse> result = replicate(null, 

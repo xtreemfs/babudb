@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -19,7 +19,6 @@ import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase.DBFileMetaData;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.service.Pacemaker;
 import org.xtreemfs.babudb.replication.service.ReplicationStage;
 import org.xtreemfs.babudb.replication.service.ReplicationStage.Range;
@@ -56,9 +55,8 @@ public class LoadLogic extends Logic {
      * @param babuInterface
      */
     public LoadLogic(ReplicationStage stage, Pacemaker pacemaker, 
-            SlaveView slaveView, FileIOInterface fileIO, 
-            BabuDBInterface babuInterface, int maxChunkSize) {
-        super(stage, pacemaker, slaveView, fileIO, babuInterface);
+            SlaveView slaveView, FileIOInterface fileIO, int maxChunkSize) {
+        super(stage, pacemaker, slaveView, fileIO);
         
         this.maxChunkSize = maxChunkSize;
     }
@@ -78,16 +76,16 @@ public class LoadLogic extends Logic {
      */
     @Override
     public void run() throws ConnectionLostException, InterruptedException{
-        LSN until = (stage.missing == null) ? 
-                new LSN(stage.lastInserted.getViewId()+1,0L) : 
-                    stage.missing.end;
+        LSN actual = stage.getBabuDB().getState();
+        LSN until = (stage.missing == null) ? new LSN(actual.getViewId() + 1,0L) : 
+                                              stage.missing.end;
                 
-        MasterClient master = this.slaveView.getSynchronizationPartner(until);
+        MasterClient master = slaveView.getSynchronizationPartner(until);
         
         // make the request and get the result synchronously
         Logging.logMessage(Logging.LEVEL_INFO, stage, "Loading DB since %s from %s.", 
-                stage.lastInserted.toString(), master.getDefaultServerAddress().toString());
-        ClientResponseFuture<DBFileMetaDataSet> rp = master.load(stage.lastInserted);
+                actual.toString(), master.getDefaultServerAddress().toString());
+        ClientResponseFuture<DBFileMetaDataSet> rp = master.load(actual);
         DBFileMetaDataSet result = null;
         try {
             result = rp.get();  
@@ -96,7 +94,7 @@ public class LoadLogic extends Logic {
             throw new ConnectionLostException(e.getMessage(), e.getCode());
         } catch (IOException e) {
             // failure on transmission --> retry
-            throw new ConnectionLostException(e.getMessage(),ErrorCode.UNKNOWN);
+            throw new ConnectionLostException(e.getMessage(), ErrorCode.UNKNOWN);
         }
         
         // switch log file by triggering a manual checkpoint, 
@@ -104,32 +102,30 @@ public class LoadLogic extends Logic {
         if (result.size() == 0) {
             
             try {
-                stage.lastOnView.set(babuInterface.getState());
-                babuInterface.checkpoint();
-                stage.lastInserted = babuInterface.getState();
+                stage.lastOnView.set(stage.getBabuDB().checkpoint());
             } catch (BabuDBException e) {
                 // system failure on switching the lock file --> retry
                 Logging.logError(Logging.LEVEL_WARN, this, e);
                 return;
             } 
             Logging.logMessage(Logging.LEVEL_DEBUG, this, 
-            "Logfile switched at LSN %s.", stage.lastInserted.toString());
+            "Logfile switched at LSN %s.", stage.getBabuDB().getState().toString());
             
             finished(false);
             return;
         }
         
         // backup the old dbs
-        this.babuInterface.stopBabuDB();
+        stage.getBabuDB().stopBabuDB();
         try {
-            this.fileIO.backupFiles();
+            fileIO.backupFiles();
         } catch (IOException e) {
             // file backup failed --> retry
             Logging.logError(Logging.LEVEL_WARN, this, e);
             
             if (stage.isInterrupted()) {
                 try {
-                    this.babuInterface.startBabuDB();
+                    stage.getBabuDB().startBabuDB();
                 } catch (BabuDBException e1) {
                     Logging.logError(Logging.LEVEL_ERROR, this, e1);
                 }
@@ -261,8 +257,8 @@ public class LoadLogic extends Logic {
         
         // reload the DBS
         try {
-            stage.lastInserted = this.babuInterface.startBabuDB();
-            this.fileIO.removeBackupFiles();
+            stage.getBabuDB().startBabuDB();
+            fileIO.removeBackupFiles();
             finished(true);
         } catch (BabuDBException e) {
             // resetting the DBS failed --> retry
@@ -277,19 +273,19 @@ public class LoadLogic extends Logic {
      * @param loaded - induces whether the DBS had to be reload or not
      */
     private void finished(boolean loaded) {
-        LSN next = new LSN (stage.lastInserted.getViewId(),
-                stage.lastInserted.getSequenceNo() + 1L);
+        LSN actual = stage.getBabuDB().getState();
+        LSN next = new LSN (actual.getViewId(), actual.getSequenceNo() + 1L);
 
         if (stage.missing != null && 
             next.compareTo(stage.missing.end) < 0) {
             
-            stage.missing = new Range(stage.lastInserted, stage.missing.end);
+            stage.missing = new Range(actual, stage.missing.end);
             
             stage.setLogic(REQUEST, "There are still some logEntries " +
                     "missing after loading the database.");
         } else {
-            String msg = (loaded) ? "Loading finished with LSN("+stage.
-                    lastInserted+"), we can go on with the basicLogic." : 
+            String msg = (loaded) ? "Loading finished with LSN(" + actual + 
+                    "), we can go on with the basicLogic." : 
                     "Only the viewId changed, we can go on with the basicLogic.";
             stage.missing = null;
             stage.setLogic(BASIC, msg, loaded);

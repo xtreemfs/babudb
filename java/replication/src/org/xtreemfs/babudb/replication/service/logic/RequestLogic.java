@@ -17,7 +17,6 @@ import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.service.Pacemaker;
 import org.xtreemfs.babudb.replication.service.ReplicationStage;
 import org.xtreemfs.babudb.replication.service.ReplicationStage.Range;
@@ -33,6 +32,7 @@ import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
 
 import static org.xtreemfs.babudb.replication.service.logic.LogicID.*;
+
 /**
  * <p>Requests missing {@link LogEntry}s at the 
  * master and inserts them into the DBS.</p>
@@ -51,12 +51,10 @@ public class RequestLogic extends Logic {
      * @param pacemaker
      * @param slaveView
      * @param fileIO
-     * @param babuInterface
      */
     public RequestLogic(ReplicationStage stage, Pacemaker pacemaker, 
-            SlaveView slaveView, FileIOInterface fileIO, 
-            BabuDBInterface babuInterface) {
-        super(stage, pacemaker, slaveView, fileIO, babuInterface);
+            SlaveView slaveView, FileIOInterface fileIO) {
+        super(stage, pacemaker, slaveView, fileIO);
     }
     
     /*
@@ -98,9 +96,7 @@ public class RequestLogic extends Logic {
             
             // enhancement if the request had detected a master-failover
             if (logEntries.length == 0) {
-                stage.lastOnView.set(babuInterface.getState());
-                babuInterface.checkpoint();
-                stage.lastInserted = babuInterface.getState();
+                stage.lastOnView.set(stage.getBabuDB().checkpoint());
                 finish();
                 return;
             }
@@ -127,20 +123,17 @@ public class RequestLogic extends Logic {
                     
                     // we have to switch the log-file
                     if (lsn.getSequenceNo() == 1L && 
-                        stage.lastInserted.getViewId() < lsn.getViewId()) {
+                        stage.getBabuDB().getState().getViewId() < lsn.getViewId()) {
                         
-                        this.stage.lastOnView.set(this.babuInterface.getState());
-                        this.babuInterface.checkpoint();
-                        stage.lastInserted = this.babuInterface.getState();
+                        stage.lastOnView.set(stage.getBabuDB().checkpoint());
                     }
                     
-                    this.babuInterface.appendToLocalPersistenceManager(logentry, 
+                    stage.getBabuDB().appendToLocalPersistenceManager(logentry, 
                             new DatabaseRequestListener<Object>() {
                         
                         @Override
                         public void finished(Object result, Object context) {
                             synchronized (count) {
-                                stage.lastInserted = lsn;
                                 if (count.decrementAndGet() == 0)
                                     count.notify();
                             }
@@ -190,7 +183,7 @@ public class RequestLogic extends Logic {
         } catch (BabuDBException be) {
             // the insert failed due an DB error
             Logging.logError(Logging.LEVEL_WARN, this, be);
-            stage.missing = new Range(stage.lastInserted, stage.missing.end);
+            stage.missing = new Range(stage.getBabuDB().getState(), stage.missing.end);
             stage.setLogic(LOAD, be.getMessage());
         } finally {
             if (logEntries!=null) {
@@ -205,19 +198,18 @@ public class RequestLogic extends Logic {
      * Method to decide which logic shall be used next.
      */
     private void finish() {
-        LSN next = new LSN (stage.lastInserted.getViewId(),
-                            stage.lastInserted.getSequenceNo() + 1L);
+        LSN actual = stage.getBabuDB().getState();
+        LSN next = new LSN (actual.getViewId(), actual.getSequenceNo() + 1L);
         
         // we are still missing some entries (the request was too large)
         // update the missing entries
         if (next.compareTo(stage.missing.end) < 0) {
-            stage.missing = new Range(stage.lastInserted, stage.missing.end); 
+            stage.missing = new Range(actual, stage.missing.end); 
 
          // all went fine --> back to basic
         } else {
             stage.missing = null;
-            stage.setLogic(BASIC, "Request went fine, we can go on with" +
-                        " the basicLogic.");
+            stage.setLogic(BASIC, "Request went fine, we can go on with the basicLogic.");
         }
     }
 }

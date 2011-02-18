@@ -1,34 +1,9 @@
 /*
- * Copyright (c) 2010, Konrad-Zuse-Zentrum fuer Informationstechnik Berlin
+ * Copyright (c) 2010 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
- * All rights reserved.
+ * Licensed under the BSD License, see LICENSE file for details.
  * 
- * Redistribution and use in source and binary forms, with or without 
- * modification, are permitted provided that the following conditions are met:
- * 
- * Redistributions of source code must retain the above copyright notice, this 
- * list of conditions and the following disclaimer.
- * Redistributions in binary form must reproduce the above copyright notice, 
- * this list of conditions and the following disclaimer in the documentation 
- * and/or other materials provided with the distribution.
- * Neither the name of the Konrad-Zuse-Zentrum fuer Informationstechnik Berlin 
- * nor the names of its contributors may be used to endorse or promote products 
- * derived from this software without specific prior written permission.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE 
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE 
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
- * POSSIBILITY OF SUCH DAMAGE.
- */
-/*
- * AUTHORS: Felix Langner (ZIB)
  */
 package org.xtreemfs.babudb.replication.service;
 
@@ -37,13 +12,11 @@ import java.net.InetAddress;
 
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.log.LogEntry;
-import org.xtreemfs.babudb.replication.Coinable;
-import org.xtreemfs.babudb.replication.FleaseMessageReceiver;
+import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.replication.control.ControlLayer;
-import org.xtreemfs.babudb.replication.control.RoleChangeListener;
+import org.xtreemfs.babudb.replication.service.accounting.LatestLSNUpdateListener;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview;
 import org.xtreemfs.babudb.replication.service.accounting.ReplicateResponse;
-import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
 /**
  * The interface for the {@link ControlLayer} to access methods of the 
@@ -52,29 +25,29 @@ import org.xtreemfs.foundation.buffer.ReusableBuffer;
  * @author flangner
  * @since 04/14/2010
  */
-public interface ServiceToControlInterface extends 
-    Coinable<RoleChangeListener, FleaseMessageReceiver> {
+public interface ServiceToControlInterface {
 
     /**
      * Replicate the given LogEntry.
      * 
-     * @param payload - the serialized {@link LogEntry} to replicate.
      * @param le - the original {@link LogEntry}.
      * 
      * @return the {@link ReplicateResponse}.
      */
-    public ReplicateResponse replicate(LogEntry le, ReusableBuffer payload);
+    public ReplicateResponse replicate(LogEntry le);
 
     /**
-     * Tries to synchronize with one of the most up-to-date replication
-     * participants.
+     * Tries to synchronize with one of the most up-to-date replication participants and assures a 
+     * stable state after log-file switch for at least N servers.
+     * 
+     * @param listener to handle the result of the synchronization progress.
      * 
      * @throws BabuDBException if synchronization failed. 
      * @throws InterruptedException if execution was interrupted.
      * @throws IOException if the log-file could not be switched.
      */
-    public void synchronize() throws BabuDBException, 
-        InterruptedException, IOException;
+    public void synchronize(SyncListener listener) throws BabuDBException, InterruptedException, 
+            IOException;
 
     /**
      * Registers a new master given by its address, valid for all replication
@@ -93,12 +66,7 @@ public interface ServiceToControlInterface extends
     /**
      * Registers the listener for a replicate call.
      * 
-     * @param response
+     * @param listener
      */
-    public void subscribeListener(ReplicateResponse rp);
-    
-    /**
-     * Aborts any listener registered at the participants states.
-     */
-    public void reset();
+    public void subscribeListener(LatestLSNUpdateListener listener);
 }

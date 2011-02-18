@@ -26,6 +26,5 @@ public interface SlaveClient extends ClientInterface {
      * @param data
      * @return the {@link ClientResponseFuture}.
      */
-    public ClientResponseFuture<?> replicate(LSN lsn, 
-            ReusableBuffer data);
+    public ClientResponseFuture<Object> replicate(LSN lsn, ReusableBuffer data);
 }

@@ -13,6 +13,7 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.FleaseMessageReceiver;
+import org.xtreemfs.babudb.replication.TopLayer;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates;
 import org.xtreemfs.babudb.replication.service.operations.ChunkOperation;
 import org.xtreemfs.babudb.replication.service.operations.FleaseOperation;
@@ -22,6 +23,7 @@ import org.xtreemfs.babudb.replication.service.operations.LocalTimeOperation;
 import org.xtreemfs.babudb.replication.service.operations.ReplicaOperation;
 import org.xtreemfs.babudb.replication.service.operations.ReplicateOperation;
 import org.xtreemfs.babudb.replication.service.operations.StateOperation;
+import org.xtreemfs.babudb.replication.service.operations.VolatileStateOperation;
 import org.xtreemfs.babudb.replication.transmission.FileIOInterface;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestHandler;
@@ -34,10 +36,11 @@ import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestHandler;
  */
 public class ReplicationRequestHandler extends RequestHandler {
     
-    public ReplicationRequestHandler(ParticipantsStates verificator,
-            FleaseMessageReceiver fleaseReceiver, BabuDBInterface babuDBI,
-            ReplicationStage replStage, AtomicReference<LSN> lastOnView,
-            int maxChunkSize, FileIOInterface fileIO) {
+    public <T extends TopLayer & FleaseMessageReceiver> ReplicationRequestHandler(
+            ParticipantsStates verificator, T fleaseReceiver, BabuDBInterface babuDBI,
+            ReplicationStage replStage, AtomicReference<LSN> lastOnView, int maxChunkSize, 
+            FileIOInterface fileIO) {
+        
         super(verificator);
         
         Operation op = new LocalTimeOperation();
@@ -46,7 +49,10 @@ public class ReplicationRequestHandler extends RequestHandler {
         op = new FleaseOperation(fleaseReceiver);
         operations.put(op.getProcedureId(), op);
         
-        op = new StateOperation(babuDBI);
+        op = new StateOperation(babuDBI, fleaseReceiver);
+        operations.put(op.getProcedureId(), op);
+        
+        op = new VolatileStateOperation(babuDBI);
         operations.put(op.getProcedureId(), op);
         
         op = new HeartbeatOperation(verificator);

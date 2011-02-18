@@ -1,12 +1,9 @@
 /*
- * Copyright (c) 2010-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2010 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
- */
-/*
- * AUTHORS: Felix Langner (ZIB)
  */
 package org.xtreemfs.babudb.replication.control;
 
@@ -30,40 +27,37 @@ import org.xtreemfs.foundation.logging.Logging;
 public class FleaseHolder implements FleaseStatusListener {
   
     /** the currently valid lease */
-    private final AtomicReference<Flease> flease;
+    private final AtomicReference<Flease> flease = new AtomicReference<Flease>(Flease.EMPTY_LEASE);
     
     /** listener to inform about certain lease changes */
-    private volatile ControlListener      listener;
+    private final FleaseEventListener     listener;
 
     /**
      * @param cellId
+     * @param listener
      */
-    FleaseHolder(ASCIIString cellId) {
-        
-        this.flease = new AtomicReference<Flease>(Flease.EMPTY_LEASE);
-    }
-    
-    synchronized void registerListener(ControlListener listener) {
-        if (this.listener == null) this.listener = listener;
-    }
-    
-    /**
-     * @return the timeout for the currently valid lease.
-     */
-    long getLeaseTimeout() {
-        return this.flease.get().getLeaseTimeout_ms();
+    FleaseHolder(ASCIIString cellId, FleaseEventListener listener) {
+        this.listener = listener;
     }
     
     /**
      * @return the address of the currently valid leaseHolder.
      */
     InetSocketAddress getLeaseHolderAddress() {
-        Flease lease = this.flease.get();
+        Flease lease = flease.get();
         return (lease.isValid()) ? getAddress(lease.getLeaseHolder()) : null;
     }
     
+    /**
+     * Resets the currently valid lease to ensure that the notifier will be executed on the receive
+     * of the next valid {@link Flease} message.
+     */
+    void reset() {
+        flease.set(Flease.EMPTY_LEASE);
+    }
+       
 /*
- * Overridden methods
+ * overridden methods
  */
     
     /* (non-Javadoc)
@@ -77,32 +71,25 @@ public class FleaseHolder implements FleaseStatusListener {
     }
 
     /* (non-Javadoc)
-     * @see org.xtreemfs.foundation.flease.FleaseStatusListener#statusChanged(org.xtreemfs.foundation.buffer.ASCIIString, org.xtreemfs.foundation.flease.Flease)
+     * @see org.xtreemfs.foundation.flease.FleaseStatusListener#statusChanged(
+     *          org.xtreemfs.foundation.buffer.ASCIIString, org.xtreemfs.foundation.flease.Flease)
      */
     @Override
     public void statusChanged(ASCIIString cellId, Flease lease) {
         Logging.logMessage(Logging.LEVEL_INFO, this, "received '%s' at" +
                 " time %d", lease.toString(), TimeSync.getGlobalTime());
         
-        // outdated leases or broken leases will be ignored
-        if (lease.isValid()) {
-            synchronized (this) {
-                ASCIIString newLeaseHolder = lease.getLeaseHolder();
-                // check if the lease holder changed
-                if (!newLeaseHolder.equals(
-                        this.flease.get().getLeaseHolder())) {
-                    
-                    // notify the handover if this server loses ownership of the 
-                    // lease
-                    if (this.listener != null)
-                        this.listener.notifyForHandover();
-                    
-                    // notify failover about the change
-                    if (this.listener != null)
-                        this.listener.notifyForFailover(
-                                getAddress(newLeaseHolder).getAddress());
-                }
-                this.flease.set(lease);
+        ASCIIString newLeaseHolder = lease.getLeaseHolder();
+        
+        // if the lease is outdated ,broken or the leaseholder has not changed, it will be ignored
+        if (lease.isValid() && !newLeaseHolder.equals(flease.getAndSet(lease).getLeaseHolder())) {
+            
+            // notify listener about the change
+            try {
+                listener.updateLeaseHolder(getAddress(newLeaseHolder).getAddress());
+            } catch (Exception e) {
+                Logging.logError(Logging.LEVEL_WARN, this, e);
+                reset();
             }
         }
     }

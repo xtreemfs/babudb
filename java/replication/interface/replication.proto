@@ -89,4 +89,8 @@ service ReplicationService {
     option(proc_id)=8;
     option(data_in)=true;
   };
+  
+  rpc volatileState(emptyRequest) returns(LSN) {
+    option(proc_id)=9;
+  };
 }
