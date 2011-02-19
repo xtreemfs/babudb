@@ -7,6 +7,7 @@
  */
 package org.xtreemfs.babudb.replication.service;
 
+import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -25,6 +26,7 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.LockableService;
 import org.xtreemfs.babudb.replication.ReplicationManager;
+import org.xtreemfs.babudb.replication.TopLayer;
 import org.xtreemfs.babudb.replication.service.logic.BasicLogic;
 import org.xtreemfs.babudb.replication.service.logic.LoadLogic;
 import org.xtreemfs.babudb.replication.service.logic.Logic;
@@ -87,12 +89,14 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
     /** interface to {@link BabuDB} internals */
     private final BabuDBInterface               babudb;
     
+    private TopLayer                            topLayer;
+    
     /**
      * @param lastOnView
      * @param slaveView
      * @param roleChangeListener - listener to notify about the need of a role 
      *                             change.
-     * @param pacemaker - for the hearbeat.
+     * @param pacemaker - for the heartbeat.
      * @param max_q - 0 means infinite.
      * @param lastOnView - reference for the compare-variable lastOnView.
      */
@@ -123,6 +127,17 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
         
         lg = new LoadLogic(this, pacemaker, slaveView, fileIO, maxChunkSize);
         logics.put(lg.getId(), lg);
+    }
+    
+    /**
+     * Use this method to start the replication stage. Pass the user service for re-initialization
+     * after master failover.
+     * 
+     * @param topLayer
+     */
+    public synchronized void start(TopLayer topLayer) {
+        this.topLayer = topLayer;
+        super.start();
     }
     
     /**
@@ -276,10 +291,11 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.RequestManagement#createStableState(org.xtreemfs.babudb.lsmdb.LSN)
+     * @see org.xtreemfs.babudb.replication.service.RequestManagement#createStableState(
+     *          org.xtreemfs.babudb.lsmdb.LSN, java.net.InetAddress)
      */
     @Override
-    public void createStableState(LSN lastOnView) {
+    public void createStableState(final LSN lastOnView, final InetAddress master) {
         
         BabuDBRequestResultImpl<Boolean> result = new BabuDBRequestResultImpl<Boolean>(null);
         result.registerListener(new DatabaseRequestListener<Boolean>() {
@@ -287,17 +303,33 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
             @Override
             public void finished(Boolean result, Object context) {
                 try {
+                    
                     babudb.checkpoint();
+                    topLayer.unlockUser();
+                    
                 } catch (BabuDBException e) {
-                    // TODO mechanism to notify the master about the failure
+                    
+                    // taking the checkpoint was interrupted, the only reason for that is a crash,
+                    // or a shutdown. either way these symptoms are treated like a crash of the 
+                    // replication manager.
+                    
+                    assert (e.getErrorCode() == ErrorCode.INTERRUPTED);
+                    
+                    notifyCrashed(e);
                 }
             }
             
             @Override
             public void failed(BabuDBException error, Object context) {
-                // TODO mechanism to notify the master about the failure
+                
+                // manual load failed. retry if master has not changed meanwhile
+                // ignore the failure otherwise
+                if (master.equals(topLayer.getLeaseHolder().getAddress())) {
+                    createStableState(lastOnView, master);
+                } 
             }
         });
+        
         manualLoad(result, babudb.getState(), new LSN(lastOnView.getViewId(), 
                                                       lastOnView.getSequenceNo() - 1L));
     }
@@ -359,6 +391,14 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
             locked = false;
             accessCounter.notifyAll();
         }
+    }
+    
+    /* (non-Javadoc)
+     * @see java.lang.Thread#start()
+     */
+    @Override
+    public synchronized void start() {
+        throw new UnsupportedOperationException("Use start(LockableService userService) instead!");
     }
     
 /*

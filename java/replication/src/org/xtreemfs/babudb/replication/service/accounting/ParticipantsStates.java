@@ -126,14 +126,14 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
      * this field to prevent it from killing the slave by a DoS.
      * </p>
      */
-    private final static int                    MAX_OPEN_REQUESTS_PER_SLAVE = 
+    private final static int                    MAX_OPEN_REQUESTS_PRO_SERVER = 
         20;
     
     /**
      * Determines how long the master should wait for busy slaves to become
      * available again, before it refuses a replication request.  
      */
-    private final static long                   WAIT_TILL_REFUSE = 
+    private final static long                   DELAY_TILL_REFUSE = 
         HeartbeatThread.MAX_DELAY_BETWEEN_HEARTBEATS;
     
     private final Map<InetAddress, State>       stateTable = 
@@ -226,7 +226,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
             // wait until enough slaves are available, if they are ...
             while (availableSlaves < getSyncN() && 
                   !((participantsCount - deadSlaves) < getSyncN()))
-                stateTable.wait(WAIT_TILL_REFUSE);
+                stateTable.wait(DELAY_TILL_REFUSE);
             
             long time = TimeSync.getGlobalTime();
             
@@ -242,10 +242,10 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
                                     toString());
                             s.dead = true;
                             availableSlaves--;
-                        } else if ( s.openRequests < MAX_OPEN_REQUESTS_PER_SLAVE ) {
+                        } else if ( s.openRequests < MAX_OPEN_REQUESTS_PRO_SERVER ) {
                             
                             s.openRequests++;
-                            if ( s.openRequests == MAX_OPEN_REQUESTS_PER_SLAVE ) 
+                            if ( s.openRequests == MAX_OPEN_REQUESTS_PRO_SERVER ) 
                                 availableSlaves--;
                             
                             result.add(s.client);
@@ -261,7 +261,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
                 for (SlaveClient c : result) {
                     State s = stateTable.get(
                             c.getDefaultServerAddress().getAddress());
-                    if (s.openRequests == MAX_OPEN_REQUESTS_PER_SLAVE) 
+                    if (s.openRequests == MAX_OPEN_REQUESTS_PRO_SERVER) 
                         availableSlaves++;
                     
                     s.openRequests--;
@@ -446,7 +446,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
             
             // the number of open requests for this slave has fallen below the
             // threshold of MAX_OPEN_REQUESTS_PER_SLAVE
-            if (s.openRequests == (MAX_OPEN_REQUESTS_PER_SLAVE-1)) {
+            if (s.openRequests == (MAX_OPEN_REQUESTS_PRO_SERVER-1)) {
                 
                 availableSlaves++;
                 stateTable.notify();
