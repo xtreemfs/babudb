@@ -112,9 +112,8 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         // initialize replication stage
         // ----------------------------------
         replicationStage = new ReplicationStage(
-                config.getBabuDBConfig().getMaxQueueLength(), 
-                this.heartbeatThread, this, transLayer.getFileIOInterface(), 
-                this.babuDBInterface, this.lastOnView, maxChunkSize);
+                config.getBabuDBConfig().getMaxQueueLength(), heartbeatThread, this, 
+                transLayer.getFileIOInterface(), babuDBInterface, lastOnView, maxChunkSize);
         
         // ----------------------------------
         // initialize request logic for 
@@ -350,29 +349,29 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         this.replicationStage.setLifeCycleListener(listener);
     }
     
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.Layer#start()
+    /**
+     * Method to initialize all ServiceLayer services. Passes the userService to be available at the
+     * {@link ReplicationStage}.
+     * 
+     * @param userService
      */
-    @Override
-    public void start() {
+    public void start(TopLayer topLayer) {
         LSN latest = babuDBInterface.getState();
-        
-        // the sequence number of the initial LSN before incrementing the 
-        // viewID must not be 0 
+        LSN normalized = (latest.getSequenceNo() == 0L) ? new LSN(0,0L) : latest;
+            
+        // the sequence number of the initial LSN before incrementing the viewID must not be 0 
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "Setting last on view " +
-           "LSN to '%s', initial was '%s'.", (latest.getSequenceNo() == 0L) ? 
-                        new LSN(0,0L) : latest,latest);
+           "LSN to '%s', initial was '%s'.", normalized, latest);
         
-        this.lastOnView.set((latest.getSequenceNo() == 0L) ? 
-                new LSN(0,0L) : latest);
+        lastOnView.set(normalized);
                 
         try {
-            this.heartbeatThread.start(latest);
-            this.replicationStage.start();
-            this.heartbeatThread.waitForStartup();
-            this.replicationStage.waitForStartup();
+            heartbeatThread.start(latest);
+            replicationStage.start(topLayer);
+            heartbeatThread.waitForStartup();
+            replicationStage.waitForStartup();
         } catch (Exception e) {
-            this.listener.crashPerformed(e);
+            listener.crashPerformed(e);
         }
     }
     
@@ -454,5 +453,13 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         }
         
         return result;
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.Layer#start()
+     */
+    @Override
+    public void start() {
+        throw new UnsupportedOperationException("Use start(LockableService userService) instead!");
     }
 }
