@@ -45,7 +45,6 @@ class PersistenceManagerProxy extends PersistenceManager implements LockableServ
     private final PersistenceManager    localPersMan;
     private final Policy                replicationPolicy;
     private final RemoteAccessClient    client;
-    private       InetSocketAddress     master;
     private final AtomicInteger         accessCounter = new AtomicInteger(0);
     private boolean                     locked = false;
     
@@ -72,7 +71,8 @@ class PersistenceManagerProxy extends PersistenceManager implements LockableServ
     public <T> DatabaseRequestResult<T> makePersistent(byte type, Object[] args, 
             ReusableBuffer serialized) throws BabuDBException {
         
-        if (hasPermissionToExecuteLocally(type)) {
+        InetSocketAddress master = getServerToPerformAt(type);
+        if (master == null) {
             
             // check if this service has been locked and increment the access counter
             synchronized (accessCounter) {
@@ -86,7 +86,7 @@ class PersistenceManagerProxy extends PersistenceManager implements LockableServ
             return executeLocallyAndReplicate(type, serialized);
         } else {      
             
-            return redirectToMaster(type, serialized, replMan.getMaster());
+            return redirectToMaster(type, serialized, master);
         }
     }
     
@@ -234,28 +234,35 @@ class PersistenceManagerProxy extends PersistenceManager implements LockableServ
     
     /**
      * @param type - of the request.
-     * @return true, if the given type of request may be executed locally. false
-     *         otherwise.
+     * 
+     * @return the host to perform the request at, or null, if it is permitted to perform the 
+     *         request locally.
+     * @throws BabuDBException if replication is currently not available.
      */
-    private boolean hasPermissionToExecuteLocally (byte type) {
+    private InetSocketAddress getServerToPerformAt (byte type) throws BabuDBException {
         
-        boolean result = false;
-        master = replMan.getMaster();
-        
-        result |= (replMan.amIMaster(master));
-        
-        result |= (type == PAYLOAD_TYPE_INSERT &&
-                  !replicationPolicy.insertIsMasterRestricted());
+        InetSocketAddress master = replMan.getMaster();
+         
+        if (master == null) {
+            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
+                    "A majority of servers is currently not available.");
+        }
+               
+        if ((replMan.isItMe(master)) ||
+                
+            (type == PAYLOAD_TYPE_INSERT && !replicationPolicy.insertIsMasterRestricted()) ||
             
-        result |= ((type == PAYLOAD_TYPE_SNAP || 
-                    type == PAYLOAD_TYPE_SNAP_DELETE) && 
-                  !replicationPolicy.snapshotManipultationIsMasterRestricted());
-        
-        result |= ((type == PAYLOAD_TYPE_CREATE || type == PAYLOAD_TYPE_COPY || 
+            ((type == PAYLOAD_TYPE_SNAP || type == PAYLOAD_TYPE_SNAP_DELETE) && 
+                    !replicationPolicy.snapshotManipultationIsMasterRestricted()) ||
+                    
+            ((type == PAYLOAD_TYPE_CREATE || type == PAYLOAD_TYPE_COPY || 
                     type == PAYLOAD_TYPE_DELETE) && 
-                   !replicationPolicy.dbModificationIsMasterRestricted());
+                    !replicationPolicy.dbModificationIsMasterRestricted())) {
+            
+            return null;
+        }
         
-        return result;
+        return master;
     }
     
     /* (non-Javadoc)

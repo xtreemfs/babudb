@@ -42,7 +42,6 @@ class DatabaseManagerProxy implements DatabaseManager {
     private final    ReplicationManager replicationManager;
     private final    RemoteAccessClient client;
     private final    PersistenceManager persManProxy;
-    private volatile InetSocketAddress  master;
 
     public DatabaseManagerProxy(DatabaseManager localDBMan, Policy policy, 
             ReplicationManager replMan, RemoteAccessClient client, PersistenceManager persMan) {
@@ -63,7 +62,8 @@ class DatabaseManagerProxy implements DatabaseManager {
     @Override
     public Database getDatabase(String dbName) throws BabuDBException {
         
-        if (hasPermissionToExecuteLocally()) {
+        InetSocketAddress master = getServerToPerformAt();
+        if (master == null) {
             return new DatabaseProxy(localDBMan.getDatabase(dbName), replicationPolicy, this);
         }
         
@@ -90,7 +90,9 @@ class DatabaseManagerProxy implements DatabaseManager {
      */
     @Override
     public Map<String, Database> getDatabases() throws BabuDBException {
-        if (hasPermissionToExecuteLocally()) {  
+        
+        InetSocketAddress master = getServerToPerformAt();
+        if (master == null) {  
             return localDBMan.getDatabases();
         }
         
@@ -159,10 +161,28 @@ class DatabaseManagerProxy implements DatabaseManager {
         localDBMan.dumpAllDatabases(destPath);
     }
     
-    private boolean hasPermissionToExecuteLocally() {
-        master = replicationManager.getMaster();
-        return !replicationPolicy.dbModificationIsMasterRestricted() 
-                || replicationManager.amIMaster(master);
+    
+    /**
+     * @param type - of the request.
+     * 
+     * @return the host to perform the request at, or null, if it is permitted to perform the 
+     *         request locally.
+     * @throws BabuDBException if replication is currently not available.
+     */
+    private InetSocketAddress getServerToPerformAt() throws BabuDBException {
+        InetSocketAddress master = replicationManager.getMaster();
+        
+        if (master == null) {
+            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
+                    "A majority of servers is currently not available.");
+        }
+        
+        if (replicationManager.isItMe(master) || 
+            !replicationPolicy.dbModificationIsMasterRestricted()) {
+            return null;
+        }
+        
+        return master;
     }
 
     Database getLocalDatabase(String name) throws BabuDBException {
