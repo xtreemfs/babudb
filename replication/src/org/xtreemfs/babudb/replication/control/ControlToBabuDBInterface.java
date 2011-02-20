@@ -29,10 +29,10 @@ public interface ControlToBabuDBInterface {
     public InetSocketAddress getLeaseHolder();
     
     /**
-     * @param master - the address to compare with.
-     * @return true, if the given master address is the address of this server. false otherwise.
+     * @param address - the address to compare with.
+     * @return true, if the given address is the address of this server. false otherwise.
      */
-    public boolean amIMaster(InetSocketAddress master);
+    public boolean isItMe(InetSocketAddress address);
     
     /**
      * Method to register a {@link LockableService} to the control layer.

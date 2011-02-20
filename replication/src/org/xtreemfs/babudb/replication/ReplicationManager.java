@@ -91,12 +91,11 @@ public class ReplicationManager implements LifeCycleListener {
     }
     
     /**
-     * @param master - the address to compare with.
-     * @return true, if the replication is running in master mode. 
-     *         false, otherwise.
+     * @param address - the address to compare with.
+     * @return true, if the given address is the address of this server. false otherwise.
      */
-    public boolean amIMaster(InetSocketAddress master) {
-        return controlLayer.amIMaster(master);
+    public boolean isItMe(InetSocketAddress address) {
+        return controlLayer.isItMe(address);
     }
     
     /**

@@ -152,12 +152,11 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.control.ControlToBabuDBInterface#amIMaster(
-     *          java.net.InetSocketAddress)
+     * @see org.xtreemfs.babudb.replication.control.ControlToBabuDBInterface#isItMe(java.net.InetSocketAddress)
      */
     @Override
-    public boolean amIMaster(InetSocketAddress master) {
-        return thisAddress.equals(master);
+    public boolean isItMe(InetSocketAddress address) {
+        return thisAddress.equals(address);
     }
     
     /*
@@ -321,7 +320,8 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
         unlockReplication();
         
         // user requests may only be permitted on slaves that have been synchronized with the master
-        // which is only possible after they changed the master the obey internally by this method
+        // which is only possible after the master they obey internally has been changed by this 
+        // method
     }
     
 

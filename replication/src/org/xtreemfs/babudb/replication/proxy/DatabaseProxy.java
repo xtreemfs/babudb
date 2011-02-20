@@ -5,9 +5,6 @@
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-/*
- * AUTHORS: Felix Langner (ZIB)
- */
 package org.xtreemfs.babudb.replication.proxy;
 
 import java.net.InetSocketAddress;
@@ -47,7 +44,6 @@ class DatabaseProxy implements Database {
     private final String                name;
     private final int                   id;
     private Database                    localDB;
-    private InetSocketAddress           master;
     
     public DatabaseProxy(Database localDatabase, Policy replicationPolicy, 
             DatabaseManagerProxy dbManProxy) {
@@ -79,9 +75,11 @@ class DatabaseProxy implements Database {
     public DatabaseRequestResult<byte[]> lookup(int indexId, byte[] key, 
             final Object context) {
         
+        InetSocketAddress master = null;
         try {
-            if (hasPermissionToExecuteLocally()) {
-                
+            master = getServerToPerformAt();
+            
+            if (master == null) {
                 return localDB.lookup(indexId, key, context);
             }
         } catch (final BabuDBException e) {
@@ -171,9 +169,11 @@ class DatabaseProxy implements Database {
     public DatabaseRequestResult<ResultSet<byte[], byte[]>> prefixLookup(
             int indexId, byte[] key, final Object context) {
         
+        InetSocketAddress master = null;
         try {
-            if (hasPermissionToExecuteLocally()) {
-                
+            master = getServerToPerformAt();
+            
+            if (master == null) {
                 return localDB.prefixLookup(indexId, key, context);
             }
         } catch (final BabuDBException e) {
@@ -264,9 +264,11 @@ class DatabaseProxy implements Database {
     public DatabaseRequestResult<ResultSet<byte[], byte[]>> 
             reversePrefixLookup(int indexId, byte[] key, final Object context) {
         
+        InetSocketAddress master = null;
         try {
-            if (hasPermissionToExecuteLocally()) {
-                return reversePrefixLookup(indexId, key, context);
+            master = getServerToPerformAt();
+            if (master == null) {
+                return localDB.reversePrefixLookup(indexId, key, context);
             }
         } catch (final BabuDBException e) {
             return new DatabaseRequestResult<ResultSet<byte[], byte[]>>() {
@@ -356,9 +358,11 @@ class DatabaseProxy implements Database {
     public DatabaseRequestResult<ResultSet<byte[], byte[]>> rangeLookup(
             int indexId, byte[] from, byte[] to, final Object context) {
         
+        InetSocketAddress master = null;
         try {
-            if (hasPermissionToExecuteLocally()) {
-                return rangeLookup(indexId, from, to, context);
+            master = getServerToPerformAt();
+            if (master == null) {
+                return localDB.rangeLookup(indexId, from, to, context);
             }
         } catch (final BabuDBException e) {
             return new DatabaseRequestResult<ResultSet<byte[], byte[]>>() {
@@ -450,9 +454,11 @@ class DatabaseProxy implements Database {
             reverseRangeLookup(int indexId, byte[] from, byte[] to, 
             final Object context) {
         
+        InetSocketAddress master = null;
         try {
-            if (hasPermissionToExecuteLocally()) {
-                return reverseRangeLookup(indexId, from, to, context);
+            master = getServerToPerformAt();
+            if (master == null) {
+                return localDB.reverseRangeLookup(indexId, from, to, context);
             }
         } catch (final BabuDBException e) {
             return new DatabaseRequestResult<ResultSet<byte[], byte[]>>() {
@@ -544,8 +550,11 @@ class DatabaseProxy implements Database {
     public DatabaseRequestResult<Object> userDefinedLookup(
             UserDefinedLookup udl, final Object context) {
         
+        InetSocketAddress master = null;
         try {
-            if (hasPermissionToExecuteLocally()) {
+            
+            master = getServerToPerformAt();
+            if (master == null) {
                 return localDB.userDefinedLookup(udl, context);
             }
         } catch (final BabuDBException e) {
@@ -566,8 +575,8 @@ class DatabaseProxy implements Database {
         }
         
         // TODO RPC: userLookup return(Object ... will be hard to serialize)
-        throw new UnsupportedOperationException("This operation is currently " +
-        		"not supported by the replication-plugin.");
+        throw new UnsupportedOperationException("This operation is " +
+        		"not supported by the replication-plugin yet.");
     }
 
     /* (non-Javadoc)
@@ -576,7 +585,7 @@ class DatabaseProxy implements Database {
     @Override
     public void shutdown() throws BabuDBException {
         
-        if (hasPermissionToExecuteLocally()) {
+        if (localDB != null) {
             localDB.shutdown();
         }
     }
@@ -602,15 +611,19 @@ class DatabaseProxy implements Database {
      */
     @Override
     public ByteRangeComparator[] getComparators() {
+        
+        InetSocketAddress master = null;
         try {
-            if (hasPermissionToExecuteLocally()) {
+            
+            master = getServerToPerformAt();
+            if (master == null) {
                 return localDB.getComparators();
             }
         } catch (BabuDBException e) { /* ignored */ }
         
         // TODO RPC: ByteRangeComparators have to be serializable 
-        throw new UnsupportedOperationException("This operation is currently " +
-                "not supported by the replication-plugin.");
+        throw new UnsupportedOperationException("This operation is " +
+                "not supported by the replication-plugin yet.");
     }
 
     /* (non-Javadoc)
@@ -621,8 +634,7 @@ class DatabaseProxy implements Database {
     public DatabaseRequestResult<Object> singleInsert(int indexId, byte[] key, 
             byte[] value, Object context) {
         
-        DatabaseInsertGroup irg = 
-            createInsertGroup();
+        DatabaseInsertGroup irg = createInsertGroup();
         irg.addInsert(indexId, key, value);
         return insert(irg, context);
     }
@@ -657,23 +669,35 @@ class DatabaseProxy implements Database {
     }
 
     /**
-     * Method to check against the policy whether an operation is allowed, or not.
+     * @param type - of the request.
      * 
-     * @return true, if a local {@link Database} is available and may be accessed, false otherwise.
-     * @throws BabuDBException - if local Database could not be retrieved.
+     * @return the host to perform the request at, or null, if it is permitted to perform the 
+     *         request locally.
+     * @throws BabuDBException if replication is currently not available.
      */
-    private boolean hasPermissionToExecuteLocally() throws BabuDBException {
-        master = dbMan.getReplicationManager().getMaster();
-        boolean isMaster = dbMan.getReplicationManager().amIMaster(master);
+    private InetSocketAddress getServerToPerformAt() throws BabuDBException {
         
-        if (!isMaster || replicationPolicy.lookUpIsMasterRestricted()) {
-            return false;
-        } else if (localDB == null && 
-                  (!replicationPolicy.dbModificationIsMasterRestricted() || isMaster)) {
-            
-            localDB = dbMan.getLocalDatabase(name);
+        InetSocketAddress master = dbMan.getReplicationManager().getMaster();
+        
+        if (master == null) {
+            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
+                    "A majority of servers is currently not available.");
         }
         
-        return true;
+        boolean isMaster = dbMan.getReplicationManager().isItMe(master);
+        
+        if (isMaster || !replicationPolicy.lookUpIsMasterRestricted()) {
+            
+            if (localDB == null && 
+                (isMaster || !replicationPolicy.dbModificationIsMasterRestricted())) {
+                localDB = dbMan.getLocalDatabase(name);
+            } else if (localDB == null) {
+                return master;
+            }
+             
+            return null;
+        }
+
+        return master;
     }
 }
