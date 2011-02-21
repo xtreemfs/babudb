@@ -13,6 +13,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.LogEntry;
@@ -62,6 +63,9 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
     
     /** listener and storage for the up-to-date lease informations */
     private final FleaseHolder              leaseHolder;
+    
+    /** thread to execute failover requests */
+    private final FailoverTaskRunner        failoverTaskRunner = new FailoverTaskRunner();
     
     /** services that have to be locked during failover */
     private LockableService                 userInterface;
@@ -166,6 +170,7 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
     @Override
     public void start() {        
         timeDriftDetector.start();
+        failoverTaskRunner.start();
         fleaseStage.start();
         
         try {
@@ -193,6 +198,7 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
         } catch (Exception e) {
             listener.crashPerformed(e);
         }
+        failoverTaskRunner.shutdown();
     }
 
     /* (non-Javadoc)
@@ -253,79 +259,14 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
      * @see org.xtreemfs.babudb.replication.control.FleaseEventListener#updateLeaseHolder(java.net.InetAddress)
      */
     @Override
-    public void updateLeaseHolder(InetAddress newLeaseholder) throws Exception {
-        if (thisAddress.equals(newLeaseholder)) {
-            becomeMaster();
-        } else {
-            becomeSlave(newLeaseholder);
-        }
+    public void updateLeaseHolder(InetAddress newLeaseHolder) throws Exception {
+        failoverTaskRunner.queueFailoverRequest(newLeaseHolder);
     }
     
 /*
  * private methods
  */
-    
-    /**
-     * This server has to become the new master.
-     * 
-     * @throws Exception
-     */
-    private void becomeMaster() throws Exception {
-        
-        Logging.logMessage(Logging.LEVEL_INFO, this, "Becoming the replication master.");
-        
-        // stop all local executions
-        try {
-            lockAll();
-            serviceInterface.changeMaster(null);
-        } finally {
-            unlockReplication();
-        }
-        
-        // synchronize with other servers
-        serviceInterface.synchronize(new SyncListener() {
-            
-            @Override
-            public void synced(LogEntry entry) {
-                entry.free();
-                unlockUser();
-            }
-            
-            @Override
-            public void failed(LogEntry entry, Exception ex) {
-                entry.free();
-                
-                Logging.logMessage(Logging.LEVEL_WARN, this, 
-                        "Master failover did not succeed! Reseting the local lease and " +
-                        "waiting for a new impulse from FLease. Reason: %s", ex.getMessage());
-                
-                leaseHolder.reset();
-            }
-        });
-    }
-    
-    /**
-     * Another server has become the master and this one has to obey.
-     * 
-     * @param masterAddress
-     * @throws InterruptedException 
-     */
-    private void becomeSlave(InetAddress masterAddress) throws InterruptedException {
-        
-        Logging.logMessage(Logging.LEVEL_INFO, this, "Becoming a slave for %s.", 
-                masterAddress.toString());
-        
-        lockAll();
-        serviceInterface.changeMaster(masterAddress);
-        unlockReplication();
-        
-        // user requests may only be permitted on slaves that have been synchronized with the master
-        // which is only possible after the master they obey internally has been changed by this 
-        // method
-    }
-    
 
-    
     /**
      * Method to participate at {@link Flease}.
      */
@@ -338,5 +279,154 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
      */
     private void exitFlease() {
         fleaseStage.closeCell(REPLICATION_CELL);
+    }
+    
+    /**
+     * This thread enables the replication to handle failover requests asynchronously to incoming 
+     * Flease messages. It also ensures, that there will be only one failover at a time.
+     * 
+     * @author flangner
+     * @since 02/21/2011
+     */
+    private final class FailoverTaskRunner extends Thread {
+        
+        private final AtomicReference<InetAddress> failoverRequest = 
+            new AtomicReference<InetAddress>(null);
+        
+        private boolean quit = true;
+        
+        private FailoverTaskRunner() {
+            super("FailoverTaskRunner");
+        }
+        
+        /**
+         * Enqueue a new failover request.
+         * 
+         * @param address - of the new replication master candidate.
+         */
+        void queueFailoverRequest(InetAddress address) {
+            synchronized (failoverRequest) {
+                if (failoverRequest.compareAndSet(null, address)) {
+                    failoverRequest.notify();
+                }
+            }
+        }
+        
+        /* (non-Javadoc)
+         * @see java.lang.Thread#start()
+         */
+        @Override
+        public synchronized void start() {
+            quit = false;
+            super.start();
+        }
+        
+        /**
+         * Stops this thread gracefully.
+         */
+        void shutdown() {
+            quit = true;
+            interrupt();
+        }
+        
+        /* (non-Javadoc)
+         * @see java.lang.Thread#run()
+         */
+        @Override
+        public void run() {
+            
+            InetAddress newLeaseHolder = null;
+            
+            try {
+                while (!quit) {
+                    
+                    synchronized (failoverRequest) {
+                        if (failoverRequest.get() == null) {
+                            failoverRequest.wait();
+                        }
+                        
+                        newLeaseHolder = failoverRequest.get();
+                    }
+                    
+                    try {
+                        if (thisAddress.equals(newLeaseHolder)) {
+                            becomeMaster();
+                        } else {
+                            becomeSlave(newLeaseHolder);
+                        }
+                    } catch (Exception e) {
+                        Logging.logError(Logging.LEVEL_WARN, this, e);
+                        leaseHolder.reset();
+                    }
+                }
+            } catch (InterruptedException e) {
+                if (!quit) {
+                    Logging.logError(Logging.LEVEL_ERROR, this, e);
+                }
+            }
+        }
+        
+        /**
+         * This server has to become the new master.
+         * 
+         * @throws Exception
+         */
+        private void becomeMaster() throws Exception {
+            
+            Logging.logMessage(Logging.LEVEL_INFO, this, "Becoming the replication master.");
+            
+            // stop all local executions
+            try {
+                lockAll();
+                serviceInterface.changeMaster(null);
+            } finally {
+                unlockReplication();
+            }
+            
+            // synchronize with other servers 
+            serviceInterface.synchronize(new SyncListener() {
+                
+                @Override
+                public void synced(LogEntry entry) {
+                    entry.free();
+                    unlockUser();
+                }
+                
+                @Override
+                public void failed(LogEntry entry, Exception ex) {
+                    entry.free();
+                    
+                    Logging.logMessage(Logging.LEVEL_WARN, this, 
+                            "Master failover did not succeed! Reseting the local lease and " +
+                            "waiting for a new impulse from FLease. Reason: %s", ex.getMessage());
+                    
+                    leaseHolder.reset();
+                }
+            });
+            
+            // if a new failover request arrives while synchronization is still waiting for a stable
+            // state to be established (SyncListener), the listener will be marked as failed when
+            // the new master address is set
+        }
+        
+        /**
+         * Another server has become the master and this one has to obey.
+         * 
+         * @param masterAddress
+         * @throws InterruptedException 
+         */
+        private void becomeSlave(InetAddress masterAddress) throws InterruptedException {
+            
+            Logging.logMessage(Logging.LEVEL_INFO, this, "Becoming a slave for %s.", 
+                    masterAddress.toString());
+            
+            lockAll();
+            serviceInterface.changeMaster(masterAddress);
+            unlockReplication();
+            
+            // user requests may only be permitted on slaves that have been synchronized with the master
+            // which is only possible after the master they obey internally has been changed by this 
+            // method
+        }
     }
 }
