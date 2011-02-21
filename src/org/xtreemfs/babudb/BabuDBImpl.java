@@ -368,16 +368,16 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
             }
         }
         
-        //stop the plugin threads TODO add shutdown method to LifeCycleThread
-//        for (LifeCycleThread p : plugins) {
-//            p.shutdown(); 
-//            try {
-//                p.waitForShutdown(); 
-//            } catch (Exception e) { 
-//                throw new BabuDBException(ErrorCode.BROKEN_PLUGIN, 
-//                        e.getMessage(), e.getCause()); 
-//            } 
-//        }
+        //stop the plugin threads
+        for (LifeCycleThread p : plugins) {
+            try {
+                p.shutdown(); 
+                p.waitForShutdown(); 
+            } catch (Exception e) { 
+                throw new BabuDBException(ErrorCode.BROKEN_PLUGIN, 
+                        e.getMessage(), e.getCause()); 
+            } 
+        }
     
          
 
