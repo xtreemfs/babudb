@@ -301,10 +301,8 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
     }
 
     /**
-     * <p>
      * Sets a new master, valid for all replication components. Resets the 
      * states of all participants.
-     * </p>
      * 
      * @param address - may be null, if master is unknown or the local babuDB
      *                  instance is owner of the master privilege
