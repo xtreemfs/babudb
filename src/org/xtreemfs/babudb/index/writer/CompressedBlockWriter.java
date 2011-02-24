@@ -151,7 +151,7 @@ public class CompressedBlockWriter implements BlockWriter {
         
         // Create the prefix
         byte[] LCP = new byte[longestPrefixLen];
-        System.arraycopy(prefix, 0, LCP, 0, longestPrefixLen);
+        System.arraycopy(InternalBufferUtil.toBuffer(prefix), 0, LCP, 0, longestPrefixLen);
         this.prefix = LCP;
         
         // add the entries, removing the prefix

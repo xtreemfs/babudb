@@ -224,9 +224,10 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
             if (rq == null)
                 break;
             
-            Logging.logMessage(Logging.LEVEL_DEBUG, this,
-                "snapshot materialization request found for database '" + 
-                rq.dbName + "', snapshot: '" + rq.snap.getName() + "'");
+            if(Logging.isDebug())
+	            Logging.logMessage(Logging.LEVEL_DEBUG, this,
+	                "snapshot materialization request found for database '" + 
+	                rq.dbName + "', snapshot: '" + rq.snap.getName() + "'");
             
             SnapshotManagerImpl snapMan = 
                 (SnapshotManagerImpl) dbs.getSnapshotManager();
@@ -407,7 +408,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
                         synchronized (this) {
                             materializeSnapshots();
 
-                            createCheckpoint();                     
+                            createCheckpoint();
                         }                        
                     }                    
                 }

@@ -420,6 +420,9 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
                     w.stop();
             dbCheckptr.stop();
             
+            this.databaseManager.shutdown();
+            this.snapshotManager.shutdown();
+            
         } catch (Exception ex) {
             // we will probably get that when we kill a thread because we do
             // evil stuff here ;-)

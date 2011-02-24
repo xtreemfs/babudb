@@ -23,6 +23,10 @@ import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.FSUtils;
 
 public class LSMTreeTest extends TestCase {
+	
+	public static boolean COMPRESSION      = false;
+	
+	public static boolean MMAP             = false;
     
     private static final String SNAP_FILE  = "/tmp/snap1.bin";
     
@@ -62,8 +66,8 @@ public class LSMTreeTest extends TestCase {
         byte[][] vals = new byte[][] { "1".getBytes(), "2".getBytes(), "3".getBytes(), "4".getBytes(),
             "5".getBytes() };
         
-        LSMTree tree = new LSMTree(null, DefaultByteRangeComparator.getInstance(), false, 16,
-            1024 * 1024 * 512, true, -1);
+        LSMTree tree = new LSMTree(null, DefaultByteRangeComparator.getInstance(), COMPRESSION, 16,
+            1024 * 1024 * 512, MMAP, -1);
         TreeMap<byte[], byte[]> map = new TreeMap<byte[], byte[]>(new DefaultByteRangeComparator());
         
         // insert some key-value pairs
@@ -172,6 +176,8 @@ public class LSMTreeTest extends TestCase {
         tree.linkToSnapshot(SNAP_FILE4);
         
         assertEquals(null, tree.lookup("test".getBytes()));
+        
+        tree.destroy();
     }
     
     public void testPrefixLookups() throws Exception {
@@ -181,7 +187,7 @@ public class LSMTreeTest extends TestCase {
         final int numElements = 200;
         final DefaultByteRangeComparator comp = DefaultByteRangeComparator.getInstance();
         
-        LSMTree tree = new LSMTree(null, comp, false, 16, 1024 * 1024 * 512, true, -1);
+        LSMTree tree = new LSMTree(null, comp, COMPRESSION, 16, 1024 * 1024 * 512, MMAP, -1);
         
         final TreeMap<byte[], byte[]> map1 = new TreeMap<byte[], byte[]>(comp);
         for (int i = 0x10; i < numElements; i++) {
@@ -318,7 +324,7 @@ public class LSMTreeTest extends TestCase {
         final int numElements = 200;
         final DefaultByteRangeComparator comp = DefaultByteRangeComparator.getInstance();
         
-        LSMTree tree = new LSMTree(null, comp, false, 16, 1024 * 1024 * 512, true, -1);
+        LSMTree tree = new LSMTree(null, comp, COMPRESSION, 16, 1024 * 1024 * 512, MMAP, -1);
         
         // insert all 200 keys
         final TreeMap<byte[], byte[]> map1 = new TreeMap<byte[], byte[]>(comp);
@@ -450,7 +456,7 @@ public class LSMTreeTest extends TestCase {
         final byte[] value = "value".getBytes();
         final String[] keys = { "a", "v", "blub", "blubber", "ertz", "yagga", "zwum", "x" };
         
-        LSMTree tree = new LSMTree(null, comp, false, 16, 1024 * 1024 * 512, true, -1);
+        LSMTree tree = new LSMTree(null, comp, COMPRESSION, 16, 1024 * 1024 * 512, MMAP, -1);
         for (String k : keys)
             tree.insert(k.getBytes(), value);
         

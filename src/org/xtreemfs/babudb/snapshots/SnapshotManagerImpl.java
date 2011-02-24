@@ -29,6 +29,7 @@ import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
 import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
 import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
+import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.FSUtils;
@@ -63,10 +64,13 @@ public class SnapshotManagerImpl implements SnapshotManager {
                 Map<String, Snapshot> snapMap = new HashMap<String, Snapshot>();
                 snapshotDBs.put(entry.getKey(), snapMap);
                 
+                boolean compressed = ((DatabaseImpl) entry.getValue()).getLSMDB().getIndex(0).isCompressed();
+                boolean mmaped = ((DatabaseImpl) entry.getValue()).getLSMDB().getIndex(0).isMMapEnabled();
+                
                 String[] snapshots = snapDir.list();
                 for (String snapName : snapshots) {
                     BabuDBView view = new DiskIndexView(snapDir + "/" + snapName, entry.getValue()
-                            .getComparators());
+                            .getComparators(), compressed, mmaped);
                     snapMap.put(snapName, new Snapshot(view));
                 }
             }
@@ -117,9 +121,14 @@ public class SnapshotManagerImpl implements SnapshotManager {
         // as soon as the snapshot has been completed, replace the entry in the
         // snapshot DB map with a disk index-based BabuDB instance if necessary
         synchronized (snapshotDBs) {
+        	
+        	DatabaseImpl db = (DatabaseImpl) dbs.getDatabaseManager().getDatabase(dbName);
+        	boolean compressed = db.getLSMDB().getIndex(0).isCompressed();
+        	boolean mmaped = db.getLSMDB().getIndex(0).isMMapEnabled();
+        	
             Snapshot s = snapshotDBs.get(dbName).get(snap.getName());
             s.setView(new DiskIndexView(getSnapshotDir(dbName, snap.getName()), dbs.getDatabaseManager()
-                    .getDatabase(dbName).getComparators()));
+                    .getDatabase(dbName).getComparators(), compressed, mmaped));
         }
     }
     

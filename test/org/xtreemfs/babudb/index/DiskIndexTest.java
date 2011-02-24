@@ -46,7 +46,7 @@ public class DiskIndexTest extends TestCase {
     
     private static final boolean                         COMPRESSED          = false;
     
-    private static final boolean                         MMAPED              = true;
+    private static final boolean                         MMAPED              = false;
     
     private static final ResultSet<Object, Object> EMPTY_RESULT_SET    = new ResultSet<Object, Object>() {
                                                                                  
@@ -220,6 +220,8 @@ public class DiskIndexTest extends TestCase {
         it = diskIndex.rangeLookup("1".getBytes(), "2".getBytes(), true);
         assertFalse(it.hasNext());
         
+        diskIndex.destroy();
+        
         // create a disk index from an empty index file
         FSUtils.delTree(new File(PATH1));
         index = new DiskIndexWriter(PATH1, 4, COMPRESSED, MAX_BLOCK_FILE_SIZE);
@@ -242,6 +244,8 @@ public class DiskIndexTest extends TestCase {
         
         it = diskIndex.rangeLookup("b".getBytes(), "x".getBytes(), true);
         assertFalse(it.hasNext());
+        
+        diskIndex.destroy();
     }
     
     public void testDescendingPrefixLookup() throws Exception {
@@ -309,6 +313,8 @@ public class DiskIndexTest extends TestCase {
         it = diskIndex.rangeLookup("1".getBytes(), "2".getBytes(), false);
         assertFalse(it.hasNext());
         
+        diskIndex.destroy();
+        
         // create a disk index from an empty index file
         FSUtils.delTree(new File(PATH1));
         index = new DiskIndexWriter(PATH1, 4, COMPRESSED, MAX_BLOCK_FILE_SIZE);
@@ -331,6 +337,8 @@ public class DiskIndexTest extends TestCase {
         
         it = diskIndex.rangeLookup("b".getBytes(), "x".getBytes(), false);
         assertFalse(it.hasNext());
+        
+        diskIndex.destroy();
     }
     
     public void testLargeScalePrefixLookup() throws Exception {
@@ -416,6 +424,8 @@ public class DiskIndexTest extends TestCase {
                 assertEquals(mapValue, indexValue);
             }
         }
+        
+        diskIndex.destroy();
         
     }
     
@@ -506,6 +516,8 @@ public class DiskIndexTest extends TestCase {
                 assertEquals(mapValue, indexValue);
             }
         }
+        
+        diskIndex.destroy();
         
     }
     

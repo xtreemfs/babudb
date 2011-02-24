@@ -13,8 +13,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Map.Entry;
+import java.util.NoSuchElementException;
 
 import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
@@ -532,6 +532,24 @@ public class LSMTree {
                 oldIndex.destroy();
             overlay.cleanup();
         }
+    }
+    
+    /**
+     * Checks if files containing index data are memory-mapped.
+     * 
+     * @return <code>true</code> if index files are memory-mapped, <code>false</code>, otherwise
+     */
+    public boolean isMMapEnabled() {
+    	return useMMap;
+    }
+    
+    /**
+     * Checks if files containing index data are compressed.
+     * 
+     * @return <code>true</code> if index files are compressed, <code>false</code>, otherwise
+     */
+    public boolean isCompressed() {
+    	return compressed;
     }
     
     /**
