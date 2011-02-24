@@ -77,7 +77,7 @@ public class DiskLogIterator implements Iterator<LogEntry> {
                 if (last == null)
                     last = lsn;
                 else {
-                    if (from != null && lsn.compareTo(from) < 0) {
+                    if (from != null && lsn.compareTo(from) <= 0) {
                         orderedLogList.remove(last);
                         lastRemoved = last;
                         last = lsn;

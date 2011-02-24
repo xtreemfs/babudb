@@ -137,7 +137,7 @@ public class DiskLoggerTest extends TestCase {
                 synchronized (entry) {
                     count.incrementAndGet();
                     entry.notifyAll();
-                    System.out.println("wrote Entry: " + entry.getLogSequenceNo());
+                    // System.out.println("wrote Entry: " + entry.getLogSequenceNo());
                 }
             }
             
@@ -176,7 +176,7 @@ public class DiskLoggerTest extends TestCase {
             LogEntry tmp = f.next();
             byte[] data = tmp.getPayload().array();
             String s = new String(data);
-            System.out.println("item: " + s);
+            // System.out.println("item: " + s);
             tmp.free();
         }
     }
@@ -346,7 +346,7 @@ public class DiskLoggerTest extends TestCase {
         
         final int numLogFiles = 3;
         
-        // create multiple log files
+        // create multiple consecutive log files, each containing 100 log entries
         for (int k = 0; k < numLogFiles; k++) {
             
             final AtomicInteger count = new AtomicInteger(0);
@@ -362,6 +362,7 @@ public class DiskLoggerTest extends TestCase {
                 
                 public void failed(LogEntry entry, Exception ex) {
                     synchronized (entry) {
+                        System.err.println(ex);
                         count.incrementAndGet();
                         entry.notifyAll();
                     }
@@ -377,7 +378,7 @@ public class DiskLoggerTest extends TestCase {
             }
             synchronized (e) {
                 if (count.get() < 100)
-                    e.wait(1000);
+                    e.wait();
             }
             e.free();
             
@@ -391,6 +392,7 @@ public class DiskLoggerTest extends TestCase {
         }
         
         File[] logFiles = new File(testdir).listFiles();
+        assertEquals(numLogFiles + 1, logFiles.length);
         
         // create and test an iterator that starts at LSN 0
         DiskLogIterator it = new DiskLogIterator(logFiles, LSMDatabase.NO_DB_LSN);
@@ -404,10 +406,10 @@ public class DiskLoggerTest extends TestCase {
         assertFalse(it.hasNext());
         it.destroy();
         
-        // create and test iterators that starts at a random LSN
-        for (int k = 0; k < 5; k++) {
+        // create and test iterators that starts at different LSNs
+        for (int k: new int[]{1, 100, 101, 200, 201, 300, 77, 112, 189, 222}) {
             
-            LSN lsn = new LSN(1, (int) (Math.random() * numLogFiles * 100));
+            LSN lsn = new LSN(1, k);
             
             it = new DiskLogIterator(logFiles, lsn);
             assertTrue(it.hasNext());
