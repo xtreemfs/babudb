@@ -38,10 +38,13 @@ public class DiskIndexView implements BabuDBView {
      * @param comps
      *            an array of comparators for ALL indices in the database (i.e.
      *            also those of which no snapshots have been taken)
+     * @param compressed specifies whether index files are compressed
+     * @param mmaped specifies whether index files are mapped into memory
      * @throws BabuDBException
      *             if an error occurred during the initialization
      */
-    public DiskIndexView(String dir, ByteRangeComparator[] comps) throws BabuDBException {
+	public DiskIndexView(String dir, ByteRangeComparator[] comps,
+			boolean compressed, boolean mmaped) throws BabuDBException {
         
         try {
             
@@ -57,7 +60,7 @@ public class DiskIndexView implements BabuDBView {
             
             for (String file : files) {
                 int index = Integer.parseInt(file.substring(file.indexOf("IX") + 2, file.indexOf('V')));
-                indexMap.put(index, new DiskIndex(dir + "/" + file, comps[index], false, true));
+                indexMap.put(index, new DiskIndex(dir + "/" + file, comps[index], compressed, mmaped));
             }
             
         } catch (IOException exc) {
