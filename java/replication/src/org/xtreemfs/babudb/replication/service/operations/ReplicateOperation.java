@@ -17,7 +17,6 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
 import org.xtreemfs.babudb.replication.service.RequestManagement;
-import org.xtreemfs.babudb.replication.service.accounting.ParticipantsVerification;
 import org.xtreemfs.babudb.replication.transmission.ErrorCode;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
@@ -42,12 +41,8 @@ public class ReplicateOperation extends Operation {
     private final Checksum                      checksum = new CRC32();     
         
     private final RequestManagement             rqMan;
-        
-    private final ParticipantsVerification      verificator;
-        
-    public ReplicateOperation(RequestManagement rqMan, ParticipantsVerification verificator) {
-        
-        this.verificator = verificator;
+                
+    public ReplicateOperation(RequestManagement rqMan) {
         this.rqMan = rqMan;
     }
 
@@ -77,19 +72,6 @@ public class ReplicateOperation extends Operation {
     @Override
     public ErrorResponse parseRPCMessage(Request rq) {
         ErrorResponse resp = null;
-        
-        // check if requesting client is a master
-        if (!verificator.isMaster(rq.getRPCRequest().getSenderAddress())) {
-            Logging.logMessage(Logging.LEVEL_WARN, this, 
-                    "The master (%s) was deprecated!", 
-                    rq.getRPCRequest().getSenderAddress().toString());
-            
-            resp = ErrorResponse.newBuilder()
-                    .setErrorMessage("The sender address of the received " 
-                            + "request did not match the expected master " 
-                            + "address.")
-                    .setErrorType(ErrorType.AUTH_FAILED).build();
-        }
             
         // dezerialize message
         if (resp == null) {

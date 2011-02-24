@@ -1,4 +1,4 @@
-//automatically generated from replication.proto at Fri Feb 18 10:56:47 CET 2011
+//automatically generated from replication.proto at Wed Feb 23 17:04:44 CET 2011
 //(c) 2011. See LICENSE file for details.
 
 package org.xtreemfs.babudb.pbrpc;
@@ -101,7 +101,7 @@ public class ReplicationServiceClient {
          return replica(server, authHeader, userCreds,msg);
     }
 
-    public RPCResponse<GlobalTypes.ErrorCodeResponse> heartbeat(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, GlobalTypes.LSN input) throws IOException {
+    public RPCResponse<GlobalTypes.ErrorCodeResponse> heartbeat(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, GlobalTypes.HeartbeatMessage input) throws IOException {
          if (server == null) server = defaultServer;
          if (server == null) throw new IllegalArgumentException("defaultServer must be set in constructor if you want to pass null as server in calls");
          RPCResponse<GlobalTypes.ErrorCodeResponse> response = new RPCResponse<GlobalTypes.ErrorCodeResponse>(GlobalTypes.ErrorCodeResponse.getDefaultInstance());
@@ -109,8 +109,8 @@ public class ReplicationServiceClient {
          return response;
     }
 
-    public RPCResponse<GlobalTypes.ErrorCodeResponse> heartbeat(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, int view_id, long sequence_no) throws IOException {
-         final GlobalTypes.LSN msg = GlobalTypes.LSN.newBuilder().setViewId(view_id).setSequenceNo(sequence_no).build();
+    public RPCResponse<GlobalTypes.ErrorCodeResponse> heartbeat(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, int port, GlobalTypes.LSN lsn) throws IOException {
+         final GlobalTypes.HeartbeatMessage msg = GlobalTypes.HeartbeatMessage.newBuilder().setPort(port).setLsn(lsn).build();
          return heartbeat(server, authHeader, userCreds,msg);
     }
 

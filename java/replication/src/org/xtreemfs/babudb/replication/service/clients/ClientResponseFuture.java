@@ -38,26 +38,27 @@ import org.xtreemfs.babudb.replication.transmission.PBRPCClientAdapter.ErrorCode
 import org.xtreemfs.foundation.pbrpc.client.RPCResponse;
 import org.xtreemfs.foundation.pbrpc.client.RPCResponseAvailableListener;
 
+import com.google.protobuf.Message;
+
 /**
  * Proxy for receiving responses on requests done by the replication client.
  * 
  * @param <T> - the result's type.
+ * @param <M> - message type of the PRCResponse.
  * 
  * @author flangner
  * @since 01/04/2011
  */
-public abstract class ClientResponseFuture<T> {
+public abstract class ClientResponseFuture<T,M extends Message> {
 
-    @SuppressWarnings("rawtypes")
-    private final RPCResponse original; 
+    private final RPCResponse<M> original; 
         
     /**
      * The constructor registers Google's original PBRPC response future.
      * 
      * @param rp - the PBRPC response future.
      */
-    @SuppressWarnings("rawtypes")
-    public ClientResponseFuture(RPCResponse rp) {
+    public ClientResponseFuture(RPCResponse<M> rp) {
         this.original = rp;
     }
     
@@ -79,7 +80,6 @@ public abstract class ClientResponseFuture<T> {
      * 
      * @param listener
      */
-    @SuppressWarnings({ "unchecked", "rawtypes" })
     public void registerListener (
             final ClientResponseAvailableListener<T> listener) {
         
@@ -91,10 +91,10 @@ public abstract class ClientResponseFuture<T> {
             }
         }
         
-        this.original.registerListener(new RPCResponseAvailableListener() {
+        this.original.registerListener(new RPCResponseAvailableListener<M>() {
 
             @Override
-            public void responseAvailable(RPCResponse rp) {
+            public void responseAvailable(RPCResponse<M> rp) {
                 try {
                     listener.responseAvailable(get());
                 } catch (Exception e) {

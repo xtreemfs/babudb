@@ -56,22 +56,27 @@ public class ReplicationConfig extends Config {
     /** 
      * longest duration a message can live on the wire, before it becomes void 
      */
-    private static final int         MESSAGE_TIMEOUT        = 10 * 1000;
+    private static final int         MESSAGE_TIMEOUT        = 5 * 1000;
     
     /** 
      * longest duration a connection can be established without getting closed 
      */
-    public static final int          LEASE_TIMEOUT          = 60 * 1000;
+    public static final int          LEASE_TIMEOUT          = 30 * 1000;
         
     /** 
      * longest duration before an RPC-Call is timed out 
      */
-    public static final int          REQUEST_TIMEOUT        = 30 * 1000;
+    public static final int          REQUEST_TIMEOUT        = 5 * 1000;
     
     /** 
      * longest duration before an idle connection is closed 
      */
     public static final int          CONNECTION_TIMEOUT     = 5 * 60 * 1000;
+    
+    /** 
+     * the maximal delay to wait for an valid lease to become available 
+     */
+    public static final int         DELAY_TO_WAIT_FOR_LEASE_MS = 2 * MESSAGE_TIMEOUT;
     
     // for master usage only
     
@@ -87,14 +92,7 @@ public class ReplicationConfig extends Config {
     // for slave usage only
     
     protected String                 tempDir;
-    
-    /** 
-     * error message 
-     */
-    public static final String       slaveProtectionMsg = "You are not allowed"+
-    		" to process this operation, because this DB is not running in"+
-                " master-mode!";
-    
+        
     /** 
      * maximal retries per failure 
      */

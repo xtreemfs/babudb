@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -38,7 +38,7 @@ public class RequestDispatcher implements RPCServerRequestListener {
     private final RPCNIOSocketServer            rpcServer;
    
     /** table of available request handlers */
-    private final Map<Integer, RequestHandler>  handler = 
+    private final Map<Integer, RequestHandler>  handlers = 
         new HashMap<Integer, RequestHandler>();
     
     /**
@@ -49,9 +49,8 @@ public class RequestDispatcher implements RPCServerRequestListener {
      */
     public RequestDispatcher(ReplicationConfig config) throws IOException {
         
-        rpcServer = new RPCNIOSocketServer(config.getPort(), 
-                config.getInetSocketAddress().getAddress(), this, 
-                config.getSSLOptions());
+        rpcServer = new RPCNIOSocketServer(config.getPort(), config.getAddress(), 
+                this, config.getSSLOptions());
     }
     
     /**
@@ -59,8 +58,8 @@ public class RequestDispatcher implements RPCServerRequestListener {
      * 
      * @param handler - the handler to handle the requests.. for sure!
      */
-    public synchronized void addHandler(RequestHandler handler) {
-        this.handler.put(handler.getInterfaceID(), handler);
+    public void addHandler(RequestHandler handler) {
+        handlers.put(handler.getInterfaceID(), handler);
     }
     
     /**
@@ -72,7 +71,7 @@ public class RequestDispatcher implements RPCServerRequestListener {
      * @param listener - the {@link LifeCycleListener}.
      */
     public void setLifeCycleListener(LifeCycleListener listener) {
-        this.rpcServer.setLifeCycleListener(listener);
+        rpcServer.setLifeCycleListener(listener);
     }
         
     /**
@@ -80,7 +79,7 @@ public class RequestDispatcher implements RPCServerRequestListener {
      */
     public void start() {       
         try {  
-            if (handler.size() == 0) {
+            if (handlers.size() == 0) {
                 throw new Exception("The dispatcher cannot be started, " +
                                     "without any handler registered at!");
             }
@@ -114,6 +113,9 @@ public class RequestDispatcher implements RPCServerRequestListener {
     @Override
     public void receiveRecord(RPCServerRequest rq) {  
               
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                "Dispatching request %s ...", rq.toString());
+        
         RPCHeader hdr = rq.getHeader();
         
         if (hdr.getMessageType() != MessageType.RPC_REQUEST) {
@@ -125,17 +127,14 @@ public class RequestDispatcher implements RPCServerRequestListener {
         
         int interfaceId = hdr.getRequestHeader().getInterfaceId();
         
-        RequestHandler h;
-        synchronized (this) {
-            h = handler.get(interfaceId);
-        }
-        if (h == null) {
+        RequestHandler handler = handlers.get(interfaceId);
+        if (handler == null) {
             rq.sendError(ErrorType.INVALID_PROC_ID, POSIX_ERROR_NONE,
                     "requested handler (#" + interfaceId + 
                     ") is not accessible");
             return;
         } 
         
-        h.handleRequest(rq);
+        handler.handleRequest(rq);
     }
 }

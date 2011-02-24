@@ -31,7 +31,7 @@
 //
 
 
-option java_package="org.xtreemfs.foundation.pbrpc.generatedinterfaces";
+option java_package="org.xtreemfs.babudb.pbrpc.generatedinterfaces";
 package org.xtreemfs.pbrpc;
 import "share/google/protobuf/descriptor.proto";
 

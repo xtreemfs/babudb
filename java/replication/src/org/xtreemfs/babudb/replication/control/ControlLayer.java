@@ -28,7 +28,6 @@ import org.xtreemfs.foundation.buffer.ASCIIString;
 import org.xtreemfs.foundation.flease.Flease;
 import org.xtreemfs.foundation.flease.FleaseStage;
 import org.xtreemfs.foundation.flease.FleaseViewChangeListenerInterface;
-import org.xtreemfs.foundation.flease.MasterEpochHandlerInterface;
 import org.xtreemfs.foundation.flease.comm.FleaseMessage;
 import org.xtreemfs.foundation.logging.Logging;
 
@@ -98,24 +97,16 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
         fleaseParticipants = new LinkedList<InetSocketAddress>(config.getParticipants());
         fleaseStage = new FleaseStage(config.getFleaseConfig(), 
                 config.getBabuDBConfig().getBaseDir(), 
-                new FleaseMessageSender(serviceLayer.getParticipantOverview()), false, 
+                new FleaseMessageSender(serviceLayer.getParticipantOverview(), 
+                                        new InetSocketAddress(config.getAddress().toString(), 
+                                                              config.getPort())), 
+                false, 
                 new FleaseViewChangeListenerInterface() {
                     /* does not influence the replication */
                     @Override
                     public void viewIdChangeEvent(ASCIIString cellId, int viewId) { }
                     
-                }, leaseHolder, new MasterEpochHandlerInterface() {
-                    /* does not influence the replication */
-                    @Override
-                    public void storeMasterEpoch(FleaseMessage request, Continuation callback) {                        
-                        callback.processingFinished();
-                    }
-                    
-                    @Override
-                    public void sendMasterEpoch(FleaseMessage response, Continuation callback) {
-                        callback.processingFinished();
-                    }
-                });
+                }, leaseHolder, null);
     }  
         
 /*
@@ -220,7 +211,8 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.control.TimeDriftDetector.TimeDriftListener#driftDetected()
+     * @see org.xtreemfs.babudb.replication.control.TimeDriftDetector.TimeDriftListener#
+     *          driftDetected()
      */
     @Override
     public void driftDetected() {
@@ -240,7 +232,8 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
     }
 
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.TopLayer#registerUserInterface(org.xtreemfs.babudb.replication.LockableService)
+     * @see org.xtreemfs.babudb.replication.TopLayer#registerUserInterface(
+     *          org.xtreemfs.babudb.replication.LockableService)
      */
     @Override
     public void registerUserInterface(LockableService service) {
@@ -248,7 +241,8 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.TopLayer#registerReplicationInterface(org.xtreemfs.babudb.replication.LockableService)
+     * @see org.xtreemfs.babudb.replication.TopLayer#registerReplicationInterface(
+     *          org.xtreemfs.babudb.replication.LockableService)
      */
     @Override
     public void registerReplicationInterface(LockableService service) {
@@ -256,7 +250,8 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
     }
 
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.control.FleaseEventListener#updateLeaseHolder(java.net.InetAddress)
+     * @see org.xtreemfs.babudb.replication.control.FleaseEventListener#updateLeaseHolder(
+     *          java.net.InetAddress)
      */
     @Override
     public void updateLeaseHolder(InetAddress newLeaseHolder) throws Exception {
@@ -378,7 +373,7 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
             // stop all local executions
             try {
                 lockAll();
-                serviceInterface.changeMaster(null);
+                serviceInterface.reset();
             } finally {
                 unlockReplication();
             }
@@ -421,12 +416,12 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
                     masterAddress.toString());
             
             lockAll();
-            serviceInterface.changeMaster(masterAddress);
+            serviceInterface.reset();
             unlockReplication();
             
-            // user requests may only be permitted on slaves that have been synchronized with the master
-            // which is only possible after the master they obey internally has been changed by this 
-            // method
+            // user requests may only be permitted on slaves that have been synchronized with the 
+            // master, which is only possible after the master they obey internally has been changed 
+            // by this method
         }
     }
 }

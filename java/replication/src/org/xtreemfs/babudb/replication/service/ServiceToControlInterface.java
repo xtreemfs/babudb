@@ -8,7 +8,6 @@
 package org.xtreemfs.babudb.replication.service;
 
 import java.io.IOException;
-import java.net.InetAddress;
 
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.log.LogEntry;
@@ -51,14 +50,10 @@ public interface ServiceToControlInterface {
             IOException;
 
     /**
-     * Registers a new master given by its address, valid for all replication components. The 
-     * listeners of all pending requests on the {@link ParticipantsStates} table have been marked
-     * as failed after this call.
-     * 
-     * @param address - may be null, if no master is available at the moment, or
-     *                  the local instance is owner of the master privilege.
+     * Resets pending requests at the {@link ServiceLayer}. Listeners of all pending requests on the 
+     * {@link ParticipantsStates} table have been marked as failed after this call.
      */
-    public void changeMaster(InetAddress address);
+    public void reset();
     
     /**
      * @return an overview for available participants.

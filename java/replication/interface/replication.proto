@@ -81,7 +81,7 @@ service ReplicationService {
     option(data_out)=true;
   };
   
-  rpc heartbeat(LSN) returns(ErrorCodeResponse) {
+  rpc heartbeat(HeartbeatMessage) returns(ErrorCodeResponse) {
     option(proc_id)=7;
   };
   

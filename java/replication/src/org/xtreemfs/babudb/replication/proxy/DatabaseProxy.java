@@ -21,6 +21,8 @@ import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
 import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.replication.policy.Policy;
 import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture;
 import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.ClientResponseAvailableListener;
@@ -98,7 +100,7 @@ class DatabaseProxy implements Database {
             };
         } 
         
-        final ClientResponseFuture<byte[]> r = dbMan.getClient().lookup(name, indexId, 
+        final ClientResponseFuture<byte[], ErrorCodeResponse> r = dbMan.getClient().lookup(name, indexId, 
                 ReusableBuffer.wrap(key), master);
         
         return new DatabaseRequestResult<byte[]>() {
@@ -193,7 +195,7 @@ class DatabaseProxy implements Database {
             };
         }
         
-        final ClientResponseFuture<ResultSet<byte[], byte[]>> r = 
+        final ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap> r = 
             dbMan.getClient().prefixLookup(name, indexId, ReusableBuffer.wrap(key), master);
         
         return new DatabaseRequestResult<ResultSet<byte[], byte[]>>() {
@@ -287,7 +289,7 @@ class DatabaseProxy implements Database {
             };
         }
         
-        final ClientResponseFuture<ResultSet<byte[], byte[]>> r = 
+        final ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap> r = 
             dbMan.getClient().prefixLookupR(name, indexId, ReusableBuffer.wrap(key), master);
         
         return new DatabaseRequestResult<ResultSet<byte[], byte[]>>() {
@@ -381,7 +383,7 @@ class DatabaseProxy implements Database {
             };
         }
         
-        final ClientResponseFuture<ResultSet<byte[], byte[]>> r = 
+        final ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap> r = 
             dbMan.getClient().rangeLookup(name, indexId, ReusableBuffer.wrap(from), 
                     ReusableBuffer.wrap(to), master);
         
@@ -477,7 +479,7 @@ class DatabaseProxy implements Database {
             };
         }
         
-        final ClientResponseFuture<ResultSet<byte[], byte[]>> r = 
+        final ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap> r = 
             dbMan.getClient().rangeLookupR(name, indexId, 
                     ReusableBuffer.wrap(from), ReusableBuffer.wrap(to), master);
         

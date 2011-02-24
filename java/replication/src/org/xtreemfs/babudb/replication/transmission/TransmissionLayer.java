@@ -12,7 +12,6 @@ package org.xtreemfs.babudb.replication.transmission;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.replication.Layer;
@@ -80,15 +79,21 @@ public class TransmissionLayer extends Layer implements ClientFactory,
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.transmission.ClientFactory#
-     * getClient(java.net.SocketAddress)
+     * @see org.xtreemfs.babudb.replication.transmission.ClientFactory#getClient(
+     *      java.net.InetSocketAddress)
      */
     @Override
-    public PBRPCClientAdapter getClient(SocketAddress receiver) {
-        assert (receiver instanceof InetSocketAddress);
+    public PBRPCClientAdapter getClient(InetSocketAddress receiver) {
         
-        return new PBRPCClientAdapter(this.rpcClient, 
-                (InetSocketAddress) receiver);
+        return new PBRPCClientAdapter(rpcClient, receiver);
+    }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.ClientFactory#getProxyClient()
+     */
+    @Override
+    public RemoteAccessClient getProxyClient() {
+        return new RemoteClientAdapter(rpcClient);
     }
     
     /*
@@ -98,8 +103,8 @@ public class TransmissionLayer extends Layer implements ClientFactory,
      */
     @Override
     public void _setLifeCycleListener(LifeCycleListener listener) {
-        this.dispatcher.setLifeCycleListener(listener);
-        this.rpcClient.setLifeCycleListener(listener);
+        dispatcher.setLifeCycleListener(listener);
+        rpcClient.setLifeCycleListener(listener);
     }
     
     /* (non-Javadoc)
@@ -149,9 +154,5 @@ public class TransmissionLayer extends Layer implements ClientFactory,
     @Override
     public void addRequestHandler(RequestHandler handler) {
         dispatcher.addHandler(handler);
-    }
-    
-    public RemoteAccessClient getRemoteAccessClient() {
-        return new RemoteClientAdapter(rpcClient);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2010 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -66,7 +66,7 @@ public class Main extends PluginMain {
         
         // initialize the BabuDB proxy interface
         return new BabuDBProxy(babuDB, replMan, configuration.getReplicationPolicy(), 
-                               replMan.getRemoteAccessClient());
+                               replMan.getProxyClient());
     }
 
     /* (non-Javadoc)

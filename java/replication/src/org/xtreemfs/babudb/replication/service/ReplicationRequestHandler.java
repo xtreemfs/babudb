@@ -37,11 +37,9 @@ import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestHandler;
 public class ReplicationRequestHandler extends RequestHandler {
     
     public <T extends TopLayer & FleaseMessageReceiver> ReplicationRequestHandler(
-            ParticipantsStates verificator, T fleaseReceiver, BabuDBInterface babuDBI,
+            ParticipantsStates pStates, T fleaseReceiver, BabuDBInterface babuDBI,
             ReplicationStage replStage, AtomicReference<LSN> lastOnView, int maxChunkSize, 
             FileIOInterface fileIO) {
-        
-        super(verificator);
         
         Operation op = new LocalTimeOperation();
         operations.put(op.getProcedureId(), op);
@@ -55,10 +53,10 @@ public class ReplicationRequestHandler extends RequestHandler {
         op = new VolatileStateOperation(babuDBI);
         operations.put(op.getProcedureId(), op);
         
-        op = new HeartbeatOperation(verificator);
+        op = new HeartbeatOperation(pStates);
         operations.put(op.getProcedureId(), op);
         
-        op = new ReplicateOperation(replStage, verificator);
+        op = new ReplicateOperation(replStage);
         operations.put(op.getProcedureId(),op);
         
         op = new ReplicaOperation(lastOnView, babuDBI, fileIO);

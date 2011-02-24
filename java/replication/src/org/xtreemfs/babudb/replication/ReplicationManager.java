@@ -29,14 +29,13 @@ import org.xtreemfs.foundation.logging.Logging;
  * @since 06/05/2009
  * @author flangner
  */
-
 public class ReplicationManager implements LifeCycleListener {
         
     public final static String  VERSION = "1.0.0 (v1.0 RC1)";
     
-    private final TopLayer      controlLayer;
-    private final ServiceLayer  serviceLayer;
-    private final Layer         transmissionLayer;
+    private final TopLayer          controlLayer;
+    private final ServiceLayer      serviceLayer;
+    private final TransmissionLayer transmissionLayer;
         
     /**
      * <p>For setting up the {@link BabuDB} with replication. 
@@ -51,13 +50,12 @@ public class ReplicationManager implements LifeCycleListener {
         TimeSync.initializeLocal(conf.getTimeSyncInterval(), 
                                  conf.getLocalTimeRenew()).setLifeCycleListener(this);
 
-        TransmissionLayer t = new TransmissionLayer(conf);
-        serviceLayer = new ServiceLayer(conf, new BabuDBInterface(dbs), t);
+        transmissionLayer = new TransmissionLayer(conf);
+        serviceLayer = new ServiceLayer(conf, new BabuDBInterface(dbs), transmissionLayer);
         ControlLayer c = new ControlLayer(serviceLayer, conf);
         serviceLayer.init(c);
         c.registerReplicationInterface(serviceLayer.getLockableService());
         
-        transmissionLayer = t;
         controlLayer = c;
         
         transmissionLayer.setLifeCycleListener(this);
@@ -136,14 +134,13 @@ public class ReplicationManager implements LifeCycleListener {
         controlLayer.shutdown();
         serviceLayer.shutdown();
         transmissionLayer.shutdown();
-        TimeSync.getInstance().shutdown();
     }
 
     /**
      * @return a client to remotely access the BabuDB with master-privilege.
      */
-    public RemoteAccessClient getRemoteAccessClient() {
-        return ((TransmissionLayer) transmissionLayer).getRemoteAccessClient();
+    public RemoteAccessClient getProxyClient() {
+        return transmissionLayer.getProxyClient();
     }
     
 /*
@@ -170,12 +167,12 @@ public class ReplicationManager implements LifeCycleListener {
      * @see org.xtreemfs.foundation.LifeCycleListener#shutdownPerformed()
      */
     @Override
-    public void shutdownPerformed() {}
+    public void shutdownPerformed() { /* ignored */ }
 
     /* (non-Javadoc)
      * @see org.xtreemfs.foundation.LifeCycleListener#startupPerformed()
      */
     @Override
-    public void startupPerformed() {}
+    public void startupPerformed() { /* ignored */ }
 
 }

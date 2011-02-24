@@ -12,7 +12,6 @@ import static org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.POSIXErrno.P
 import java.util.HashMap;
 import java.util.Map;
 
-import org.xtreemfs.babudb.replication.service.accounting.ParticipantsVerification;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.ErrorType;
 import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.RPCHeader.RequestHeader;
@@ -29,27 +28,12 @@ import org.xtreemfs.foundation.util.OutputUtils;
 public abstract class RequestHandler {
     
     /** table of available Operations */
-    protected final Map<Integer, Operation>  operations = 
-        new HashMap<Integer, Operation>();
-    
-    /** object to check if a requesting client is a replication participant */
-    private final ParticipantsVerification   verificator;  
-    
-    public RequestHandler(ParticipantsVerification verificator) {
-        this.verificator = verificator;
-    }
-        
+    protected final Map<Integer, Operation>  operations = new HashMap<Integer, Operation>();
+            
     public abstract int getInterfaceID();
     
     public void handleRequest(RPCServerRequest rq) {
-        
-        if (!verificator.isRegistered(rq.getSenderAddress())){
-            rq.sendError(ErrorType.AUTH_FAILED, POSIX_ERROR_NONE, "you " 
-                    + rq.getSenderAddress().toString() + " have no access " 
-                    + "rights to execute the requested operation");
-            return;
-        }
-        
+                
         final RequestHeader rqHdr = rq.getHeader().getRequestHeader();
         
         Operation op = operations.get(rqHdr.getProcId());

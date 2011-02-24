@@ -11,7 +11,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview;
-import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture;
 import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.ClientResponseAvailableListener;
 import org.xtreemfs.babudb.replication.service.clients.ConditionClient;
 import org.xtreemfs.foundation.LifeCycleThread;
@@ -41,14 +40,19 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
     /** set to true, if the thread should be stopped temporarily */
     private final AtomicBoolean         halted = new AtomicBoolean(false);
     
+    /** port that identifies the local service */
+    private final int                   localPort;
+    
     /**
      * Default constructor with the initial values.
      * 
      * @param pOverview
+     * @param localPort
      */
-    public HeartbeatThread(ParticipantsOverview pOverview) {
+    public HeartbeatThread(ParticipantsOverview pOverview, int localPort) {
         super("HeartbeatThread");
         this.pOverview = pOverview;
+        this.localPort = localPort;
     }
     
     /* (non-Javadoc)
@@ -63,6 +67,14 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
                 else interrupt();
             }
         }
+    }
+    
+    /* (non-Javadoc)
+     * @see java.lang.Thread#start()
+     */
+    @Override
+    public synchronized void start() {
+        throw new UnsupportedOperationException("Use start(LSN initial) instead!");
     }
 
     /**
@@ -108,29 +120,29 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
     }
 
     /**
-     * Sends a heartBeat message to the master.
+     * Sends a heartbeat message to all available servers.
      */
-    @SuppressWarnings({ "unchecked"})
     private void processHeartbeat() {
-        final ConditionClient c = this.pOverview.getMaster();
-        if (c != null) {
-            ((ClientResponseFuture<Object>) c.heartbeat(latestLSN))
-                .registerListener(new ClientResponseAvailableListener<Object>() {
-              
-                @Override
-                public void responseAvailable(Object r) { 
-                    Logging.logMessage(Logging.LEVEL_NOTICE, this, 
-                            "Heartbeat successfully send.");
-                }
-
-                @Override
-                public void requestFailed(Exception e) {
-                    Logging.logMessage(Logging.LEVEL_WARN, this, 
-                            "Heartbeat could not be send to %s, because %s", 
-                            c.toString(), e.getMessage());
-                    Logging.logError(Logging.LEVEL_DEBUG, this, e);
-                }
-            });
+        for (final ConditionClient c : pOverview.getConditionClients()) {
+            if (c != null) {
+                c.heartbeat(latestLSN, localPort).registerListener(
+                        new ClientResponseAvailableListener<Object>() {
+                  
+                    @Override
+                    public void responseAvailable(Object r) { 
+                        Logging.logMessage(Logging.LEVEL_NOTICE, this, 
+                                "Heartbeat successfully send.");
+                    }
+    
+                    @Override
+                    public void requestFailed(Exception e) {
+                        Logging.logMessage(Logging.LEVEL_WARN, this, 
+                                "Heartbeat could not be send to %s, because %s", 
+                                c.toString(), e.getMessage());
+                        Logging.logError(Logging.LEVEL_DEBUG, this, e);
+                    }
+                });
+            }
         }
     }
 

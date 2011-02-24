@@ -8,7 +8,7 @@
 package org.xtreemfs.babudb.replication.service;
 
 import java.io.IOException;
-import java.net.InetAddress;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -106,7 +106,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         // ----------------------------------
         // initialize the heartbeat
         // ----------------------------------
-        heartbeatThread = new HeartbeatThread(participantsStates);
+        heartbeatThread = new HeartbeatThread(participantsStates, config.getPort());
         
         // ----------------------------------
         // initialize replication stage
@@ -119,10 +119,13 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         // initialize request logic for 
         // handling BabuDB remote calls
         // ----------------------------------
-        transmissionInterface.addRequestHandler(
-                new RPCRequestHandler(participantsStates, babuDBInterface));
+        transmissionInterface.addRequestHandler(new RPCRequestHandler(babuDBInterface));
     }
     
+    /**
+     * @param <T>
+     * @param receiver
+     */
     public <T extends TopLayer & FleaseMessageReceiver> void init(T receiver) {
         assert (receiver != null);
               
@@ -130,7 +133,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         // coin the dispatcher of the 
         // underlying layer
         // ----------------------------------
-        this.transmissionInterface.addRequestHandler(
+        transmissionInterface.addRequestHandler(
                 new ReplicationRequestHandler(participantsStates, receiver, babuDBInterface, 
                         replicationStage, lastOnView, maxChunkSize, 
                         transmissionInterface.getFileIOInterface()));
@@ -150,6 +153,11 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
      */
     @Override
     public ReplicateResponse replicate(LogEntry le) {
+        
+        // update the LSN of the heartbeat
+        heartbeatThread.updateLSN(le.getLSN());
+        
+        // replicate the entry at the slaves
         List<SlaveClient> slaves;
         try {
             slaves = participantsStates.getAvailableParticipants();
@@ -306,11 +314,8 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
      */
     @Override
     public MasterClient getSynchronizationPartner(LSN progressAtLeast) {
-        MasterClient master = participantsStates.getMaster();
         
         List<ConditionClient> servers = participantsStates.getConditionClients();
-
-        servers.remove(master);
         
         if (servers.size() > 0) {
             Map<ClientInterface, LSN> states = getStates(servers, false);
@@ -321,7 +326,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
             }
         }
         
-        return master;
+        return (MasterClient) servers.get(0);
     }
     
     /* (non-Javadoc)
@@ -333,11 +338,11 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.ServiceToControlInterface#changeMaster(java.net.InetAddress)
+     * @see org.xtreemfs.babudb.replication.service.ServiceToControlInterface#reset()
      */
     @Override
-    public void changeMaster(InetAddress address) {
-        participantsStates.setMaster(address);
+    public void reset() {
+        participantsStates.reset();
     }
     
     /* (non-Javadoc)
@@ -426,22 +431,22 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         Map<ClientInterface, LSN> result = 
             new HashMap<ClientInterface, LSN>();
         
-        @SuppressWarnings("unchecked")
-        ClientResponseFuture<LSN>[] rps = new ClientResponseFuture[numRqs];
-        
+        List<ClientResponseFuture<LSN, org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN>> rps = 
+            new ArrayList<ClientResponseFuture<LSN, org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN>>(numRqs);
+                
         // send the requests
         for (int i=0; i<numRqs; i++) {
             if (hard) {
-                rps[i] = clients.get(i).state();
+                rps.set(i, clients.get(i).state());
             } else {
-                rps[i] = clients.get(i).volatileState();
+                rps.set(i, clients.get(i).volatileState());
             }
         }
         
         // get the responses
         for (int i = 0; i < numRqs; i++) {
             try{
-                LSN val = rps[i].get();
+                LSN val = rps.get(i).get();
                 result.put(clients.get(i), val);
             } catch (Exception e) {
                 Logging.logMessage(Logging.LEVEL_INFO, this, 

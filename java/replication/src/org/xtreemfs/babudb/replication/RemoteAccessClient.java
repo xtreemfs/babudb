@@ -16,6 +16,9 @@ import java.util.Map;
 import org.xtreemfs.babudb.api.PersistenceManager;
 import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.database.ResultSet;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.Databases;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
@@ -37,7 +40,7 @@ public interface RemoteAccessClient {
      * @param data
      * @return the request's response future.
      */
-    public ClientResponseFuture<?> makePersistent(InetSocketAddress master, 
+    public <T> ClientResponseFuture<T, ErrorCodeResponse> makePersistent(InetSocketAddress master, 
             int type, ReusableBuffer data);
     
     /**
@@ -47,7 +50,8 @@ public interface RemoteAccessClient {
      * @param master
      * @return the request's response future.
      */
-    public ClientResponseFuture<Integer> getDatabase(String dbName, InetSocketAddress master);
+    public ClientResponseFuture<Integer, org.xtreemfs.babudb.pbrpc.GlobalTypes.Database> getDatabase(
+            String dbName, InetSocketAddress master);
     
     /**
      * RPC for requesting a list of available {@link Database} IDs and names at 
@@ -56,7 +60,7 @@ public interface RemoteAccessClient {
      * @param master
      * @return the request's response future.
      */
-    public ClientResponseFuture<Map<String, Integer>> getDatabases(
+    public ClientResponseFuture<Map<String, Integer>, Databases> getDatabases(
             InetSocketAddress master);
     
     /**
@@ -68,7 +72,7 @@ public interface RemoteAccessClient {
      * @param master
      * @return the request's response future.
      */
-    public ClientResponseFuture<byte[]> lookup(String dbName, int indexId, 
+    public ClientResponseFuture<byte[], ErrorCodeResponse> lookup(String dbName, int indexId, 
             ReusableBuffer key, InetSocketAddress master);
     
     /**
@@ -80,7 +84,7 @@ public interface RemoteAccessClient {
      * @param master
      * @return the request's response future.
      */
-    public ClientResponseFuture<ResultSet<byte[], byte[]>> prefixLookup(
+    public ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap> prefixLookup(
             String dbName, int indexId, ReusableBuffer key, 
             InetSocketAddress master);
     
@@ -93,7 +97,7 @@ public interface RemoteAccessClient {
      * @param master
      * @return the request's response future.
      */
-    public ClientResponseFuture<ResultSet<byte[], byte[]>> prefixLookupR(
+    public ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap> prefixLookupR(
             String dbName, int indexId, ReusableBuffer key, 
             InetSocketAddress master);
     
@@ -107,7 +111,7 @@ public interface RemoteAccessClient {
      * @param master
      * @return the request's response future.
      */
-    public ClientResponseFuture<ResultSet<byte[], byte[]>> rangeLookup(
+    public ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap> rangeLookup(
             String dbName, int indexId, ReusableBuffer from, ReusableBuffer to, 
             InetSocketAddress master);
     
@@ -121,7 +125,7 @@ public interface RemoteAccessClient {
      * @param master
      * @return the request's response future.
      */
-    public ClientResponseFuture<ResultSet<byte[], byte[]>> rangeLookupR(
+    public ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap> rangeLookupR(
             String dbName, int indexId, ReusableBuffer from, ReusableBuffer to, 
             InetSocketAddress master);
 }
