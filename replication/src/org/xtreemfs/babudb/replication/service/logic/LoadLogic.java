@@ -19,6 +19,8 @@ import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase.DBFileMetaData;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.DBFileMetaDatas;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.replication.service.Pacemaker;
 import org.xtreemfs.babudb.replication.service.ReplicationStage;
 import org.xtreemfs.babudb.replication.service.ReplicationStage.Range;
@@ -85,7 +87,7 @@ public class LoadLogic extends Logic {
         // make the request and get the result synchronously
         Logging.logMessage(Logging.LEVEL_INFO, stage, "Loading DB since %s from %s.", 
                 actual.toString(), master.getDefaultServerAddress().toString());
-        ClientResponseFuture<DBFileMetaDataSet> rp = master.load(actual);
+        ClientResponseFuture<DBFileMetaDataSet, DBFileMetaDatas> rp = master.load(actual);
         DBFileMetaDataSet result = null;
         try {
             result = rp.get();  
@@ -174,7 +176,7 @@ public class LoadLogic extends Logic {
                 // request the chunk
                 final long pos1 = begin;
                 final long size = (end > fileSize) ? fileSize : end;
-                final ClientResponseFuture<ReusableBuffer> chunkRp = 
+                final ClientResponseFuture<ReusableBuffer, ErrorCodeResponse> chunkRp = 
                     master.chunk(fileName, pos1, size);       
                 begin = end;
                 chunkRp.registerListener(new ClientResponseAvailableListener<ReusableBuffer>() {

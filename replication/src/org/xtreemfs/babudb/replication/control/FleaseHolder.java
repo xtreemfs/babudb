@@ -10,6 +10,7 @@ package org.xtreemfs.babudb.replication.control;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.foundation.TimeSync;
 import org.xtreemfs.foundation.buffer.ASCIIString;
 import org.xtreemfs.foundation.flease.Flease;
@@ -25,7 +26,7 @@ import org.xtreemfs.foundation.logging.Logging;
  * @since 04/15/2010
  */
 public class FleaseHolder implements FleaseStatusListener {
-  
+    
     /** the currently valid lease */
     private final AtomicReference<Flease> flease = new AtomicReference<Flease>(Flease.EMPTY_LEASE);
     
@@ -41,10 +42,26 @@ public class FleaseHolder implements FleaseStatusListener {
     }
     
     /**
+     * May block for at most <code>DELAY_TO_WAIT_FOR_LEASE_MS</code> ms for a valid lease to become 
+     * available.
+     * 
      * @return the address of the currently valid leaseHolder.
      */
     InetSocketAddress getLeaseHolderAddress() {
-        Flease lease = flease.get();
+        
+        Flease lease = null;
+        synchronized (flease) {
+            try {
+                if (!flease.get().isValid()) {
+                    flease.wait(ReplicationConfig.DELAY_TO_WAIT_FOR_LEASE_MS);
+                }
+            } catch (InterruptedException e) {
+                /* I don't care */
+            }
+            lease = flease.get();
+        }
+
+        
         return (lease.isValid()) ? getAddress(lease.getLeaseHolder()) : null;
     }
     
@@ -53,7 +70,9 @@ public class FleaseHolder implements FleaseStatusListener {
      * of the next valid {@link Flease} message.
      */
     void reset() {
-        flease.set(Flease.EMPTY_LEASE);
+        synchronized (flease) {
+            flease.set(Flease.EMPTY_LEASE);
+        }
     }
        
 /*
@@ -82,14 +101,22 @@ public class FleaseHolder implements FleaseStatusListener {
         ASCIIString newLeaseHolder = lease.getLeaseHolder();
         
         // if the lease is outdated ,broken or the leaseholder has not changed, it will be ignored
-        if (lease.isValid() && !newLeaseHolder.equals(flease.getAndSet(lease).getLeaseHolder())) {
+        if (lease.isValid()) {
             
-            // notify listener about the change
-            try {
-                listener.updateLeaseHolder(getAddress(newLeaseHolder).getAddress());
-            } catch (Exception e) {
-                Logging.logError(Logging.LEVEL_WARN, this, e);
-                reset();
+            synchronized (flease) {
+                if (!newLeaseHolder.equals(flease.getAndSet(lease).getLeaseHolder())) {
+                    
+                    
+                    // notify listener about the change
+                    try {
+                        listener.updateLeaseHolder(getAddress(newLeaseHolder).getAddress());
+                    } catch (Exception e) {
+                        Logging.logError(Logging.LEVEL_WARN, this, e);
+                        reset();
+                    }
+                }
+                
+                flease.notifyAll();
             }
         }
     }

@@ -8,6 +8,7 @@
 package org.xtreemfs.babudb.replication.service.clients;
 
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
 /**
@@ -26,5 +27,5 @@ public interface SlaveClient extends ClientInterface {
      * @param data
      * @return the {@link ClientResponseFuture}.
      */
-    public ClientResponseFuture<Object> replicate(LSN lsn, ReusableBuffer data);
+    public ClientResponseFuture<Object, ErrorCodeResponse> replicate(LSN lsn, ReusableBuffer data);
 }

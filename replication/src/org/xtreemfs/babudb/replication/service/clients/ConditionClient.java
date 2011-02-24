@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2010 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -8,6 +8,8 @@
 package org.xtreemfs.babudb.replication.service.clients;
 
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.Timestamp;
 import org.xtreemfs.foundation.flease.comm.FleaseMessage;
 
 /**
@@ -24,7 +26,7 @@ public interface ConditionClient extends ClientInterface {
      * 
      * @return the {@link ClientResponseFuture} receiving a state as {@link LSN}.
      */
-    public ClientResponseFuture<LSN> state();
+    public ClientResponseFuture<LSN, org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN> state();
     
     /**
      * The {@link LSN} of the latest written LogEntry. Might have become incremented while receiving
@@ -32,27 +34,28 @@ public interface ConditionClient extends ClientInterface {
      * 
      * @return the {@link ClientResponseFuture} receiving a state as {@link LSN}.
      */
-    public ClientResponseFuture<LSN> volatileState();
+    public ClientResponseFuture<LSN, org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN> volatileState();
 
     /**
      * The local time-stamp of the registered participant.
      * 
      * @return the {@link ClientResponseFuture} receiving a time-stamp.
      */
-    public ClientResponseFuture<Long> time();
+    public ClientResponseFuture<Long,Timestamp> time();
 
     /**
      * Sends a {@link FleaseMessage} to the client.
      * 
      * @return the {@link ClientResponseFuture} as proxy for the response.
      */
-    public ClientResponseFuture<?> flease(FleaseMessage message);
+    public ClientResponseFuture<Object, ErrorCodeResponse> flease(FleaseMessage message);
 
     /**
      * Updates the latest {@link LSN} of the slave at the master.
      * 
      * @param lsn
+     * @param localPort
      * @return the {@link ClientResponseFuture}.
      */
-    public ClientResponseFuture<?> heartbeat(LSN lsn);
+    public ClientResponseFuture<Object, ErrorCodeResponse> heartbeat(LSN lsn, int localPort);
 }

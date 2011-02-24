@@ -2623,6 +2623,357 @@ public final class GlobalTypes {
     // @@protoc_insertion_point(class_scope:org.xtreemfs.pbrpc.LSN)
   }
   
+  public static final class HeartbeatMessage extends
+      com.google.protobuf.GeneratedMessage {
+    // Use HeartbeatMessage.newBuilder() to construct.
+    private HeartbeatMessage() {
+      initFields();
+    }
+    private HeartbeatMessage(boolean noInit) {}
+    
+    private static final HeartbeatMessage defaultInstance;
+    public static HeartbeatMessage getDefaultInstance() {
+      return defaultInstance;
+    }
+    
+    public HeartbeatMessage getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+    
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.xtreemfs.babudb.pbrpc.GlobalTypes.internal_static_org_xtreemfs_pbrpc_HeartbeatMessage_descriptor;
+    }
+    
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.xtreemfs.babudb.pbrpc.GlobalTypes.internal_static_org_xtreemfs_pbrpc_HeartbeatMessage_fieldAccessorTable;
+    }
+    
+    // required fixed32 port = 1;
+    public static final int PORT_FIELD_NUMBER = 1;
+    private boolean hasPort;
+    private int port_ = 0;
+    public boolean hasPort() { return hasPort; }
+    public int getPort() { return port_; }
+    
+    // required .org.xtreemfs.pbrpc.LSN lsn = 2;
+    public static final int LSN_FIELD_NUMBER = 2;
+    private boolean hasLsn;
+    private org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN lsn_;
+    public boolean hasLsn() { return hasLsn; }
+    public org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN getLsn() { return lsn_; }
+    
+    private void initFields() {
+      lsn_ = org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.getDefaultInstance();
+    }
+    public final boolean isInitialized() {
+      if (!hasPort) return false;
+      if (!hasLsn) return false;
+      if (!getLsn().isInitialized()) return false;
+      return true;
+    }
+    
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (hasPort()) {
+        output.writeFixed32(1, getPort());
+      }
+      if (hasLsn()) {
+        output.writeMessage(2, getLsn());
+      }
+      getUnknownFields().writeTo(output);
+    }
+    
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+    
+      size = 0;
+      if (hasPort()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeFixed32Size(1, getPort());
+      }
+      if (hasLsn()) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(2, getLsn());
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+    
+    public static org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+    
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder> {
+      private org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage result;
+      
+      // Construct using org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage.newBuilder()
+      private Builder() {}
+      
+      private static Builder create() {
+        Builder builder = new Builder();
+        builder.result = new org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage();
+        return builder;
+      }
+      
+      protected org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage internalGetResult() {
+        return result;
+      }
+      
+      public Builder clear() {
+        if (result == null) {
+          throw new IllegalStateException(
+            "Cannot call clear() after build().");
+        }
+        result = new org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage();
+        return this;
+      }
+      
+      public Builder clone() {
+        return create().mergeFrom(result);
+      }
+      
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage.getDescriptor();
+      }
+      
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage getDefaultInstanceForType() {
+        return org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage.getDefaultInstance();
+      }
+      
+      public boolean isInitialized() {
+        return result.isInitialized();
+      }
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage build() {
+        if (result != null && !isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return buildPartial();
+      }
+      
+      private org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage buildParsed()
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        if (!isInitialized()) {
+          throw newUninitializedMessageException(
+            result).asInvalidProtocolBufferException();
+        }
+        return buildPartial();
+      }
+      
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage buildPartial() {
+        if (result == null) {
+          throw new IllegalStateException(
+            "build() has already been called on this Builder.");
+        }
+        org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage returnMe = result;
+        result = null;
+        return returnMe;
+      }
+      
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage) {
+          return mergeFrom((org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+      
+      public Builder mergeFrom(org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage other) {
+        if (other == org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage.getDefaultInstance()) return this;
+        if (other.hasPort()) {
+          setPort(other.getPort());
+        }
+        if (other.hasLsn()) {
+          mergeLsn(other.getLsn());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+      
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder(
+            this.getUnknownFields());
+        while (true) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              this.setUnknownFields(unknownFields.build());
+              return this;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                this.setUnknownFields(unknownFields.build());
+                return this;
+              }
+              break;
+            }
+            case 13: {
+              setPort(input.readFixed32());
+              break;
+            }
+            case 18: {
+              org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.Builder subBuilder = org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.newBuilder();
+              if (hasLsn()) {
+                subBuilder.mergeFrom(getLsn());
+              }
+              input.readMessage(subBuilder, extensionRegistry);
+              setLsn(subBuilder.buildPartial());
+              break;
+            }
+          }
+        }
+      }
+      
+      
+      // required fixed32 port = 1;
+      public boolean hasPort() {
+        return result.hasPort();
+      }
+      public int getPort() {
+        return result.getPort();
+      }
+      public Builder setPort(int value) {
+        result.hasPort = true;
+        result.port_ = value;
+        return this;
+      }
+      public Builder clearPort() {
+        result.hasPort = false;
+        result.port_ = 0;
+        return this;
+      }
+      
+      // required .org.xtreemfs.pbrpc.LSN lsn = 2;
+      public boolean hasLsn() {
+        return result.hasLsn();
+      }
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN getLsn() {
+        return result.getLsn();
+      }
+      public Builder setLsn(org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN value) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        result.hasLsn = true;
+        result.lsn_ = value;
+        return this;
+      }
+      public Builder setLsn(org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.Builder builderForValue) {
+        result.hasLsn = true;
+        result.lsn_ = builderForValue.build();
+        return this;
+      }
+      public Builder mergeLsn(org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN value) {
+        if (result.hasLsn() &&
+            result.lsn_ != org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.getDefaultInstance()) {
+          result.lsn_ =
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.newBuilder(result.lsn_).mergeFrom(value).buildPartial();
+        } else {
+          result.lsn_ = value;
+        }
+        result.hasLsn = true;
+        return this;
+      }
+      public Builder clearLsn() {
+        result.hasLsn = false;
+        result.lsn_ = org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.getDefaultInstance();
+        return this;
+      }
+      
+      // @@protoc_insertion_point(builder_scope:org.xtreemfs.pbrpc.HeartbeatMessage)
+    }
+    
+    static {
+      defaultInstance = new HeartbeatMessage(true);
+      org.xtreemfs.babudb.pbrpc.GlobalTypes.internalForceInit();
+      defaultInstance.initFields();
+    }
+    
+    // @@protoc_insertion_point(class_scope:org.xtreemfs.pbrpc.HeartbeatMessage)
+  }
+  
   public static final class Chunk extends
       com.google.protobuf.GeneratedMessage {
     // Use Chunk.newBuilder() to construct.
@@ -6112,6 +6463,11 @@ public final class GlobalTypes {
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_org_xtreemfs_pbrpc_LSN_fieldAccessorTable;
   private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_org_xtreemfs_pbrpc_HeartbeatMessage_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_org_xtreemfs_pbrpc_HeartbeatMessage_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
     internal_static_org_xtreemfs_pbrpc_Chunk_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
@@ -6185,22 +6541,24 @@ public final class GlobalTypes {
       "ries\022\025\n\nerror_code\030\001 \001(\007:\0010\0221\n\013log_entri" +
       "es\030\002 \003(\0132\034.org.xtreemfs.pbrpc.LogEntry\"+" +
       "\n\003LSN\022\017\n\007view_id\030\001 \002(\007\022\023\n\013sequence_no\030\002 " +
-      "\002(\006\"6\n\005Chunk\022\021\n\tfile_name\030\001 \002(\t\022\r\n\005start" +
-      "\030\002 \002(\006\022\013\n\003end\030\003 \002(\006\"X\n\010LSNRange\022&\n\005start" +
-      "\030\001 \002(\0132\027.org.xtreemfs.pbrpc.LSN\022$\n\003end\030\002" +
-      " \002(\0132\027.org.xtreemfs.pbrpc.LSN\")\n\013InetAdd" +
-      "ress\022\014\n\004host\030\001 \002(\t\022\014\n\004port\030\002 \002(\007\"$\n\006FLea",
-      "se\022\014\n\004host\030\001 \002(\t\022\014\n\004port\030\002 \002(\007\";\n\tDataba" +
-      "ses\022.\n\010database\030\001 \003(\0132\034.org.xtreemfs.pbr" +
-      "pc.Database\"M\n\010Database\022\025\n\nerror_code\030\001 " +
-      "\001(\007:\0010\022\025\n\rdatabase_name\030\002 \002(\t\022\023\n\013databas" +
-      "e_id\030\003 \002(\007\"%\n\014DatabaseName\022\025\n\rdatabase_n" +
-      "ame\030\001 \002(\t\"1\n\006Lookup\022\025\n\rdatabase_name\030\001 \002" +
-      "(\t\022\020\n\010index_id\030\002 \002(\007\"K\n\013RangeLookup\022\025\n\rd" +
-      "atabase_name\030\001 \002(\t\022\020\n\010index_id\030\002 \002(\007\022\023\n\013" +
-      "from_length\030\003 \002(\007\"1\n\010EntryMap\022\025\n\nerror_c" +
-      "ode\030\001 \001(\007:\0010\022\016\n\006length\030\002 \003(\006B\033\n\031org.xtre",
-      "emfs.babudb.pbrpc"
+      "\002(\006\"F\n\020HeartbeatMessage\022\014\n\004port\030\001 \002(\007\022$\n" +
+      "\003lsn\030\002 \002(\0132\027.org.xtreemfs.pbrpc.LSN\"6\n\005C" +
+      "hunk\022\021\n\tfile_name\030\001 \002(\t\022\r\n\005start\030\002 \002(\006\022\013" +
+      "\n\003end\030\003 \002(\006\"X\n\010LSNRange\022&\n\005start\030\001 \002(\0132\027" +
+      ".org.xtreemfs.pbrpc.LSN\022$\n\003end\030\002 \002(\0132\027.o",
+      "rg.xtreemfs.pbrpc.LSN\")\n\013InetAddress\022\014\n\004" +
+      "host\030\001 \002(\t\022\014\n\004port\030\002 \002(\007\"$\n\006FLease\022\014\n\004ho" +
+      "st\030\001 \002(\t\022\014\n\004port\030\002 \002(\007\";\n\tDatabases\022.\n\010d" +
+      "atabase\030\001 \003(\0132\034.org.xtreemfs.pbrpc.Datab" +
+      "ase\"M\n\010Database\022\025\n\nerror_code\030\001 \001(\007:\0010\022\025" +
+      "\n\rdatabase_name\030\002 \002(\t\022\023\n\013database_id\030\003 \002" +
+      "(\007\"%\n\014DatabaseName\022\025\n\rdatabase_name\030\001 \002(" +
+      "\t\"1\n\006Lookup\022\025\n\rdatabase_name\030\001 \002(\t\022\020\n\010in" +
+      "dex_id\030\002 \002(\007\"K\n\013RangeLookup\022\025\n\rdatabase_" +
+      "name\030\001 \002(\t\022\020\n\010index_id\030\002 \002(\007\022\023\n\013from_len",
+      "gth\030\003 \002(\007\"1\n\010EntryMap\022\025\n\nerror_code\030\001 \001(" +
+      "\007:\0010\022\016\n\006length\030\002 \003(\006B\033\n\031org.xtreemfs.bab" +
+      "udb.pbrpc"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -6271,8 +6629,16 @@ public final class GlobalTypes {
               new java.lang.String[] { "ViewId", "SequenceNo", },
               org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.class,
               org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.Builder.class);
-          internal_static_org_xtreemfs_pbrpc_Chunk_descriptor =
+          internal_static_org_xtreemfs_pbrpc_HeartbeatMessage_descriptor =
             getDescriptor().getMessageTypes().get(8);
+          internal_static_org_xtreemfs_pbrpc_HeartbeatMessage_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_org_xtreemfs_pbrpc_HeartbeatMessage_descriptor,
+              new java.lang.String[] { "Port", "Lsn", },
+              org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage.class,
+              org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage.Builder.class);
+          internal_static_org_xtreemfs_pbrpc_Chunk_descriptor =
+            getDescriptor().getMessageTypes().get(9);
           internal_static_org_xtreemfs_pbrpc_Chunk_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_org_xtreemfs_pbrpc_Chunk_descriptor,
@@ -6280,7 +6646,7 @@ public final class GlobalTypes {
               org.xtreemfs.babudb.pbrpc.GlobalTypes.Chunk.class,
               org.xtreemfs.babudb.pbrpc.GlobalTypes.Chunk.Builder.class);
           internal_static_org_xtreemfs_pbrpc_LSNRange_descriptor =
-            getDescriptor().getMessageTypes().get(9);
+            getDescriptor().getMessageTypes().get(10);
           internal_static_org_xtreemfs_pbrpc_LSNRange_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_org_xtreemfs_pbrpc_LSNRange_descriptor,
@@ -6288,7 +6654,7 @@ public final class GlobalTypes {
               org.xtreemfs.babudb.pbrpc.GlobalTypes.LSNRange.class,
               org.xtreemfs.babudb.pbrpc.GlobalTypes.LSNRange.Builder.class);
           internal_static_org_xtreemfs_pbrpc_InetAddress_descriptor =
-            getDescriptor().getMessageTypes().get(10);
+            getDescriptor().getMessageTypes().get(11);
           internal_static_org_xtreemfs_pbrpc_InetAddress_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_org_xtreemfs_pbrpc_InetAddress_descriptor,
@@ -6296,7 +6662,7 @@ public final class GlobalTypes {
               org.xtreemfs.babudb.pbrpc.GlobalTypes.InetAddress.class,
               org.xtreemfs.babudb.pbrpc.GlobalTypes.InetAddress.Builder.class);
           internal_static_org_xtreemfs_pbrpc_FLease_descriptor =
-            getDescriptor().getMessageTypes().get(11);
+            getDescriptor().getMessageTypes().get(12);
           internal_static_org_xtreemfs_pbrpc_FLease_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_org_xtreemfs_pbrpc_FLease_descriptor,
@@ -6304,7 +6670,7 @@ public final class GlobalTypes {
               org.xtreemfs.babudb.pbrpc.GlobalTypes.FLease.class,
               org.xtreemfs.babudb.pbrpc.GlobalTypes.FLease.Builder.class);
           internal_static_org_xtreemfs_pbrpc_Databases_descriptor =
-            getDescriptor().getMessageTypes().get(12);
+            getDescriptor().getMessageTypes().get(13);
           internal_static_org_xtreemfs_pbrpc_Databases_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_org_xtreemfs_pbrpc_Databases_descriptor,
@@ -6312,7 +6678,7 @@ public final class GlobalTypes {
               org.xtreemfs.babudb.pbrpc.GlobalTypes.Databases.class,
               org.xtreemfs.babudb.pbrpc.GlobalTypes.Databases.Builder.class);
           internal_static_org_xtreemfs_pbrpc_Database_descriptor =
-            getDescriptor().getMessageTypes().get(13);
+            getDescriptor().getMessageTypes().get(14);
           internal_static_org_xtreemfs_pbrpc_Database_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_org_xtreemfs_pbrpc_Database_descriptor,
@@ -6320,7 +6686,7 @@ public final class GlobalTypes {
               org.xtreemfs.babudb.pbrpc.GlobalTypes.Database.class,
               org.xtreemfs.babudb.pbrpc.GlobalTypes.Database.Builder.class);
           internal_static_org_xtreemfs_pbrpc_DatabaseName_descriptor =
-            getDescriptor().getMessageTypes().get(14);
+            getDescriptor().getMessageTypes().get(15);
           internal_static_org_xtreemfs_pbrpc_DatabaseName_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_org_xtreemfs_pbrpc_DatabaseName_descriptor,
@@ -6328,7 +6694,7 @@ public final class GlobalTypes {
               org.xtreemfs.babudb.pbrpc.GlobalTypes.DatabaseName.class,
               org.xtreemfs.babudb.pbrpc.GlobalTypes.DatabaseName.Builder.class);
           internal_static_org_xtreemfs_pbrpc_Lookup_descriptor =
-            getDescriptor().getMessageTypes().get(15);
+            getDescriptor().getMessageTypes().get(16);
           internal_static_org_xtreemfs_pbrpc_Lookup_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_org_xtreemfs_pbrpc_Lookup_descriptor,
@@ -6336,7 +6702,7 @@ public final class GlobalTypes {
               org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup.class,
               org.xtreemfs.babudb.pbrpc.GlobalTypes.Lookup.Builder.class);
           internal_static_org_xtreemfs_pbrpc_RangeLookup_descriptor =
-            getDescriptor().getMessageTypes().get(16);
+            getDescriptor().getMessageTypes().get(17);
           internal_static_org_xtreemfs_pbrpc_RangeLookup_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_org_xtreemfs_pbrpc_RangeLookup_descriptor,
@@ -6344,7 +6710,7 @@ public final class GlobalTypes {
               org.xtreemfs.babudb.pbrpc.GlobalTypes.RangeLookup.class,
               org.xtreemfs.babudb.pbrpc.GlobalTypes.RangeLookup.Builder.class);
           internal_static_org_xtreemfs_pbrpc_EntryMap_descriptor =
-            getDescriptor().getMessageTypes().get(17);
+            getDescriptor().getMessageTypes().get(18);
           internal_static_org_xtreemfs_pbrpc_EntryMap_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_org_xtreemfs_pbrpc_EntryMap_descriptor,
@@ -6358,7 +6724,7 @@ public final class GlobalTypes {
       .internalBuildGeneratedFileFrom(descriptorData,
         new com.google.protobuf.Descriptors.FileDescriptor[] {
           org.xtreemfs.babudb.pbrpc.Common.getDescriptor(),
-          org.xtreemfs.foundation.pbrpc.generatedinterfaces.PBRPC.getDescriptor(),
+          org.xtreemfs.babudb.pbrpc.generatedinterfaces.PBRPC.getDescriptor(),
         }, assigner);
   }
   

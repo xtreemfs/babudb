@@ -5,9 +5,6 @@
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-/*
- * AUTHORS: Felix Langner (ZIB)
- */
 package org.xtreemfs.babudb.replication.proxy;
 
 import java.io.IOException;

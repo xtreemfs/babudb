@@ -17,6 +17,7 @@ import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntries;
 import org.xtreemfs.babudb.replication.service.Pacemaker;
 import org.xtreemfs.babudb.replication.service.ReplicationStage;
 import org.xtreemfs.babudb.replication.service.ReplicationStage.Range;
@@ -80,12 +81,11 @@ public class RequestLogic extends Logic {
                 lsnAtLeast.toString());
         
         // get the missing logEntries
-        ClientResponseFuture<ReusableBuffer[]> rp = null;    
+        ClientResponseFuture<ReusableBuffer[], LogEntries> rp = null;    
         ReusableBuffer[] logEntries = null;
         
         
-        MasterClient master = this.slaveView.getSynchronizationPartner(
-                lsnAtLeast);
+        MasterClient master = slaveView.getSynchronizationPartner(lsnAtLeast);
         
         Logging.logMessage(Logging.LEVEL_INFO, this, "Replica-Range will be" +
         		" retrieved from %s.", master.getDefaultServerAddress());

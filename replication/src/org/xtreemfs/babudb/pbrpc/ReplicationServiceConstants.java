@@ -1,4 +1,4 @@
-//automatically generated from replication.proto at Fri Feb 18 10:56:47 CET 2011
+//automatically generated from replication.proto at Wed Feb 23 17:04:44 CET 2011
 //(c) 2011. See LICENSE file for details.
 
 package org.xtreemfs.babudb.pbrpc;
@@ -26,7 +26,7 @@ public class ReplicationServiceConstants {
            case 4: return GlobalTypes.FLease.getDefaultInstance();
            case 5: return null;
            case 6: return GlobalTypes.LSNRange.getDefaultInstance();
-           case 7: return GlobalTypes.LSN.getDefaultInstance();
+           case 7: return GlobalTypes.HeartbeatMessage.getDefaultInstance();
            case 8: return GlobalTypes.LSN.getDefaultInstance();
            case 9: return null;
            default: throw new RuntimeException("unknown procedure id");

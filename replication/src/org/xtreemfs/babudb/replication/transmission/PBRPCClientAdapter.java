@@ -96,13 +96,13 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
      * state()
      */
     @Override
-    public ClientResponseFuture<org.xtreemfs.babudb.lsmdb.LSN> state() {
+    public ClientResponseFuture<org.xtreemfs.babudb.lsmdb.LSN, LSN> state() {
         try {
             final RPCResponse<LSN> result = state(null, 
                     Auth.getDefaultInstance(), 
                     UserCredentials.getDefaultInstance());
         
-            return new ClientResponseFuture<org.xtreemfs.babudb.lsmdb.LSN>(
+            return new ClientResponseFuture<org.xtreemfs.babudb.lsmdb.LSN, LSN>(
                     result) {
                 
                 @Override
@@ -119,7 +119,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<org.xtreemfs.babudb.lsmdb.LSN>(
+            return new ClientResponseFuture<org.xtreemfs.babudb.lsmdb.LSN,LSN>(
                     null) {
                 
                 @Override
@@ -135,13 +135,13 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
      * state()
      */
     @Override
-    public ClientResponseFuture<org.xtreemfs.babudb.lsmdb.LSN> volatileState() {
+    public ClientResponseFuture<org.xtreemfs.babudb.lsmdb.LSN, LSN> volatileState() {
         try {
             final RPCResponse<LSN> result = volatileState(null, 
                     Auth.getDefaultInstance(), 
                     UserCredentials.getDefaultInstance());
         
-            return new ClientResponseFuture<org.xtreemfs.babudb.lsmdb.LSN>(
+            return new ClientResponseFuture<org.xtreemfs.babudb.lsmdb.LSN,LSN>(
                     result) {
                 
                 @Override
@@ -158,7 +158,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<org.xtreemfs.babudb.lsmdb.LSN>(
+            return new ClientResponseFuture<org.xtreemfs.babudb.lsmdb.LSN, LSN>(
                     null) {
                 
                 @Override
@@ -174,13 +174,13 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
      * time()
      */
     @Override
-    public ClientResponseFuture<Long> time() {
+    public ClientResponseFuture<Long,Timestamp> time() {
         try {
             final RPCResponse<Timestamp> result = localTime(null, 
                         Auth.getDefaultInstance(), 
                         UserCredentials.getDefaultInstance());
             
-            return new ClientResponseFuture<Long>(result) {
+            return new ClientResponseFuture<Long, Timestamp>(result) {
                 
                 @Override
                 public Long get() throws IOException, InterruptedException, 
@@ -198,7 +198,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<Long>(null) {
+            return new ClientResponseFuture<Long,Timestamp>(null) {
                 
                 @Override
                 public Long get() throws IOException {
@@ -209,11 +209,11 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
     }
 
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.clients.ConditionClient#
-     * flease(org.xtreemfs.foundation.flease.comm.FleaseMessage)
+     * @see org.xtreemfs.babudb.replication.service.clients.ConditionClient#flease(
+     *          org.xtreemfs.foundation.flease.comm.FleaseMessage)
      */
     @Override
-    public ClientResponseFuture<?> flease(FleaseMessage message) {
+    public ClientResponseFuture<Object, ErrorCodeResponse> flease(FleaseMessage message) {
         ReusableBuffer payload = BufferPool.allocate(message.getSize());
         try {
             InetSocketAddress sender = message.getSender();
@@ -224,7 +224,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
                         sender.getHostName(), sender.getPort(), 
                         payload.createViewBuffer());
             
-            return new ClientResponseFuture<Object>(result) {
+            return new ClientResponseFuture<Object,ErrorCodeResponse>(result) {
                 
                 @Override
                 public Object get() throws IOException, InterruptedException, 
@@ -242,7 +242,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<Object>(null) {
+            return new ClientResponseFuture<Object, ErrorCodeResponse>(null) {
                 
                 @Override
                 public Object get() throws IOException {
@@ -255,20 +255,20 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
     }
 
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.clients.ConditionClient#
-     * heartbeat(org.xtreemfs.babudb.lsmdb.LSN)
+     * @see org.xtreemfs.babudb.replication.service.clients.ConditionClient#heartbeat(
+     *          org.xtreemfs.babudb.lsmdb.LSN, int)
      */
     @Override
-    public ClientResponseFuture<?> heartbeat(
-            org.xtreemfs.babudb.lsmdb.LSN lsn) {
+    public ClientResponseFuture<Object, ErrorCodeResponse> heartbeat(org.xtreemfs.babudb.lsmdb.LSN lsn, int port) {
         
         try {
             final RPCResponse<ErrorCodeResponse> result = heartbeat(null, 
                         Auth.getDefaultInstance(), 
-                        UserCredentials.getDefaultInstance(), lsn.getViewId(), 
-                        lsn.getSequenceNo());
+                        UserCredentials.getDefaultInstance(), port, 
+                        LSN.newBuilder().setViewId(lsn.getViewId())
+                                        .setSequenceNo(lsn.getSequenceNo()).build());
             
-            return new ClientResponseFuture<Object>(result) {
+            return new ClientResponseFuture<Object, ErrorCodeResponse>(result) {
                 
                 @Override
                 public Object get() throws IOException, InterruptedException, 
@@ -286,7 +286,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<Object>(null) {
+            return new ClientResponseFuture<Object, ErrorCodeResponse>(null) {
                 
                 @Override
                 public Object get() throws IOException {
@@ -305,7 +305,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
      * replica(org.xtreemfs.babudb.lsmdb.LSN, org.xtreemfs.babudb.lsmdb.LSN)
      */
     @Override
-    public ClientResponseFuture<ReusableBuffer[]> replica(
+    public ClientResponseFuture<ReusableBuffer[], LogEntries> replica(
             org.xtreemfs.babudb.lsmdb.LSN start, 
             org.xtreemfs.babudb.lsmdb.LSN end) {
         try {
@@ -319,7 +319,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
                         Auth.getDefaultInstance(), 
                         UserCredentials.getDefaultInstance(), s, e);
                         
-            return new ClientResponseFuture<ReusableBuffer[]>(result) {
+            return new ClientResponseFuture<ReusableBuffer[], LogEntries>(result) {
                 
                 @Override
                 public ReusableBuffer[] get() throws IOException, 
@@ -347,7 +347,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<ReusableBuffer[]>(null) {
+            return new ClientResponseFuture<ReusableBuffer[], LogEntries>(null) {
                 
                 @Override
                 public ReusableBuffer[] get() throws IOException {
@@ -362,7 +362,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
      * chunk(java.lang.String, long, long)
      */
     @Override
-    public ClientResponseFuture<ReusableBuffer> chunk(String fileName, 
+    public ClientResponseFuture<ReusableBuffer, ErrorCodeResponse> chunk(String fileName, 
             long start, long end) {
         try {
             final RPCResponse<ErrorCodeResponse> result = chunk(null, 
@@ -370,7 +370,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
                         UserCredentials.getDefaultInstance(), fileName, start,
                         end);
             
-            return new ClientResponseFuture<ReusableBuffer>(result) {
+            return new ClientResponseFuture<ReusableBuffer, ErrorCodeResponse>(result) {
                 
                 @Override
                 public ReusableBuffer get() throws IOException, 
@@ -388,7 +388,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<ReusableBuffer>(null) {
+            return new ClientResponseFuture<ReusableBuffer, ErrorCodeResponse>(null) {
                 
                 @Override
                 public ReusableBuffer get() throws IOException {
@@ -403,7 +403,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
      * load(org.xtreemfs.babudb.lsmdb.LSN)
      */
     @Override
-    public ClientResponseFuture<DBFileMetaDataSet> load(
+    public ClientResponseFuture<DBFileMetaDataSet, DBFileMetaDatas> load(
             org.xtreemfs.babudb.lsmdb.LSN lsn) {
         try {
             final RPCResponse<DBFileMetaDatas> result = load(null, 
@@ -411,7 +411,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
                         UserCredentials.getDefaultInstance(), lsn.getViewId(), 
                         lsn.getSequenceNo());
             
-            return new ClientResponseFuture<DBFileMetaDataSet>(result) {
+            return new ClientResponseFuture<DBFileMetaDataSet, DBFileMetaDatas>(result) {
                 
                 @Override
                 public DBFileMetaDataSet get() throws IOException, 
@@ -440,7 +440,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<DBFileMetaDataSet>(null) {
+            return new ClientResponseFuture<DBFileMetaDataSet, DBFileMetaDatas>(null) {
                 
                 @Override
                 public DBFileMetaDataSet get() throws IOException {
@@ -460,7 +460,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
      *           org.xtreemfs.foundation.buffer.ReusableBuffer)
      */
     @Override
-    public ClientResponseFuture<Object> replicate(org.xtreemfs.babudb.lsmdb.LSN lsn, 
+    public ClientResponseFuture<Object, ErrorCodeResponse> replicate(org.xtreemfs.babudb.lsmdb.LSN lsn, 
             ReusableBuffer data) {
         try {
             final RPCResponse<ErrorCodeResponse> result = replicate(null, 
@@ -468,7 +468,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
                         UserCredentials.getDefaultInstance(), lsn.getViewId(), 
                         lsn.getSequenceNo(), data);
             
-            return new ClientResponseFuture<Object>(result) {
+            return new ClientResponseFuture<Object, ErrorCodeResponse>(result) {
                 
                 @Override
                 public ReusableBuffer get() throws IOException, 
@@ -486,7 +486,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<Object>(null) {
+            return new ClientResponseFuture<Object, ErrorCodeResponse>(null) {
                 
                 @Override
                 public Object get() throws IOException {

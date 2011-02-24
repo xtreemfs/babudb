@@ -41,6 +41,11 @@ message LSN {
   required fixed64 sequence_no = 2;
 }
 
+message HeartbeatMessage {
+  required fixed32 port = 1;
+  required LSN lsn = 2;
+}
+
 message Chunk {
   required string file_name = 1;
   required fixed64 start = 2;

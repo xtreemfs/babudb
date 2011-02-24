@@ -9,6 +9,9 @@ package org.xtreemfs.babudb.replication.service.clients;
 
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.DBFileMetaDatas;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntries;
 import org.xtreemfs.babudb.replication.service.logic.LoadLogic.DBFileMetaDataSet;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
@@ -29,7 +32,7 @@ public interface MasterClient extends ConditionClient {
      * @return the {@link ClientResponseFuture} to receive a list of serialized 
      *         LogEntries.
      */
-    public ClientResponseFuture<ReusableBuffer[]> replica(LSN start, LSN end);
+    public ClientResponseFuture<ReusableBuffer[], LogEntries> replica(LSN start, LSN end);
 
     /**
      * Requests the chunk data with the given chunk details at the master.
@@ -39,8 +42,8 @@ public interface MasterClient extends ConditionClient {
      * @param end
      * @return the {@link ClientResponseFuture} for receiving Chunk-data.
      */
-    public ClientResponseFuture<ReusableBuffer> chunk(String fileName, 
-                                                      long start, long end);
+    public ClientResponseFuture<ReusableBuffer, ErrorCodeResponse> chunk(
+            String fileName, long start, long end);
     
     /**
      * Requests the DBFileMetadata of the master.
@@ -49,5 +52,5 @@ public interface MasterClient extends ConditionClient {
      * @return the {@link ClientResponseFuture} receiving a 
      *         {@link DBFileMetaDataSet}.
      */ 
-    public ClientResponseFuture<DBFileMetaDataSet> load(LSN lsn);
+    public ClientResponseFuture<DBFileMetaDataSet, DBFileMetaDatas> load(LSN lsn);
 }

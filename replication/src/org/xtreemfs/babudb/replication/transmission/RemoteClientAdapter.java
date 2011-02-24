@@ -5,9 +5,6 @@
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-/*
- * AUTHORS: Felix Langner (ZIB)
- */
 package org.xtreemfs.babudb.replication.transmission;
 
 import java.io.IOException;
@@ -53,7 +50,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
      *  org.xtreemfs.foundation.buffer.ReusableBuffer)
      */
     @Override
-    public ClientResponseFuture<?> makePersistent(InetSocketAddress master, 
+    public ClientResponseFuture<Object, ErrorCodeResponse> makePersistent(InetSocketAddress master, 
             int type, ReusableBuffer data) {
         assert (master != null);
         
@@ -62,7 +59,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                     Auth.getDefaultInstance(), 
                     UserCredentials.getDefaultInstance(), type, data);
             
-            return new ClientResponseFuture<Object>(result) {
+            return new ClientResponseFuture<Object, ErrorCodeResponse>(result) {
                 
                 @Override
                 public Object get() throws IOException, InterruptedException, 
@@ -80,7 +77,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<Object>(null) {
+            return new ClientResponseFuture<Object, ErrorCodeResponse>(null) {
                 
                 @Override
                 public Object get() throws IOException {
@@ -97,7 +94,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
      *          java.net.InetSocketAddress)
      */
     @Override
-    public ClientResponseFuture<Integer> getDatabase(String dbName, InetSocketAddress master) {
+    public ClientResponseFuture<Integer,Database> getDatabase(String dbName, InetSocketAddress master) {
  
         assert (master != null);
         
@@ -106,7 +103,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                     Auth.getDefaultInstance(), 
                     UserCredentials.getDefaultInstance(), dbName);
             
-            return new ClientResponseFuture<Integer>(result) {
+            return new ClientResponseFuture<Integer,Database>(result) {
                 
                 @Override
                 public Integer get() throws ErrorCodeException, 
@@ -115,7 +112,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<Integer>(null) {
+            return new ClientResponseFuture<Integer,Database>(null) {
                 
                 @Override
                 public Integer get() throws ErrorCodeException, 
@@ -131,7 +128,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
      *          java.net.InetSocketAddress)
      */
     @Override
-    public ClientResponseFuture<Map<String,Integer>> getDatabases(
+    public ClientResponseFuture<Map<String,Integer>, Databases> getDatabases(
             InetSocketAddress master) {
         
         assert (master != null);
@@ -141,7 +138,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                     Auth.getDefaultInstance(), 
                     UserCredentials.getDefaultInstance());
             
-            return new ClientResponseFuture<Map<String, Integer>>(result) {
+            return new ClientResponseFuture<Map<String, Integer>, Databases>(result) {
                 
                 @Override
                 public Map<String, Integer> get() throws ErrorCodeException, 
@@ -155,7 +152,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<Map<String,Integer>>(null) {
+            return new ClientResponseFuture<Map<String,Integer>, Databases>(null) {
                 
                 @Override
                 public Map<String, Integer> get() throws ErrorCodeException, 
@@ -172,7 +169,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
      *     java.net.InetSocketAddress)
      */
     @Override
-    public ClientResponseFuture<byte[]> lookup(String dbName, int indexId, 
+    public ClientResponseFuture<byte[], ErrorCodeResponse> lookup(String dbName, int indexId, 
             ReusableBuffer key, InetSocketAddress master) {
 
         assert (master != null);
@@ -182,7 +179,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                     Auth.getDefaultInstance(), 
                     UserCredentials.getDefaultInstance(), dbName, indexId, key);
             
-            return new ClientResponseFuture<byte[]>(result) {
+            return new ClientResponseFuture<byte[],ErrorCodeResponse>(result) {
                 
                 @Override
                 public byte[] get() throws ErrorCodeException, 
@@ -200,7 +197,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<byte[]>(null) {
+            return new ClientResponseFuture<byte[], ErrorCodeResponse>(null) {
                 
                 @Override
                 public byte[] get() throws ErrorCodeException, 
@@ -220,7 +217,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
      *          java.net.InetSocketAddress)
      */
     @Override
-    public ClientResponseFuture<ResultSet<byte[], byte[]>> 
+    public ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap> 
             prefixLookup(String dbName, int indexId, ReusableBuffer key, 
                     InetSocketAddress master) {
 
@@ -231,7 +228,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                     Auth.getDefaultInstance(), 
                     UserCredentials.getDefaultInstance(), dbName, indexId, key);
             
-            return new ClientResponseFuture<ResultSet<byte[], byte[]>>(result) {
+            return new ClientResponseFuture<ResultSet<byte[], byte[]>,EntryMap>(result) {
                 
                 @Override
                 public ResultSet<byte[], byte[]> get() 
@@ -296,7 +293,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<ResultSet<byte[], byte[]>>(null) {
+            return new ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap>(null) {
                 
                 @Override
                 public ResultSet<byte[], byte[]> get() 
@@ -316,7 +313,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
      *          java.net.InetSocketAddress)
      */
     @Override
-    public ClientResponseFuture<ResultSet<byte[], byte[]>> prefixLookupR(
+    public ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap> prefixLookupR(
             String dbName, int indexId, ReusableBuffer key, 
             InetSocketAddress master) {
 
@@ -327,7 +324,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                     Auth.getDefaultInstance(), 
                     UserCredentials.getDefaultInstance(), dbName, indexId, key);
             
-            return new ClientResponseFuture<ResultSet<byte[], byte[]>>(result) {
+            return new ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap>(result) {
                 
                 @Override
                 public ResultSet<byte[], byte[]> get() 
@@ -392,7 +389,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<ResultSet<byte[], byte[]>>(null) {
+            return new ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap>(null) {
                 
                 @Override
                 public ResultSet<byte[], byte[]> get() 
@@ -412,7 +409,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
      *          org.xtreemfs.foundation.buffer.ReusableBuffer, java.net.InetSocketAddress)
      */
     @Override
-    public ClientResponseFuture<ResultSet<byte[], byte[]>> rangeLookup(
+    public ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap> rangeLookup(
             String dbName, int indexId, ReusableBuffer from, ReusableBuffer to, 
             InetSocketAddress master) {
         
@@ -429,7 +426,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                     UserCredentials.getDefaultInstance(), dbName, indexId,  
                     from.remaining(), payload);
             
-            return new ClientResponseFuture<ResultSet<byte[], byte[]>>(result) {
+            return new ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap>(result) {
                 
                 @Override
                 public ResultSet<byte[], byte[]> get() 
@@ -494,7 +491,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<ResultSet<byte[], byte[]>>(null) {
+            return new ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap>(null) {
                 
                 @Override
                 public ResultSet<byte[], byte[]> get() 
@@ -516,7 +513,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
      *          org.xtreemfs.foundation.buffer.ReusableBuffer, java.net.InetSocketAddress)
      */
     @Override
-    public ClientResponseFuture<ResultSet<byte[], byte[]>> rangeLookupR(
+    public ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap> rangeLookupR(
             String dbName, int indexId, ReusableBuffer from, ReusableBuffer to, 
             InetSocketAddress master) {
         
@@ -533,7 +530,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                     UserCredentials.getDefaultInstance(), dbName, indexId,  
                     from.remaining(), payload);
             
-            return new ClientResponseFuture<ResultSet<byte[], byte[]>>(result) {
+            return new ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap>(result) {
                 
                 @Override
                 public ResultSet<byte[], byte[]> get() 
@@ -598,7 +595,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<ResultSet<byte[], byte[]>>(null) {
+            return new ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap>(null) {
                 
                 @Override
                 public ResultSet<byte[], byte[]> get() 

@@ -17,7 +17,6 @@ import org.xtreemfs.babudb.replication.proxy.operations.PrefixLookupOperation;
 import org.xtreemfs.babudb.replication.proxy.operations.PrefixLookupReverseOperation;
 import org.xtreemfs.babudb.replication.proxy.operations.RangeLookupOperation;
 import org.xtreemfs.babudb.replication.proxy.operations.RangeLookupReverseOperation;
-import org.xtreemfs.babudb.replication.service.accounting.ParticipantsVerification;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestHandler;
 
@@ -34,10 +33,8 @@ public class RPCRequestHandler extends RequestHandler {
      * @param verificator
      * @param dbs - interface for local BabuDB operations.
      */
-    public RPCRequestHandler(ParticipantsVerification verificator, BabuDBInterface dbs) {
-        
-        super(verificator);
-        
+    public RPCRequestHandler(BabuDBInterface dbs) {
+                
         Operation op = new MakePersistantOperation(dbs); 
         operations.put(op.getProcedureId(), op);
         

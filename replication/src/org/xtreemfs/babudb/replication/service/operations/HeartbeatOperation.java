@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -7,8 +7,11 @@
  */
 package org.xtreemfs.babudb.replication.service.operations;
 
+import java.net.InetSocketAddress;
+
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN;
 import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
 import org.xtreemfs.babudb.replication.service.accounting.StatesManipulation;
@@ -65,12 +68,18 @@ public class HeartbeatOperation extends Operation {
      */
     @Override
     public void startRequest(final Request rq) {
-        LSN lsn = (LSN) rq.getRequestMessage();
+        HeartbeatMessage message = (HeartbeatMessage) rq.getRequestMessage();
+        LSN lsn = message.getLsn();
         try {
-            this.sManipulator.update(rq.getRPCRequest().getSenderAddress(), 
-                    new org.xtreemfs.babudb.lsmdb.LSN(lsn.getViewId(), 
-                                                      lsn.getSequenceNo()), 
-                    TimeSync.getGlobalTime());
+            
+            InetSocketAddress participant = new InetSocketAddress(
+                    ((InetSocketAddress) rq.getRPCRequest().getSenderAddress()).getAddress(), 
+                    message.getPort());
+            
+            sManipulator.update(participant, 
+                                new org.xtreemfs.babudb.lsmdb.LSN(lsn.getViewId(), 
+                                                                  lsn.getSequenceNo()), 
+                                TimeSync.getGlobalTime());
             
             rq.sendSuccess(ErrorCodeResponse.getDefaultInstance());
         } catch (UnknownParticipantException e) {

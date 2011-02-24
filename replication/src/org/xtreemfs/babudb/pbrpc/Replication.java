@@ -721,7 +721,7 @@ public final class Replication {
       
       public abstract void heartbeat(
           com.google.protobuf.RpcController controller,
-          org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage request,
           com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done);
       
       public abstract void replicate(
@@ -790,7 +790,7 @@ public final class Replication {
         @Override
         public  void heartbeat(
             com.google.protobuf.RpcController controller,
-            org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage request,
             com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done) {
           impl.heartbeat(controller, request, done);
         }
@@ -846,7 +846,7 @@ public final class Replication {
             case 5:
               return impl.replica(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.LSNRange)request);
             case 6:
-              return impl.heartbeat(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN)request);
+              return impl.heartbeat(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage)request);
             case 7:
               return impl.replicate(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN)request);
             case 8:
@@ -878,7 +878,7 @@ public final class Replication {
             case 5:
               return org.xtreemfs.babudb.pbrpc.GlobalTypes.LSNRange.getDefaultInstance();
             case 6:
-              return org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.getDefaultInstance();
+              return org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage.getDefaultInstance();
             case 7:
               return org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.getDefaultInstance();
             case 8:
@@ -955,7 +955,7 @@ public final class Replication {
     
     public abstract void heartbeat(
         com.google.protobuf.RpcController controller,
-        org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request,
+        org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage request,
         com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done);
     
     public abstract void replicate(
@@ -1021,7 +1021,7 @@ public final class Replication {
               done));
           return;
         case 6:
-          this.heartbeat(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN)request,
+          this.heartbeat(controller, (org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage)request,
             com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse>specializeCallback(
               done));
           return;
@@ -1062,7 +1062,7 @@ public final class Replication {
         case 5:
           return org.xtreemfs.babudb.pbrpc.GlobalTypes.LSNRange.getDefaultInstance();
         case 6:
-          return org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.getDefaultInstance();
+          return org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage.getDefaultInstance();
         case 7:
           return org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.getDefaultInstance();
         case 8:
@@ -1212,7 +1212,7 @@ public final class Replication {
       
       public  void heartbeat(
           com.google.protobuf.RpcController controller,
-          org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request,
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage request,
           com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done) {
         channel.callMethod(
           getDescriptor().getMethods().get(6),
@@ -1294,7 +1294,7 @@ public final class Replication {
       
       public org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse heartbeat(
           com.google.protobuf.RpcController controller,
-          org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request)
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage request)
           throws com.google.protobuf.ServiceException;
       
       public org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse replicate(
@@ -1389,7 +1389,7 @@ public final class Replication {
       
       public org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse heartbeat(
           com.google.protobuf.RpcController controller,
-          org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN request)
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage request)
           throws com.google.protobuf.ServiceException {
         return (org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse) channel.callBlockingMethod(
           getDescriptor().getMethods().get(6),
@@ -1457,7 +1457,7 @@ public final class Replication {
       "\"\017\215\265\030\007\000\000\000\240\265\030\001\230\265\030\001\022`\n\016rlookupReverse\022\037.or" +
       "g.xtreemfs.pbrpc.RangeLookup\032\034.org.xtree" +
       "mfs.pbrpc.EntryMap\"\017\215\265\030\010\000\000\000\240\265\030\001\230\265\030\001\032\007\225\265\030" +
-      "\021\'\000\0002\235\006\n\022ReplicationService\022K\n\005state\022 .o" +
+      "\021\'\000\0002\252\006\n\022ReplicationService\022K\n\005state\022 .o" +
       "rg.xtreemfs.pbrpc.emptyRequest\032\027.org.xtr" +
       "eemfs.pbrpc.LSN\"\007\215\265\030\001\000\000\000\022M\n\004load\022\027.org.x" +
       "treemfs.pbrpc.LSN\032#.org.xtreemfs.pbrpc.D" +
@@ -1470,14 +1470,15 @@ public final class Replication {
       "yRequest\032\035.org.xtreemfs.pbrpc.Timestamp\"" +
       "\007\215\265\030\005\000\000\000\022T\n\007replica\022\034.org.xtreemfs.pbrpc" +
       ".LSNRange\032\036.org.xtreemfs.pbrpc.LogEntrie" +
-      "s\"\013\215\265\030\006\000\000\000\230\265\030\001\022T\n\theartbeat\022\027.org.xtreem" +
-      "fs.pbrpc.LSN\032%.org.xtreemfs.pbrpc.ErrorC" +
-      "odeResponse\"\007\215\265\030\007\000\000\000\022X\n\treplicate\022\027.org." +
-      "xtreemfs.pbrpc.LSN\032%.org.xtreemfs.pbrpc.",
-      "ErrorCodeResponse\"\013\215\265\030\010\000\000\000\240\265\030\001\022S\n\rvolati" +
-      "leState\022 .org.xtreemfs.pbrpc.emptyReques" +
-      "t\032\027.org.xtreemfs.pbrpc.LSN\"\007\215\265\030\t\000\000\000\032\007\225\265\030" +
-      "!N\000\000B\033\n\031org.xtreemfs.babudb.pbrpc"
+      "s\"\013\215\265\030\006\000\000\000\230\265\030\001\022a\n\theartbeat\022$.org.xtreem" +
+      "fs.pbrpc.HeartbeatMessage\032%.org.xtreemfs" +
+      ".pbrpc.ErrorCodeResponse\"\007\215\265\030\007\000\000\000\022X\n\trep" +
+      "licate\022\027.org.xtreemfs.pbrpc.LSN\032%.org.xt",
+      "reemfs.pbrpc.ErrorCodeResponse\"\013\215\265\030\010\000\000\000\240" +
+      "\265\030\001\022S\n\rvolatileState\022 .org.xtreemfs.pbrp" +
+      "c.emptyRequest\032\027.org.xtreemfs.pbrpc.LSN\"" +
+      "\007\215\265\030\t\000\000\000\032\007\225\265\030!N\000\000B\033\n\031org.xtreemfs.babudb" +
+      ".pbrpc"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -1489,7 +1490,7 @@ public final class Replication {
           registerAllExtensions(registry);
           org.xtreemfs.babudb.pbrpc.GlobalTypes.registerAllExtensions(registry);
           org.xtreemfs.babudb.pbrpc.Common.registerAllExtensions(registry);
-          org.xtreemfs.foundation.pbrpc.generatedinterfaces.PBRPC.registerAllExtensions(registry);
+          org.xtreemfs.babudb.pbrpc.generatedinterfaces.PBRPC.registerAllExtensions(registry);
           return registry;
         }
       };
@@ -1498,7 +1499,7 @@ public final class Replication {
         new com.google.protobuf.Descriptors.FileDescriptor[] {
           org.xtreemfs.babudb.pbrpc.GlobalTypes.getDescriptor(),
           org.xtreemfs.babudb.pbrpc.Common.getDescriptor(),
-          org.xtreemfs.foundation.pbrpc.generatedinterfaces.PBRPC.getDescriptor(),
+          org.xtreemfs.babudb.pbrpc.generatedinterfaces.PBRPC.getDescriptor(),
         }, assigner);
   }
   

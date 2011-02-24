@@ -21,6 +21,7 @@ import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.replication.LockableService;
 import org.xtreemfs.babudb.replication.RemoteAccessClient;
 import org.xtreemfs.babudb.replication.ReplicationManager;
@@ -100,11 +101,10 @@ class PersistenceManagerProxy extends PersistenceManager implements LockableServ
      * @return the requests result future.
      * @throws BabuDBException
      */
-    @SuppressWarnings("unchecked")
     private <T> DatabaseRequestResult<T> executeLocallyAndReplicate(byte type, 
             ReusableBuffer payload) throws BabuDBException {
         
-        final ListenerWrapper wrapper = new ListenerWrapper();
+        final ListenerWrapper<T> wrapper = new ListenerWrapper<T>();
                 
         localPersMan.makePersistent(type, payload).registerListener(
                 (DatabaseRequestListener<Object>) new DatabaseRequestListener<Object>() {
@@ -156,18 +156,18 @@ class PersistenceManagerProxy extends PersistenceManager implements LockableServ
             }
         });
         
-        DatabaseRequestResult<T> result = (DatabaseRequestResult<T>) 
-            new DatabaseRequestResult<Object>() {
+        DatabaseRequestResult<T> result = 
+            (DatabaseRequestResult<T>) new DatabaseRequestResult<T>() {
         
             @Override
             public void registerListener(
-                    DatabaseRequestListener<Object> listener) {
+                    DatabaseRequestListener<T> listener) {
                 
                 wrapper.registerListener(listener);
             }
             
             @Override
-            public Object get() throws BabuDBException {
+            public T get() throws BabuDBException {
                 
                 wrapper.waitForFinish();
                 return null;
@@ -187,25 +187,21 @@ class PersistenceManagerProxy extends PersistenceManager implements LockableServ
      * @param master
      * @return the request response future.
      */
-    @SuppressWarnings("unchecked")
     <T> DatabaseRequestResult<T> redirectToMaster(byte type, ReusableBuffer load, 
             InetSocketAddress master) {
         
-        final ClientResponseFuture<T> rp = (ClientResponseFuture<T>) 
-                client.makePersistent(master, type, load);
+        final ClientResponseFuture<T, ErrorCodeResponse> rp = 
+            client.makePersistent(master, type, load);
 
-        DatabaseRequestResult<T> result = (DatabaseRequestResult<T>) 
-                new DatabaseRequestResult<Object>() {
+        DatabaseRequestResult<T> result = new DatabaseRequestResult<T>() {
             
             @Override
-            public void registerListener(final 
-                    DatabaseRequestListener<Object> listener) {
+            public void registerListener(final  DatabaseRequestListener<T> listener) {
                 
-                rp.registerListener((ClientResponseAvailableListener<T>) 
-                        new ClientResponseAvailableListener<Object>() {
+                rp.registerListener(new ClientResponseAvailableListener<T>() {
         
                     @Override
-                    public void responseAvailable(Object r) {
+                    public void responseAvailable(T r) {
                         listener.finished(r, null);
                     }
     
@@ -218,7 +214,7 @@ class PersistenceManagerProxy extends PersistenceManager implements LockableServ
             }
             
             @Override
-            public Object get() throws BabuDBException {
+            public T get() throws BabuDBException {
                 
                 try {
                     return rp.get();
@@ -337,11 +333,11 @@ class PersistenceManagerProxy extends PersistenceManager implements LockableServ
      * @author flangner
      * @since 19.01.2011
      */
-    private final static class ListenerWrapper {
+    private final static class ListenerWrapper<T> {
         
         private boolean finished = false;
         private BabuDBException exception = null;
-        private DatabaseRequestListener<Object> listener = null;
+        private DatabaseRequestListener<T> listener = null;
         
         private synchronized void finished(BabuDBException e) {
             
@@ -369,7 +365,7 @@ class PersistenceManagerProxy extends PersistenceManager implements LockableServ
             } 
         }
         
-        private synchronized void registerListener(DatabaseRequestListener<Object> listener) {
+        private synchronized void registerListener(DatabaseRequestListener<T> listener) {
             
             this.listener = listener;
             

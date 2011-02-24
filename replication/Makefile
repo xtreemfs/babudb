@@ -1,17 +1,18 @@
 PROTOC=/usr/bin/protoc
-PROTOBUF_INCLUDE=/usr/include
 
 PBRPC_PLUGIN=share/protoc-gen-pbrpc
 
 PROTO_FILES=$(wildcard interface/*.proto)
+FOUNDATION_INCLUDE=$(wildcard share/foundation/include/*.proto)
 
 TARGET_DIR_JAVA_BABUDB=src/
-GENERATED_DIR_JAVA_BABUDB=$(TARGET_DIR_JAVA_FOUNDATION)org/xtreemfs/babudb/pbrpc/
+GENERATED_DIR_JAVA_BABUDB=$(TARGET_DIR_JAVA_BABUDB)org/xtreemfs/babudb/pbrpc/
 
 clean:
-	@rm -rf $(GENERATED_DIR_JAVA_SERVERS)*.java
-
+	@rm -rf $(GENERATED_DIR_JAVA_BABUDB)*.java
+	@rm -rf $(TARGET_DIR_JAVA_BABUDB)/com/
+	@echo "done"
 protocol:
-	$(PROTOC) -I$(PROTOBUF_INCLUDE) -I. -I$(@D)/interface/ $(PROTO_FILES) --java_out=$(TARGET_DIR_JAVA_BABUDB)
-	$(PROTOC) --plugin=$(PBRPC_PLUGIN) -I$(PROTOBUF_INCLUDE) -I. -I$(@D)/interface/ $(PROTO_FILES) --pbrpc_out=$(TARGET_DIR_JAVA_BABUDB)
-
+	@$(PROTOC) --proto_path=. --java_out=$(TARGET_DIR_JAVA_BABUDB) share/google/protobuf/descriptor.proto $(FOUNDATION_INCLUDE) $(PROTO_FILES)
+	@$(PROTOC) --proto_path=. --plugin=$(PBRPC_PLUGIN) --pbrpc_out=$(TARGET_DIR_JAVA_BABUDB) $(PROTO_FILES)
+	@echo "done"

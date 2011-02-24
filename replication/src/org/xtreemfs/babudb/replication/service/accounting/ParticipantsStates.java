@@ -7,9 +7,7 @@
  */
 package org.xtreemfs.babudb.replication.service.accounting;
 
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -19,12 +17,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Map.Entry;
 import java.util.concurrent.PriorityBlockingQueue;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.service.HeartbeatThread;
 import org.xtreemfs.babudb.replication.service.clients.ConditionClient;
-import org.xtreemfs.babudb.replication.service.clients.MasterClient;
 import org.xtreemfs.babudb.replication.service.clients.SlaveClient;
 import org.xtreemfs.babudb.replication.transmission.ClientFactory;
 import org.xtreemfs.babudb.replication.transmission.PBRPCClientAdapter;
@@ -43,8 +39,7 @@ import org.xtreemfs.foundation.logging.Logging;
  * @author flangner
  */
 
-public class ParticipantsStates implements ParticipantsOverview, StatesManipulation, 
-        ParticipantsVerification {  
+public class ParticipantsStates implements ParticipantsOverview, StatesManipulation {  
     
     /**
      * State of a registered participant.
@@ -136,15 +131,12 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
     private final static long                   DELAY_TILL_REFUSE = 
         HeartbeatThread.MAX_DELAY_BETWEEN_HEARTBEATS;
     
-    private final Map<InetAddress, State>       stateTable = 
-        new HashMap<InetAddress, State>(); 
+    private final Map<InetSocketAddress, State>       stateTable = 
+        new HashMap<InetSocketAddress, State>(); 
 
     private final PriorityBlockingQueue<LatestLSNUpdateListener> listeners = 
         new PriorityBlockingQueue<LatestLSNUpdateListener>();
-    
-    private final AtomicReference<MasterClient> masterClient = 
-        new AtomicReference<MasterClient>(null);
-    
+        
     private final int                           syncN;
     
     private final int                           participantsCount;
@@ -178,8 +170,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
          */
         synchronized (stateTable) {
             for (InetSocketAddress participant : participants) {
-                stateTable.put(participant.getAddress(), 
-                        new State(clientFactory.getClient(participant)));
+                stateTable.put(participant, new State(clientFactory.getClient(participant)));
             }
             
             Logging.logMessage(Logging.LEVEL_DEBUG, this, 
@@ -259,8 +250,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
                 
                 // recycle the slaves from the result, before throwing an exception
                 for (SlaveClient c : result) {
-                    State s = stateTable.get(
-                            c.getDefaultServerAddress().getAddress());
+                    State s = stateTable.get(c.getDefaultServerAddress());
                     if (s.openRequests == MAX_OPEN_REQUESTS_PRO_SERVER) 
                         availableSlaves++;
                     
@@ -299,51 +289,19 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
             listeners.add(listener);
         }
     }
-
-    /**
-     * Sets a new master, valid for all replication components. Resets the 
-     * states of all participants.
-     * 
-     * @param address - may be null, if master is unknown or the local babuDB
-     *                  instance is owner of the master privilege
-     */
-    public void setMaster(InetAddress address) {
-        
-        if (address != null) {
-            masterClient.set(stateTable.get(address).client);
-        } else {
-            masterClient.set(null);
-        }
-        
-        reset();
-    }
     
 /*
  * Overridden methods
  */
-
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.accounting.
-     *          ParticipantsOverview#getMaster()
-     */
-    @Override
-    public MasterClient getMaster() {
-        return masterClient.get();
-    }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.accounting.
-     *          StatesManipulation#update(java.net.SocketAddress, 
-     *                                    org.xtreemfs.babudb.lsmdb.LSN, long)
+     * @see org.xtreemfs.babudb.replication.service.accounting.StatesManipulation#update(
+     *          java.net.InetSocketAddress, org.xtreemfs.babudb.lsmdb.LSN, long)
      */
     @Override
-    public void update(SocketAddress participant, LSN acknowledgedLSN, long receiveTime) 
+    public void update(InetSocketAddress participant, LSN acknowledgedLSN, long receiveTime) 
             throws UnknownParticipantException{
-        
-        assert (participant instanceof InetSocketAddress);
-        InetAddress host = ((InetSocketAddress) participant).getAddress();
-        
+                
         Logging.logMessage(Logging.LEVEL_DEBUG, this, 
                 "participant %s acknowledged %s", 
                 participant.toString(), acknowledgedLSN.toString());
@@ -352,7 +310,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
             
             // the latest common LSN is >= the acknowledged one, just update the 
             // participant
-            final State old = stateTable.get(host);
+            final State old = stateTable.get(participant);
             if (old != null) { 
                 
                 // got a prove of life
@@ -444,7 +402,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
             
             // the number of open requests for this slave has fallen below the
             // threshold of MAX_OPEN_REQUESTS_PER_SLAVE
-            if (s.openRequests == (MAX_OPEN_REQUESTS_PRO_SERVER-1)) {
+            if (s.openRequests == (MAX_OPEN_REQUESTS_PRO_SERVER - 1)) {
                 
                 availableSlaves++;
                 stateTable.notify();
@@ -470,45 +428,11 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.accounting.
-     *          ParticipantsOverview#getByAddress(java.net.InetAddress)
+     * @see org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview#getByAddress(java.net.InetSocketAddress)
      */
     @Override
-    public ConditionClient getByAddress(InetAddress address) {
+    public ConditionClient getByAddress(InetSocketAddress address) {
         return stateTable.get(address).client;
-    }
-    
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.accounting.
-     *          ParticipantsVerification#isMaster(java.net.SocketAddress)
-     */
-    @Override
-    public boolean isMaster(SocketAddress address) {
-        InetAddress masterAddress = getMaster().getDefaultServerAddress().getAddress();
-        
-        return (address instanceof InetSocketAddress) &&
-               ((InetSocketAddress) address).getAddress().equals(masterAddress);
-
-    }
-    
-    
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.accounting.
-     *          ParticipantsVerification#isRegistered(java.net.SocketAddress)
-     */
-    @Override
-    public boolean isRegistered(SocketAddress address) {
-        
-        if (address instanceof InetSocketAddress) {
-            
-            return stateTable.containsKey(((InetSocketAddress) address).getAddress());
-        }
-        
-        Logging.logMessage(Logging.LEVEL_ERROR, this, 
-                "Access-rights for client '%s' could not be validated.", 
-                address.toString());
-        
-        return false;
     }
     
     /* (non-Javadoc)
@@ -523,7 +447,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
                             participantsCount + " - available=" + 
                             availableSlaves + "|dead=" + deadSlaves + "\n";
         
-            for (Entry<InetAddress, State> e : stateTable.entrySet()) {
+            for (Entry<InetSocketAddress, State> e : stateTable.entrySet()) {
                 result += e.getKey().toString() + ": " + 
                           e.getValue().toString() + "\n";
             }  
@@ -558,7 +482,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
      * queue. The listeners will be notified that the operation they are listening for has failed.
      * </p>
      */
-    private void reset() {
+    public void reset() {
         
         // deal with the listeners
         Set<LatestLSNUpdateListener> lSet = Collections.emptySet();
