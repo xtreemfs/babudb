@@ -98,9 +98,10 @@ public abstract class DiskIndexIteratorBase {
     }
     
     public void free() {
-        if (currentBlock != null) {
+        // also check if the buffer has been returned already; this may happen
+        // if all elements have been accessed before
+        if (currentBlock != null && currentBlock.readBuffer.getRefCount() > 0)
             currentBlock.free();
-        }
     }
     
     protected void finalize() throws Throwable {
