@@ -16,10 +16,14 @@ import java.net.InetSocketAddress;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.replication.Layer;
 import org.xtreemfs.babudb.replication.RemoteAccessClient;
+import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestDispatcher;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestHandler;
 import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.pbrpc.client.RPCNIOSocketClient;
+import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.Auth;
+import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.AuthType;
+import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.UserCredentials;
 
 /**
  * <p>
@@ -33,6 +37,15 @@ import org.xtreemfs.foundation.pbrpc.client.RPCNIOSocketClient;
 public class TransmissionLayer extends Layer implements ClientFactory, 
         TransmissionToServiceInterface {
         
+    public final static AuthType AUTH_TYPE = AuthType.AUTH_NONE;
+    public final static String USER = ReplicationManager.VERSION;
+    
+    public final static Auth AUTHENTICATION = 
+        Auth.newBuilder().setAuthType(AUTH_TYPE).build();
+    
+    public final static UserCredentials USER_CREDENTIALS = 
+        UserCredentials.newBuilder().setUsername(USER).build();
+    
     /** low level client for outgoing RPCs */
     private final RPCNIOSocketClient    rpcClient;
     

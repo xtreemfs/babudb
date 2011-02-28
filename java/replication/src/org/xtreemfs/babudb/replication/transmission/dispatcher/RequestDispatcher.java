@@ -18,12 +18,14 @@ import org.xtreemfs.foundation.LifeCycleThread;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.ErrorType;
 import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.MessageType;
+import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.RPCHeader.RequestHeader;
 import org.xtreemfs.foundation.pbrpc.server.RPCServerRequest;
 import org.xtreemfs.foundation.pbrpc.server.RPCNIOSocketServer;
 import org.xtreemfs.foundation.pbrpc.server.RPCServerRequestListener;
 import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.RPCHeader;
 
 import static org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.POSIXErrno.POSIX_ERROR_NONE;
+import static org.xtreemfs.babudb.replication.transmission.TransmissionLayer.*;
 
 /**
  * Dispatches incoming requests.
@@ -122,6 +124,26 @@ public class RequestDispatcher implements RPCServerRequestListener {
             rq.sendError(ErrorType.GARBAGE_ARGS, POSIX_ERROR_NONE, 
                     "expected RPC request message type but got " + 
                     hdr.getMessageType());
+            return;
+        }
+        
+        RequestHeader rqHdr = hdr.getRequestHeader();
+        
+        // check authentication
+        if (!rqHdr.hasAuthData() || 
+            !rqHdr.getAuthData().getAuthType().equals(AUTH_TYPE)) {
+            
+            rq.sendError(ErrorType.AUTH_FAILED, POSIX_ERROR_NONE, 
+                         "only '"+AUTH_TYPE.toString()+"' is permitted");
+            return;
+        }
+        
+        // check userCredentials
+        if (!rqHdr.hasUserCreds() || 
+            !rqHdr.getUserCreds().getUsername().equals(USER)) {
+            
+            rq.sendError(ErrorType.AUTH_FAILED, POSIX_ERROR_NONE, 
+                    "expected request from user '" + USER + "' only");
             return;
         }
         

@@ -34,6 +34,7 @@ import org.xtreemfs.babudb.replication.proxy.RPCRequestHandler;
 import org.xtreemfs.babudb.replication.service.accounting.LatestLSNUpdateListener;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates;
+import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates.UnknownParticipantException;
 import org.xtreemfs.babudb.replication.service.accounting.ReplicateResponse;
 import org.xtreemfs.babudb.replication.service.clients.ClientInterface;
 import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture;
@@ -100,8 +101,13 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         // ----------------------------------
         int syncN = ((config.getSyncN() > 0) ? config.getSyncN() - 1 : 
                                                config.getSyncN());
-        participantsStates = new ParticipantsStates(syncN, 
-                config.getParticipants(), transLayer);
+        try {
+            participantsStates = new ParticipantsStates(syncN, 
+                    config.getParticipants(), transLayer);
+        } catch (UnknownParticipantException e) {
+            throw new IOException("The address of at least one participant could not have been " +
+            		"resolved, because: " + e.getMessage());
+        }
         
         // ----------------------------------
         // initialize the heartbeat

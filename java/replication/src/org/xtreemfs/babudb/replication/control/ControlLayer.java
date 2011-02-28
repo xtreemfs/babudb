@@ -98,8 +98,7 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
         fleaseStage = new FleaseStage(config.getFleaseConfig(), 
                 config.getBabuDBConfig().getBaseDir(), 
                 new FleaseMessageSender(serviceLayer.getParticipantOverview(), 
-                                        new InetSocketAddress(config.getAddress().toString(), 
-                                                              config.getPort())), 
+                                        config.getInetSocketAddress()), 
                 false, 
                 new FleaseViewChangeListenerInterface() {
                     /* does not influence the replication */

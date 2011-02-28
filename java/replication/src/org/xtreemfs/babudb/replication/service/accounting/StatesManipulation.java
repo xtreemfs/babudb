@@ -34,7 +34,8 @@ public interface StatesManipulation {
      * @param acknowledgedLSN
      * @param receiveTime
      * 
-     * @throws UnknownParticipantException if the participant is not registered.
+     * @throws UnknownParticipantException if the participant is not registered or it's address 
+     *                                     could not have been determined.
      */
     public void update(InetSocketAddress participant, LSN acknowledgedLSN, 
             long receiveTime) throws UnknownParticipantException;

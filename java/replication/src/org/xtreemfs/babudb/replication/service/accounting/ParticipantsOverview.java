@@ -10,6 +10,7 @@ package org.xtreemfs.babudb.replication.service.accounting;
 import java.net.InetSocketAddress;
 import java.util.List;
 
+import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates.UnknownParticipantException;
 import org.xtreemfs.babudb.replication.service.clients.ConditionClient;
 
 /**
@@ -29,8 +30,12 @@ public interface ParticipantsOverview {
 
     /**
      * @param address
+     * 
+     * @throws UnknownParticipantException if the address of at least one participant could not have 
+     *                                     been resolved.
+     * 
      * @return a {@link ConditionClient} retrieved by the address of the server
      *         it connects to.
      */
-    public ConditionClient getByAddress(InetSocketAddress address);
+    public ConditionClient getByAddress(InetSocketAddress address) throws UnknownParticipantException;
 }

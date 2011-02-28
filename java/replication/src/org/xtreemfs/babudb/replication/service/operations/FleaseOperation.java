@@ -7,7 +7,9 @@
  */
 package org.xtreemfs.babudb.replication.service.operations;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.FLease;
@@ -17,7 +19,9 @@ import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
 import org.xtreemfs.foundation.flease.Flease;
 import org.xtreemfs.foundation.flease.comm.FleaseMessage;
+import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.ErrorType;
 import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.RPCHeader.ErrorResponse;
+import org.xtreemfs.foundation.util.OutputUtils;
 
 import com.google.protobuf.Message;
 
@@ -69,8 +73,16 @@ public class FleaseOperation extends Operation {
             FLease rpcrq = (FLease) rq.getRequestMessage();
             assert (message != null);
             
-            InetSocketAddress sender = new InetSocketAddress(rpcrq.getHost(), 
-                    rpcrq.getPort());
+            InetSocketAddress sender;
+            try {
+                sender = new InetSocketAddress(InetAddress.getByAddress(rpcrq.toByteArray()), 
+                                                                        rpcrq.getPort());
+            } catch (UnknownHostException e) {
+                return ErrorResponse.newBuilder().setErrorMessage(e.getMessage())
+                                                 .setErrorType(ErrorType.IO_ERROR)
+                                                 .setDebugInfo(OutputUtils.stackTraceToString(e))
+                                                 .build();
+            }
             assert (sender != null);
             message.setSender(sender);
             
