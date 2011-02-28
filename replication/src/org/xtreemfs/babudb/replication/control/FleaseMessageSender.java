@@ -10,6 +10,7 @@ package org.xtreemfs.babudb.replication.control;
 import java.net.InetSocketAddress;
 
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview;
+import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates.UnknownParticipantException;
 import org.xtreemfs.babudb.replication.service.clients.ConditionClient;
 import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.ClientResponseAvailableListener;
 import org.xtreemfs.foundation.flease.FleaseMessageSenderInterface;
@@ -45,28 +46,37 @@ class FleaseMessageSender implements FleaseMessageSenderInterface {
     @Override
     public void sendMessage(final FleaseMessage message, final InetSocketAddress recipient) {
         
-        ConditionClient c = states.getByAddress(recipient);
-        assert (c != null) : "could not retrieve client for " + recipient.toString();
-        message.setSender(sender);
+        assert (recipient != null && message != null);
+                
+        try {
+            ConditionClient c = states.getByAddress(recipient);
+            assert (c != null) : "could not retrieve client for " + recipient.toString();
+            message.setSender(sender);
 
-        Logging.logMessage(Logging.LEVEL_INFO, this, "sending '%s' from '%s' to '%s' ... ", 
-                message.toString(), sender.toString(), recipient.toString());
-        
-        c.flease(message).registerListener(new ClientResponseAvailableListener<Object>() {
+            Logging.logMessage(Logging.LEVEL_INFO, this, "sending '%s' from '%s' to '%s' ... ", 
+                    message.toString(), sender.toString(), recipient.toString());
+            
+            c.flease(message).registerListener(new ClientResponseAvailableListener<Object>() {
 
-            @Override
-            public void requestFailed(Exception e) {
-                // Flease does not care about failures on sending messages!
-                Logging.logMessage(Logging.LEVEL_DEBUG, this, 
-                        "%s could not be send to '%s', because %s.", 
-                        message.toString(), recipient.toString(), e.getMessage());
-                if (e.getMessage() == null) {
-                    Logging.logError(Logging.LEVEL_DEBUG, this, e);
+                @Override
+                public void requestFailed(Exception e) {
+                    // Flease does not care about failures on sending messages!
+                    Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                            "%s could not be send to '%s', because %s.", 
+                            message.toString(), recipient.toString(), e.getMessage());
+                    if (e.getMessage() == null) {
+                        Logging.logError(Logging.LEVEL_DEBUG, this, e);
+                    }
                 }
-            }
 
-            @Override
-            public void responseAvailable(Object r) { /* I don't care */ }
-        });
+                @Override
+                public void responseAvailable(Object r) { /* I don't care */ }
+            });
+        } catch (UnknownParticipantException e) {
+            
+            Logging.logMessage(Logging.LEVEL_ALERT, this, "FLease could not send a message (%s) " +
+            		"to %s, because %s.", 
+            		message.toString(), recipient.toString(), e.getMessage());
+        }
     }
 }

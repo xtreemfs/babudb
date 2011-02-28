@@ -20,8 +20,6 @@ import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
 import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
-import org.xtreemfs.babudb.config.BabuDBConfig;
-import org.xtreemfs.babudb.config.ConfigBuilder;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.mock.BabuDBMock;
 import org.xtreemfs.foundation.logging.Logging;
@@ -29,6 +27,7 @@ import org.xtreemfs.foundation.logging.Logging.Category;
 import org.xtreemfs.foundation.util.FSUtils;
 
 import static junit.framework.Assert.*;
+import static org.xtreemfs.babudb.replication.TestParameters.*;
 
 /**
  * @author flangner
@@ -54,7 +53,7 @@ public class IntegrationTest {
      */
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
-        Logging.start(Logging.LEVEL_DEBUG, Category.all);
+        Logging.start(Logging.LEVEL_WARN, Category.all);
         
         main = new Main();
         assertEquals("0.5.0-0.5.0", main.compatibleBabuDBVersion());
@@ -66,11 +65,6 @@ public class IntegrationTest {
     @Before
     public void setUp() throws Exception {   
         
-    	// setup the mock configurations
-    	BabuDBConfig mock0Conf = new ConfigBuilder().setDataPath("/tmp/babudb0/base", "/tmp/babudb0/log").build();
-    	BabuDBConfig mock1Conf = new ConfigBuilder().setDataPath("/tmp/babudb1/base", "/tmp/babudb1/log").build();
-    	BabuDBConfig mock2Conf = new ConfigBuilder().setDataPath("/tmp/babudb2/base", "/tmp/babudb2/log").build();
-    	
     	FSUtils.delTree(new File(mock0Conf.getBaseDir()));
     	FSUtils.delTree(new File(mock1Conf.getBaseDir()));
     	FSUtils.delTree(new File(mock2Conf.getBaseDir()));

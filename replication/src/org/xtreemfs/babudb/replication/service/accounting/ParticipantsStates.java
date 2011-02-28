@@ -7,7 +7,9 @@
  */
 package org.xtreemfs.babudb.replication.service.accounting;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -131,8 +133,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
     private final static long                   DELAY_TILL_REFUSE = 
         HeartbeatThread.MAX_DELAY_BETWEEN_HEARTBEATS;
     
-    private final Map<InetSocketAddress, State>       stateTable = 
-        new HashMap<InetSocketAddress, State>(); 
+    private final Map<String, State>       stateTable = new HashMap<String, State>(); 
 
     private final PriorityBlockingQueue<LatestLSNUpdateListener> listeners = 
         new PriorityBlockingQueue<LatestLSNUpdateListener>();
@@ -153,9 +154,11 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
      * @param syncN
      * @param localAddress
      * @param participants - to register.
+     * @throws UnknownParticipantException if the address of at least one participant could not have 
+     *                                     been resolved.
      */
     public ParticipantsStates(int syncN, Set<InetSocketAddress> participants, 
-            ClientFactory clientFactory) {
+            ClientFactory clientFactory) throws UnknownParticipantException {
         
         assert(participants!=null);
         
@@ -170,7 +173,8 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
          */
         synchronized (stateTable) {
             for (InetSocketAddress participant : participants) {
-                stateTable.put(participant, new State(clientFactory.getClient(participant)));
+                stateTable.put(getUID(participant), 
+                               new State(clientFactory.getClient(participant)));
             }
             
             Logging.logMessage(Logging.LEVEL_DEBUG, this, 
@@ -206,9 +210,11 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
      * @return a list of available participants.
      * @throws NotEnoughAvailableParticipantsException
      * @throws InterruptedException 
+     * @throws UnknownHostException if the address of at least one participant could not have been
+     *                              resolved.
      */
     public List<SlaveClient> getAvailableParticipants() throws 
-            NotEnoughAvailableParticipantsException, InterruptedException{
+            NotEnoughAvailableParticipantsException, InterruptedException {
         
         List<SlaveClient> result = new LinkedList<SlaveClient>();
         
@@ -250,11 +256,19 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
                 
                 // recycle the slaves from the result, before throwing an exception
                 for (SlaveClient c : result) {
-                    State s = stateTable.get(c.getDefaultServerAddress());
-                    if (s.openRequests == MAX_OPEN_REQUESTS_PRO_SERVER) 
-                        availableSlaves++;
-                    
-                    s.openRequests--;
+                    State s;
+                    try {
+                        s = stateTable.get(getUID(c.getDefaultServerAddress()));
+                        if (s.openRequests == MAX_OPEN_REQUESTS_PRO_SERVER) 
+                            availableSlaves++;
+                        
+                        s.openRequests--;
+                    } catch (UnknownParticipantException e) {
+                        Logging.logMessage(Logging.LEVEL_ALERT, this, "An open request could not " +
+                        		"have been withdrawn, because it's address could not have" +
+                        		" been resolved anymore!");
+                        Logging.logError(Logging.LEVEL_ERROR, this, e);
+                    }
                 }
                 
                 throw new NotEnoughAvailableParticipantsException(        
@@ -300,7 +314,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
      */
     @Override
     public void update(InetSocketAddress participant, LSN acknowledgedLSN, long receiveTime) 
-            throws UnknownParticipantException{
+            throws UnknownParticipantException {
                 
         Logging.logMessage(Logging.LEVEL_DEBUG, this, 
                 "participant %s acknowledged %s", 
@@ -310,7 +324,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
             
             // the latest common LSN is >= the acknowledged one, just update the 
             // participant
-            final State old = stateTable.get(participant);
+            final State old = stateTable.get(getUID(participant));
             if (old != null) { 
                 
                 // got a prove of life
@@ -367,8 +381,15 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
     public void markAsDead(SlaveClient slave) {
         
         synchronized (stateTable) {
-            
-            State s = stateTable.get(slave.getDefaultServerAddress().getAddress());
+            State s;
+            try {
+                s = stateTable.get(getUID(slave.getDefaultServerAddress()));
+            } catch (UnknownParticipantException e) {
+                Logging.logMessage(Logging.LEVEL_ALERT, this, "Request could not have been marked" +
+                " as failed, because it's address could not have been resolved anymore!");
+                Logging.logError(Logging.LEVEL_ERROR, this, e);
+                return;
+            }
             s.openRequests = 0;
             
             // the slave has not been marked as dead jet
@@ -396,8 +417,15 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
     public void requestFinished(SlaveClient slave) {
         
         synchronized (stateTable) {
-            
-            final State s = stateTable.get(slave.getDefaultServerAddress().getAddress());
+            State s;
+            try {
+                s = stateTable.get(getUID(slave.getDefaultServerAddress()));
+            } catch (UnknownParticipantException e) {
+                Logging.logMessage(Logging.LEVEL_ALERT, this, "Request could not have been marked" +
+                        " as finished, because it's address could not have been resolved anymore!");
+                Logging.logError(Logging.LEVEL_ERROR, this, e);
+                return;
+            }
             if (s.openRequests > 0) s.openRequests--;
             
             // the number of open requests for this slave has fallen below the
@@ -428,11 +456,12 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview#getByAddress(java.net.InetSocketAddress)
+     * @see org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview#getByAddress(
+     *          java.net.InetSocketAddress)
      */
     @Override
-    public ConditionClient getByAddress(InetSocketAddress address) {
-        return stateTable.get(address).client;
+    public ConditionClient getByAddress(InetSocketAddress address) throws UnknownParticipantException {
+        return stateTable.get(getUID(address)).client;
     }
     
     /* (non-Javadoc)
@@ -447,7 +476,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
                             participantsCount + " - available=" + 
                             availableSlaves + "|dead=" + deadSlaves + "\n";
         
-            for (Entry<InetSocketAddress, State> e : stateTable.entrySet()) {
+            for (Entry<String, State> e : stateTable.entrySet()) {
                 result += e.getKey().toString() + ": " + 
                           e.getValue().toString() + "\n";
             }  
@@ -498,6 +527,31 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
                 s.reset();
             }
         }
+    }
+    
+    /**
+     * @param address
+     * @return a unique ID from address usable as hashable key.
+     * @throws UnknownParticipantException if the address of at least one participant could not have 
+     *                                     been resolved.
+     */
+    private String getUID(InetSocketAddress address) throws UnknownParticipantException {
+        
+        assert (address != null);
+        
+        String hostAddress;
+        if (address.getAddress() == null) {
+            try {
+                hostAddress = InetAddress.getByName(address.getHostName()).getHostAddress();
+            } catch (UnknownHostException uh) {
+                throw new UnknownParticipantException("the address of '" + address.toString() + 
+                        "' could not have been determined.");
+            }
+        } else {
+            hostAddress = address.getAddress().getHostAddress();
+        }
+        
+        return hostAddress + ":" + address.getPort();
     }
     
 /*

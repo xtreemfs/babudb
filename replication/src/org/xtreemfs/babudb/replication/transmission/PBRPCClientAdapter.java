@@ -29,8 +29,8 @@ import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.flease.comm.FleaseMessage;
 import org.xtreemfs.foundation.pbrpc.client.RPCNIOSocketClient;
 import org.xtreemfs.foundation.pbrpc.client.RPCResponse;
-import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.Auth;
-import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.UserCredentials;
+
+import static org.xtreemfs.babudb.replication.transmission.TransmissionLayer.*;
 
 /**
  * Adapter to translate BabuDB specific calls into Google's PBRPC compatible
@@ -99,8 +99,8 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
     public ClientResponseFuture<org.xtreemfs.babudb.lsmdb.LSN, LSN> state() {
         try {
             final RPCResponse<LSN> result = state(null, 
-                    Auth.getDefaultInstance(), 
-                    UserCredentials.getDefaultInstance());
+                    AUTHENTICATION, 
+                    USER_CREDENTIALS);
         
             return new ClientResponseFuture<org.xtreemfs.babudb.lsmdb.LSN, LSN>(
                     result) {
@@ -138,8 +138,8 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
     public ClientResponseFuture<org.xtreemfs.babudb.lsmdb.LSN, LSN> volatileState() {
         try {
             final RPCResponse<LSN> result = volatileState(null, 
-                    Auth.getDefaultInstance(), 
-                    UserCredentials.getDefaultInstance());
+                    AUTHENTICATION, 
+                    USER_CREDENTIALS);
         
             return new ClientResponseFuture<org.xtreemfs.babudb.lsmdb.LSN,LSN>(
                     result) {
@@ -177,8 +177,8 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
     public ClientResponseFuture<Long,Timestamp> time() {
         try {
             final RPCResponse<Timestamp> result = localTime(null, 
-                        Auth.getDefaultInstance(), 
-                        UserCredentials.getDefaultInstance());
+                        AUTHENTICATION, 
+                        USER_CREDENTIALS);
             
             return new ClientResponseFuture<Long, Timestamp>(result) {
                 
@@ -218,11 +218,10 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
         try {
             InetSocketAddress sender = message.getSender();
             message.serialize(payload);
-            final RPCResponse<ErrorCodeResponse> result = flease(null, 
-                        Auth.getDefaultInstance(), 
-                        UserCredentials.getDefaultInstance(), 
-                        sender.getHostName(), sender.getPort(), 
-                        payload.createViewBuffer());
+            payload.flip();
+            final RPCResponse<ErrorCodeResponse> result = flease(null, AUTHENTICATION, 
+                        USER_CREDENTIALS, String.valueOf(sender.getAddress().getAddress()), 
+                        sender.getPort(), payload.createViewBuffer());
             
             return new ClientResponseFuture<Object,ErrorCodeResponse>(result) {
                 
@@ -232,8 +231,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
                     try {
                         ErrorCodeResponse response = result.get();
                         if (response.getErrorCode() != 0) {
-                            throw new ErrorCodeException(
-                                    response.getErrorCode());
+                            throw new ErrorCodeException(response.getErrorCode());
                         }
                         return null;
                     } finally {
@@ -259,12 +257,12 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
      *          org.xtreemfs.babudb.lsmdb.LSN, int)
      */
     @Override
-    public ClientResponseFuture<Object, ErrorCodeResponse> heartbeat(org.xtreemfs.babudb.lsmdb.LSN lsn, int port) {
+    public ClientResponseFuture<Object, ErrorCodeResponse> heartbeat(
+            org.xtreemfs.babudb.lsmdb.LSN lsn, int port) {
         
         try {
-            final RPCResponse<ErrorCodeResponse> result = heartbeat(null, 
-                        Auth.getDefaultInstance(), 
-                        UserCredentials.getDefaultInstance(), port, 
+            final RPCResponse<ErrorCodeResponse> result = heartbeat(null, AUTHENTICATION, 
+                        USER_CREDENTIALS, port, 
                         LSN.newBuilder().setViewId(lsn.getViewId())
                                         .setSequenceNo(lsn.getSequenceNo()).build());
             
@@ -316,8 +314,8 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
                                     .setSequenceNo(end.getSequenceNo())
                                     .build();
             final RPCResponse<LogEntries> result = replica(null, 
-                        Auth.getDefaultInstance(), 
-                        UserCredentials.getDefaultInstance(), s, e);
+                        AUTHENTICATION, 
+                        USER_CREDENTIALS, s, e);
                         
             return new ClientResponseFuture<ReusableBuffer[], LogEntries>(result) {
                 
@@ -366,9 +364,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
             long start, long end) {
         try {
             final RPCResponse<ErrorCodeResponse> result = chunk(null, 
-                        Auth.getDefaultInstance(), 
-                        UserCredentials.getDefaultInstance(), fileName, start,
-                        end);
+                        AUTHENTICATION, USER_CREDENTIALS, fileName, start, end);
             
             return new ClientResponseFuture<ReusableBuffer, ErrorCodeResponse>(result) {
                 
@@ -378,9 +374,9 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
                     try {
                         ErrorCodeResponse response = result.get();
                         if (response.getErrorCode() != 0) {
-                            throw new ErrorCodeException(
-                                    response.getErrorCode());
+                            throw new ErrorCodeException(response.getErrorCode());
                         }
+                                                
                         return result.getData().createViewBuffer();
                     } finally {
                         result.freeBuffers();
@@ -407,8 +403,8 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
             org.xtreemfs.babudb.lsmdb.LSN lsn) {
         try {
             final RPCResponse<DBFileMetaDatas> result = load(null, 
-                        Auth.getDefaultInstance(), 
-                        UserCredentials.getDefaultInstance(), lsn.getViewId(), 
+                        AUTHENTICATION, 
+                        USER_CREDENTIALS, lsn.getViewId(), 
                         lsn.getSequenceNo());
             
             return new ClientResponseFuture<DBFileMetaDataSet, DBFileMetaDatas>(result) {
@@ -464,8 +460,8 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
             ReusableBuffer data) {
         try {
             final RPCResponse<ErrorCodeResponse> result = replicate(null, 
-                        Auth.getDefaultInstance(), 
-                        UserCredentials.getDefaultInstance(), lsn.getViewId(), 
+                        AUTHENTICATION, 
+                        USER_CREDENTIALS, lsn.getViewId(), 
                         lsn.getSequenceNo(), data);
             
             return new ClientResponseFuture<Object, ErrorCodeResponse>(result) {

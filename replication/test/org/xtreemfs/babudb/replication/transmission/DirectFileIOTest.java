@@ -21,8 +21,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.config.ReplicationConfig;
+import org.xtreemfs.babudb.replication.TestParameters;
 import org.xtreemfs.babudb.replication.transmission.FileIO;
 import org.xtreemfs.babudb.replication.transmission.FileIOInterface;
 import org.xtreemfs.foundation.util.FSUtils;
@@ -51,8 +51,7 @@ public class DirectFileIOTest {
         
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
-        conf = new ReplicationConfig("config/replication.properties", 
-                new BabuDBConfig("../config/babuDB.properties"));
+        conf = new ReplicationConfig("config/replication_server0.test", TestParameters.mock0Conf);
         fileIO = new FileIO(conf);
     }
     

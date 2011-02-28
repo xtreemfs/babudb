@@ -27,8 +27,8 @@ import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.pbrpc.client.RPCNIOSocketClient;
 import org.xtreemfs.foundation.pbrpc.client.RPCResponse;
-import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.Auth;
-import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.UserCredentials;
+
+import static org.xtreemfs.babudb.replication.transmission.TransmissionLayer.*;
 
 /**
  * RPCClient for delegating BabuDB requests to the instance with master 
@@ -56,8 +56,8 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
         
         try {
             final RPCResponse<ErrorCodeResponse> result = makePersistent(master, 
-                    Auth.getDefaultInstance(), 
-                    UserCredentials.getDefaultInstance(), type, data);
+                    AUTHENTICATION, 
+                    USER_CREDENTIALS, type, data);
             
             return new ClientResponseFuture<Object, ErrorCodeResponse>(result) {
                 
@@ -100,8 +100,8 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
         
         try {
             final RPCResponse<Database> result = getDatabase(master, 
-                    Auth.getDefaultInstance(), 
-                    UserCredentials.getDefaultInstance(), dbName);
+                    AUTHENTICATION, 
+                    USER_CREDENTIALS, dbName);
             
             return new ClientResponseFuture<Integer,Database>(result) {
                 
@@ -135,8 +135,8 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
         
         try {
             final RPCResponse<Databases> result = getDatabases(master, 
-                    Auth.getDefaultInstance(), 
-                    UserCredentials.getDefaultInstance());
+                    AUTHENTICATION, 
+                    USER_CREDENTIALS);
             
             return new ClientResponseFuture<Map<String, Integer>, Databases>(result) {
                 
@@ -176,8 +176,8 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
         
         try {
             final RPCResponse<ErrorCodeResponse> result = lookup(master, 
-                    Auth.getDefaultInstance(), 
-                    UserCredentials.getDefaultInstance(), dbName, indexId, key);
+                    AUTHENTICATION, 
+                    USER_CREDENTIALS, dbName, indexId, key);
             
             return new ClientResponseFuture<byte[],ErrorCodeResponse>(result) {
                 
@@ -225,8 +225,8 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
         
         try {
             final RPCResponse<EntryMap> result = plookup(master, 
-                    Auth.getDefaultInstance(), 
-                    UserCredentials.getDefaultInstance(), dbName, indexId, key);
+                    AUTHENTICATION, 
+                    USER_CREDENTIALS, dbName, indexId, key);
             
             return new ClientResponseFuture<ResultSet<byte[], byte[]>,EntryMap>(result) {
                 
@@ -321,8 +321,8 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
         
         try {
             final RPCResponse<EntryMap> result = plookupReverse(master, 
-                    Auth.getDefaultInstance(), 
-                    UserCredentials.getDefaultInstance(), dbName, indexId, key);
+                    AUTHENTICATION, 
+                    USER_CREDENTIALS, dbName, indexId, key);
             
             return new ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap>(result) {
                 
@@ -422,8 +422,8 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
         
         try {
             final RPCResponse<EntryMap> result = rlookup(master, 
-                    Auth.getDefaultInstance(), 
-                    UserCredentials.getDefaultInstance(), dbName, indexId,  
+                    AUTHENTICATION, 
+                    USER_CREDENTIALS, dbName, indexId,  
                     from.remaining(), payload);
             
             return new ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap>(result) {
@@ -526,8 +526,8 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
         
         try {
             final RPCResponse<EntryMap> result = rlookupReverse(master, 
-                    Auth.getDefaultInstance(), 
-                    UserCredentials.getDefaultInstance(), dbName, indexId,  
+                    AUTHENTICATION, 
+                    USER_CREDENTIALS, dbName, indexId,  
                     from.remaining(), payload);
             
             return new ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap>(result) {

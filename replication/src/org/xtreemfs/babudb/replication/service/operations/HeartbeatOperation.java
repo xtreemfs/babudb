@@ -58,7 +58,7 @@ public class HeartbeatOperation extends Operation {
      */
     @Override
     public Message getDefaultRequest() {
-        return LSN.getDefaultInstance();
+        return HeartbeatMessage.getDefaultInstance();
     }
     
     /*
