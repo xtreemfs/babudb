@@ -121,8 +121,11 @@ public class DefaultBlockReader extends BlockReader {
         return values.getEntry(index);
     }
     
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.index.reader.BlockReader#rangeLookup(byte[], byte[], boolean)
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.xtreemfs.babudb.index.reader.BlockReader#rangeLookup(byte[],
+     * byte[], boolean)
      */
     @Override
     public ResultSet<ByteRange, ByteRange> rangeLookup(byte[] from, byte[] to, final boolean ascending) {
@@ -131,7 +134,7 @@ public class DefaultBlockReader extends BlockReader {
         final int endIndex;
         
         {
-            startIndex = keys.getTopPosition(from);
+            startIndex = ascending ? keys.getInclTopPosition(from) : keys.getExclTopPosition(from);
             assert (startIndex >= -1) : "invalid block start offset: " + startIndex;
             
             endIndex = ascending ? keys.getExclBottomPosition(to) : keys.getInclBottomPosition(to);
@@ -195,9 +198,10 @@ public class DefaultBlockReader extends BlockReader {
             public void remove() {
                 throw new UnsupportedOperationException();
             }
-
+            
             @Override
-            public void free() {}
+            public void free() {
+            }
         };
     }
     

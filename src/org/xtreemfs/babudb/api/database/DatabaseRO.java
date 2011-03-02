@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -10,6 +10,12 @@ package org.xtreemfs.babudb.api.database;
 
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 
+/**
+ * This interface contains read-only methods on a database.
+ * 
+ * @author stenjan
+ *
+ */
 public interface DatabaseRO {
     
     /**
@@ -72,9 +78,9 @@ public interface DatabaseRO {
      * @param indexId
      *            index id (0..NumIndices-1)
      * @param from
-     *            the key to start the iterator at
+     *            the key to start the iterator at (inclusively)
      * @param to
-     *            the key to end the iterator at
+     *            the key to end the iterator at (exclusively)
      * @param context
      *            arbitrary context which is passed to the listener.
      * @return a future as proxy for the request result.
@@ -87,16 +93,16 @@ public interface DatabaseRO {
      * database starting at the first key less or equal to <code>to</code> and
      * returning key/value pairs in descending order.
      * <p>
-     * Note that <code>from</code> needs to be larger than or equal to
+     * Note that <code>from</code> needs to be greater than or equal to
      * <code>to</code> according to the comparator associated with the index.
      * </p>
      * 
      * @param indexId
      *            index id (0..NumIndices-1)
      * @param from
-     *            the key to start the iterator at
+     *            the key to start the iterator at (inclusively)
      * @param to
-     *            the key to end the iterator at
+     *            the key to end the iterator at (exclusively)
      * @param context
      *            arbitrary context which is passed to the listener.
      * @return a future as proxy for the request result.

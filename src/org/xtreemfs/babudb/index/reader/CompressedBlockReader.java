@@ -172,7 +172,7 @@ public class CompressedBlockReader extends BlockReader {
         
         {
             byte[] suffixFrom = usableSuffix(from);
-            startIndex = keys.getTopPosition(suffixFrom);
+            startIndex = ascending ? keys.getInclTopPosition(suffixFrom) : keys.getExclTopPosition(suffixFrom);
             assert (startIndex >= -1) : "invalid block start offset: " + startIndex;
             
             byte[] suffixTo = usableSuffix(to);

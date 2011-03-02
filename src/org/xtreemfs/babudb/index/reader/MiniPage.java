@@ -70,18 +70,36 @@ public abstract class MiniPage {
     }
     
     /**
-     * Returns the position of an entry in the page. Unlike
-     * <code>getPosition()</code>, it returns the position of the next larger
-     * entry if the entry is not contained. If the entry to search for is larger
-     * than the largest entry in the page, the last index position incremented
-     * by 1 is returned.
+     * Returns the position of the entry that is next larger compared to the
+     * given entry. If the entry to search for is larger than the last entry in
+     * the page, the last index position incremented by 1 is returned. If the
+     * given entry is null, the first index position is returned.
      * 
      * @param entry
      *            the entry to look up
      * @return the position of the entry, or the last index position + 1, if the
      *         entry is beyond the range of entries
      */
-    public int getTopPosition(byte[] entry) {
+    public int getExclTopPosition(byte[] entry) {
+        
+        if (entry == null)
+            return 0;
+        
+        return SearchUtil.getExclTopOffset(this, entry, comp);
+    }
+    
+    /**
+     * Returns the position of the entry that is next larger or equal compared
+     * to the given entry. If the entry to search for is larger than the last
+     * entry in the page, the last index position incremented by 1 is returned.
+     * If the given entry is null, the first index position is returned.
+     * 
+     * @param entry
+     *            the entry to look up
+     * @return the position of the entry, or the last index position + 1, if the
+     *         entry is beyond the range of entries
+     */
+    public int getInclTopPosition(byte[] entry) {
         
         if (entry == null)
             return 0;

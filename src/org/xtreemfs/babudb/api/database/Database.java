@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -10,6 +10,12 @@ package org.xtreemfs.babudb.api.database;
 
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 
+/**
+ * This interface contains all methods on a database.
+ * 
+ * @author stenjan
+ *
+ */
 public interface Database extends DatabaseRO {
     
     /**
