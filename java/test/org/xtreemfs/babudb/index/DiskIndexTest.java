@@ -22,7 +22,6 @@ import junit.textui.TestRunner;
 
 import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
-import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.index.reader.DiskIndex;
 import org.xtreemfs.babudb.index.writer.DiskIndexWriter;
 import org.xtreemfs.foundation.logging.Logging;
@@ -30,49 +29,49 @@ import org.xtreemfs.foundation.util.FSUtils;
 
 public class DiskIndexTest extends TestCase {
     
-    private static final String                          PATH1               = "/tmp/index1";
+    private static final String                    PATH1               = "/tmp/index1";
     
-    private static final String                          PATH2               = "/tmp/index2";
+    private static final String                    PATH2               = "/tmp/index2";
     
-    private static final int                             MAX_BLOCK_ENTRIES   = 16;
+    private static final int                       MAX_BLOCK_ENTRIES   = 16;
     
     // set to >= 1024*8 otherwise number of open files get too large
-    private static final int                             MAX_BLOCK_FILE_SIZE = 1024 * 8;
+    private static final int                       MAX_BLOCK_FILE_SIZE = 1024 * 8;
     
-    private static final int                             NUM_ENTRIES         = 50000;
+    private static final int                       NUM_ENTRIES         = 50000;
     
-    private static final ByteRangeComparator             COMP                = DefaultByteRangeComparator
-                                                                                     .getInstance();
+    private static final ByteRangeComparator       COMP                = DefaultByteRangeComparator
+                                                                               .getInstance();
     
-    private static final boolean                         COMPRESSED          = false;
+    private static final boolean                   COMPRESSED          = false;
     
-    private static final boolean                         MMAPED              = false;
+    private static final boolean                   MMAPED              = false;
     
     private static final ResultSet<Object, Object> EMPTY_RESULT_SET    = new ResultSet<Object, Object>() {
-                                                                                 
-                                                                                 @Override
-                                                                                 public void remove() {
-                                                                                 }
-                                                                                 
-                                                                                 @Override
-                                                                                 public Entry<Object, Object> next() {
-                                                                                     return null;
-                                                                                 }
-                                                                                 
-                                                                                 @Override
-                                                                                 public boolean hasNext() {
-                                                                                     return false;
-                                                                                 }
-                                                                                 
-                                                                                 @Override
-                                                                                 public void free() {
-                                                                                 }
-                                                                             };
+                                                                           
+                                                                           @Override
+                                                                           public void remove() {
+                                                                           }
+                                                                           
+                                                                           @Override
+                                                                           public Entry<Object, Object> next() {
+                                                                               return null;
+                                                                           }
+                                                                           
+                                                                           @Override
+                                                                           public boolean hasNext() {
+                                                                               return false;
+                                                                           }
+                                                                           
+                                                                           @Override
+                                                                           public void free() {
+                                                                           }
+                                                                       };
     
-    private static Random                                rnd;
+    private static Random                          rnd;
     
     static {
-        // rnd = new Random(1250861954367L);
+        // rnd = new Random(4719092652094194688L);
         rnd = new Random();
     }
     
@@ -195,23 +194,19 @@ public class DiskIndexTest extends TestCase {
         // create an iterator w/ matching start and end buffers
         Iterator<Entry<byte[], byte[]>> it = diskIndex.rangeLookup("brabbel".getBytes(), "yagga".getBytes(),
             true);
-        for (int i = 1; i < 5; i++) {
-            Entry<byte[], byte[]> entry = it.next();
-            assertEquals(keys[i], new String(entry.getKey()));
-            assertEquals(vals[i], new String(entry.getValue()));
-        }
+        assertIterator(it, keys, vals, 1, 4);
         
-        assertFalse(it.hasNext());
+        // create an iterator with matching start buffer
+        it = diskIndex.rangeLookup("brabbel".getBytes(), "g".getBytes(), true);
+        assertIterator(it, keys, vals, 1, 2);
+        
+        // create an iterator with matching end buffer
+        it = diskIndex.rangeLookup("b".getBytes(), "brabbel".getBytes(), true);
+        assertIterator(it, keys, vals, 0, 0);
         
         // create an iterator w/o matching start and end buffers
         it = diskIndex.rangeLookup("blu".getBytes(), "yyz".getBytes(), true);
-        for (int i = 1; i < 7; i++) {
-            Entry<byte[], byte[]> entry = it.next();
-            assertEquals(keys[i], new String(entry.getKey()));
-            assertEquals(vals[i], new String(entry.getValue()));
-        }
-        
-        assertFalse(it.hasNext());
+        assertIterator(it, keys, vals, 1, 6);
         
         // check ranges outside the boundaries; should be empty
         it = diskIndex.rangeLookup("A".getBytes(), "Z".getBytes(), true);
@@ -269,42 +264,19 @@ public class DiskIndexTest extends TestCase {
         // create an iterator w/ matching start and end buffers
         Iterator<Entry<byte[], byte[]>> it = diskIndex.rangeLookup("brabbel".getBytes(), "yagga".getBytes(),
             false);
-        for (int i = 5; i >= 1; i--) {
-            Entry<byte[], byte[]> entry = it.next();
-            assertEquals(keys[i], new String(entry.getKey()));
-            assertEquals(vals[i], new String(entry.getValue()));
-        }
+        assertIterator(it, keys, vals, 5, 2);
         
-        assertFalse(it.hasNext());
+        // create an iterator with matching start buffer
+        it = diskIndex.rangeLookup("brabbel".getBytes(), "g".getBytes(), false);
+        assertIterator(it, keys, vals, 2, 2);
         
-        // create an iterator w/ matching start and end buffers
-        it = diskIndex.rangeLookup("ouuou".getBytes(), "oz".getBytes(), false);
-        for (int i = 4; i >= 4; i--) {
-            Entry<byte[], byte[]> entry = it.next();
-            assertEquals(keys[i], new String(entry.getKey()));
-            assertEquals(vals[i], new String(entry.getValue()));
-        }
-        
-        assertFalse(it.hasNext());
+        // create an iterator with matching end buffer
+        it = diskIndex.rangeLookup("b".getBytes(), "brabbel".getBytes(), false);
+        assertIterator(it, keys, vals, 1, 0);
         
         // create an iterator w/o matching start and end buffers
         it = diskIndex.rangeLookup("blu".getBytes(), "yyz".getBytes(), false);
-        for (int i = 6; i > 0; i--) {
-            Entry<byte[], byte[]> entry = it.next();
-            assertEquals(keys[i], new String(entry.getKey()));
-            assertEquals(vals[i], new String(entry.getValue()));
-        }
-        
-        assertFalse(it.hasNext());
-        
-        it = diskIndex.rangeLookup("foo".getBytes(), "yyy".getBytes(), false);
-        for (int i = 6; i >= 2; i--) {
-            Entry<byte[], byte[]> entry = it.next();
-            assertEquals(keys[i], new String(entry.getKey()));
-            assertEquals(vals[i], new String(entry.getValue()));
-        }
-        
-        assertFalse(it.hasNext());
+        assertIterator(it, keys, vals, 6, 1);
         
         // check ranges outside the boundaries; should be empty
         it = diskIndex.rangeLookup("A".getBytes(), "Z".getBytes(), false);
@@ -476,6 +448,14 @@ public class DiskIndexTest extends TestCase {
                     .iterator();
             Iterator<Entry<byte[], byte[]>> indexIt = diskIndex.rangeLookup(from, to, false);
             
+            while (mapIt.hasNext())
+                System.out.println(new String(mapIt.next().getKey()));
+            
+            System.out.println(" --------- ");
+            
+            while (indexIt.hasNext())
+                System.out.println(new String(indexIt.next().getKey()));
+            
             while (indexIt.hasNext() || mapIt.hasNext()) {
                 
                 assertTrue((indexIt.hasNext() && mapIt.hasNext()) || (!indexIt.hasNext() && !mapIt.hasNext()));
@@ -604,6 +584,28 @@ public class DiskIndexTest extends TestCase {
             }
         };
         
+    }
+    
+    private static void assertIterator(Iterator<Entry<byte[], byte[]>> it, String[] keys, String[] vals,
+        int start, int end) {
+        
+        if (start <= end) {
+            for (int i = start; i <= end; i++) {
+                Entry<byte[], byte[]> entry = it.next();
+                assertEquals(keys[i], new String(entry.getKey()));
+                assertEquals(vals[i], new String(entry.getValue()));
+            }
+        }
+
+        else {
+            for (int i = start; i >= end; i--) {
+                Entry<byte[], byte[]> entry = it.next();
+                assertEquals(keys[i], new String(entry.getKey()));
+                assertEquals(vals[i], new String(entry.getValue()));
+            }
+        }
+        
+        assertFalse(it.hasNext());
     }
     
     public static void main(String[] args) {
