@@ -110,7 +110,6 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
     
     static {
         
-        ReusableBuffer.enableAutoFree(true);
         // BufferPool.enableStackTraceRecording(true);
         
         // Check if the correct version of the foundation JAR is available. If
@@ -118,7 +117,7 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
         // Whenever a new foundation JAR is imported, the required version
         // number should be adjusted, so as to make sure that BabuDB behaves as
         // expected.
-        final int requiredFoundationVersion = 1;
+        final int requiredFoundationVersion = 2;
         
         if (VersionManagement.getFoundationVersion() != requiredFoundationVersion) {
             throw new Error("Foundation.jar in classpath is required in version " + requiredFoundationVersion
