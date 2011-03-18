@@ -16,7 +16,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 
 import org.xtreemfs.babudb.BabuDBImpl;
-import org.xtreemfs.babudb.BabuDBInternal;
+import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 
 import static org.xtreemfs.babudb.BabuDBFactory.*;
 

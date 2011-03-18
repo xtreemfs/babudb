@@ -17,13 +17,14 @@ import java.util.Vector;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.xtreemfs.babudb.api.BabuDB;
-import org.xtreemfs.babudb.api.Checkpointer;
-import org.xtreemfs.babudb.api.DatabaseManager;
 import org.xtreemfs.babudb.api.InMemoryProcessing;
-import org.xtreemfs.babudb.api.PersistenceManager;
-import org.xtreemfs.babudb.api.SnapshotManager;
 import org.xtreemfs.babudb.api.StaticInitialization;
 import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.dev.BabuDBInternal;
+import org.xtreemfs.babudb.api.dev.CheckpointerInternal;
+import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
+import org.xtreemfs.babudb.api.dev.PersistenceManagerInternal;
+import org.xtreemfs.babudb.api.dev.SnapshotManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.config.BabuDBConfig;
@@ -61,52 +62,51 @@ import static org.xtreemfs.babudb.log.LogEntry.*;
  * @author stenjan
  * 
  */
-public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
+public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
     
-    private DiskLogger                   logger;
-    
-    private LSMDBWorker[]                worker;
+    private LSMDBWorker[]                       worker;
     
     /**
      * the disk logger is used to write InsertRecordGroups persistently to disk
      */
-    private PersistenceManager           permMan;
+    private DiskLogger                          logger;
+    private PersistenceManagerInternal          permMan;
     
     /**
      * Checkpointer thread for automatic checkpointing
      */
-    private final CheckpointerImpl       dbCheckptr;
+    private final CheckpointerInternal          dbCheckptr;
     
     /**
      * the component that manages database snapshots
      */
-    private final SnapshotManagerImpl    snapshotManager;
+    private final SnapshotManagerInternal       snapshotManager;
     
     /**
      * the component that manages databases
      */
-    private final DatabaseManagerImpl    databaseManager;
+    private final DatabaseManagerInternal       databaseManager;
     
     /**
      * All necessary parameters to run the BabuDB.
      */
-    private final BabuDBConfig           configuration;
+    private final BabuDBConfig                  configuration;
     
     /**
      * File used to store meta-informations about DBs.
      */
-    private final DBConfig               dbConfigFile;
+    private final DBConfig                      dbConfigFile;
     
     /**
      * Flag that shows the replication if babuDB is running at the moment.
      */
-    private final AtomicBoolean          stopped = new AtomicBoolean(true);
+    private final AtomicBoolean                 stopped = new AtomicBoolean(true);
     
     /**
      * Threads used within the plugins. They will be stopped when BabuDB shuts
      * down.
      */
-    private final List<LifeCycleThread>  plugins = new Vector<LifeCycleThread>();
+    private final List<LifeCycleThread>         plugins = new Vector<LifeCycleThread>();
     
     static {
         
@@ -191,7 +191,7 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot start database operations logger", ex);
         }
         this.permMan.init(new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo() - 1L));
-        this.permMan.setLogger(this.logger);
+        this.permMan.setLogger(logger);
         
         if (configuration.getNumThreads() > 0) {
             worker = new LSMDBWorker[configuration.getNumThreads()];
@@ -417,7 +417,7 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
             if (worker != null)
                 for (LSMDBWorker w : worker)
                     w.stop();
-            dbCheckptr.stop();
+            ((Thread) dbCheckptr).stop();
             
             this.databaseManager.shutdown();
             this.snapshotManager.shutdown();
@@ -428,13 +428,11 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
         } 
     }
     
-    /*
-     * (non-Javadoc)
-     * 
+    /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.BabuDB#getCheckpointer()
      */
     @Override
-    public Checkpointer getCheckpointer() {
+    public CheckpointerInternal getCheckpointer() {
         return dbCheckptr;
     }
     
@@ -442,33 +440,27 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
      * @see org.xtreemfs.babudb.BabuDBInternal#replacePersistenceManager(org.xtreemfs.babudb.api.PersistenceManager)
      */
     @Override
-    public void replacePersistenceManager(PersistenceManager perMan) {
+    public void replacePersistenceManager(PersistenceManagerInternal perMan) {
         this.permMan = perMan;
     }
     
-    /*
-     * (non-Javadoc)
-     * 
+    /* (non-Javadoc)
      * @see org.xtreemfs.babudb.BabuDBInternal#getPersistenceManager()
      */
     @Override
-    public PersistenceManager getPersistenceManager() {
+    public PersistenceManagerInternal getPersistenceManager() {
         return permMan;
     }
     
-    /*
-     * (non-Javadoc)
-     * 
+    /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.BabuDB#getDatabaseManager()
      */
     @Override
-    public DatabaseManager getDatabaseManager() {
+    public DatabaseManagerInternal getDatabaseManager() {
         return databaseManager;
     }
     
-    /*
-     * (non-Javadoc)
-     * 
+    /* (non-Javadoc)
      * @see org.xtreemfs.babudb.BabuDBInternal#getConfig()
      */
     @Override
@@ -476,19 +468,15 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
         return configuration;
     }
     
-    /*
-     * (non-Javadoc)
-     * 
+    /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.BabuDB#getSnapshotManager()
      */
     @Override
-    public SnapshotManager getSnapshotManager() {
+    public SnapshotManagerInternal getSnapshotManager() {
         return snapshotManager;
     }
     
-    /*
-     * (non-Javadoc)
-     * 
+    /* (non-Javadoc)
      * @see org.xtreemfs.babudb.BabuDBInternal#getDBConfigFile()
      */
     @Override
@@ -496,9 +484,7 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
         return dbConfigFile;
     }
     
-    /*
-     * (non-Javadoc)
-     * 
+    /* (non-Javadoc)
      * @see org.xtreemfs.babudb.BabuDBInternal#getWorkerCount()
      */
     @Override
@@ -508,9 +494,7 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
         return worker.length;
     }
     
-    /*
-     * (non-Javadoc)
-     * 
+    /* (non-Javadoc)
      * @see org.xtreemfs.babudb.BabuDBInternal#getWorker(int)
      */
     @Override
@@ -625,20 +609,16 @@ public class BabuDBImpl implements BabuDBInternal, LifeCycleListener {
     public void startupPerformed() { /* ignored */
     }
     
-    /*
-     * (non-Javadoc)
-     * 
+    /* (non-Javadoc)
      * @see org.xtreemfs.foundation.LifeCycleListener#shutdownPerformed()
      */
     @Override
     public void shutdownPerformed() { /* ignored */
     }
     
-    /*
-     * (non-Javadoc)
-     * 
+    /* (non-Javadoc)
      * @see org.xtreemfs.foundation.LifeCycleListener#crashPerformed(
-     * java.lang.Throwable)
+     *          java.lang.Throwable)
      */
     @Override
     public void crashPerformed(Throwable cause) {

@@ -11,13 +11,13 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.channels.ClosedByInterruptException;
 
-import org.xtreemfs.babudb.BabuDBInternal;
 import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
-import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.api.database.UserDefinedLookup;
+import org.xtreemfs.babudb.api.dev.BabuDBInternal;
+import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
@@ -31,7 +31,7 @@ import org.xtreemfs.foundation.logging.Logging;
 
 import static org.xtreemfs.babudb.log.LogEntry.*;
 
-public class DatabaseImpl implements Database {
+public class DatabaseImpl implements DatabaseInternal {
     
     private BabuDBInternal      dbs;
     

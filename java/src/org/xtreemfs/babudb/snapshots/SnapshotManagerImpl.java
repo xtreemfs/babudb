@@ -21,15 +21,14 @@ import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.BabuDBImpl;
 import org.xtreemfs.babudb.api.InMemoryProcessing;
-import org.xtreemfs.babudb.api.SnapshotManager;
 import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.database.DatabaseRO;
+import org.xtreemfs.babudb.api.dev.SnapshotManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
 import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
 import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
-import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.FSUtils;
@@ -37,7 +36,7 @@ import org.xtreemfs.foundation.util.FSUtils;
 import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_SNAP;
 import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_SNAP_DELETE;
 
-public class SnapshotManagerImpl implements SnapshotManager {
+public class SnapshotManagerImpl implements SnapshotManagerInternal {
     
     public static final String                       SNAP_DIR = "snapshots";
     
@@ -77,6 +76,10 @@ public class SnapshotManagerImpl implements SnapshotManager {
         }
     }
     
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.SnapshotManagerInternal#shutdown()
+     */
+    @Override
     public void shutdown() throws BabuDBException {
         for (Map<String, Snapshot> snapshots : snapshotDBs.values())
             for (Snapshot snapshot : snapshots.values())

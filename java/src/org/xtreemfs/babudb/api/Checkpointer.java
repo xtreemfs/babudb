@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2008 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -28,4 +28,10 @@ public interface Checkpointer {
      */
     public void checkpoint() throws BabuDBException, InterruptedException;
     
+    /**
+     * Wait until the current checkpoint is complete.
+     * 
+     * @throws InterruptedException
+     */
+    public void waitForCheckpoint() throws InterruptedException;
 }

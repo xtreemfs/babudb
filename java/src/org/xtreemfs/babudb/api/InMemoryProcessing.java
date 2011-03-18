@@ -7,6 +7,7 @@
  */
 package org.xtreemfs.babudb.api;
 
+import org.xtreemfs.babudb.api.dev.PersistenceManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
@@ -44,7 +45,7 @@ public abstract class InMemoryProcessing {
     
     /**
      * Optional method to execute before making an Operation on-disk persistent.
-     * Depending on the implementation of PersistenceManager throwing an
+     * Depending on the implementation of PersistenceManagerInternal throwing an
      * exception might influence the execution of makePersistent() and after().
      * 
      * @param args - the operation's arguments.
@@ -56,7 +57,7 @@ public abstract class InMemoryProcessing {
     /**
      * Optional method to execute after making an Operation successfully 
      * on-disk persistent. This behavior depends on the implementation of 
-     * the makePersistent() method in {@link PersistenceManager}.
+     * the makePersistent() method in {@link PersistenceManagerInternal}.
      * 
      * @param args - the operation's arguments.
      * 

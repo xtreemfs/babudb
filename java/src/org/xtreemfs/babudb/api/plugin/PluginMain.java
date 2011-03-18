@@ -8,8 +8,8 @@
 package org.xtreemfs.babudb.api.plugin;
 
 import org.xtreemfs.babudb.BabuDBFactory;
-import org.xtreemfs.babudb.BabuDBInternal;
 import org.xtreemfs.babudb.api.BabuDB;
+import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 

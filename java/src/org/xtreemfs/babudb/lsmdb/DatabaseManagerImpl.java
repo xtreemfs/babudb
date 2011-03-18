@@ -5,7 +5,6 @@
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-
 package org.xtreemfs.babudb.lsmdb;
 
 import static org.xtreemfs.babudb.log.LogEntry.*;
@@ -17,12 +16,12 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.xtreemfs.babudb.BabuDBImpl;
-import org.xtreemfs.babudb.BabuDBInternal;
 import org.xtreemfs.babudb.BabuDBRequestResultImpl;
-import org.xtreemfs.babudb.api.DatabaseManager;
 import org.xtreemfs.babudb.api.InMemoryProcessing;
 import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.dev.BabuDBInternal;
+import org.xtreemfs.babudb.api.dev.DatabaseInternal;
+import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
@@ -37,19 +36,19 @@ import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.FSUtils;
 
-public class DatabaseManagerImpl implements DatabaseManager {
+public class DatabaseManagerImpl implements DatabaseManagerInternal {
     
     private BabuDBInternal                 dbs;
     
     /**
      * Mapping from database name to database id
      */
-    final Map<String, Database>            dbsByName;
+    final Map<String, DatabaseInternal>    dbsByName;
     
     /**
      * Mapping from dbId to database
      */
-    final Map<Integer, Database>           dbsById;
+    final Map<Integer, DatabaseInternal>   dbsById;
     
     /**
      * a map containing all comparators sorted by their class names
@@ -66,12 +65,12 @@ public class DatabaseManagerImpl implements DatabaseManager {
      */
     private final Object                   dbModificationLock;
     
-    public DatabaseManagerImpl(BabuDBImpl dbs) throws BabuDBException {
+    public DatabaseManagerImpl(BabuDBInternal dbs) throws BabuDBException {
         
         this.dbs = dbs;
         
-        this.dbsByName = new HashMap<String, Database>();
-        this.dbsById = new HashMap<Integer, Database>();
+        this.dbsByName = new HashMap<String, DatabaseInternal>();
+        this.dbsById = new HashMap<Integer, DatabaseInternal>();
         
         this.compInstances = new HashMap<String, ByteRangeComparator>();
         this.compInstances.put(DefaultByteRangeComparator.class.getName(), new DefaultByteRangeComparator());
@@ -82,6 +81,10 @@ public class DatabaseManagerImpl implements DatabaseManager {
         initializePersistenceManager();
     }
     
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#reset()
+     */
+    @Override
     public void reset() throws BabuDBException {
         nextDbId = 1;
         
@@ -92,6 +95,9 @@ public class DatabaseManagerImpl implements DatabaseManager {
         dbs.getDBConfigFile().reset();
     }
     
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.DatabaseManager#getDatabases()
+     */
     @Override
     public Map<String, Database> getDatabases() {
         synchronized (dbModificationLock) {
@@ -105,16 +111,23 @@ public class DatabaseManagerImpl implements DatabaseManager {
         }
     }
     
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getDatabaseList()
+     */
+    @Override
     public Collection<Database> getDatabaseList() {
         synchronized (dbModificationLock) {
             return new ArrayList<Database>(dbsById.values());
         }
     }
     
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getDatabase(java.lang.String)
+     */
     @Override
-    public Database getDatabase(String dbName) throws BabuDBException {
+    public DatabaseInternal getDatabase(String dbName) throws BabuDBException {
         
-        Database db = dbsByName.get(dbName);
+        DatabaseInternal db = dbsByName.get(dbName);
         
         if (db == null)
             throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database does not exist");
@@ -168,6 +181,10 @@ public class DatabaseManagerImpl implements DatabaseManager {
                                                    new Object[] { sourceDB, destDB }).get();
     }
     
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#shutdown()
+     */
+    @Override
     public void shutdown() throws BabuDBException {
         for (Database db : dbsById.values())
             db.shutdown();
@@ -198,6 +215,10 @@ public class DatabaseManagerImpl implements DatabaseManager {
         
     }
     
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getDBModificationLock()
+     */
+    @Override
     public Object getDBModificationLock() {
         return dbModificationLock;
     }
@@ -443,10 +464,13 @@ public class DatabaseManagerImpl implements DatabaseManager {
                 }
                 
                 // create new DB and load from snapshot
-                Database newDB = new DatabaseImpl(dbs, new LSMDatabase(destDB, dbId, dbs.getConfig().getBaseDir()
-                    + destDB + File.separatorChar, sDB.getLSMDB().getIndexCount(), true, sDB.getComparators(), dbs
-                        .getConfig().getCompression(), dbs.getConfig().getMaxNumRecordsPerBlock(), dbs.getConfig()
-                        .getMaxBlockFileSize(), dbs.getConfig().getDisableMMap(), dbs.getConfig().getMMapLimit()));
+                DatabaseInternal newDB = new DatabaseImpl(dbs, new LSMDatabase(destDB, dbId, 
+                        dbs.getConfig().getBaseDir() + destDB + File.separatorChar, 
+                        sDB.getLSMDB().getIndexCount(), true, sDB.getComparators(), 
+                        dbs.getConfig().getCompression(), 
+                        dbs.getConfig().getMaxNumRecordsPerBlock(), dbs.getConfig()
+                        .getMaxBlockFileSize(), dbs.getConfig().getDisableMMap(), 
+                        dbs.getConfig().getMMapLimit()));
                 
                 // insert real database
                 synchronized (dbModificationLock) {

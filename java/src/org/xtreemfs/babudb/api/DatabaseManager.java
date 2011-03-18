@@ -35,7 +35,7 @@ public interface DatabaseManager {
      * @throws BabuDBException
      *             if an error occurs
      */
-    public Map<String, Database> getDatabases() throws BabuDBException;
+    public Map<String, Database> getDatabases();
     
     /**
      * Creates a new database.

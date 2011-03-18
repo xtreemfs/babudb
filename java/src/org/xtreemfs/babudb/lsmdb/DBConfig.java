@@ -20,6 +20,7 @@ import java.util.Set;
 
 import org.xtreemfs.babudb.BabuDBImpl;
 import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
@@ -190,12 +191,12 @@ public class DBConfig {
                     }
                     
                     if (!conversionRequired) {
-                        Database db = new DatabaseImpl(this.dbs, new LSMDatabase(dbName, dbId, this.dbs
-                                .getConfig().getBaseDir()
-                            + dbName + File.separatorChar, numIndex, true, comps, this.dbs.getConfig()
-                                .getCompression(), this.dbs.getConfig().getMaxNumRecordsPerBlock(), this.dbs
-                                .getConfig().getMaxBlockFileSize(), this.dbs.getConfig().getDisableMMap(),
-                            this.dbs.getConfig().getMMapLimit()));
+                        DatabaseInternal db = new DatabaseImpl(this.dbs, 
+                                new LSMDatabase(dbName, dbId, this.dbs.getConfig().getBaseDir()
+                            + dbName + File.separatorChar, numIndex, true, comps, dbs.getConfig()
+                                .getCompression(), this.dbs.getConfig().getMaxNumRecordsPerBlock(), 
+                                dbs.getConfig().getMaxBlockFileSize(), dbs.getConfig().getDisableMMap(),
+                                dbs.getConfig().getMMapLimit()));
                         dbman.dbsById.put(dbId, db);
                         dbman.dbsByName.put(dbName, db);
                         Logging.logMessage(Logging.LEVEL_DEBUG, this, "loaded DB " + dbName
