@@ -9,9 +9,9 @@ package org.xtreemfs.babudb;
 
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.xtreemfs.babudb.api.PersistenceManager;
 import org.xtreemfs.babudb.api.InMemoryProcessing;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
+import org.xtreemfs.babudb.api.dev.PersistenceManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.log.DiskLogger;
@@ -21,13 +21,13 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
 /**
- * Default implementation of the {@link PersistenceManager} interface using
+ * Default implementation of the {@link PersistenceManagerInternal} interface using
  * the {@link DiskLogger} to let operations become persistent.
  * 
  * @author flangner
  * @since 11/03/2010
  */
-class PersistenceManagerImpl extends PersistenceManager {
+class PersistenceManagerImpl extends PersistenceManagerInternal {
     
     private final AtomicReference<DiskLogger> diskLogger = new AtomicReference<DiskLogger>(null);
     

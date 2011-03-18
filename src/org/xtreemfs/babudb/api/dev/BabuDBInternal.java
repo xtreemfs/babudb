@@ -1,15 +1,13 @@
 /*
- * Copyright (c) 2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2010 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-
-package org.xtreemfs.babudb;
+package org.xtreemfs.babudb.api.dev;
 
 import org.xtreemfs.babudb.api.BabuDB;
-import org.xtreemfs.babudb.api.PersistenceManager;
 import org.xtreemfs.babudb.api.StaticInitialization;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.config.BabuDBConfig;
@@ -28,6 +26,30 @@ import org.xtreemfs.foundation.LifeCycleThread;
 public interface BabuDBInternal extends BabuDB {
 
     /**
+     * Returns a reference to the BabuDB checkpointer. The checkpointer can be
+     * used by applications to enforce the creation of a database checkpoint.
+     * 
+     * @return a reference to the checkpointer
+     */
+    public CheckpointerInternal getCheckpointer();
+        
+    /**
+     * Returns a reference to the database manager. The database manager gives
+     * applications access to single databases.
+     * 
+     * @return a reference to the database manager
+     */
+    public DatabaseManagerInternal getDatabaseManager();
+    
+    /**
+     * Returns a reference to the snapshot manager. The snapshot manager offers
+     * applications the possibility to manage snapshots of single databases.
+     * 
+     * @return a reference to the snapshot manager
+     */
+    public SnapshotManagerInternal getSnapshotManager();
+    
+    /**
      * @return the {@link DBConfig}.
      */
     public DBConfig getDBConfigFile();
@@ -43,19 +65,19 @@ public interface BabuDBInternal extends BabuDB {
      * May change during execution so always access the most common instance
      * by this method.
      * 
-     * @return the {@link PersistenceManager} used by this BabuDB instance to 
+     * @return the {@link PersistenceManagerInternal} used by this BabuDB instance to 
      *         ensure on-disk persistence of database-modifying requests.
      */
-    public PersistenceManager getPersistenceManager();
+    public PersistenceManagerInternal getPersistenceManager();
     
     /**
-     * The registered {@link PersistenceManager} will be replaced by the given
+     * The registered {@link PersistenceManagerInternal} will be replaced by the given
      * one. This method is not thread-safe so please ensure there are no race-
      * conditions accessing the manager while execution. 
      * 
      * @param perMan
      */
-    public void replacePersistenceManager(PersistenceManager perMan);
+    public void replacePersistenceManager(PersistenceManagerInternal perMan);
     
     /**
      * @param dbId

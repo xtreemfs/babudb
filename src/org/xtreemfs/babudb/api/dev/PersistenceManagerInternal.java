@@ -5,11 +5,13 @@
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-package org.xtreemfs.babudb.api;
+package org.xtreemfs.babudb.api.dev;
 
 import java.util.HashMap;
 import java.util.Map;
 
+import org.xtreemfs.babudb.api.BabuDB;
+import org.xtreemfs.babudb.api.InMemoryProcessing;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.log.DiskLogger;
@@ -18,12 +20,13 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
 /**
- * Interface between API and the core {@link BabuDB}. 
+ * Interface between API and the core {@link BabuDB}. This should not be accessed
+ * by any user application, but may be accessed by plugins.
  * 
  * @author flangner
  * @since 11/03/2010
  */
-public abstract class PersistenceManager {
+public abstract class PersistenceManagerInternal {
     
     protected final Map<Byte, InMemoryProcessing> inMemoryProcessing = 
         new HashMap<Byte, InMemoryProcessing>();
@@ -48,7 +51,7 @@ public abstract class PersistenceManager {
     public abstract void setLogger (DiskLogger logger);
     
     /**
-     * Method to extend the PersistenceManager with the knowledge how to handle the requests of type
+     * Method to extend the PersistenceManagerInternal with the knowledge how to handle the requests of type
      * 
      * 
      * @param type

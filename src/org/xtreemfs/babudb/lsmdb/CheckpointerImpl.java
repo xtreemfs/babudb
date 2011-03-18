@@ -20,13 +20,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.xtreemfs.babudb.BabuDBImpl;
-import org.xtreemfs.babudb.api.Checkpointer;
 import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.dev.BabuDBInternal;
+import org.xtreemfs.babudb.api.dev.CheckpointerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.log.DiskLogger;
-import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
 import org.xtreemfs.foundation.logging.Logging;
@@ -38,7 +37,7 @@ import org.xtreemfs.foundation.util.OutputUtils;
  * 
  * @author bjko
  */
-public class CheckpointerImpl extends Thread implements Checkpointer {
+public class CheckpointerImpl extends Thread implements CheckpointerInternal {
     
     private final static class MaterializationRequest {
         
@@ -75,7 +74,7 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
      */
     private long                               maxLogLength;
     
-    private final BabuDBImpl                   dbs;
+    private final BabuDBInternal               dbs;
     
     /**
      * a queue containing all snapshot materialization requests that should be
@@ -107,20 +106,17 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
      * @param master
      *            the database
      */
-    public CheckpointerImpl(BabuDBImpl master) {
+    public CheckpointerImpl(BabuDBInternal master) {
         super("ChkptrThr");
         this.dbs = master;
         this.requests = new LinkedList<MaterializationRequest>();
     }
     
-    /**
-     * @param logger
-     *            the disklogger
-     * @param checkInterval
-     *            interval in seconds between two checks
-     * @param maxLogLength
-     *            maximum log file length
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.CheckpointerInternal#init(
+     *          org.xtreemfs.babudb.log.DiskLogger, int, long)
      */
+    @Override
     public void init(DiskLogger logger, int checkInterval, long maxLogLength) {
         this.logger = logger;
         this.checkInterval = 1000l * checkInterval;
@@ -142,13 +138,11 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
         }
     }
     
-    /**
-     * This method suspends the Checkpointer from taking checkpoints.
-     * 
-     * @throws InterruptedException
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.CheckpointerInternal#suspendCheckpointing()
      */
-    public synchronized void suspendCheckpointing() 
-            throws InterruptedException {
+    @Override
+    public synchronized void suspendCheckpointing() throws InterruptedException {
         
         synchronized (suspended) {
             if (!this.suspended.getAndSet(true)) {
@@ -158,21 +152,10 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
         }
     }
     
-    /**
-     * Triggers the creation of a new checkpoint. This causes the checkpointer
-     * to run its checkpointing mechanism, which causes all outstanding snapshot
-     * materialization requests to be processed. After this has been done, the
-     * checkpoint will be created.
-     * 
-     * The method blocks until the checkpoints (and all outstanding snapshots)
-     * have been persistently written to disk.
-     * 
-     * @param incViewId
-     *            - set true, if the viewId should be incremented.
-     * 
-     * @return {@link LSN} of the last {@link LogEntry} written to the {@link DiskLogger} before the 
-     *         checkpoint.
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.CheckpointerInternal#checkpoint(boolean)
      */
+    @Override
     public LSN checkpoint(boolean incViewId) throws BabuDBException {
         
         incrementViewId = incViewId;
@@ -348,11 +331,19 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
         }
     }
     
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.CheckpointerInternal#shutdown()
+     */
+    @Override
     public synchronized void shutdown() {
         quit = true;
         this.interrupt();
     }
     
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.CheckpointerInternal#waitForShutdown()
+     */
+    @Override
     public void waitForShutdown() throws InterruptedException {
         synchronized (down) {
             if (!down.get())
@@ -437,11 +428,10 @@ public class CheckpointerImpl extends Thread implements Checkpointer {
         }
     }
     
-    /**
-     * Wait until the current checkpoint is complete.
-     * 
-     * @throws InterruptedException
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.Checkpointer#waitForCheckpoint()
      */
+    @Override
     public void waitForCheckpoint() throws InterruptedException {
         synchronized (checkpointComplete) {
             while (!checkpointComplete.get())
