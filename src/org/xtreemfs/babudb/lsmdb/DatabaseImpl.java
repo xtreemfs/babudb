@@ -506,20 +506,11 @@ public class DatabaseImpl implements DatabaseInternal {
         return lsmDB.createSnapshot();
     }
     
-    /**
-     * Writes a snapshot to disk.
-     * 
-     * NOTE: this method should only be invoked by the framework
-     * 
-     * @param snapIds
-     *            the snapshot IDs obtained from createSnapshot
-     * @param directory
-     *            the directory in which the snapshots are written
-     * @param cfg
-     *            the snapshot configuration
-     * @throws BabuDBException
-     *             if the snapshot cannot be written
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#proceedWriteSnapshot(int[], 
+     *          java.lang.String, org.xtreemfs.babudb.snapshots.SnapshotConfig)
      */
+    @Override
     public void proceedWriteSnapshot(int[] snapIds, String directory, SnapshotConfig cfg)
         throws BabuDBException {
         try {

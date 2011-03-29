@@ -100,8 +100,16 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
      */
     @Override
     public Map<String, Database> getDatabases() {
+        return new HashMap<String, Database>(getDatabasesInternal());
+    }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getDatabasesInternal()
+     */
+    @Override
+    public Map<String, DatabaseInternal> getDatabasesInternal() {
         synchronized (dbModificationLock) {
-            return new HashMap<String, Database>(dbsByName);
+            return new HashMap<String, DatabaseInternal>(dbsByName);
         }
     }
     
@@ -115,9 +123,9 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
      * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getDatabaseList()
      */
     @Override
-    public Collection<Database> getDatabaseList() {
+    public Collection<DatabaseInternal> getDatabaseList() {
         synchronized (dbModificationLock) {
-            return new ArrayList<Database>(dbsById.values());
+            return new ArrayList<DatabaseInternal>(dbsById.values());
         }
     }
     
@@ -134,7 +142,11 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
         return db;
     }
     
-    public Database getDatabase(int dbId) {
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getDatabase(int)
+     */
+    @Override
+    public DatabaseInternal getDatabase(int dbId) {
         return dbsById.get(dbId);
     }
     
@@ -197,7 +209,7 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
      * @param ins
      */
     public void insert(InsertRecordGroup ins) {
-        final DatabaseImpl database = ((DatabaseImpl) getDatabase(ins.getDatabaseId()));
+        final DatabaseInternal database = getDatabase(ins.getDatabaseId());
         // ignore deleted databases when recovering!
         if (database == null) {
             return;
@@ -370,7 +382,7 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                             throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '" + databaseName
                                 + "' does not exists");
                         }
-                        final LSMDatabase db = ((DatabaseImpl) dbsByName.get(databaseName)).getLSMDB();
+                        final LSMDatabase db = dbsByName.get(databaseName).getLSMDB();
                         dbId = db.getDatabaseId();
                         dbsByName.remove(databaseName);
                         dbsById.remove(dbId);
@@ -517,7 +529,7 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                 InsertRecordGroup irg = (InsertRecordGroup) args[0];
                 LSMDatabase lsmDB = (LSMDatabase) args[1];
                 if (lsmDB == null) {
-                    lsmDB = ((DatabaseImpl) dbsById.get(irg.getDatabaseId())).getLSMDB();
+                    lsmDB = dbsById.get(irg.getDatabaseId()).getLSMDB();
                 }
                 
                 int numIndices = lsmDB.getIndexCount();
@@ -545,7 +557,7 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                 InsertRecordGroup irg = (InsertRecordGroup) args[0];
                 LSMDatabase lsmDB = (LSMDatabase) args[1];
                 if (lsmDB == null) {
-                    lsmDB = ((DatabaseImpl) dbsById.get(irg.getDatabaseId())).getLSMDB();
+                    lsmDB = dbsById.get(irg.getDatabaseId()).getLSMDB();
                 }
                 BabuDBRequestResultImpl<Object> listener = 
                     (BabuDBRequestResultImpl<Object>) args[2];

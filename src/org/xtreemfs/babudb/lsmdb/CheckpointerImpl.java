@@ -23,6 +23,7 @@ import java.util.regex.Pattern;
 import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.dev.CheckpointerInternal;
+import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.log.DiskLogger;
@@ -216,7 +217,7 @@ public class CheckpointerImpl extends Thread implements CheckpointerInternal {
                 (SnapshotManagerImpl) dbs.getSnapshotManager();
             
             // write the snapshot
-            ((DatabaseImpl) dbs.getDatabaseManager().getDatabase(rq.dbName))
+            dbs.getDatabaseManager().getDatabase(rq.dbName)
                     .proceedWriteSnapshot(rq.snapIDs, 
                             snapMan.getSnapshotDir(rq.dbName,
                             rq.snap.getName()), rq.snap);
@@ -251,7 +252,7 @@ public class CheckpointerImpl extends Thread implements CheckpointerInternal {
     private void createCheckpoint() throws BabuDBException, InterruptedException {
         Logging.logMessage(Logging.LEVEL_INFO, this, "initiating database checkpoint...");
         
-        Collection<Database> databases = ((DatabaseManagerImpl) dbs.getDatabaseManager()).getDatabaseList();
+        Collection<DatabaseInternal> databases = dbs.getDatabaseManager().getDatabaseList();
         
         try {
             int[][] snapIds = new int[databases.size()][];

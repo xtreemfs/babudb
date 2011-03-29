@@ -247,7 +247,7 @@ public class DBConfig {
                 oos.writeInt(dbman.dbsById.size());
                 oos.writeInt(dbman.nextDbId);
                 for (int dbId : dbman.dbsById.keySet()) {
-                    LSMDatabase db = ((DatabaseImpl) dbman.dbsById.get(dbId)).getLSMDB();
+                    LSMDatabase db = dbman.getDatabase(dbId).getLSMDB();
                     oos.writeObject(db.getDatabaseName());
                     oos.writeInt(dbId);
                     oos.writeInt(db.getIndexCount());

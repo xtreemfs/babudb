@@ -21,8 +21,8 @@ import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.BabuDBImpl;
 import org.xtreemfs.babudb.api.InMemoryProcessing;
-import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.database.DatabaseRO;
+import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.dev.SnapshotManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
@@ -54,7 +54,7 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
     public void init() throws BabuDBException {
         
         // load persisted snapshots from disk
-        for (Entry<String, Database> entry : ((DatabaseManagerImpl) dbs.getDatabaseManager()).getDatabases()
+        for (Entry<String, DatabaseInternal> entry : dbs.getDatabaseManager().getDatabasesInternal()
                 .entrySet()) {
             
             final File snapDir = new File(dbs.getConfig().getBaseDir(), entry.getKey() + "/snapshots");
@@ -63,8 +63,8 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
                 Map<String, Snapshot> snapMap = new HashMap<String, Snapshot>();
                 snapshotDBs.put(entry.getKey(), snapMap);
                 
-                boolean compressed = ((DatabaseImpl) entry.getValue()).getLSMDB().getIndex(0).isCompressed();
-                boolean mmaped = ((DatabaseImpl) entry.getValue()).getLSMDB().getIndex(0).isMMapEnabled();
+                boolean compressed = entry.getValue().getLSMDB().getIndex(0).isCompressed();
+                boolean mmaped = entry.getValue().getLSMDB().getIndex(0).isMMapEnabled();
                 
                 String[] snapshots = snapDir.list();
                 for (String snapName : snapshots) {
@@ -112,8 +112,8 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
         
         // synchronously executing the request
         dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_SNAP, 
-                new Object[]{ ((DatabaseImpl) dbs.getDatabaseManager().getDatabase(dbName))
-                                    .getLSMDB().getDatabaseId(), snap }).get();
+                new Object[]{ dbs.getDatabaseManager().getDatabase(dbName).getLSMDB()
+                                 .getDatabaseId(), snap }).get();
     }
     
     /**

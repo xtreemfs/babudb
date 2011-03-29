@@ -19,9 +19,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.xtreemfs.babudb.api.BabuDB;
 import org.xtreemfs.babudb.api.InMemoryProcessing;
 import org.xtreemfs.babudb.api.StaticInitialization;
-import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.dev.CheckpointerInternal;
+import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
 import org.xtreemfs.babudb.api.dev.PersistenceManagerInternal;
 import org.xtreemfs.babudb.api.dev.SnapshotManagerInternal;
@@ -44,7 +44,6 @@ import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
 import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.LifeCycleThread;
 import org.xtreemfs.foundation.VersionManagement;
-import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
 
 import static org.xtreemfs.babudb.log.LogEntry.*;
@@ -157,9 +156,9 @@ public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
         // to be able to recover from crashes during checkpoints, it is
         // necessary to start with the smallest LSN found on disk
         LSN dbLsn = null;
-        for (Database db : databaseManager.getDatabaseList()) {
+        for (DatabaseInternal db : databaseManager.getDatabaseList()) {
             if (dbLsn == null)
-                dbLsn = ((DatabaseImpl) db).getLSMDB().getOndiskLSN();
+                dbLsn = db.getLSMDB().getOndiskLSN();
             else {
                 LSN onDiskLSN = ((DatabaseImpl) db).getLSMDB().getOndiskLSN();
                 if (!(LSMDatabase.NO_DB_LSN.equals(dbLsn) || LSMDatabase.NO_DB_LSN.equals(onDiskLSN)))
@@ -290,11 +289,11 @@ public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
             // to be able to recover from crashes during checkpoints, it is
             // necessary to start with the smallest LSN found on disk
             LSN dbLsn = null;
-            for (Database db : databaseManager.getDatabaseList()) {
+            for (DatabaseInternal db : databaseManager.getDatabaseList()) {
                 if (dbLsn == null)
-                    dbLsn = ((DatabaseImpl) db).getLSMDB().getOndiskLSN();
+                    dbLsn = db.getLSMDB().getOndiskLSN();
                 else {
-                    LSN onDiskLSN = ((DatabaseImpl) db).getLSMDB().getOndiskLSN();
+                    LSN onDiskLSN = db.getLSMDB().getOndiskLSN();
                     if (!(LSMDatabase.NO_DB_LSN.equals(dbLsn) || LSMDatabase.NO_DB_LSN.equals(onDiskLSN))) {
                         dbLsn = dbLsn.compareTo(onDiskLSN) < 0 ? dbLsn : onDiskLSN;
                     }
