@@ -8,6 +8,7 @@
 package org.xtreemfs.babudb.api.dev;
 
 import java.util.Collection;
+import java.util.Map;
 
 import org.xtreemfs.babudb.api.DatabaseManager;
 import org.xtreemfs.babudb.api.database.Database;
@@ -35,9 +36,29 @@ public interface DatabaseManagerInternal extends DatabaseManager {
     public DatabaseInternal getDatabase(String dbName) throws BabuDBException;
     
     /**
+     * Returns the database for the given ID.
+     * 
+     * @param dbId
+     *            the database ID
+     * @return the database
+     * @throws BabuDBException
+     *             if the database does not exist
+     */
+    public DatabaseInternal getDatabase(int dbId);
+    
+    /**
+     * Returns a map containing all databases.
+     * 
+     * @return a map containing all databases
+     * @throws BabuDBException
+     *             if an error occurs
+     */
+    public Map<String, DatabaseInternal> getDatabasesInternal();
+    
+    /**
      * @return collection of available {@link Database}.
      */
-    public Collection<Database> getDatabaseList();
+    public Collection<DatabaseInternal> getDatabaseList();
     
     /**
      * @return a lock to prevent concurrent modification on databases.

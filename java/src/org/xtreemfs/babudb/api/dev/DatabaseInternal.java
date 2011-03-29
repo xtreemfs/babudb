@@ -8,7 +8,9 @@
 package org.xtreemfs.babudb.api.dev;
 
 import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
+import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 
 /**
  * Interface of {@link Database} for internal usage. This should not be accessed
@@ -25,4 +27,21 @@ public interface DatabaseInternal extends Database {
      * @return the LSM database
      */
     public LSMDatabase getLSMDB();
+    
+    /**
+     * Writes a snapshot to disk.
+     * 
+     * NOTE: this method should only be invoked by the framework
+     * 
+     * @param snapIds
+     *            the snapshot IDs obtained from createSnapshot
+     * @param directory
+     *            the directory in which the snapshots are written
+     * @param cfg
+     *            the snapshot configuration
+     * @throws BabuDBException
+     *             if the snapshot cannot be written
+     */
+    public void proceedWriteSnapshot(int[] snapIds, String directory, SnapshotConfig cfg)
+        throws BabuDBException;
 }
