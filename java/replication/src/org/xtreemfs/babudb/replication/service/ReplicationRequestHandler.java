@@ -23,6 +23,7 @@ import org.xtreemfs.babudb.replication.service.operations.LocalTimeOperation;
 import org.xtreemfs.babudb.replication.service.operations.ReplicaOperation;
 import org.xtreemfs.babudb.replication.service.operations.ReplicateOperation;
 import org.xtreemfs.babudb.replication.service.operations.StateOperation;
+import org.xtreemfs.babudb.replication.service.operations.SynchronizeOperation;
 import org.xtreemfs.babudb.replication.service.operations.VolatileStateOperation;
 import org.xtreemfs.babudb.replication.transmission.FileIOInterface;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
@@ -55,6 +56,9 @@ public class ReplicationRequestHandler extends RequestHandler {
         
         op = new HeartbeatOperation(pStates);
         operations.put(op.getProcedureId(), op);
+        
+        op = new SynchronizeOperation(replStage);
+        operations.put(op.getProcedureId(),op);
         
         op = new ReplicateOperation(replStage);
         operations.put(op.getProcedureId(),op);

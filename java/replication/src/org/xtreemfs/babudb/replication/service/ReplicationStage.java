@@ -7,7 +7,7 @@
  */
 package org.xtreemfs.babudb.replication.service;
 
-import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -81,7 +81,7 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
     /** Counter for the number of tries needed to perform an operation */
     private int                                 tries = 0;
     
-    private BabuDBRequestResultImpl<Boolean>    listener = null;
+    private BabuDBRequestResultImpl<Object>    listener = null;
     
     /** needed to control the heartbeat */
     protected final Pacemaker                   pacemaker;
@@ -204,6 +204,7 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                         listener.failed(new BabuDBException(
                                 ErrorCode.REPLICATION_FAILURE,
                                 cle.getMessage()));
+                        listener = null;
                     }
                     
                     clearQueue();
@@ -265,73 +266,95 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
      * Method to trigger a {@link LOAD} manually.
      * Listener will contain true on finish , if it was a request synchronization,
      * or if just the log file was switched. 
-     * otherwise, if it was a load, the listener will notified with false.
+     * otherwise, if it was a load, the listener will be notified with false.
      * 
      * @param listener
-     * 
-     * @return 
+     * @param to
      */
-    public void manualLoad(BabuDBRequestResultImpl<Boolean> listener, LSN from, LSN to) {
+    public void manualLoad(BabuDBRequestResultImpl<Object> listener, LSN to) {
         
-        assert (from.compareTo(to) < 0);
+        LSN start = babudb.getState();
         
-        this.listener = listener;
+        if (start.equals(to)) {
+            
+            listener.finished();
+        } else {
         
-        LSN end = new LSN(
-                    // we have to assume, that there is an entry following the
-                    // state we would like to establish, because the request
-                    // logic will always exclude the 'end' of this range
-                    to.getViewId(), to.getSequenceNo() + 1L);
-        
-        missing = new Range(from, end);
-        setLogic(REQUEST, "manually synchronization");
-        
-        // necessary to wake up the mechanism
-        if (q.isEmpty()) q.add(new StageRequest(null));
+            this.listener = listener;
+            LSN end = new LSN(
+                        // we have to assume, that there is an entry following the
+                        // state we would like to establish, because the request
+                        // logic will always exclude the 'end' of this range
+                        to.getViewId(), to.getSequenceNo() + 1L);
+            
+            // update local DB state
+            if (start.compareTo(end) < 0) {
+                
+                missing = new Range(start, end);
+                setLogic(REQUEST, "manual synchronization");
+                
+            // roll-back local DB state
+            } else {
+                
+                missing = new Range(null, end);
+                setLogic(LOAD, "manual synchronization");
+            }
+            
+            // necessary to wake up the mechanism
+            assert (q.isEmpty());
+            q.add(StageRequest.NOOP_REQUEST);
+        }
     }
     
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.service.RequestManagement#createStableState(
-     *          org.xtreemfs.babudb.lsmdb.LSN, java.net.InetAddress)
+     *          org.xtreemfs.babudb.lsmdb.LSN, java.net.InetSocketAddress)
      */
     @Override
-    public void createStableState(final LSN lastOnView, final InetAddress master) {
+    public void createStableState(final LSN lastLSNOnView, final InetSocketAddress master) {
         
-        BabuDBRequestResultImpl<Boolean> result = new BabuDBRequestResultImpl<Boolean>(null);
-        result.registerListener(new DatabaseRequestListener<Boolean>() {
+        // if slave already is in a stable DB state, unlock user operations immediately and return
+        if (lastOnView.get().equals(lastLSNOnView)) {
+            topLayer.unlockUser();
             
-            @Override
-            public void finished(Boolean result, Object context) {
-                try {
-                    
-                    babudb.checkpoint();
-                    topLayer.unlockUser();
-                    
-                } catch (BabuDBException e) {
-                    
-                    // taking the checkpoint was interrupted, the only reason for that is a crash,
-                    // or a shutdown. either way these symptoms are treated like a crash of the 
-                    // replication manager.
-                    
-                    assert (e.getErrorCode() == ErrorCode.INTERRUPTED);
-                    
-                    notifyCrashed(e);
-                }
-            }
+        // otherwise establish a stable global DB state
+        } else {
+            BabuDBRequestResultImpl<Object> result = new BabuDBRequestResultImpl<Object>(null);
             
-            @Override
-            public void failed(BabuDBException error, Object context) {
+            manualLoad(result, lastLSNOnView);
+            
+            result.registerListener(new DatabaseRequestListener<Object>() {
                 
-                // manual load failed. retry if master has not changed meanwhile
-                // ignore the failure otherwise
-                if (master.equals(topLayer.getLeaseHolder().getAddress())) {
-                    createStableState(lastOnView, master);
-                } 
-            }
-        });
-        
-        manualLoad(result, babudb.getState(), new LSN(lastOnView.getViewId(), 
-                                                      lastOnView.getSequenceNo() - 1L));
+                @Override
+                public void finished(Object result, Object context) {
+                    try {
+                        
+                        lastOnView.set(babudb.checkpoint());
+                        topLayer.unlockUser();
+                        
+                    } catch (BabuDBException e) {
+                        
+                        // taking the checkpoint was interrupted, the only reason for that is a 
+                        // crash, or a shutdown. either way these symptoms are treated like a crash 
+                        // of the replication manager.
+                        
+                        assert (e.getErrorCode() == ErrorCode.INTERRUPTED);
+                        
+                        notifyCrashed(e);
+                    }
+                }
+                
+                @Override
+                public void failed(BabuDBException error, Object context) {
+                    
+                    // manual load failed. retry if master has not changed meanwhile
+                    // ignore the failure otherwise
+                    if (master.equals(topLayer.getLeaseHolder())) {
+                        createStableState(lastLSNOnView, master);
+                    } 
+                }
+            });
+        }
     }
     
     /* (non-Javadoc)
@@ -358,7 +381,7 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
      * @see org.xtreemfs.babudb.replication.service.RequestManagement#finalizeRequest(
      *          org.xtreemfs.babudb.replication.service.StageRequest)
      */
-    public void finalizeRequest(StageRequest op) {        
+    public void finalizeRequest(StageRequest op) { 
         op.free();
         
         // request has finished. decrement the access counter
@@ -411,7 +434,9 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
     private void clearQueue() {
         StageRequest rq = q.poll();
         while (rq != null) {
-            finalizeRequest(rq);
+            if (rq != StageRequest.NOOP_REQUEST) {
+                finalizeRequest(rq);
+            }
             rq = q.poll();
         }
     }

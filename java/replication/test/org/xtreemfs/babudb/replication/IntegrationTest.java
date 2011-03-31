@@ -15,10 +15,10 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.xtreemfs.babudb.BabuDBInternal;
 import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
 import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
+import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.mock.BabuDBMock;
@@ -111,16 +111,15 @@ public class IntegrationTest {
      */
     @Test
     public void testBasicIO() throws Exception {
-        
         // create some DBs
-        Database test0 = repl0.getDatabaseManager().createDatabase("test0", 3);    
-        Database test1 = repl1.getDatabaseManager().createDatabase("test1", 3);
-        Database test2 = repl2.getDatabaseManager().createDatabase("test2", 3);
+        Database test0 = repl0.getDatabaseManager().createDatabase("0", 3);    
+        Database test1 = repl1.getDatabaseManager().createDatabase("1", 3);
+        Database test2 = repl2.getDatabaseManager().createDatabase("2", 3);
         
         // retrieve the databases
-        test0 = repl2.getDatabaseManager().getDatabase("test0");
-        test1 = repl0.getDatabaseManager().getDatabase("test1");
-        test2 = repl1.getDatabaseManager().getDatabase("test2");
+        test0 = repl2.getDatabaseManager().getDatabase("0");
+        test1 = repl0.getDatabaseManager().getDatabase("1");
+        test2 = repl1.getDatabaseManager().getDatabase("2");
         
         // make some inserts
         DatabaseInsertGroup ig = test0.createInsertGroup();
@@ -193,9 +192,9 @@ public class IntegrationTest {
         waitForFinish();
         
         // retrieve the databases
-        test0 = repl1.getDatabaseManager().getDatabase("test0");
-        test1 = repl2.getDatabaseManager().getDatabase("test1");
-        test2 = repl0.getDatabaseManager().getDatabase("test2");
+        test0 = repl1.getDatabaseManager().getDatabase("0");
+        test1 = repl2.getDatabaseManager().getDatabase("1");
+        test2 = repl0.getDatabaseManager().getDatabase("2");
         
         // make some lookups
         test0.lookup(0, "bla00".getBytes(), main).registerListener(new DatabaseRequestListener<byte[]>() {

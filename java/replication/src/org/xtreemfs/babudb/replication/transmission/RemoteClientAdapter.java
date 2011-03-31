@@ -99,7 +99,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
         assert (master != null);
         
         try {
-            final RPCResponse<Database> result = getDatabase(master, 
+            final RPCResponse<Database> result = getDatabaseByName(master, 
                     AUTHENTICATION, 
                     USER_CREDENTIALS, dbName);
             
@@ -608,6 +608,39 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
             BufferPool.free(from);
             BufferPool.free(to);
             BufferPool.free(payload);
+        }
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.RemoteAccessClient#getDatabase(int, java.net.InetSocketAddress)
+     */
+    @Override
+    public ClientResponseFuture<String, Database> getDatabase(int dbId, InetSocketAddress master) {
+
+        assert (master != null);
+        
+        try {
+            final RPCResponse<Database> result = getDatabaseById(master, 
+                    AUTHENTICATION, 
+                    USER_CREDENTIALS, dbId);
+            
+            return new ClientResponseFuture<String,Database>(result) {
+                
+                @Override
+                public String get() throws ErrorCodeException, 
+                        IOException, InterruptedException {
+                    return result.get().getDatabaseName();
+                }
+            };
+        } catch (final IOException e) {
+            return new ClientResponseFuture<String,Database>(null) {
+                
+                @Override
+                public String get() throws ErrorCodeException, 
+                        IOException, InterruptedException {
+                    throw e;
+                }
+            };
         }
     }
 }

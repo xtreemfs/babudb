@@ -220,7 +220,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
             message.serialize(payload);
             payload.flip();
             final RPCResponse<ErrorCodeResponse> result = flease(null, AUTHENTICATION, 
-                        USER_CREDENTIALS, String.valueOf(sender.getAddress().getAddress()), 
+                        USER_CREDENTIALS, new String(sender.getAddress().getAddress()), 
                         sender.getPort(), payload.createViewBuffer());
             
             return new ClientResponseFuture<Object,ErrorCodeResponse>(result) {
@@ -262,6 +262,48 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
         
         try {
             final RPCResponse<ErrorCodeResponse> result = heartbeat(null, AUTHENTICATION, 
+                        USER_CREDENTIALS, port, 
+                        LSN.newBuilder().setViewId(lsn.getViewId())
+                                        .setSequenceNo(lsn.getSequenceNo()).build());
+            
+            return new ClientResponseFuture<Object, ErrorCodeResponse>(result) {
+                
+                @Override
+                public Object get() throws IOException, InterruptedException, 
+                        ErrorCodeException {
+                    try {
+                        ErrorCodeResponse response = result.get();
+                        if (response.getErrorCode() != 0) {
+                            throw new ErrorCodeException(
+                                    response.getErrorCode());
+                        }
+                        return null;
+                    } finally {
+                        result.freeBuffers();
+                    }
+                }
+            };
+        } catch (final IOException e) {
+            return new ClientResponseFuture<Object, ErrorCodeResponse>(null) {
+                
+                @Override
+                public Object get() throws IOException {
+                    throw e;
+                }
+            };
+        }
+    }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.service.clients.ConditionClient#synchronize(
+     *          org.xtreemfs.babudb.lsmdb.LSN, int)
+     */
+    @Override
+    public ClientResponseFuture<Object, ErrorCodeResponse> synchronize(
+            org.xtreemfs.babudb.lsmdb.LSN lsn, int port) {
+        
+        try {
+            final RPCResponse<ErrorCodeResponse> result = synchronize(null, AUTHENTICATION, 
                         USER_CREDENTIALS, port, 
                         LSN.newBuilder().setViewId(lsn.getViewId())
                                         .setSequenceNo(lsn.getSequenceNo()).build());

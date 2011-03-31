@@ -7,13 +7,13 @@
  */
 package org.xtreemfs.babudb.replication.proxy;
 
-import org.xtreemfs.babudb.BabuDBInternal;
 import org.xtreemfs.babudb.api.BabuDB;
-import org.xtreemfs.babudb.api.Checkpointer;
-import org.xtreemfs.babudb.api.DatabaseManager;
-import org.xtreemfs.babudb.api.PersistenceManager;
-import org.xtreemfs.babudb.api.SnapshotManager;
 import org.xtreemfs.babudb.api.StaticInitialization;
+import org.xtreemfs.babudb.api.dev.BabuDBInternal;
+import org.xtreemfs.babudb.api.dev.CheckpointerInternal;
+import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
+import org.xtreemfs.babudb.api.dev.PersistenceManagerInternal;
+import org.xtreemfs.babudb.api.dev.SnapshotManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.config.BabuDBConfig;
@@ -36,7 +36,7 @@ public class BabuDBProxy implements BabuDBInternal {
     
     private final BabuDBInternal          localBabuDB;
     private final PersistenceManagerProxy persManProxy;
-    private final DatabaseManager         dbManProxy;
+    private final DatabaseManagerInternal dbManProxy;
     private final ReplicationManager      replMan;
     
     public BabuDBProxy(BabuDBInternal localDB, ReplicationManager replMan, 
@@ -57,7 +57,7 @@ public class BabuDBProxy implements BabuDBInternal {
      * @see org.xtreemfs.babudb.api.BabuDB#getCheckpointer()
      */
     @Override
-    public Checkpointer getCheckpointer() {
+    public CheckpointerInternal getCheckpointer() {
         return localBabuDB.getCheckpointer();
     }
 
@@ -65,7 +65,7 @@ public class BabuDBProxy implements BabuDBInternal {
      * @see org.xtreemfs.babudb.api.BabuDB#getDatabaseManager()
      */
     @Override
-    public DatabaseManager getDatabaseManager() {
+    public DatabaseManagerInternal getDatabaseManager() {
         return dbManProxy;
     }
 
@@ -73,7 +73,7 @@ public class BabuDBProxy implements BabuDBInternal {
      * @see org.xtreemfs.babudb.api.BabuDB#getSnapshotManager()
      */
     @Override
-    public SnapshotManager getSnapshotManager() {
+    public SnapshotManagerInternal getSnapshotManager() {
         return localBabuDB.getSnapshotManager();
     }
 
@@ -96,7 +96,7 @@ public class BabuDBProxy implements BabuDBInternal {
      * @see org.xtreemfs.babudb.BabuDBInternal#getPersistenceManager()
      */
     @Override
-    public PersistenceManager getPersistenceManager() {
+    public PersistenceManagerInternal getPersistenceManager() {
         return persManProxy;
     }
     
@@ -179,7 +179,7 @@ public class BabuDBProxy implements BabuDBInternal {
      *          org.xtreemfs.babudb.api.PersistenceManager)
      */
     @Override
-    public void replacePersistenceManager(PersistenceManager perMan) {
+    public void replacePersistenceManager(PersistenceManagerInternal perMan) {
         throw new UnsupportedOperationException("Manually changing the " +
         		"persistence manager of the local BabuDB instance" +
         		" is forbidden by the replication plugin.");

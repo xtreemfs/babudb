@@ -81,6 +81,10 @@ message DatabaseName {
   required string database_name = 1;  
 }
 
+message DatabaseId {
+  required fixed32 database_id = 1;
+}
+
 message Lookup {
   required string database_name = 1;
   required fixed32 index_id = 2;

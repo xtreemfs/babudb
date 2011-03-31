@@ -43,7 +43,7 @@ import static junit.framework.Assert.*;
 import static org.xtreemfs.babudb.replication.TestParameters.mock0Conf;
 
 /**
- * These tests are just a prove of concept and neither do nor will ever probe all RPCs provided by
+ * These tests are just a proof of concept and neither do nor will ever probe all RPCs provided by
  * the replication plugin. 
  * 
  * @author flangner
@@ -199,7 +199,7 @@ public class PBRPCTest implements LifeCycleListener {
         
         // registers operations at the handler
         Map<Integer, Operation> ops = new HashMap<Integer, Operation>();
-        ops.put(RemoteAccessServiceConstants.PROC_ID_GETDATABASE, new Operation() {
+        ops.put(RemoteAccessServiceConstants.PROC_ID_GETDATABASEBYNAME, new Operation() {
             
             @Override
             public void startRequest(Request rq) {
@@ -212,7 +212,7 @@ public class PBRPCTest implements LifeCycleListener {
             
             @Override
             public int getProcedureId() {
-                return RemoteAccessServiceConstants.PROC_ID_GETDATABASE;
+                return RemoteAccessServiceConstants.PROC_ID_GETDATABASEBYNAME;
             }
             
             @Override

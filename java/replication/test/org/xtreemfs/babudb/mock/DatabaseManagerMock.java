@@ -8,14 +8,19 @@
 package org.xtreemfs.babudb.mock;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
-import org.xtreemfs.babudb.api.DatabaseManager;
 import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.dev.DatabaseInternal;
+import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
+import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
+import org.xtreemfs.foundation.logging.Logging;
 
 /**
  * 
@@ -23,16 +28,21 @@ import org.xtreemfs.babudb.api.index.ByteRangeComparator;
  * @since 02/23/2011
  */
 
-public class DatabaseManagerMock implements DatabaseManager {
+public class DatabaseManagerMock implements DatabaseManagerInternal {
 
-    private final Map<String, Database> dbs = new HashMap<String, Database>();
+    private final Map<String, DatabaseInternal> dbsByName = new HashMap<String, DatabaseInternal>();
+    private final Map<Integer, DatabaseInternal> dbsById = new HashMap<Integer, DatabaseInternal>();
+    
+    private final Map<String, DatabaseInternal> dbsOnDisk = new HashMap<String, DatabaseInternal>();
     
     @Override
     public void copyDatabase(String sourceDB, String destDB)
             throws BabuDBException {
         
-        if (dbs.containsKey(sourceDB)) {
-            dbs.put(destDB, dbs.get(sourceDB));
+        if (dbsByName.containsKey(sourceDB)) {
+            dbsByName.put(destDB, dbsByName.get(sourceDB));
+            dbsById.put(Integer.valueOf(destDB), dbsByName.get(sourceDB));
+            dbsOnDisk.put(destDB, dbsByName.get(sourceDB));
         } else {
             throw new BabuDBException(ErrorCode.BROKEN_PLUGIN, "Test-copy failed!");
         }
@@ -49,9 +59,17 @@ public class DatabaseManagerMock implements DatabaseManager {
     public Database createDatabase(String databaseName, int numIndices,
             ByteRangeComparator[] comparators) throws BabuDBException {
         
-        if (!dbs.containsKey(databaseName)) {
-            Database result = new DatabaseMock(databaseName, numIndices, comparators);
-            dbs.put(databaseName, result);
+        if (comparators == null) {
+            comparators = new ByteRangeComparator[numIndices];
+            final ByteRangeComparator defaultComparator = new DefaultByteRangeComparator();
+            for (int i = 0; i < numIndices; i++) {
+                comparators[i] = defaultComparator;
+            }
+        }
+        
+        if (!dbsByName.containsKey(databaseName)) {
+            DatabaseInternal result = new DatabaseMock(databaseName, numIndices, comparators);
+            dbsByName.put(databaseName, result);
             return result;
         } else {
             throw new BabuDBException(ErrorCode.BROKEN_PLUGIN, "Test-create failed!");
@@ -61,8 +79,8 @@ public class DatabaseManagerMock implements DatabaseManager {
     @Override
     public void deleteDatabase(String databaseName) throws BabuDBException {
         
-        if (dbs.containsKey(databaseName)) {
-            dbs.remove(databaseName);
+        if (dbsByName.containsKey(databaseName)) {
+            dbsByName.remove(databaseName);
         } else {
             throw new BabuDBException(ErrorCode.BROKEN_PLUGIN, "Test-remove failed!");
         }
@@ -76,18 +94,135 @@ public class DatabaseManagerMock implements DatabaseManager {
     }
 
     @Override
-    public Database getDatabase(String dbName) throws BabuDBException {
+    public DatabaseInternal getDatabase(String dbName) throws BabuDBException {
 
-        if (dbs.containsKey(dbName)) {
-            return dbs.get(dbName);
+        Logging.logMessage(Logging.LEVEL_ERROR, this, "Accessing dbName '%s' from mock.", dbName);
+        
+        if (dbsByName.containsKey(dbName)) {
+            return dbsByName.get(dbName);
         } else {
-            throw new BabuDBException(ErrorCode.BROKEN_PLUGIN, "Test-getDB failed!");
+            throw new BabuDBException(ErrorCode.BROKEN_PLUGIN, "Test-getDB(" + dbName 
+                    + ") failed!");
         }
     }
 
     @Override
-    public Map<String, Database> getDatabases() throws BabuDBException {
-        return dbs;
+    public Map<String, Database> getDatabases() {
+        Logging.logMessage(Logging.LEVEL_ERROR, this, "Retrieving all DBs from mock.");
+        
+        return new HashMap<String, Database>(dbsByName);
     }
 
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getDatabase(int)
+     */
+    @Override
+    public DatabaseInternal getDatabase(int dbId) throws BabuDBException {
+        
+        Logging.logMessage(Logging.LEVEL_ERROR, this, "Accessing dbId '%d' from mock.", dbId);
+        
+        if (dbsById.containsKey(dbId)) {
+            return dbsById.get(dbId);
+        } else {
+            throw new BabuDBException(ErrorCode.BROKEN_PLUGIN, "Test-getDB(" + dbId + ") failed!");
+        }
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getDatabasesInternal()
+     */
+    @Override
+    public Map<String, DatabaseInternal> getDatabasesInternal() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getDatabaseList()
+     */
+    @Override
+    public Collection<DatabaseInternal> getDatabaseList() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getDBModificationLock()
+     */
+    @Override
+    public Object getDBModificationLock() {
+        return this;
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#reset()
+     */
+    @Override
+    public void reset() throws BabuDBException {
+        // TODO Auto-generated method stub
+        
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#shutdown()
+     */
+    @Override
+    public void shutdown() throws BabuDBException {
+        // TODO Auto-generated method stub
+        
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getNextDBId()
+     */
+    @Override
+    public int getNextDBId() {
+        // TODO Auto-generated method stub
+        return 0;
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#setNextDBId(int)
+     */
+    @Override
+    public void setNextDBId(int id) {
+        // TODO Auto-generated method stub
+        
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getComparatorInstances()
+     */
+    @Override
+    public Map<String, ByteRangeComparator> getComparatorInstances() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#putDatabase(org.xtreemfs.babudb.api.dev.DatabaseInternal)
+     */
+    @Override
+    public void putDatabase(DatabaseInternal database) {
+        // TODO Auto-generated method stub
+        
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getAllDatabaseIds()
+     */
+    @Override
+    public Set<Integer> getAllDatabaseIds() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#removeDatabaseById(int)
+     */
+    @Override
+    public void removeDatabaseById(int id) {
+        // TODO Auto-generated method stub
+        
+    }
 }

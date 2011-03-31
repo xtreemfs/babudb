@@ -7,31 +7,29 @@
  */
 package org.xtreemfs.babudb.replication.proxy.operations;
 
-import java.util.Map;
-import java.util.Map.Entry;
-
-import org.xtreemfs.babudb.api.dev.DatabaseInternal;
-import org.xtreemfs.babudb.pbrpc.Common.emptyRequest;
-import org.xtreemfs.babudb.pbrpc.GlobalTypes.Databases;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.Database;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.DatabaseId;
 import org.xtreemfs.babudb.pbrpc.RemoteAccessServiceConstants;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
+import org.xtreemfs.babudb.replication.transmission.ErrorCode;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
 
 import com.google.protobuf.Message;
 
 /**
- * Operation to retrieve a list of available DBs remotely at the server with
+ * Operation to retrieve the name of an available DB remotely at the server with
  * master privilege. 
  *
  * @author flangner
  * @since 01/19/2011
  */
-public class GetDatabasesOperation extends Operation {
+public class GetDatabaseByIdOperation extends Operation {
 
     private final BabuDBInterface dbs;
     
-    public GetDatabasesOperation(BabuDBInterface dbs) {
+    public GetDatabaseByIdOperation(BabuDBInterface dbs) {
         this.dbs = dbs;
     }
     
@@ -41,7 +39,7 @@ public class GetDatabasesOperation extends Operation {
      */
     @Override
     public int getProcedureId() {
-        return RemoteAccessServiceConstants.PROC_ID_GETDATABASES;
+        return RemoteAccessServiceConstants.PROC_ID_GETDATABASEBYID;
     }
     
     /* (non-Javadoc)
@@ -51,15 +49,18 @@ public class GetDatabasesOperation extends Operation {
      */
     @Override
     public void startRequest(final Request rq) {
-        Databases.Builder rBuilder = Databases.newBuilder();
-        Map<String, DatabaseInternal> databases = dbs.getDatabases();
-        for (Entry<String, DatabaseInternal> e : databases.entrySet()) {
-            rBuilder.addDatabase(org.xtreemfs.babudb.pbrpc.GlobalTypes.Database.newBuilder()
-                    .setDatabaseName(e.getKey())
-                    .setDatabaseId(e.getValue().getLSMDB().getDatabaseId())
+        int dbId = ((DatabaseId) rq.getRequestMessage()).getDatabaseId();
+        try {
+            
+            rq.sendSuccess(Database.newBuilder()
+                    .setDatabaseName(dbs.getDatabase(dbId).getName())
+                    .setDatabaseId(dbId)
                     .build());
+        } catch (BabuDBException e) {
+            
+            rq.sendSuccess(Database.newBuilder().setErrorCode(ErrorCode.DB_UNAVAILABLE)
+                    .setDatabaseId(dbId).setDatabaseName("\0").build());
         }
-        rq.sendSuccess(rBuilder.build());
     }
 
     /* (non-Javadoc)
@@ -68,6 +69,6 @@ public class GetDatabasesOperation extends Operation {
      */
     @Override
     public Message getDefaultRequest() {
-        return emptyRequest.getDefaultInstance();
+        return DatabaseId.getDefaultInstance();
     }
 }

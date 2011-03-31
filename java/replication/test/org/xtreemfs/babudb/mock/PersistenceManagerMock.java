@@ -10,8 +10,8 @@ package org.xtreemfs.babudb.mock;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.xtreemfs.babudb.api.PersistenceManager;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
+import org.xtreemfs.babudb.api.dev.PersistenceManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.log.DiskLogger;
@@ -24,10 +24,10 @@ import org.xtreemfs.foundation.logging.Logging;
  * @since 02/21/2011
  */
 
-public class PersistenceManagerMock extends PersistenceManager {
+public class PersistenceManagerMock extends PersistenceManagerInternal {
 
-    private final AtomicReference<LSN> onDisk = new AtomicReference<LSN>(
-            new LSN(0, 0L));
+    final AtomicReference<LSN> onDisk = new AtomicReference<LSN>(new LSN(1, 0L));
+    
     private final AtomicBoolean lock = new AtomicBoolean();
     private final String name;
 

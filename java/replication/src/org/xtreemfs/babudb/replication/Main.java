@@ -9,7 +9,7 @@ package org.xtreemfs.babudb.replication;
 
 import java.io.IOException;
 
-import org.xtreemfs.babudb.BabuDBInternal;
+import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.api.plugin.PluginMain;

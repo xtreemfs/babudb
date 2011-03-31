@@ -109,7 +109,7 @@ public class FleaseHolder implements FleaseStatusListener {
                     
                     // notify listener about the change
                     try {
-                        listener.updateLeaseHolder(getAddress(newLeaseHolder).getAddress());
+                        listener.updateLeaseHolder(getAddress(newLeaseHolder));
                     } catch (Exception e) {
                         Logging.logError(Logging.LEVEL_WARN, this, e);
                         reset();

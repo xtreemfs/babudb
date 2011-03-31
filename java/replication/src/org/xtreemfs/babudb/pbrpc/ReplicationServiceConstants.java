@@ -1,4 +1,4 @@
-//automatically generated from replication.proto at Wed Feb 23 17:04:44 CET 2011
+//automatically generated from replication.proto at Thu Mar 31 13:44:14 CEST 2011
 //(c) 2011. See LICENSE file for details.
 
 package org.xtreemfs.babudb.pbrpc;
@@ -16,7 +16,8 @@ public class ReplicationServiceConstants {
     public static final int PROC_ID_REPLICA = 6;
     public static final int PROC_ID_HEARTBEAT = 7;
     public static final int PROC_ID_REPLICATE = 8;
-    public static final int PROC_ID_VOLATILESTATE = 9;
+    public static final int PROC_ID_SYNCHRONIZE = 9;
+    public static final int PROC_ID_VOLATILESTATE = 10;
 
     public static Message getRequestMessage(int procId) {
         switch (procId) {
@@ -28,7 +29,8 @@ public class ReplicationServiceConstants {
            case 6: return GlobalTypes.LSNRange.getDefaultInstance();
            case 7: return GlobalTypes.HeartbeatMessage.getDefaultInstance();
            case 8: return GlobalTypes.LSN.getDefaultInstance();
-           case 9: return null;
+           case 9: return GlobalTypes.HeartbeatMessage.getDefaultInstance();
+           case 10: return null;
            default: throw new RuntimeException("unknown procedure id");
         }
     }
@@ -44,7 +46,8 @@ public class ReplicationServiceConstants {
            case 6: return GlobalTypes.LogEntries.getDefaultInstance();
            case 7: return GlobalTypes.ErrorCodeResponse.getDefaultInstance();
            case 8: return GlobalTypes.ErrorCodeResponse.getDefaultInstance();
-           case 9: return GlobalTypes.LSN.getDefaultInstance();
+           case 9: return GlobalTypes.ErrorCodeResponse.getDefaultInstance();
+           case 10: return GlobalTypes.LSN.getDefaultInstance();
            default: throw new RuntimeException("unknown procedure id");
         }
     }

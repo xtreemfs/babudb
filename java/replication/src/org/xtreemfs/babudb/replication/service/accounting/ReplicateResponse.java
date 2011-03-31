@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -10,6 +10,7 @@ package org.xtreemfs.babudb.replication.service.accounting;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.log.LogEntry;
+import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.LSN;
 
 /**
@@ -21,9 +22,10 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 
 public final class ReplicateResponse extends LatestLSNUpdateListener {  
 
-    private boolean        finished = false;
-    private int            permittedFailures;
-    private final LogEntry logEntry;
+    private boolean             finished = false;
+    private int                 permittedFailures;
+    private final LogEntry      logEntry;
+    private final SyncListener  listener;
     
     /**
      * Dummy constructor to respond already failed requests.
@@ -37,7 +39,25 @@ public final class ReplicateResponse extends LatestLSNUpdateListener {
         this.finished = true;
         this.permittedFailures = -1;
         this.logEntry = le;
-        this.logEntry.getListener().failed(logEntry, error);
+        this.listener = le.getListener();
+        this.listener.failed(logEntry, error);
+    }
+    
+    /**
+     * Dummy constructor to respond already failed requests.
+     * 
+     * @param lsn
+     * @param listener
+     * @param error
+     */
+    public ReplicateResponse(LSN lsn, SyncListener listener, Exception error) {
+        super(lsn);
+        
+        this.finished = true;
+        this.permittedFailures = -1;
+        this.logEntry = null;
+        this.listener = listener;
+        this.listener.failed(logEntry, error);
     }
     
     /**
@@ -49,8 +69,24 @@ public final class ReplicateResponse extends LatestLSNUpdateListener {
      */
     public ReplicateResponse(LogEntry le, int slavesThatCanFail) {
         super(le.getLSN());
-        logEntry = le;
-        permittedFailures = slavesThatCanFail;
+        this.logEntry = le;
+        this.listener = logEntry.getListener();
+        this.permittedFailures = slavesThatCanFail;
+    }
+    
+    /**
+     * Initializes the response object waiting for the given {@link LSN} to become
+     * the next stable state.
+     * 
+     * @param lsn
+     * @param listener
+     * @param slavesThatCanFail - buffer for negative RPCResponses.
+     */
+    public ReplicateResponse(LSN lsn, SyncListener listener, int slavesThatCanFail) {
+        super(lsn);
+        this.logEntry = null;
+        this.listener = listener;
+        this.permittedFailures = slavesThatCanFail;
     }
     
     /**
@@ -59,7 +95,7 @@ public final class ReplicateResponse extends LatestLSNUpdateListener {
     public synchronized void decrementPermittedFailures(){
         if (permittedFailures == 0 && !finished) {
             finished = true;
-            logEntry.getListener().failed(logEntry, new BabuDBException(
+            listener.failed(logEntry, new BabuDBException(
                     ErrorCode.REPLICATION_FAILURE,"LogEntry could not be " +
                     "replicated!"));
         }
@@ -89,7 +125,7 @@ public final class ReplicateResponse extends LatestLSNUpdateListener {
     public synchronized void upToDate() {
         if (!finished) {
             finished = true;
-            logEntry.getListener().synced(logEntry);
+            listener.synced(logEntry);
         }
     }
 
@@ -101,8 +137,8 @@ public final class ReplicateResponse extends LatestLSNUpdateListener {
     public synchronized void failed() {
         if (!finished) {
             finished = true;
-            logEntry.getListener().failed(logEntry, new Exception("Replication"+
-                    " of LogEntry ("+logEntry.getLSN().toString()+") failed!"));
+            listener.failed(logEntry, new Exception("Replication" + " of LogEntry (" + 
+                    lsn.toString() + ") failed!"));
         }
     }
 }

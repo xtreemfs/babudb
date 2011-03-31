@@ -12,40 +12,44 @@ service RemoteAccessService {
     option(data_in)=true;
   };
   
-  rpc getDatabase(DatabaseName) returns(Database) {
+  rpc getDatabaseByName(DatabaseName) returns(Database) {
     option(proc_id)=2;
   };
   
-  rpc getDatabases(emptyRequest) returns(Databases) {
+  rpc getDatabaseById(DatabaseId) returns(Database) {
     option(proc_id)=3;
   };
   
-  rpc lookup(Lookup) returns(ErrorCodeResponse) {
+  rpc getDatabases(emptyRequest) returns(Databases) {
     option(proc_id)=4;
-    option(data_in)=true;
-    option(data_out)=true;
   };
   
-  rpc plookup(Lookup) returns(EntryMap) {
+  rpc lookup(Lookup) returns(ErrorCodeResponse) {
     option(proc_id)=5;
     option(data_in)=true;
     option(data_out)=true;
   };
   
-  rpc plookupReverse(Lookup) returns(EntryMap) {
+  rpc plookup(Lookup) returns(EntryMap) {
     option(proc_id)=6;
     option(data_in)=true;
     option(data_out)=true;
   };
   
-  rpc rlookup(RangeLookup) returns(EntryMap) {
+  rpc plookupReverse(Lookup) returns(EntryMap) {
     option(proc_id)=7;
     option(data_in)=true;
     option(data_out)=true;
   };
   
-  rpc rlookupReverse(RangeLookup) returns(EntryMap) {
+  rpc rlookup(RangeLookup) returns(EntryMap) {
     option(proc_id)=8;
+    option(data_in)=true;
+    option(data_out)=true;
+  };
+  
+  rpc rlookupReverse(RangeLookup) returns(EntryMap) {
+    option(proc_id)=9;
     option(data_in)=true;
     option(data_out)=true;
   };
@@ -90,7 +94,11 @@ service ReplicationService {
     option(data_in)=true;
   };
   
-  rpc volatileState(emptyRequest) returns(LSN) {
+  rpc synchronize(HeartbeatMessage) returns(ErrorCodeResponse) {
     option(proc_id)=9;
+  };
+  
+  rpc volatileState(emptyRequest) returns(LSN) {
+    option(proc_id)=10;
   };
 }

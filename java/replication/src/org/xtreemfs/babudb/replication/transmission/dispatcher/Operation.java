@@ -53,11 +53,8 @@ public abstract class Operation {
      */
     public ErrorResponse parseRPCMessage(Request rq) {
         ErrorResponse result = null;
-        Message message = getDefaultRequest();
         try {
-            if (message != null) {
-                rq.deserializeMessage(getDefaultRequest());
-            }
+            rq.deserializeMessage(getDefaultRequest());
         } catch (IOException e) {
             result = ErrorResponse.newBuilder()
                 .setErrorMessage(e.getMessage())

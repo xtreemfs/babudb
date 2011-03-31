@@ -13,7 +13,6 @@ package org.xtreemfs.babudb.replication;
 import java.net.InetSocketAddress;
 import java.util.Map;
 
-import org.xtreemfs.babudb.api.PersistenceManager;
 import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.Databases;
@@ -50,8 +49,18 @@ public interface RemoteAccessClient {
      * @param master
      * @return the request's response future.
      */
-    public ClientResponseFuture<Integer, org.xtreemfs.babudb.pbrpc.GlobalTypes.Database> getDatabase(
-            String dbName, InetSocketAddress master);
+    public ClientResponseFuture<Integer, org.xtreemfs.babudb.pbrpc.GlobalTypes.Database> 
+            getDatabase(String dbName, InetSocketAddress master);
+    
+    /**
+     * RPC for requesting the name of a {@link Database} belonging to the given Id.
+     * 
+     * @param dbId
+     * @param master
+     * @return the request's response future.
+     */
+    public ClientResponseFuture<String, org.xtreemfs.babudb.pbrpc.GlobalTypes.Database> 
+            getDatabase(int dbId, InetSocketAddress master);
     
     /**
      * RPC for requesting a list of available {@link Database} IDs and names at 

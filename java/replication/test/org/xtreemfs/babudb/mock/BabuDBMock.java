@@ -7,12 +7,12 @@
  */
 package org.xtreemfs.babudb.mock;
 
-import org.xtreemfs.babudb.BabuDBInternal;
-import org.xtreemfs.babudb.api.Checkpointer;
-import org.xtreemfs.babudb.api.DatabaseManager;
-import org.xtreemfs.babudb.api.PersistenceManager;
-import org.xtreemfs.babudb.api.SnapshotManager;
 import org.xtreemfs.babudb.api.StaticInitialization;
+import org.xtreemfs.babudb.api.dev.BabuDBInternal;
+import org.xtreemfs.babudb.api.dev.CheckpointerInternal;
+import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
+import org.xtreemfs.babudb.api.dev.PersistenceManagerInternal;
+import org.xtreemfs.babudb.api.dev.SnapshotManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.lsmdb.DBConfig;
@@ -27,16 +27,19 @@ import org.xtreemfs.foundation.logging.Logging;
  */
 public class BabuDBMock implements BabuDBInternal {
 
-    private final String                name;
-    private final BabuDBConfig          conf;
-    private final PersistenceManager    perMan;
-    private final DatabaseManager       dbMan;
+    private final String                        name;
+    private final BabuDBConfig                  conf;
+    private final PersistenceManagerInternal    perMan;
+    private final DatabaseManagerInternal       dbMan;
+    private final CheckpointerInternal          cp;
 
-    public BabuDBMock(String name, BabuDBConfig conf) {
+    public BabuDBMock(String name, BabuDBConfig conf) throws BabuDBException {
         this.name = name;
         this.conf = conf;
-        this.perMan = new PersistenceManagerMock(name);
+        PersistenceManagerMock localPersMan = new PersistenceManagerMock(name);
+        this.perMan = localPersMan;
         this.dbMan = new DatabaseManagerMock();
+        this.cp = new CheckpointerMock(localPersMan);
     }
 
     /*
@@ -45,12 +48,11 @@ public class BabuDBMock implements BabuDBInternal {
      * @see org.xtreemfs.babudb.api.BabuDB#getCheckpointer()
      */
     @Override
-    public Checkpointer getCheckpointer() {
+    public CheckpointerInternal getCheckpointer() {
 
         Logging.logMessage(Logging.LEVEL_ERROR, this,
                 "Mock '%s' tried to access CP.", name);
-        // TODO Auto-generated method stub
-        return null;
+        return cp;
     }
 
     /*
@@ -59,7 +61,7 @@ public class BabuDBMock implements BabuDBInternal {
      * @see org.xtreemfs.babudb.api.BabuDB#getDatabaseManager()
      */
     @Override
-    public DatabaseManager getDatabaseManager() {
+    public DatabaseManagerInternal getDatabaseManager() {
 
         Logging.logMessage(Logging.LEVEL_ERROR, this,
                 "Mock '%s' tried to access DBMan.", name);
@@ -72,7 +74,7 @@ public class BabuDBMock implements BabuDBInternal {
      * @see org.xtreemfs.babudb.api.BabuDB#getSnapshotManager()
      */
     @Override
-    public SnapshotManager getSnapshotManager() {
+    public SnapshotManagerInternal getSnapshotManager() {
 
         Logging.logMessage(Logging.LEVEL_ERROR, this,
                 "Mock '%s' tried to access SMan.", name);
@@ -125,7 +127,7 @@ public class BabuDBMock implements BabuDBInternal {
      * @see org.xtreemfs.babudb.BabuDBInternal#getPersistenceManager()
      */
     @Override
-    public PersistenceManager getPersistenceManager() {
+    public PersistenceManagerInternal getPersistenceManager() {
 
         Logging.logMessage(Logging.LEVEL_ERROR, this,
                 "Mock '%s' tried to access PerMan.", name);
@@ -140,7 +142,7 @@ public class BabuDBMock implements BabuDBInternal {
      * .babudb.api.PersistenceManager)
      */
     @Override
-    public void replacePersistenceManager(PersistenceManager perMan) {
+    public void replacePersistenceManager(PersistenceManagerInternal perMan) {
 
         Logging.logMessage(Logging.LEVEL_ERROR, this,
                 "Mock '%s' tried to replace PerMan.", name);

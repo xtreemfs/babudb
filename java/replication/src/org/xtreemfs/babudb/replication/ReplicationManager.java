@@ -9,7 +9,7 @@ package org.xtreemfs.babudb.replication;
 
 import java.net.InetSocketAddress;
 
-import org.xtreemfs.babudb.BabuDBInternal;
+import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.replication.control.ControlLayer;
