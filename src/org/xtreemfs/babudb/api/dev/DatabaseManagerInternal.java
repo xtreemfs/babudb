@@ -9,10 +9,12 @@ package org.xtreemfs.babudb.api.dev;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 import org.xtreemfs.babudb.api.DatabaseManager;
 import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 
 /**
  * Interface of {@link DatabaseManager} for internal usage. This should not be accessed
@@ -44,7 +46,7 @@ public interface DatabaseManagerInternal extends DatabaseManager {
      * @throws BabuDBException
      *             if the database does not exist
      */
-    public DatabaseInternal getDatabase(int dbId);
+    public DatabaseInternal getDatabase(int dbId) throws BabuDBException;
     
     /**
      * Returns a map containing all databases.
@@ -71,6 +73,41 @@ public interface DatabaseManagerInternal extends DatabaseManager {
      * @throws BabuDBException if this operation fails.
      */
     public void reset() throws BabuDBException;
+    
+    /**
+     * @return the next database identifier to assign.
+     */
+    public int getNextDBId();
+    
+    /**
+     * Method to manually set the next to use database identifier. 
+     * Should only be accessed by DBConfig.
+     * 
+     * @param id
+     */
+    public void setNextDBId(int id);
+    
+    /**
+     * @return a map containing all comparators sorted by their class names.
+     */
+    public Map<String, ByteRangeComparator> getComparatorInstances();
+    
+    /**
+     * Register a database at the DatabaseManger.
+     * 
+     * @param database
+     */
+    public void putDatabase(DatabaseInternal database);
+    
+    /** 
+     * @return a set of all database identifiers available.
+     */
+    public Set<Integer> getAllDatabaseIds();
+    
+    /**
+     * @param id
+     */
+    public DatabaseInternal removeDatabaseById(int id);
     
     /**
      * Terminates the {@link DatabaseManager}.

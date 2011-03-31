@@ -20,15 +20,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.dev.CheckpointerInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseInternal;
+import org.xtreemfs.babudb.api.dev.SnapshotManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
-import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.OutputUtils;
 
@@ -213,8 +212,7 @@ public class CheckpointerImpl extends Thread implements CheckpointerInternal {
 	                "snapshot materialization request found for database '" + 
 	                rq.dbName + "', snapshot: '" + rq.snap.getName() + "'");
             
-            SnapshotManagerImpl snapMan = 
-                (SnapshotManagerImpl) dbs.getSnapshotManager();
+            SnapshotManagerInternal snapMan = dbs.getSnapshotManager();
             
             // write the snapshot
             dbs.getDatabaseManager().getDatabase(rq.dbName)
@@ -261,8 +259,8 @@ public class CheckpointerImpl extends Thread implements CheckpointerInternal {
             try {
                 // critical block...
                 logger.lockLogger();
-                for (Database db : databases) {
-                    snapIds[i++] = ((DatabaseImpl) db).proceedCreateSnapshot();
+                for (DatabaseInternal db : databases) {
+                    snapIds[i++] = db.proceedCreateSnapshot();
                 }
                 lastWrittenLSN = logger.switchLogFile(incrementViewId);
                 incrementViewId = false;
@@ -271,11 +269,11 @@ public class CheckpointerImpl extends Thread implements CheckpointerInternal {
             }
             
             i = 0;
-            for (Database db : databases) {
-                ((DatabaseImpl) db).proceedWriteSnapshot(lastWrittenLSN.getViewId(), lastWrittenLSN
-                        .getSequenceNo(), snapIds[i++]);
-                ((DatabaseImpl) db).proceedCleanupSnapshot(lastWrittenLSN.getViewId(), lastWrittenLSN
-                        .getSequenceNo());
+            for (DatabaseInternal db : databases) {
+                db.proceedWriteSnapshot(lastWrittenLSN.getViewId(), lastWrittenLSN.getSequenceNo(), 
+                        snapIds[i++]);
+                db.proceedCleanupSnapshot(lastWrittenLSN.getViewId(), 
+                        lastWrittenLSN.getSequenceNo());
             }
             
             // delete all logfile with LSN <= lastWrittenLSN
@@ -311,14 +309,23 @@ public class CheckpointerImpl extends Thread implements CheckpointerInternal {
         Logging.logMessage(Logging.LEVEL_INFO, this, "checkpoint complete");
     }
     
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.CheckpointerInternal#addSnapshotMaterializationRequest(
+     *          java.lang.String, int[], org.xtreemfs.babudb.snapshots.SnapshotConfig)
+     */
+    @Override
     public void addSnapshotMaterializationRequest(String dbName, int[] snapIds, SnapshotConfig snap) {
         synchronized (requests) {
             requests.add(new MaterializationRequest(dbName, snapIds, snap));
         }
     }
     
-    public void removeSnapshotMaterializationRequest(String dbName, 
-            String snapshotName) {
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.CheckpointerInternal#removeSnapshotMaterializationRequest(
+     *          java.lang.String, java.lang.String)
+     */
+    @Override
+    public void removeSnapshotMaterializationRequest(String dbName, String snapshotName) {
         
         synchronized (requests) {
             Iterator<MaterializationRequest> it = requests.iterator();
@@ -396,7 +403,7 @@ public class CheckpointerImpl extends Thread implements CheckpointerInternal {
                         Logging.logMessage(Logging.LEVEL_INFO, this, 
                                 "triggered manual checkpoint");
                     
-                    synchronized (((DatabaseManagerImpl) dbs.getDatabaseManager()).getDBModificationLock()) {
+                    synchronized (dbs.getDatabaseManager().getDBModificationLock()) {
                         synchronized (this) {
                             materializeSnapshots();
 

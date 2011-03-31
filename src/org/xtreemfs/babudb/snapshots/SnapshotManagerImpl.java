@@ -19,16 +19,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Map.Entry;
 
-import org.xtreemfs.babudb.BabuDBImpl;
 import org.xtreemfs.babudb.api.InMemoryProcessing;
 import org.xtreemfs.babudb.api.database.DatabaseRO;
+import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.dev.SnapshotManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
-import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
-import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
-import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.FSUtils;
@@ -40,11 +37,11 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
     
     public static final String                       SNAP_DIR = "snapshots";
     
-    private final BabuDBImpl                         dbs;
+    private final BabuDBInternal                     dbs;
     
     private final Map<String, Map<String, Snapshot>> snapshotDBs;
     
-    public SnapshotManagerImpl(BabuDBImpl dbs) {
+    public SnapshotManagerImpl(BabuDBInternal dbs) {
         this.dbs = dbs;
         this.snapshotDBs = Collections.synchronizedMap(new HashMap<String, Map<String, Snapshot>>());
         
@@ -116,16 +113,18 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
                                  .getDatabaseId(), snap }).get();
     }
     
-    /**
-     * inovked by the framework when snapshot creation has completed
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.SnapshotManagerInternal#snapshotComplete(java.lang.String, 
+     *          org.xtreemfs.babudb.snapshots.SnapshotConfig)
      */
+    @Override
     public void snapshotComplete(String dbName, SnapshotConfig snap) throws BabuDBException {
         
         // as soon as the snapshot has been completed, replace the entry in the
         // snapshot DB map with a disk index-based BabuDB instance if necessary
         synchronized (snapshotDBs) {
         	
-        	DatabaseImpl db = (DatabaseImpl) dbs.getDatabaseManager().getDatabase(dbName);
+        	DatabaseInternal db = dbs.getDatabaseManager().getDatabase(dbName);
         	boolean compressed = db.getLSMDB().getIndex(0).isCompressed();
         	boolean mmaped = db.getLSMDB().getIndex(0).isMMapEnabled();
         	
@@ -169,8 +168,7 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
             
             // if a snapshot materialization request is currently in the
             // checkpointer queue, remove it
-            ((CheckpointerImpl) dbs.getCheckpointer())
-                    .removeSnapshotMaterializationRequest(dbName, snapshotName);
+            dbs.getCheckpointer().removeSnapshotMaterializationRequest(dbName, snapshotName);
             
             // delete the snapshot sub-directory on disk if available
             FSUtils.delTree(new File(getSnapshotDir(dbName, snapshotName)));
@@ -190,6 +188,10 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
             return new String[0];
     }
     
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.SnapshotManagerInternal#deleteAllSnapshots(java.lang.String)
+     */
+    @Override
     public void deleteAllSnapshots(String dbName) throws BabuDBException {
         
         final Map<String, Snapshot> snapMap = snapshotDBs.get(dbName);
@@ -202,8 +204,7 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
                 
                 // if a snapshot materialization request is currently in the
                 // checkpointer queue, remove it
-                ((CheckpointerImpl) dbs.getCheckpointer()).removeSnapshotMaterializationRequest(dbName, snap
-                        .getKey());
+                dbs.getCheckpointer().removeSnapshotMaterializationRequest(dbName, snap.getKey());
                 
             }
             
@@ -216,6 +217,11 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
         // method will only be invoked when the database itself is deleted
     }
     
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.SnapshotManagerInternal#getSnapshotDir(java.lang.String, 
+     *          java.lang.String)
+     */
+    @Override
     public String getSnapshotDir(String dbName, String snapshotName) {
         return dbs.getConfig().getBaseDir() + dbName + "/" + SnapshotManagerImpl.SNAP_DIR + "/"
             + (snapshotName == null ? "" : snapshotName);
@@ -288,8 +294,7 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
                 int dbId = (Integer) args[0];
                 SnapshotConfig snap = (SnapshotConfig) args[1];
                 // TODO add dbName to simplify the in-memory processing
-                String dbName = 
-                    ((DatabaseManagerImpl) dbs.getDatabaseManager()).getDatabase(dbId).getName();
+                String dbName = dbs.getDatabaseManager().getDatabase(dbId).getName();
                 
                 Map<String, Snapshot> snapMap = snapshotDBs.get(dbName);
                 if (snapMap == null) {
@@ -315,8 +320,7 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
                 int dbId = (Integer) args[0];
                 SnapshotConfig snap = (SnapshotConfig) args[1];
                 // TODO add dbName to simplify the in-memory processing
-                DatabaseImpl org = (DatabaseImpl) 
-                        ((DatabaseManagerImpl) dbs.getDatabaseManager()).getDatabase(dbId);
+                DatabaseInternal org = dbs.getDatabaseManager().getDatabase(dbId);
                 
                 String dbName = org.getName();
                 
@@ -338,8 +342,7 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
                 
                 // then, enqueue a snapshot materialization request in the
                 // checkpointer's queue
-                ((CheckpointerImpl) dbs.getCheckpointer()).addSnapshotMaterializationRequest(
-                        dbName, snapIds, snap);
+                dbs.getCheckpointer().addSnapshotMaterializationRequest(dbName, snapIds, snap);
                 
                 // as long as the snapshot has not been persisted yet, add a view on
                 // the current snapshot in the original database to the snapshot DB map
@@ -422,7 +425,7 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
                 
                 // if a snapshot materialization request is currently in the
                 // checkpointer queue, remove it
-                ((CheckpointerImpl) dbs.getCheckpointer()).removeSnapshotMaterializationRequest(dbName, snapshotName);
+                dbs.getCheckpointer().removeSnapshotMaterializationRequest(dbName, snapshotName);
                 
                 // delete the snapshot subdirectory on disk if available
                 FSUtils.delTree(new File(getSnapshotDir(dbName, snapshotName)));
