@@ -604,8 +604,8 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
      * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#removeDatabaseById(int)
      */
     @Override
-    public DatabaseInternal removeDatabaseById(int id) {
-        return dbsByName.remove(dbsById.remove(id).getName());
+    public void removeDatabaseById(int id) {
+        dbsByName.remove(dbsById.remove(id).getName());
     }
 
     /* (non-Javadoc)

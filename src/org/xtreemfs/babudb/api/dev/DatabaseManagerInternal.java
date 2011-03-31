@@ -105,9 +105,11 @@ public interface DatabaseManagerInternal extends DatabaseManager {
     public Set<Integer> getAllDatabaseIds();
     
     /**
+     * Removes a database given by its id.
+     * 
      * @param id
      */
-    public DatabaseInternal removeDatabaseById(int id);
+    public void removeDatabaseById(int id);
     
     /**
      * Terminates the {@link DatabaseManager}.
