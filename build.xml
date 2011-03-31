@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?eclipse.ant.import?>
+<project basedir="." default="build" name="BabuDB">
+	<property environment="env" />
+	<property name="debuglevel" value="source,lines,vars" />
+	<property name="target" value="1.6" />
+	<property name="source" value="1.6" />
+	<path id="BabuDB.classpath">
+		<pathelement location="bin" />
+		<pathelement location="lib/Foundation.jar" />
+	</path>
+	<target name="init">
+		<mkdir dir="bin" />
+	</target>
+	<target name="clean">
+		<delete dir="bin" />
+	</target>
+	<target depends="clean" name="cleanall" />
+	<target depends="build-subprojects,build-project" name="build" />
+	<target name="build-subprojects"/>
+	<target depends="init" name="build-project">
+		<echo message="${ant.project.name}: ${ant.file}" />
+		<javac debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}">
+			<src path="src" />
+			<classpath refid="BabuDB.classpath" />
+		</javac>
+	</target>
+	<target name="jar" depends="build">
+		<mkdir dir="dist" />
+		<copy file="AUTHORS" todir="bin" />
+		<copy file="LICENSE" todir="bin" />
+		<copy todir="bin">
+			<fileset dir="src" excludes="**/*.java"/>
+		</copy>
+		<jar destfile="dist/BabuDB.jar" basedir="bin" excludes="org/xtreemfs/babudb/sandbox/**" />
+	</target>
+</project>
