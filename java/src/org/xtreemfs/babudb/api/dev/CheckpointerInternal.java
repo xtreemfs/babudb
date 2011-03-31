@@ -12,6 +12,7 @@ import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 
 /**
  * Interface of {@link Checkpointer} for internal usage. This should not be accessed
@@ -55,6 +56,25 @@ public interface CheckpointerInternal extends Checkpointer {
      * @throws InterruptedException
      */
     public void suspendCheckpointing() throws InterruptedException;
+    
+    /**
+     * Method to manually force a checkpoint of the designated database.
+     * 
+     * @param dbName
+     * @param snapIds
+     * @param snap
+     */
+    public void addSnapshotMaterializationRequest(String dbName, int[] snapIds, 
+                                                  SnapshotConfig snap);
+    
+    /**
+     * Method to manually remove a checkpoint materialization request for the designated database 
+     * from the queue.
+     * 
+     * @param dbName
+     * @param snapshotName
+     */
+    public void removeSnapshotMaterializationRequest(String dbName, String snapshotName);
     
     /**
      * Terminates the {@link Checkpointer}.

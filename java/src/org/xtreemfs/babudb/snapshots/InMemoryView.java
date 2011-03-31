@@ -12,11 +12,11 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Map.Entry;
 
-import org.xtreemfs.babudb.api.BabuDB;
 import org.xtreemfs.babudb.api.database.ResultSet;
+import org.xtreemfs.babudb.api.dev.BabuDBInternal;
+import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
-import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
 
 /**
  * This class provides simple read-only access to all immutable on-disk indices
@@ -27,16 +27,16 @@ import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
  */
 public class InMemoryView implements BabuDBView {
     
-    private DatabaseImpl          db;
+    private DatabaseInternal      db;
     
     private Map<Integer, Integer> snapIDMap;
     
     private SnapshotConfig        snap;
     
-    public InMemoryView(BabuDB babuDBImpl, String dbName, SnapshotConfig snap, int[] snapIDs)
+    public InMemoryView(BabuDBInternal babuDB, String dbName, SnapshotConfig snap, int[] snapIDs)
         throws BabuDBException {
         
-        this.db = (DatabaseImpl) babuDBImpl.getDatabaseManager().getDatabase(dbName);
+        this.db = babuDB.getDatabaseManager().getDatabase(dbName);
         this.snap = snap;
         
         snapIDMap = new HashMap<Integer, Integer>();
@@ -52,8 +52,8 @@ public class InMemoryView implements BabuDBView {
         if (snapId == null)
             throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + indexId + " does not exist");
         
-        return (isCovered(indexId, key) && snap.containsKey(indexId, key)) ? db.directLookup(indexId, snapId,
-            key) : null;
+        return (isCovered(indexId, key) && snap.containsKey(indexId, key)) ? 
+                db.directLookup(indexId, snapId, key) : null;
     }
     
     @Override

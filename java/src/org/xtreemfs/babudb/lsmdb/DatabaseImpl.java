@@ -22,9 +22,7 @@ import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
-import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
-import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.foundation.logging.Logging;
@@ -414,10 +412,10 @@ public class DatabaseImpl implements DatabaseInternal {
         }
     }
     
-/*
- * snapshot specific operations
- */
-
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#directLookup(int, int, byte[])
+     */
+    @Override
     public byte[] directLookup(int indexId, int snapId, byte[] key) 
         throws BabuDBException {
         
@@ -428,6 +426,11 @@ public class DatabaseImpl implements DatabaseInternal {
         return lsmDB.getIndex(indexId).lookup(key, snapId);
     }
     
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#directPrefixLookup(int, int, byte[], 
+     *          boolean)
+     */
+    @Override
     public ResultSet<byte[], byte[]> directPrefixLookup(int indexId, 
             int snapId, byte[] key, boolean ascending) throws BabuDBException {
         
@@ -437,7 +440,12 @@ public class DatabaseImpl implements DatabaseInternal {
         }
         return lsmDB.getIndex(indexId).prefixLookup(key, snapId, ascending);
     }
-    
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#directRangeLookup(int, int, byte[], byte[], 
+     *          boolean)
+     */
+    @Override
     public ResultSet<byte[], byte[]> directRangeLookup(int indexId,
             int snapId, byte[] from, byte[] to, boolean ascending) 
                 throws BabuDBException {
@@ -449,21 +457,11 @@ public class DatabaseImpl implements DatabaseInternal {
         return lsmDB.getIndex(indexId).rangeLookup(from, to, snapId, ascending);
     }
     
-    /**
-     * Creates an in-memory snapshot of all indices in a single database and
-     * writes the snapshot to disk. Eludes the slave-check.
-     * 
-     * NOTE: this method should only be invoked by the replication
-     * 
-     * @param destDB
-     *            - the name of the destination DB name.
-     * 
-     * @throws BabuDBException
-     *             if the checkpoint was not successful
-     * @throws InterruptedException
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#proceedSnapshot(java.lang.String)
      */
-    public void proceedSnapshot(String destDB) throws BabuDBException, 
-            InterruptedException {
+    @Override
+    public void proceedSnapshot(String destDB) throws BabuDBException, InterruptedException {
         
         int[] ids;
         try {
@@ -490,18 +488,10 @@ public class DatabaseImpl implements DatabaseInternal {
         }
     }
     
-    /**
-     * Creates an in-memory snapshot of all indices in a single database. The
-     * snapshot will be discarded when the system is restarted. This Operation
-     * comes without slave-protection. The {@link DiskLogger} has to be locked
-     * before executing this method.
-     * 
-     * This method will not generate a {@link LogEntry}.
-     * 
-     * NOTE: this method should only be invoked by the framework
-     * 
-     * @return an array with the snapshot ID for each index in the database
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#proceedCreateSnapshot()
      */
+    @Override
     public int[] proceedCreateSnapshot() {
         return lsmDB.createSnapshot();
     }
@@ -537,19 +527,12 @@ public class DatabaseImpl implements DatabaseInternal {
         proceedWriteSnapshot(viewId, sequenceNo, snapIds);
     }
     
-    /**
-     * Writes the snapshots to disk.
-     * 
-     * @param viewId
-     *            current viewId (i.e. of the last write)
-     * @param sequenceNo
-     *            current sequenceNo (i.e. of the last write)
-     * @param snapIds
-     *            the snapshot Ids (obtained via createSnapshot).
-     * @throws BabuDBException
-     *             if a snapshot cannot be written
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#proceedWriteSnapshot(int, long, int[])
      */
-    public void proceedWriteSnapshot(int viewId, long sequenceNo, int[] snapIds) throws BabuDBException {
+    @Override
+    public void proceedWriteSnapshot(int viewId, long sequenceNo, int[] snapIds) 
+            throws BabuDBException {
         try {
             lsmDB.writeSnapshot(viewId, sequenceNo, snapIds);
         } catch (IOException ex) {
@@ -558,18 +541,12 @@ public class DatabaseImpl implements DatabaseInternal {
         
     }
     
-    /**
-     * Links the indices to the latest on-disk snapshot, cleans up any
-     * unnecessary in-memory and on-disk data. 
-     * 
-     * @param viewId
-     *            the viewId of the snapshot
-     * @param sequenceNo
-     *            the sequenceNo of the snaphot
-     * @throws BabuDBException
-     *             if snapshots cannot be cleaned up
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#proceedCleanupSnapshot(int, long)
      */
-    public void proceedCleanupSnapshot(final int viewId, final long sequenceNo) throws BabuDBException {
+    @Override
+    public void proceedCleanupSnapshot(final int viewId, final long sequenceNo) 
+            throws BabuDBException {
         try {
             lsmDB.cleanupSnapshot(viewId, sequenceNo);
         } catch (ClosedByInterruptException ex) {
@@ -579,13 +556,10 @@ public class DatabaseImpl implements DatabaseInternal {
         }
     }
     
-    /**
-     * Dumps a snapshot of the database with the given directory as base dir.
-     * The database snapshot is in base dir + database name
-     * 
-     * @param baseDir
-     * @throws BabuDBException
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#dumpSnapshot(java.lang.String)
      */
+    @Override
     public void dumpSnapshot(String baseDir) throws BabuDBException {
         // destination directory of this
         baseDir = baseDir.endsWith(File.separator) ? baseDir : baseDir + File.separator;
@@ -599,29 +573,20 @@ public class DatabaseImpl implements DatabaseInternal {
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot write snapshot: " + ex, ex);
         }
     }
-    
-    /*
-     * getter/setter
-     */
 
-    /**
-     * <p>
-     * Replaces the currently used {@link LSMDatabase} with the given one. <br>
-     * Be really careful with this operation. {@link LSMDBRequest}s might get
-     * lost.
-     * </p>
-     * 
-     * @param lsmDatabase
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#setLSMDB(
+     *          org.xtreemfs.babudb.lsmdb.LSMDatabase)
      */
+    @Override
     public void setLSMDB(LSMDatabase lsmDatabase) {
         this.lsmDB = lsmDatabase;
     }
     
-    /**
-     * Returns the underlying LSM database implementation.
-     * 
-     * @return the LSM database
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#getLSMDB()
      */
+    @Override
     public LSMDatabase getLSMDB() {
         return lsmDB;
     }

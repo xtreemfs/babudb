@@ -160,7 +160,7 @@ public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
             if (dbLsn == null)
                 dbLsn = db.getLSMDB().getOndiskLSN();
             else {
-                LSN onDiskLSN = ((DatabaseImpl) db).getLSMDB().getOndiskLSN();
+                LSN onDiskLSN = db.getLSMDB().getOndiskLSN();
                 if (!(LSMDatabase.NO_DB_LSN.equals(dbLsn) || LSMDatabase.NO_DB_LSN.equals(onDiskLSN)))
                     dbLsn = dbLsn.compareTo(onDiskLSN) < 0 ? dbLsn : onDiskLSN;
             }

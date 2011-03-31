@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -13,14 +13,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
-import org.xtreemfs.babudb.BabuDBImpl;
-import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseInternal;
+import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
@@ -39,17 +38,17 @@ import static org.xtreemfs.babudb.BabuDBFactory.*;
 
 public class DBConfig {
     
-    private final BabuDBImpl    dbs;
+    private final BabuDBInternal dbs;
     
-    private final File          configFile;
+    private final File           configFile;
     
-    private boolean             conversionRequired;
+    private boolean              conversionRequired;
     
-    private int                 dbFormatVer;
+    private int                  dbFormatVer;
     
-    public DBConfig(BabuDBImpl dbs) throws BabuDBException {
+    public DBConfig(BabuDBInternal dbs) throws BabuDBException {
         this.dbs = dbs;
-        this.configFile = new File(this.dbs.getConfig().getBaseDir() + this.dbs.getConfig().getDbCfgFile());
+        this.configFile = new File(dbs.getConfig().getBaseDir() + dbs.getConfig().getDbCfgFile());
         load();
     }
     
@@ -60,7 +59,7 @@ public class DBConfig {
      * @throws BabuDBException
      */
     public void reset() throws BabuDBException {
-        DatabaseManagerImpl dbman = (DatabaseManagerImpl) dbs.getDatabaseManager();
+        DatabaseManagerInternal dbman = dbs.getDatabaseManager();
         assert (dbman != null) : "The DatabaseManager is not available!";
         
         ObjectInputStream ois = null;
@@ -75,7 +74,7 @@ public class DBConfig {
                         + BABUDB_DB_FORMAT_VERSION + ")");
                 }
                 final int numDB = ois.readInt();
-                dbman.nextDbId = ois.readInt();
+                dbman.setNextDBId(ois.readInt());
                 for (int i = 0; i < numDB; i++) {
                     Logging.logMessage(Logging.LEVEL_DEBUG, this, "loading DB...");
                     final String dbName = (String) ois.readObject();
@@ -84,11 +83,11 @@ public class DBConfig {
                     ByteRangeComparator[] comps = new ByteRangeComparator[numIndex];
                     for (int idx = 0; idx < numIndex; idx++) {
                         final String className = (String) ois.readObject();
-                        ByteRangeComparator comp = dbman.compInstances.get(className);
+                        ByteRangeComparator comp = dbman.getComparatorInstances().get(className);
                         if (comp == null) {
                             Class<?> clazz = Class.forName(className);
                             comp = (ByteRangeComparator) clazz.newInstance();
-                            dbman.compInstances.put(className, comp);
+                            dbman.getComparatorInstances().put(className, comp);
                         }
                         
                         assert (comp != null);
@@ -97,37 +96,40 @@ public class DBConfig {
                     
                     ids.add(dbId);
                     
-                    DatabaseImpl db = (DatabaseImpl) dbman.dbsById.get(dbId);
-                    
-                    // reset existing DBs
-                    if (db != null) {
-                        db.setLSMDB(new LSMDatabase(dbName, dbId, this.dbs.getConfig().getBaseDir() + dbName
-                            + File.separatorChar, numIndex, true, comps, this.dbs.getConfig()
-                                .getCompression(), this.dbs.getConfig().getMaxNumRecordsPerBlock(), this.dbs
-                                .getConfig().getMaxBlockFileSize(), this.dbs.getConfig().getDisableMMap(),
-                            this.dbs.getConfig().getMMapLimit()));
-                    } else {
-                        db = new DatabaseImpl(this.dbs, new LSMDatabase(dbName, dbId, this.dbs.getConfig()
-                                .getBaseDir()
-                            + dbName + File.separatorChar, numIndex, true, comps, this.dbs.getConfig()
-                                .getCompression(), this.dbs.getConfig().getMaxNumRecordsPerBlock(), this.dbs
-                                .getConfig().getMaxBlockFileSize(), this.dbs.getConfig().getDisableMMap(),
-                            this.dbs.getConfig().getMMapLimit()));
-                        dbman.dbsById.put(dbId, db);
-                        dbman.dbsByName.put(dbName, db);
+                    DatabaseInternal db;
+                    try {
+                        // reset existing DBs
+                        db = dbman.getDatabase(dbId);
+                        db.setLSMDB(new LSMDatabase(dbName, dbId, dbs.getConfig().getBaseDir() 
+                                + dbName + File.separatorChar, numIndex, true, comps, 
+                                dbs.getConfig().getCompression(), 
+                                dbs.getConfig().getMaxNumRecordsPerBlock(), 
+                                dbs.getConfig().getMaxBlockFileSize(), 
+                                dbs.getConfig().getDisableMMap(),
+                                dbs.getConfig().getMMapLimit()));
+                    } catch (BabuDBException e) {
+                        db = new DatabaseImpl(dbs, new LSMDatabase(dbName, dbId, 
+                                dbs.getConfig().getBaseDir() + dbName + File.separatorChar, 
+                                numIndex, true, comps, dbs.getConfig().getCompression(), 
+                                dbs.getConfig().getMaxNumRecordsPerBlock(), 
+                                dbs.getConfig().getMaxBlockFileSize(), 
+                                dbs.getConfig().getDisableMMap(),
+                                dbs.getConfig().getMMapLimit()));
+                        
+                        dbman.putDatabase(db);
                     }
+                    
                     Logging.logMessage(Logging.LEVEL_INFO, this, "loaded DB %s" + " successfully. [LSN %s]",
                         dbName, db.getLSMDB().getOndiskLSN());
                 }
             }
             
             // delete remaining outdated DBs
-            Set<Integer> outdatedIds = new HashSet<Integer>(dbman.dbsById.keySet());
+            Set<Integer> outdatedIds = dbman.getAllDatabaseIds();
             outdatedIds.removeAll(ids);
             if (outdatedIds.size() > 0) {
                 for (int id : outdatedIds) {
-                    Database outdated = dbman.dbsById.remove(id);
-                    dbman.dbsByName.remove(outdated.getName());
+                    dbman.removeDatabaseById(id);
                 }
             }
         } catch (InstantiationException ex) {
@@ -159,7 +161,7 @@ public class DBConfig {
      * @throws BabuDBException
      */
     public void load() throws BabuDBException {
-        DatabaseManagerImpl dbman = (DatabaseManagerImpl) dbs.getDatabaseManager();
+        DatabaseManagerInternal dbman = dbs.getDatabaseManager();
         assert (dbman != null) : "The DatabaseManager is not available!";
         
         ObjectInputStream ois = null;
@@ -170,7 +172,7 @@ public class DBConfig {
                 if (dbFormatVer != BABUDB_DB_FORMAT_VERSION)
                     conversionRequired = true;
                 final int numDB = ois.readInt();
-                dbman.nextDbId = ois.readInt();
+                dbman.setNextDBId(ois.readInt());
                 for (int i = 0; i < numDB; i++) {
                     Logging.logMessage(Logging.LEVEL_DEBUG, this, "loading DB...");
                     final String dbName = (String) ois.readObject();
@@ -179,11 +181,11 @@ public class DBConfig {
                     ByteRangeComparator[] comps = new ByteRangeComparator[numIndex];
                     for (int idx = 0; idx < numIndex; idx++) {
                         final String className = (String) ois.readObject();
-                        ByteRangeComparator comp = dbman.compInstances.get(className);
+                        ByteRangeComparator comp = dbman.getComparatorInstances().get(className);
                         if (comp == null) {
                             Class<?> clazz = Class.forName(className);
                             comp = (ByteRangeComparator) clazz.newInstance();
-                            dbman.compInstances.put(className, comp);
+                            dbman.getComparatorInstances().put(className, comp);
                         }
                         
                         assert (comp != null);
@@ -197,8 +199,7 @@ public class DBConfig {
                                 .getCompression(), this.dbs.getConfig().getMaxNumRecordsPerBlock(), 
                                 dbs.getConfig().getMaxBlockFileSize(), dbs.getConfig().getDisableMMap(),
                                 dbs.getConfig().getMMapLimit()));
-                        dbman.dbsById.put(dbId, db);
-                        dbman.dbsByName.put(dbName, db);
+                        dbman.putDatabase(db);
                         Logging.logMessage(Logging.LEVEL_DEBUG, this, "loaded DB " + dbName
                             + " successfully.");
                     }
@@ -236,7 +237,7 @@ public class DBConfig {
      * @throws BabuDBException
      */
     public void save(String filename) throws BabuDBException {
-        DatabaseManagerImpl dbman = (DatabaseManagerImpl) dbs.getDatabaseManager();
+        DatabaseManagerInternal dbman = dbs.getDatabaseManager();
         
         synchronized (dbman.getDBModificationLock()) {
             try {
@@ -244,9 +245,9 @@ public class DBConfig {
                 FileOutputStream fos = new FileOutputStream(tempFile);
                 ObjectOutputStream oos = new ObjectOutputStream(fos);
                 oos.writeInt(BABUDB_DB_FORMAT_VERSION);
-                oos.writeInt(dbman.dbsById.size());
-                oos.writeInt(dbman.nextDbId);
-                for (int dbId : dbman.dbsById.keySet()) {
+                oos.writeInt(dbman.getAllDatabaseIds().size());
+                oos.writeInt(dbman.getNextDBId());
+                for (int dbId : dbman.getAllDatabaseIds()) {
                     LSMDatabase db = dbman.getDatabase(dbId).getLSMDB();
                     oos.writeObject(db.getDatabaseName());
                     oos.writeInt(dbId);
