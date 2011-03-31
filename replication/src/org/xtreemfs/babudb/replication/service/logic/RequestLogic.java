@@ -73,6 +73,8 @@ public class RequestLogic extends Logic {
      */
     @Override
     public void run() throws InterruptedException, ConnectionLostException{
+        // TODO if (stage.missing.start.compareTo(stage.missing.end) > 0)
+        
         LSN lsnAtLeast = stage.missing.end;
         
         Logging.logMessage(Logging.LEVEL_INFO, this, 

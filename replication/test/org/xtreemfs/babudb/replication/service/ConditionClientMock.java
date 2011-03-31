@@ -53,4 +53,13 @@ public class ConditionClientMock implements ConditionClient {
         return null;
     }
 
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.service.clients.ConditionClient#synchronize(org.xtreemfs.babudb.lsmdb.LSN, int)
+     */
+    @Override
+    public ClientResponseFuture<Object, ErrorCodeResponse> synchronize(LSN lsn, int localPort) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
 }

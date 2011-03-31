@@ -44,7 +44,6 @@ import org.xtreemfs.babudb.replication.service.clients.MasterClient;
 import org.xtreemfs.babudb.replication.service.clients.SlaveClient;
 import org.xtreemfs.babudb.replication.transmission.TransmissionToServiceInterface;
 import org.xtreemfs.foundation.LifeCycleListener;
-import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.flease.Flease;
 import org.xtreemfs.foundation.logging.Logging;
@@ -72,7 +71,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         new AtomicReference<LSN>();
     
     /** interface for operation performed on BabuDB */
-    private final BabuDBInterface                babuDBInterface;
+    private final BabuDBInterface                babuDB;
         
     /** interface to the underlying layer */
     private final TransmissionToServiceInterface transmissionInterface;
@@ -92,9 +91,9 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
     public ServiceLayer(ReplicationConfig config, BabuDBInterface babuDB,
             TransmissionToServiceInterface transLayer) throws IOException {
         
-        maxChunkSize = config.getChunkSize();
-        transmissionInterface = transLayer;
-        babuDBInterface = babuDB;
+        this.maxChunkSize = config.getChunkSize();
+        this.transmissionInterface = transLayer;
+        this.babuDB = babuDB;
         
         // ----------------------------------
         // initialize the participants states
@@ -102,8 +101,8 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         int syncN = ((config.getSyncN() > 0) ? config.getSyncN() - 1 : 
                                                config.getSyncN());
         try {
-            participantsStates = new ParticipantsStates(syncN, 
-                    config.getParticipants(), transLayer);
+            participantsStates = new ParticipantsStates(syncN, config.getParticipants(), 
+                    transLayer);
         } catch (UnknownParticipantException e) {
             throw new IOException("The address of at least one participant could not have been " +
             		"resolved, because: " + e.getMessage());
@@ -119,13 +118,13 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         // ----------------------------------
         replicationStage = new ReplicationStage(
                 config.getBabuDBConfig().getMaxQueueLength(), heartbeatThread, this, 
-                transLayer.getFileIOInterface(), babuDBInterface, lastOnView, maxChunkSize);
+                transLayer.getFileIOInterface(), babuDB, lastOnView, maxChunkSize);
         
         // ----------------------------------
         // initialize request logic for 
         // handling BabuDB remote calls
         // ----------------------------------
-        transmissionInterface.addRequestHandler(new RPCRequestHandler(babuDBInterface));
+        transmissionInterface.addRequestHandler(new RPCRequestHandler(babuDB));
     }
     
     /**
@@ -140,7 +139,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         // underlying layer
         // ----------------------------------
         transmissionInterface.addRequestHandler(
-                new ReplicationRequestHandler(participantsStates, receiver, babuDBInterface, 
+                new ReplicationRequestHandler(participantsStates, receiver, babuDB, 
                         replicationStage, lastOnView, maxChunkSize, 
                         transmissionInterface.getFileIOInterface()));
     }
@@ -225,90 +224,87 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
     
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.service.ServiceToControlInterface#synchronize(
-     *          org.xtreemfs.babudb.log.SyncListener)
+     *          org.xtreemfs.babudb.log.SyncListener, int)
      */
     @Override
-    public void synchronize(final SyncListener listener) throws BabuDBException, 
+    public void synchronize(SyncListener listener, int port) throws BabuDBException, 
             InterruptedException, IOException {
-        
+            
+        final int localSyncN = participantsStates.getSyncN();
         List<ConditionClient> slaves = participantsStates.getConditionClients();
-    
-        // get the most up-to-date slave
-        LSN latest = null;
-        Map<ClientInterface ,LSN> states = null;
-    
-        if (slaves.size() > 0) {
-            states = getStates(slaves, true);
+        if (localSyncN > 0) {
+            
+            // always get the latest available state of all servers
+            LSN latest = null;
+            Map<ClientInterface ,LSN> states = getStates(slaves, true);
         
-            // becoming a master has failed
-            if ((states.size() + 1) < participantsStates.getSyncN()) {
+            // getting enough slaves has failed
+            if (states.size() < localSyncN) {
                 throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
                         "Not enough slaves available to synchronize with!");
-            }
-        
-            if (states.size() > 0) {
                 
-                // if one of them is more up to date, then synchronize 
-                // with it
+            } else {
+                
                 List<LSN> values = new LinkedList<LSN>(states.values());
                 Collections.sort(values, Collections.reverseOrder());
                 latest = values.get(0);
             }
-        }
-    
-        // synchronize with the most up-to-date slave, if necessary
-        LSN localState = babuDBInterface.getState();
-        if (latest != null && latest.compareTo(localState) > 0) {
-            for (Entry<ClientInterface, LSN> entry : states.entrySet()) {
-                if (entry.getValue().equals(latest)) {   
+        
+            // synchronize with the most up-to-date slave, if necessary
+            LSN localState = babuDB.getState();
+            if (localState.compareTo(latest) < 0) {
+                for (Entry<ClientInterface, LSN> entry : states.entrySet()) {
+                    if (entry.getValue().equals(latest)) {   
+                                
+                        Logging.logMessage(Logging.LEVEL_INFO, this, 
+                                "Starting synchronization from '%s' to '%s'.", 
+                                localState.toString(), latest.toString());
                     
-                    // setup a slave dispatcher to synchronize the 
-                    // BabuDB with a replicated participant         
-                    Logging.logMessage(Logging.LEVEL_INFO, this, 
-                            "Starting synchronization from '%s' to '%s'.", 
-                            localState.toString(), latest.toString());
-                
-                    BabuDBRequestResultImpl<Boolean> ready = new BabuDBRequestResultImpl<Boolean>();
-                    replicationStage.manualLoad(ready, localState, latest);
-                    ready.get();
-                
-                    assert(latest.equals(babuDBInterface.getState())) : 
-                        "Synchronization failed: (expected=" + 
-                        latest.toString() + ") != (acknowledged=" + 
-                        babuDBInterface.getState() + ")";
-                    break;
+                        BabuDBRequestResultImpl<Object> ready = 
+                            new BabuDBRequestResultImpl<Object>();
+                        
+                        replicationStage.manualLoad(ready, latest);
+                        ready.get();
+                    
+                        assert(latest.equals(babuDB.getState())) : 
+                            "Synchronization failed: (expected=" + 
+                            latest.toString() + ") != (acknowledged=" + 
+                            babuDB.getState() + ")";
+                        break;
+                    }
                 }
             }
         }
-    
-        // always take a checkpoint on master-failover (inclusive viewId incrementation)
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "taking a checkpoint");
-        lastOnView.set(babuDBInterface.checkpoint());
         
-        assert (lastOnView.get().compareTo(latest) == 0);
-    
+        // take a checkpoint on master-failover (inclusive viewId incrementation), if necessary
+        LSN beforeCP = lastOnView.get();
+        if (babuDB.getState().getSequenceNo() > 0L) {
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "taking a checkpoint");
+            beforeCP = babuDB.checkpoint();
+            lastOnView.set(beforeCP);
+        }
+        
         // wait for the slaves to recognize the master-change and for at least N servers to 
         // establish a stable state
-        final LogEntry noop = 
-            new LogEntry(BufferPool.allocate(0), listener, LogEntry.PAYLOAD_TYPE_INSERT);
-        noop.assignId(latest.getViewId(), latest.getSequenceNo());
-        ReplicateResponse rp = replicate(noop);
-        LSN syncState = babuDBInterface.getState();
-        if (!rp.hasFailed()) {
-            subscribeListener(new LatestLSNUpdateListener(syncState){
+        LSN syncState = babuDB.getState();
+        final ReplicateResponse result = new ReplicateResponse(syncState, listener,
+                slaves.size() - localSyncN);
+        
+        for (ConditionClient slave : slaves) {
+            slave.synchronize(beforeCP, port).registerListener(
+                    new ClientResponseAvailableListener<Object>() {
 
-                @Override
-                public void upToDate() {
-                    listener.synced(noop);
-                }
+                        @Override
+                        public void responseAvailable(Object r) { /* ignored */ }
 
-                @Override
-                public void failed() {
-                    listener.failed(noop, 
-                            new Exception("Servers could not have been synchronized."));
-                }
+                        @Override
+                        public void requestFailed(Exception e) {
+                            result.decrementPermittedFailures();
+                        }
             });
         }
+        
+        subscribeListener(result);
                 
         Logging.logMessage(Logging.LEVEL_INFO, this, "Running in master-mode (%s)", 
                 syncState.toString());
@@ -330,6 +326,8 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
                 if (e.getValue().compareTo(progressAtLeast) >= 0)
                     return (MasterClient) e.getKey();
             }
+        } else {
+            return null;
         }
         
         return (MasterClient) servers.get(0);
@@ -367,7 +365,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
      * @param userService
      */
     public void start(TopLayer topLayer) {
-        LSN latest = babuDBInterface.getState();
+        LSN latest = babuDB.getState();
         LSN normalized = (latest.getSequenceNo() == 0L) ? new LSN(0,0L) : latest;
             
         // the sequence number of the initial LSN before incrementing the viewID must not be 0 
@@ -430,37 +428,43 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
      * @param clients
      * @param hard - decide whether the requested state should be preserved (true), or not (false).
      * @return the LSNs of the latest written LogEntries for the <code>babuDBs
-     *         </code> that were available.
+     *         </code> that were available (could be empty).
      */
     private Map<ClientInterface, LSN> getStates(List<ConditionClient> clients, boolean hard) {
+        Map<ClientInterface, LSN> result = new HashMap<ClientInterface, LSN>();
         int numRqs = clients.size();
-        Map<ClientInterface, LSN> result = 
-            new HashMap<ClientInterface, LSN>();
         
-        List<ClientResponseFuture<LSN, org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN>> rps = 
-            new ArrayList<ClientResponseFuture<LSN, org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN>>(numRqs);
-                
-        // send the requests
-        for (int i=0; i<numRqs; i++) {
-            if (hard) {
-                rps.set(i, clients.get(i).state());
-            } else {
-                rps.set(i, clients.get(i).volatileState());
-            }
+        if (numRqs == 0) {
+            return result;
         }
         
-        // get the responses
-        for (int i = 0; i < numRqs; i++) {
-            try{
-                LSN val = rps.get(i).get();
-                result.put(clients.get(i), val);
-            } catch (Exception e) {
-                Logging.logMessage(Logging.LEVEL_INFO, this, 
-                        "Could not receive state of '%s', because: %s.", 
-                        clients.get(i), e.getMessage());
-                if (e.getMessage() == null)
-                    Logging.logError(Logging.LEVEL_INFO, this, e);
-            } 
+        List<ClientResponseFuture<LSN, org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN>> rps = 
+            new ArrayList<ClientResponseFuture<LSN, org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN>>(
+                    numRqs);
+        
+        if (numRqs > 0) {
+            // send the requests
+            for (int i = 0; i < numRqs; i++) {
+                if (hard) {
+                    rps.add(i, clients.get(i).state());
+                } else {
+                    rps.add(i, clients.get(i).volatileState());
+                }
+            }
+            
+            // get the responses
+            for (int i = 0; i < numRqs; i++) {
+                try{
+                    LSN val = rps.get(i).get();
+                    result.put(clients.get(i), val);
+                } catch (Exception e) {
+                    Logging.logMessage(Logging.LEVEL_INFO, this, 
+                            "Could not receive state of '%s', because: %s.", 
+                            clients.get(i), e.getMessage());
+                    if (e.getMessage() == null)
+                        Logging.logError(Logging.LEVEL_INFO, this, e);
+                } 
+            }
         }
         
         return result;

@@ -14,6 +14,7 @@ import java.util.Map;
 
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.ErrorType;
+import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.RPCHeader.ErrorResponse;
 import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.RPCHeader.RequestHeader;
 import org.xtreemfs.foundation.pbrpc.server.RPCServerRequest;
 import org.xtreemfs.foundation.util.OutputUtils;
@@ -44,15 +45,18 @@ public abstract class RequestHandler {
             return;
         } 
         
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                "... using operation %d ...", op.getProcedureId());
+        
         Request rpcrq = new Request(rq);
-        try {
-            Object message = op.parseRPCMessage(rpcrq);
-            if (message != null) throw new Exception();
-        } catch (Throwable ex) {
-            rq.sendError(ErrorType.GARBAGE_ARGS, POSIX_ERROR_NONE, 
-                    "message could not be parsed");
+        ErrorResponse message = op.parseRPCMessage(rpcrq);
+        if (message != null) {
+            rq.sendError(message);
             return;
         }
+        
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                "... parsed successfully ...");
         
         try {
             op.startRequest(rpcrq);
@@ -64,5 +68,8 @@ public abstract class RequestHandler {
                     OutputUtils.stackTraceToString(ex));
             return;
         }
+        
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+            "... finished.");
     }
 }

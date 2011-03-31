@@ -1,4 +1,4 @@
-//automatically generated from replication.proto at Wed Feb 23 17:04:44 CET 2011
+//automatically generated from replication.proto at Thu Mar 31 13:44:14 CEST 2011
 //(c) 2011. See LICENSE file for details.
 
 package org.xtreemfs.babudb.pbrpc;
@@ -127,11 +127,24 @@ public class ReplicationServiceClient {
          return replicate(server, authHeader, userCreds,msg, data);
     }
 
+    public RPCResponse<GlobalTypes.ErrorCodeResponse> synchronize(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, GlobalTypes.HeartbeatMessage input) throws IOException {
+         if (server == null) server = defaultServer;
+         if (server == null) throw new IllegalArgumentException("defaultServer must be set in constructor if you want to pass null as server in calls");
+         RPCResponse<GlobalTypes.ErrorCodeResponse> response = new RPCResponse<GlobalTypes.ErrorCodeResponse>(GlobalTypes.ErrorCodeResponse.getDefaultInstance());
+         client.sendRequest(server, authHeader, userCreds, 20001, 9, input, null, response, false);
+         return response;
+    }
+
+    public RPCResponse<GlobalTypes.ErrorCodeResponse> synchronize(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, int port, GlobalTypes.LSN lsn) throws IOException {
+         final GlobalTypes.HeartbeatMessage msg = GlobalTypes.HeartbeatMessage.newBuilder().setPort(port).setLsn(lsn).build();
+         return synchronize(server, authHeader, userCreds,msg);
+    }
+
     public RPCResponse<GlobalTypes.LSN> volatileState(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, Common.emptyRequest input) throws IOException {
          if (server == null) server = defaultServer;
          if (server == null) throw new IllegalArgumentException("defaultServer must be set in constructor if you want to pass null as server in calls");
          RPCResponse<GlobalTypes.LSN> response = new RPCResponse<GlobalTypes.LSN>(GlobalTypes.LSN.getDefaultInstance());
-         client.sendRequest(server, authHeader, userCreds, 20001, 9, input, null, response, false);
+         client.sendRequest(server, authHeader, userCreds, 20001, 10, input, null, response, false);
          return response;
     }
 

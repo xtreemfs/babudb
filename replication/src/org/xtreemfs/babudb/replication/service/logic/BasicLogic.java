@@ -65,8 +65,9 @@ public class BasicLogic extends Logic {
         assert (stage.missing == null) : "Blame the developer!";
         
         final StageRequest op = stage.getQueue().take();
+        
         // filter dummy stage request
-        if (op.getLSN() == null) return;
+        if (op == StageRequest.NOOP_REQUEST) return;
         
         final LSN lsn = op.getLSN();
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "Replicate requested: %s", 

@@ -58,4 +58,14 @@ public interface ConditionClient extends ClientInterface {
      * @return the {@link ClientResponseFuture}.
      */
     public ClientResponseFuture<Object, ErrorCodeResponse> heartbeat(LSN lsn, int localPort);
+    
+    /**
+     * Forces the receiver to synchronize to the state given by lsn and make a checkpoint. Last step
+     * of the master failover mechanism. 
+     * 
+     * @param lsn - to synchronize to.
+     * @param localPort
+     * @return the {@link ClientResponseFuture}.
+     */
+    public ClientResponseFuture<Object, ErrorCodeResponse> synchronize(LSN lsn, int localPort);
 }

@@ -7,12 +7,14 @@
  */
 package org.xtreemfs.babudb.replication.service.accounting;
 
+import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -514,7 +516,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
     public void reset() {
         
         // deal with the listeners
-        Set<LatestLSNUpdateListener> lSet = Collections.emptySet();
+        Set<LatestLSNUpdateListener> lSet = new HashSet<LatestLSNUpdateListener>();
         listeners.drainTo(lSet);
         for (LatestLSNUpdateListener l : lSet) {
             l.failed();
@@ -539,19 +541,30 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
         
         assert (address != null);
         
-        String hostAddress;
+        InetAddress hostAddress;
         if (address.getAddress() == null) {
             try {
-                hostAddress = InetAddress.getByName(address.getHostName()).getHostAddress();
+                hostAddress = InetAddress.getByName(address.getHostName());
             } catch (UnknownHostException uh) {
                 throw new UnknownParticipantException("the address of '" + address.toString() + 
                         "' could not have been determined.");
             }
         } else {
-            hostAddress = address.getAddress().getHostAddress();
+            hostAddress = address.getAddress();
         }
         
-        return hostAddress + ":" + address.getPort();
+        
+        // IPv4 to v6 conversion, if address is not already an IPv6
+        // IPv6 = ::ffff:IPv4
+        // necessary to ensure compatibility with IPv6 addresses
+        String hostAddressString;
+        if (hostAddress instanceof Inet4Address) {
+            hostAddressString = "::ffff:" + hostAddress.getHostAddress();
+        } else {
+            hostAddressString = hostAddress.getHostAddress();
+        }
+        
+        return hostAddressString + ":" + address.getPort();
     }
     
 /*

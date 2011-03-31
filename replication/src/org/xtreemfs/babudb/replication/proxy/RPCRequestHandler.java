@@ -9,7 +9,8 @@ package org.xtreemfs.babudb.replication.proxy;
 
 import org.xtreemfs.babudb.pbrpc.RemoteAccessServiceConstants;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
-import org.xtreemfs.babudb.replication.proxy.operations.GetDatabaseOperation;
+import org.xtreemfs.babudb.replication.proxy.operations.GetDatabaseByIdOperation;
+import org.xtreemfs.babudb.replication.proxy.operations.GetDatabaseByNameOperation;
 import org.xtreemfs.babudb.replication.proxy.operations.GetDatabasesOperation;
 import org.xtreemfs.babudb.replication.proxy.operations.LookupOperation;
 import org.xtreemfs.babudb.replication.proxy.operations.MakePersistantOperation;
@@ -38,7 +39,10 @@ public class RPCRequestHandler extends RequestHandler {
         Operation op = new MakePersistantOperation(dbs); 
         operations.put(op.getProcedureId(), op);
         
-        op = new GetDatabaseOperation(dbs);
+        op = new GetDatabaseByNameOperation(dbs);
+        operations.put(op.getProcedureId(), op);
+        
+        op = new GetDatabaseByIdOperation(dbs);
         operations.put(op.getProcedureId(), op);
         
         op = new GetDatabasesOperation(dbs);

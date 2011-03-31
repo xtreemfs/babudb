@@ -96,8 +96,7 @@ public class ReplicaOperation extends Operation {
                 "(start: %s, end: %s) from %s", start.toString(), 
                 end.toString(), rq.getRPCRequest().getSenderAddress());
         
-        // enhancement to prevent slaves from loading the db from the master un-
-        // necessarily
+        // enhancement to prevent slaves from loading the DB from the master unnecessarily
         if (start.equals(lastOnView.get())) {
             
             Logging.logMessage(Logging.LEVEL_INFO, this, 

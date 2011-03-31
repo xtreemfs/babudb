@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -8,7 +8,6 @@
 package org.xtreemfs.babudb.replication.proxy.operations;
 
 import org.xtreemfs.babudb.api.exception.BabuDBException;
-import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.Database;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.DatabaseName;
 import org.xtreemfs.babudb.pbrpc.RemoteAccessServiceConstants;
@@ -26,11 +25,11 @@ import com.google.protobuf.Message;
  * @author flangner
  * @since 01/19/2011
  */
-public class GetDatabaseOperation extends Operation {
+public class GetDatabaseByNameOperation extends Operation {
 
     private final BabuDBInterface dbs;
     
-    public GetDatabaseOperation(BabuDBInterface dbs) {
+    public GetDatabaseByNameOperation(BabuDBInterface dbs) {
         this.dbs = dbs;
     }
     
@@ -40,7 +39,7 @@ public class GetDatabaseOperation extends Operation {
      */
     @Override
     public int getProcedureId() {
-        return RemoteAccessServiceConstants.PROC_ID_GETDATABASE;
+        return RemoteAccessServiceConstants.PROC_ID_GETDATABASEBYNAME;
     }
     
     /* (non-Javadoc)
@@ -55,7 +54,7 @@ public class GetDatabaseOperation extends Operation {
             
             rq.sendSuccess(Database.newBuilder()
                     .setDatabaseName(dbName)
-                    .setDatabaseId(((DatabaseImpl) dbs.getDatabase(dbName)).getLSMDB().getDatabaseId())
+                    .setDatabaseId(dbs.getDatabase(dbName).getLSMDB().getDatabaseId())
                     .build());
         } catch (BabuDBException e) {
             

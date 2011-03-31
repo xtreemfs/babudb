@@ -130,7 +130,7 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
                   
                     @Override
                     public void responseAvailable(Object r) { 
-                        Logging.logMessage(Logging.LEVEL_NOTICE, this, 
+                        Logging.logMessage(Logging.LEVEL_DEBUG, this, 
                                 "Heartbeat successfully send.");
                     }
     

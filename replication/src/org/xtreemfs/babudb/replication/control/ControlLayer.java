@@ -9,7 +9,6 @@ package org.xtreemfs.babudb.replication.control;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.LinkedList;
 import java.util.List;
@@ -24,6 +23,7 @@ import org.xtreemfs.babudb.replication.TopLayer;
 import org.xtreemfs.babudb.replication.control.TimeDriftDetector.TimeDriftListener;
 import org.xtreemfs.babudb.replication.service.ServiceToControlInterface;
 import org.xtreemfs.foundation.LifeCycleListener;
+import org.xtreemfs.foundation.LifeCycleThread;
 import org.xtreemfs.foundation.buffer.ASCIIString;
 import org.xtreemfs.foundation.flease.Flease;
 import org.xtreemfs.foundation.flease.FleaseStage;
@@ -58,7 +58,7 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
     private final ServiceToControlInterface serviceInterface;
     
     /** the local address used for the net-communication */
-    private final InetAddress               thisAddress;
+    private final InetSocketAddress         thisAddress;
     
     /** listener and storage for the up-to-date lease informations */
     private final FleaseHolder              leaseHolder;
@@ -84,7 +84,7 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
         // initialize the replication 
         // controller
         // ---------------------------------- 
-        thisAddress = config.getAddress();
+        thisAddress = config.getInetSocketAddress();
         serviceInterface = serviceLayer;
         leaseHolder = new FleaseHolder(REPLICATION_CELL, this);
         
@@ -146,7 +146,8 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.control.ControlToBabuDBInterface#isItMe(java.net.InetSocketAddress)
+     * @see org.xtreemfs.babudb.replication.control.ControlToBabuDBInterface#isItMe(
+     *          java.net.InetSocketAddress)
      */
     @Override
     public boolean isItMe(InetSocketAddress address) {
@@ -196,6 +197,7 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
      */
     @Override
     public void _setLifeCycleListener(LifeCycleListener listener) {
+        failoverTaskRunner.setLifeCycleListener(listener);
         timeDriftDetector.setLifeCycleListener(listener);
         fleaseStage.setLifeCycleListener(listener);
     }
@@ -250,10 +252,10 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
 
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.control.FleaseEventListener#updateLeaseHolder(
-     *          java.net.InetAddress)
+     *          java.net.InetSocketAddress)
      */
     @Override
-    public void updateLeaseHolder(InetAddress newLeaseHolder) throws Exception {
+    public void updateLeaseHolder(InetSocketAddress newLeaseHolder) throws Exception {
         failoverTaskRunner.queueFailoverRequest(newLeaseHolder);
     }
     
@@ -282,10 +284,10 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
      * @author flangner
      * @since 02/21/2011
      */
-    private final class FailoverTaskRunner extends Thread {
+    private final class FailoverTaskRunner extends LifeCycleThread {
         
-        private final AtomicReference<InetAddress> failoverRequest = 
-            new AtomicReference<InetAddress>(null);
+        private final AtomicReference<InetSocketAddress> failoverRequest = 
+            new AtomicReference<InetSocketAddress>(null);
         
         private boolean quit = true;
         
@@ -298,7 +300,7 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
          * 
          * @param address - of the new replication master candidate.
          */
-        void queueFailoverRequest(InetAddress address) {
+        void queueFailoverRequest(InetSocketAddress address) {
             synchronized (failoverRequest) {
                 if (failoverRequest.compareAndSet(null, address)) {
                     failoverRequest.notify();
@@ -318,7 +320,7 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
         /**
          * Stops this thread gracefully.
          */
-        void shutdown() {
+        public void shutdown() {
             quit = true;
             interrupt();
         }
@@ -329,7 +331,7 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
         @Override
         public void run() {
             
-            InetAddress newLeaseHolder = null;
+            InetSocketAddress newLeaseHolder = null;
             
             try {
                 while (!quit) {
@@ -339,7 +341,7 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
                             failoverRequest.wait();
                         }
                         
-                        newLeaseHolder = failoverRequest.get();
+                        newLeaseHolder = failoverRequest.getAndSet(null);
                     }
                     
                     try {
@@ -382,13 +384,14 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
                 
                 @Override
                 public void synced(LogEntry entry) {
-                    entry.free();
+                    assert (entry == null);
+                    
                     unlockUser();
                 }
                 
                 @Override
                 public void failed(LogEntry entry, Exception ex) {
-                    entry.free();
+                    assert (entry == null);
                     
                     Logging.logMessage(Logging.LEVEL_WARN, this, 
                             "Master failover did not succeed! Reseting the local lease and " +
@@ -396,7 +399,7 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
                     
                     leaseHolder.reset();
                 }
-            });
+            }, thisAddress.getPort());
             
             // if a new failover request arrives while synchronization is still waiting for a stable
             // state to be established (SyncListener), the listener will be marked as failed when
@@ -409,7 +412,7 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
          * @param masterAddress
          * @throws InterruptedException 
          */
-        private void becomeSlave(InetAddress masterAddress) throws InterruptedException {
+        private void becomeSlave(InetSocketAddress masterAddress) throws InterruptedException {
             
             Logging.logMessage(Logging.LEVEL_INFO, this, "Becoming a slave for %s.", 
                     masterAddress.toString());

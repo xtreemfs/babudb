@@ -7,12 +7,12 @@
  */
 package org.xtreemfs.babudb.replication.control;
 
-import java.net.InetAddress;
+import java.net.InetSocketAddress;
 
 import org.xtreemfs.foundation.flease.Flease;
 
 /**
- * Interface for receiving {@link Flease} events.
+ * Interface for receiving filtered {@link Flease} events.
  * 
  * @author flangner
  * @since 02/17/2011
@@ -26,5 +26,5 @@ public interface FleaseEventListener {
      * 
      * @throws Exception if leaseholder update was not successful.
      */
-    public void updateLeaseHolder(InetAddress leaseholder) throws Exception;
+    public void updateLeaseHolder(InetSocketAddress leaseholder) throws Exception;
 }

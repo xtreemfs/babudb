@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -19,6 +19,7 @@ import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
 import org.xtreemfs.foundation.flease.Flease;
 import org.xtreemfs.foundation.flease.comm.FleaseMessage;
+import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.ErrorType;
 import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.RPCHeader.ErrorResponse;
 import org.xtreemfs.foundation.util.OutputUtils;
@@ -75,7 +76,7 @@ public class FleaseOperation extends Operation {
             
             InetSocketAddress sender;
             try {
-                sender = new InetSocketAddress(InetAddress.getByAddress(rpcrq.toByteArray()), 
+                sender = new InetSocketAddress(InetAddress.getByAddress(rpcrq.getHost().getBytes()), 
                                                                         rpcrq.getPort());
             } catch (UnknownHostException e) {
                 return ErrorResponse.newBuilder().setErrorMessage(e.getMessage())
@@ -99,8 +100,11 @@ public class FleaseOperation extends Operation {
      */
     @Override
     public void startRequest(final Request rq) {
+        FleaseMessage msg = (FleaseMessage) rq.getAttachment();
 
-        this.receiver.receive((FleaseMessage) rq.getAttachment());
+        Logging.logMessage(Logging.LEVEL_INFO, this, "received rpc-flease (%s)", msg.toString());
+        
+        this.receiver.receive(msg);
         rq.sendSuccess(ErrorCodeResponse.getDefaultInstance());
     }
 }

@@ -115,8 +115,7 @@ public class RequestDispatcher implements RPCServerRequestListener {
     @Override
     public void receiveRecord(RPCServerRequest rq) {  
               
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, 
-                "Dispatching request %s ...", rq.toString());
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "Dispatching request %s ...", rq.toString());
         
         RPCHeader hdr = rq.getHeader();
         
@@ -156,6 +155,9 @@ public class RequestDispatcher implements RPCServerRequestListener {
                     ") is not accessible");
             return;
         } 
+        
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                "... using handler %d ...", handler.getInterfaceID());
         
         handler.handleRequest(rq);
     }

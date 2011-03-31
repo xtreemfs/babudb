@@ -9,24 +9,25 @@ package org.xtreemfs.babudb.replication.proxy;
 
 import java.net.InetSocketAddress;
 
-import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
 import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
 import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.api.database.UserDefinedLookup;
+import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
-import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
+import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.replication.policy.Policy;
 import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture;
 import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.ClientResponseAvailableListener;
 import org.xtreemfs.babudb.replication.transmission.PBRPCClientAdapter.ErrorCodeException;
+import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
 import static org.xtreemfs.babudb.replication.transmission.ErrorCode.*;
@@ -39,22 +40,22 @@ import static org.xtreemfs.babudb.replication.transmission.ErrorCode.*;
  * @author flangner
  * @since 01/19/2011
  */
-class DatabaseProxy implements Database {
+class DatabaseProxy implements DatabaseInternal {
 
     private final DatabaseManagerProxy  dbMan;
     private final Policy                replicationPolicy;
     private final String                name;
     private final int                   id;
-    private Database                    localDB;
+    private DatabaseInternal            localDB;
     
-    public DatabaseProxy(Database localDatabase, Policy replicationPolicy, 
+    public DatabaseProxy(DatabaseInternal  localDatabase, Policy replicationPolicy, 
             DatabaseManagerProxy dbManProxy) {
         
         assert (localDatabase != null);
         
         this.localDB = localDatabase;
         this.name = localDB.getName();
-        this.id = ((DatabaseImpl) localDB).getLSMDB().getDatabaseId();
+        this.id = localDB.getLSMDB().getDatabaseId();
         this.replicationPolicy = replicationPolicy;
         this.dbMan = dbManProxy;
     }
@@ -671,8 +672,6 @@ class DatabaseProxy implements Database {
     }
 
     /**
-     * @param type - of the request.
-     * 
      * @return the host to perform the request at, or null, if it is permitted to perform the 
      *         request locally.
      * @throws BabuDBException if replication is currently not available.
@@ -701,5 +700,231 @@ class DatabaseProxy implements Database {
         }
 
         return master;
+    }
+    
+/*
+ * TODO is it really necessary to forbid usage of internal mechanisms provided by databases?
+ */
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#getLSMDB()
+     */
+    @Override
+    public LSMDatabase getLSMDB() {
+        try {
+            if (getServerToPerformAt() == null) {
+                return localDB.getLSMDB();
+            }
+        } catch (BabuDBException be) {
+            /* ignored */
+        }
+        throw new UnsupportedOperationException("Internally manipulating a Database of a " 
+                + "'not master' server is not supported by the replication plugin.");
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#proceedWriteSnapshot(int[], 
+     *          java.lang.String, org.xtreemfs.babudb.snapshots.SnapshotConfig)
+     */
+    @Override
+    public void proceedWriteSnapshot(int[] snapIds, String directory, SnapshotConfig cfg)
+            throws BabuDBException {
+        boolean permission = false;
+        try {
+            if (getServerToPerformAt() == null) {
+                permission = true;
+            }
+        } catch (BabuDBException be) {
+            /* ignored */
+        }
+        if (permission) {
+            localDB.proceedWriteSnapshot(snapIds, directory, cfg);
+        } else {
+            throw new UnsupportedOperationException("Internally manipulating a Database of a " 
+                    + "'not master' server is not supported by the replication plugin.");
+        }
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#setLSMDB(org.xtreemfs.babudb.lsmdb.LSMDatabase)
+     */
+    @Override
+    public void setLSMDB(LSMDatabase lsmDatabase) {
+        try {
+            if (getServerToPerformAt() == null) {
+                localDB.setLSMDB(lsmDatabase);
+            }
+        } catch (BabuDBException be) {
+            /* ignored */
+        }
+        throw new UnsupportedOperationException("Internally manipulating a Database of a " 
+                + "'not master' server is not supported by the replication plugin.");
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#proceedWriteSnapshot(int, long, int[])
+     */
+    @Override
+    public void proceedWriteSnapshot(int viewId, long sequenceNo, int[] snapIds) throws BabuDBException {
+        boolean permission = false;
+        try {
+            if (getServerToPerformAt() == null) {
+                permission = true;
+            }
+        } catch (BabuDBException be) {
+            /* ignored */
+        }
+        if (permission) {
+            localDB.proceedWriteSnapshot(viewId, sequenceNo, snapIds);
+        } else {
+            throw new UnsupportedOperationException("Internally manipulating a Database of a " 
+                    + "'not master' server is not supported by the replication plugin.");
+        }
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#proceedCleanupSnapshot(int, long)
+     */
+    @Override
+    public void proceedCleanupSnapshot(int viewId, long sequenceNo) throws BabuDBException {
+        boolean permission = false;
+        try {
+            if (getServerToPerformAt() == null) {
+                permission = true;
+            }
+        } catch (BabuDBException be) {
+            /* ignored */
+        }
+        if (permission) {
+            localDB.proceedCleanupSnapshot(viewId, sequenceNo);
+        } else {
+            throw new UnsupportedOperationException("Internally manipulating a Database of a " 
+                    + "'not master' server is not supported by the replication plugin.");
+        }
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#proceedCreateSnapshot()
+     */
+    @Override
+    public int[] proceedCreateSnapshot() {
+        try {
+            if (getServerToPerformAt() == null) {
+                return localDB.proceedCreateSnapshot();
+            }
+        } catch (BabuDBException be) {
+            /* ignored */
+        }
+        throw new UnsupportedOperationException("Internally manipulating a Database of a " 
+                + "'not master' server is not supported by the replication plugin.");
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#dumpSnapshot(java.lang.String)
+     */
+    @Override
+    public void dumpSnapshot(String baseDir) throws BabuDBException {
+        boolean permission = false;
+        try {
+            if (getServerToPerformAt() == null) {
+                permission = true;
+            }
+        } catch (BabuDBException be) {
+            /* ignored */
+        }
+        if (permission) {
+            localDB.dumpSnapshot(baseDir);
+        } else {
+            throw new UnsupportedOperationException("Internally manipulating a Database of a " 
+                    + "'not master' server is not supported by the replication plugin.");
+        }
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#proceedSnapshot(java.lang.String)
+     */
+    @Override
+    public void proceedSnapshot(String destDB) throws BabuDBException, InterruptedException {
+        boolean permission = false;
+        try {
+            if (getServerToPerformAt() == null) {
+                permission = true;
+            }
+        } catch (BabuDBException be) {
+            /* ignored */
+        }
+        if (permission) {
+            localDB.proceedSnapshot(destDB);
+        } else {
+            throw new UnsupportedOperationException("Internally manipulating a Database of a " 
+                    + "'not master' server is not supported by the replication plugin.");
+        }
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#directLookup(int, int, byte[])
+     */
+    @Override
+    public byte[] directLookup(int indexId, int snapId, byte[] key) throws BabuDBException {
+        boolean permission = false;
+        try {
+            if (getServerToPerformAt() == null) {
+                permission = true;
+            }
+        } catch (BabuDBException be) {
+            /* ignored */
+        }
+        if (permission) {
+            return localDB.directLookup(indexId, snapId, key);
+        } else {
+            throw new UnsupportedOperationException("Internally manipulating a Database of a " 
+                    + "'not master' server is not supported by the replication plugin.");
+        }
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#directPrefixLookup(int, int, byte[], boolean)
+     */
+    @Override
+    public ResultSet<byte[], byte[]> directPrefixLookup(int indexId, int snapId, byte[] key, boolean ascending)
+            throws BabuDBException {
+        
+        boolean permission = false;
+        try {
+            if (getServerToPerformAt() == null) {
+                permission = true;
+            }
+        } catch (BabuDBException be) {
+            /* ignored */
+        }
+        if (permission) {
+            return localDB.directPrefixLookup(indexId, snapId, key, ascending);
+        } else {
+            throw new UnsupportedOperationException("Internally manipulating a Database of a " 
+                    + "'not master' server is not supported by the replication plugin.");
+        }
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#directRangeLookup(int, int, byte[], byte[], boolean)
+     */
+    @Override
+    public ResultSet<byte[], byte[]> directRangeLookup(int indexId, int snapId, byte[] from, byte[] to,
+            boolean ascending) throws BabuDBException {
+        
+        boolean permission = false;
+        try {
+            if (getServerToPerformAt() == null) {
+                permission = true;
+            }
+        } catch (BabuDBException be) {
+            /* ignored */
+        }
+        if (permission) {
+            return localDB.directRangeLookup(indexId, snapId, from, to, ascending);
+        } else {
+            throw new UnsupportedOperationException("Internally manipulating a Database of a " 
+                    + "'not master' server is not supported by the replication plugin.");
+        }
     }
 }

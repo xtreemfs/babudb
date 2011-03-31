@@ -15,17 +15,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Vector;
 
-import org.xtreemfs.babudb.BabuDBInternal;
 import org.xtreemfs.babudb.api.BabuDB;
-import org.xtreemfs.babudb.api.PersistenceManager;
+import org.xtreemfs.babudb.api.Checkpointer;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
-import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
-import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
-import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
-import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
+import org.xtreemfs.babudb.api.dev.BabuDBInternal;
+import org.xtreemfs.babudb.api.dev.CheckpointerInternal;
+import org.xtreemfs.babudb.api.dev.DatabaseInternal;
+import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
+import org.xtreemfs.babudb.api.dev.PersistenceManagerInternal;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase.DBFileMetaData;
 import org.xtreemfs.babudb.lsmdb.LSN;
 
@@ -38,10 +38,10 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 public class BabuDBInterface {
    
     /** reference to {@link BabuDB}, will use the persistence manager proxy, when plugin is initialized */
-    private final BabuDBInternal        dbs;
+    private final BabuDBInternal                dbs;
     
     /** the persistence manager using the local DiskLogger: NOT THE PROXY */
-    private final PersistenceManager    localPersMan;
+    private final PersistenceManagerInternal    localPersMan;
         
     /**
      * Registers the reference of local {@link BabuDB}.
@@ -78,7 +78,7 @@ public class BabuDBInterface {
     }
     
     /**
-     * @return the {@link CheckpointerImpl} lock object.
+     * @return the {@link Checkpointer} lock object.
      */
     public Object getCheckpointerLock() {
         return getChckPtr();
@@ -130,9 +130,10 @@ public class BabuDBInterface {
     
     /**
      * @return a map of all available databases identified by their names.
+     * @throws BabuDBException 
      */
-    public Map<String, Database> getDatabases() {
-        return getDBMan().getDatabases();
+    public Map<String, DatabaseInternal> getDatabases() {
+        return getDBMan().getDatabasesInternal();
     }
     
     /**
@@ -140,8 +141,17 @@ public class BabuDBInterface {
      * @return an instance of the local database available for the given name.
      * @throws BabuDBException 
      */
-    public Database getDatabase(String dbName) throws BabuDBException {
+    public DatabaseInternal getDatabase(String dbName) throws BabuDBException {
         return getDBMan().getDatabase(dbName);
+    }
+    
+    /**
+     * @param dbId
+     * @return an instance of the local database available for the given identifier.
+     * @throws BabuDBException 
+     */
+    public DatabaseInternal getDatabase(int dbId) throws BabuDBException {
+        return getDBMan().getDatabase(dbId);
     }
     
 /*
@@ -149,18 +159,18 @@ public class BabuDBInterface {
  */
     
     /**
-     * @return the {@link CheckpointerImpl} retrieved from the {@link BabuDB}.
+     * @return the {@link CheckpointerInternal} retrieved from the {@link BabuDB}.
      */
-    private CheckpointerImpl getChckPtr() {
-        return (CheckpointerImpl) dbs.getCheckpointer();
+    private CheckpointerInternal getChckPtr() {
+        return dbs.getCheckpointer();
     }
     
     /**
-     * @return the {@link DatabaseManagerImpl} retrieved from the 
+     * @return the {@link DatabaseManagerInternal} retrieved from the 
      *         {@link BabuDB}.
      */
-    private DatabaseManagerImpl getDBMan() {
-        return (DatabaseManagerImpl) dbs.getDatabaseManager();
+    private DatabaseManagerInternal getDBMan() {
+        return dbs.getDatabaseManager();
     }
 
     /**
@@ -171,18 +181,17 @@ public class BabuDBInterface {
     public Collection<DBFileMetaData> getAllSnapshotFiles() {
         List<DBFileMetaData> result = new Vector<DBFileMetaData>(); 
         
-        for (Database db : getDBMan().getDatabaseList()) {
-            result.addAll(
-                    ((DatabaseImpl) db).getLSMDB().getLastestSnapshotFiles());
+        for (DatabaseInternal db : getDBMan().getDatabaseList()) {
+            result.addAll(db.getLSMDB().getLastestSnapshotFiles());
         }
         
         return result;
     }
 
     /**
-     * @return the {@link PersistenceManager} of the local BabuDB instance.
+     * @return the {@link PersistenceManagerInternal} of the local BabuDB instance.
      */
-    public PersistenceManager getPersistanceManager() {
+    public PersistenceManagerInternal getPersistanceManager() {
         return dbs.getPersistenceManager();
     }
 }

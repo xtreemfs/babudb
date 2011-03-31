@@ -41,13 +41,14 @@ public interface ServiceToControlInterface {
      * stable state after log-file switch for at least N servers.
      * 
      * @param listener to handle the result of the synchronization progress.
+     * @param port - local port for instance identification.
      * 
      * @throws BabuDBException if synchronization failed. 
      * @throws InterruptedException if execution was interrupted.
      * @throws IOException if the log-file could not be switched.
      */
-    public void synchronize(SyncListener listener) throws BabuDBException, InterruptedException, 
-            IOException;
+    public void synchronize(SyncListener listener, int port) throws BabuDBException, 
+            InterruptedException, IOException;
 
     /**
      * Resets pending requests at the {@link ServiceLayer}. Listeners of all pending requests on the 

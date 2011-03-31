@@ -7,7 +7,6 @@
  */
 package org.xtreemfs.babudb.replication.service.operations;
 
-import java.net.InetSocketAddress;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
@@ -107,15 +106,7 @@ public class ReplicateOperation extends Operation {
         LogEntry le = (LogEntry) rq.getAttachment();
         final LSN lsn = le.getLSN();
         try {
-            // the master requests to synchronize this server to the last stable state
-            if (le.getPayload().remaining() == 0) {
-                rqMan.createStableState(lsn, 
-                        ((InetSocketAddress) rq.getRpcRequest().getSenderAddress()).getAddress());
-                
-            // this is an ordinary replicate request    
-            } else {
-                rqMan.enqueueOperation(new Object[]{ lsn, le });
-            }
+            rqMan.enqueueOperation(new Object[]{ lsn, le });
             rq.sendSuccess(ErrorCodeResponse.getDefaultInstance());
         } catch (Exception e) {
             if (le!=null) le.free();

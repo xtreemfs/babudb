@@ -7,7 +7,7 @@
 babudb.repl.backupDir = /tmp/babuDB-backup1/
 
 # number of servers that at least have to be up to date
-babudb.repl.sync.n = 2
+babudb.repl.sync.n = 3
 
 # choose here one of the predefined or a user implemented policy for handling 
 # database requests:

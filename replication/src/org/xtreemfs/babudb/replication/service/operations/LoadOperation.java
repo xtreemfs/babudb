@@ -9,9 +9,9 @@ package org.xtreemfs.babudb.replication.service.operations;
 
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.DBFileMetaData;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.DBFileMetaDatas;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN;
 import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.transmission.FileIOInterface;
@@ -30,16 +30,16 @@ import com.google.protobuf.Message;
 
 public class LoadOperation extends Operation {
            
-    private final AtomicReference<LSN>  lastOnView;
+    private final AtomicReference<org.xtreemfs.babudb.lsmdb.LSN>  lastOnView;
     
-    private final BabuDBInterface       babuInterface;
+    private final BabuDBInterface                                 babuInterface;
     
-    private final FileIOInterface       fileIO;
+    private final FileIOInterface                                 fileIO;
     
-    private final int                   maxChunkSize;
+    private final int                                             maxChunkSize;
     
-    public LoadOperation(AtomicReference<LSN> lastOnView, int maxChunkSize, 
-            BabuDBInterface babuInterface, FileIOInterface fileIO) {
+    public LoadOperation(AtomicReference<org.xtreemfs.babudb.lsmdb.LSN> lastOnView, 
+            int maxChunkSize, BabuDBInterface babuInterface, FileIOInterface fileIO) {
         
         this.fileIO = fileIO;
         this.maxChunkSize = maxChunkSize;

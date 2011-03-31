@@ -7,7 +7,7 @@
  */
 package org.xtreemfs.babudb.replication.service;
 
-import java.net.InetAddress;
+import java.net.InetSocketAddress;
 
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.LockableService.ServiceLockedException;
@@ -48,5 +48,5 @@ public interface RequestManagement {
      * @param lastOnView
      * @param master
      */
-    public void createStableState(LSN lastOnView, InetAddress master);
+    public void createStableState(LSN lastOnView, InetSocketAddress master);
 }
