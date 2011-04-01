@@ -17,6 +17,7 @@ import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
 import org.xtreemfs.babudb.api.dev.PersistenceManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
@@ -77,9 +78,9 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
             
             // check if this service has been locked and increment the access counter
             synchronized (accessCounter) {
-                if (locked) {
+                if (isLocked()) {
                     throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
-                            "This service has currently been locked by the replication plugin.");
+                            "This service has currently been locked by the replication plugin.");                   
                 } else {
                     accessCounter.incrementAndGet();
                 }   
@@ -226,6 +227,19 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
         };
         
         return result;
+    }
+    
+    private boolean isLocked() {
+        synchronized (accessCounter) {
+            try {
+                if (locked) {
+                    accessCounter.wait(ReplicationConfig.DELAY_TO_WAIT_FOR_LEASE_MS);
+                }
+            } catch (InterruptedException e) {
+                /* I don't care */
+            }
+            return locked;
+        }
     }
     
     /**

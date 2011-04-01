@@ -498,8 +498,9 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
      *           org.xtreemfs.foundation.buffer.ReusableBuffer)
      */
     @Override
-    public ClientResponseFuture<Object, ErrorCodeResponse> replicate(org.xtreemfs.babudb.lsmdb.LSN lsn, 
-            ReusableBuffer data) {
+    public ClientResponseFuture<Object, ErrorCodeResponse> replicate(
+            org.xtreemfs.babudb.lsmdb.LSN lsn, ReusableBuffer data) {
+        
         try {
             final RPCResponse<ErrorCodeResponse> result = replicate(null, 
                         AUTHENTICATION, 
@@ -514,8 +515,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
                     try {
                         ErrorCodeResponse response = result.get();
                         if (response.getErrorCode() != 0) {
-                            throw new ErrorCodeException(
-                                    response.getErrorCode());
+                            throw new ErrorCodeException(response.getErrorCode());
                         }
                         return null;
                     } finally {
