@@ -8,6 +8,7 @@
 package org.xtreemfs.babudb.plugin;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -17,6 +18,7 @@ import java.util.jar.JarInputStream;
 
 import org.xtreemfs.babudb.BabuDBImpl;
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
+import org.xtreemfs.babudb.api.plugin.PluginMain;
 
 import static org.xtreemfs.babudb.BabuDBFactory.*;
 
@@ -30,6 +32,8 @@ import static org.xtreemfs.babudb.BabuDBFactory.*;
 public final class PluginLoader extends ClassLoader {
 
     private final Map<String, byte[]>   classes = new HashMap<String, byte[]>();
+    
+    private String main = null;
     
     private BabuDBInternal              babuDB;
     
@@ -53,7 +57,7 @@ public final class PluginLoader extends ClassLoader {
             String configPath = plugin.getValue();
             
             // load all classes from the plugin JARs
-            JarInputStream jis = new JarInputStream(getClass().getResourceAsStream(pluginPath)); 
+            JarInputStream jis = new JarInputStream(new FileInputStream(pluginPath)); 
             
             JarEntry next = null;
             while ((next = jis.getNextJarEntry()) != null) {
@@ -73,6 +77,10 @@ public final class PluginLoader extends ClassLoader {
                 String className = next.getName().substring(0, 
                         next.getName().length() - ".class".length()).replace('/', '.');
                 
+                if (className.endsWith("Main")) {
+                    main = className;
+                }
+                
                 classes.put(className, out.toByteArray());
                 out.close();
             }
@@ -80,27 +88,36 @@ public final class PluginLoader extends ClassLoader {
             jis.close();
                         
             try {
-                this.babuDB = (BabuDBInternal) loadClass("Main")
-                        .getMethod("execute", BabuDBInternal.class, String.class)
-                        .invoke(babuDB, configPath);
-                
+                this.babuDB = ((PluginMain) loadClass(main).newInstance()).execute(
+                        babuDB, configPath);
+            
             } catch (Exception e) {
                 throw new IOException("Plugin at '" + pluginPath + "' for version " + 
                         BABUDB_VERSION + ((configPath != null) ? " with config at path " + 
-                        configPath : "") + " could not be initialized!", e.getCause());
+                        configPath : "") + " could not be initialized, because " + e.getMessage() + 
+                        "!", e.getCause());
             }
         }
     }
-
+    
+    /*
+     * (non-Javadoc)
+     * @see java.lang.ClassLoader#loadClass(java.lang.String, boolean)
+     */
+    @Override
     public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
         
-        byte[] classBytes = classes.get(name);
-        
-        if (classBytes == null) {
-            return findSystemClass(name);
+        Class<?> clazz = null;
+        try {
+            clazz =  findSystemClass(name);
+        } catch (ClassNotFoundException ce) {
+            byte[] classBytes = classes.get(name);
+            if (classBytes != null) {
+                clazz = defineClass(name, classBytes, 0, classBytes.length);
+            } else {
+                throw ce;
+            }
         }
-        
-        Class<?> clazz = defineClass(name, classBytes, 0, classBytes.length);
         
         if (resolve) {
             resolveClass(clazz);
