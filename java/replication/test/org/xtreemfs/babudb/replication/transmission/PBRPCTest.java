@@ -40,7 +40,7 @@ import org.xtreemfs.foundation.pbrpc.client.RPCNIOSocketClient;
 import com.google.protobuf.Message;
 
 import static junit.framework.Assert.*;
-import static org.xtreemfs.babudb.replication.TestParameters.mock0Conf;
+import static org.xtreemfs.babudb.replication.TestParameters.conf0;
 
 /**
  * These tests are just a proof of concept and neither do nor will ever probe all RPCs provided by
@@ -88,7 +88,7 @@ public class PBRPCTest implements LifeCycleListener {
      */
     @Before
     public void setUp() throws Exception {
-        config = new ReplicationConfig("config/replication_server0.test", mock0Conf);
+        config = new ReplicationConfig("config/replication_server0.test", conf0);
         
         dispatcher = new RequestDispatcher(config);
         dispatcher.setLifeCycleListener(this);

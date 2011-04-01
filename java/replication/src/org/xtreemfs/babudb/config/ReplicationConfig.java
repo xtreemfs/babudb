@@ -56,17 +56,17 @@ public class ReplicationConfig extends Config {
     /** 
      * longest duration a message can live on the wire, before it becomes void 
      */
-    private static final int         MESSAGE_TIMEOUT        = 5 * 1000;
+    private static final int         MESSAGE_TIMEOUT        = 10 * 1000;
     
     /** 
      * longest duration a connection can be established without getting closed 
      */
-    public static final int          LEASE_TIMEOUT          = 30 * 1000;
+    public static final int          LEASE_TIMEOUT          = 60 * 1000;
         
     /** 
      * longest duration before an RPC-Call is timed out 
      */
-    public static final int          REQUEST_TIMEOUT        = 5 * 1000;
+    public static final int          REQUEST_TIMEOUT        = 10 * 1000;
     
     /** 
      * longest duration before an idle connection is closed 
@@ -76,7 +76,7 @@ public class ReplicationConfig extends Config {
     /** 
      * the maximal delay to wait for an valid lease to become available 
      */
-    public static final int         DELAY_TO_WAIT_FOR_LEASE_MS = 2 * MESSAGE_TIMEOUT;
+    public static final int         DELAY_TO_WAIT_FOR_LEASE_MS = MESSAGE_TIMEOUT / 2;
     
     // for master usage only
     
@@ -191,7 +191,7 @@ public class ReplicationConfig extends Config {
         }
     }
     
-    public void read() throws IOException {
+    private void read() throws IOException {
         
         String tempDir = this.readRequiredString("babudb.repl.backupDir");
         if (tempDir.endsWith("/") || tempDir.endsWith("\\")) {
@@ -208,7 +208,7 @@ public class ReplicationConfig extends Config {
                                                    3000);
         this.timeSyncInterval = this.readOptionalInt("babudb.timeSync", 20000);
         
-        if (this.readRequiredBoolean("babudb.ssl.enabled")) {
+        if (this.readOptionalBoolean("babudb.ssl.enabled", false)) {
             this.sslOptions = new SSLOptions(new FileInputStream(this
                     .readRequiredString("babudb.ssl.service_creds")), this
                     .readRequiredString("babudb.ssl.service_creds.pw"), this

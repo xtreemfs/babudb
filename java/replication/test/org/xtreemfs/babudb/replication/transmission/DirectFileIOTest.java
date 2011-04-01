@@ -51,7 +51,7 @@ public class DirectFileIOTest {
         
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
-        conf = new ReplicationConfig("config/replication_server0.test", TestParameters.mock0Conf);
+        conf = new ReplicationConfig("config/replication_server0.test", TestParameters.conf0);
         fileIO = new FileIO(conf);
     }
     

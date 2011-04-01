@@ -13,6 +13,7 @@ import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.api.plugin.PluginMain;
+import org.xtreemfs.babudb.config.DependencyConfig;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.plugin.PluginLoader;
 import org.xtreemfs.babudb.replication.proxy.BabuDBProxy;
@@ -75,5 +76,13 @@ public class Main extends PluginMain {
     @Override
     public String compatibleBabuDBVersion() {
         return PluginMain.buildCompatibleVersionString(0, 5, 0, 0, 5, 0);
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.plugin.PluginMain#getDependencies(java.lang.String)
+     */
+    @Override
+    public String[] getDependencies(String configPath) throws IOException {
+        return new DependencyConfig(configPath).getDependencyPaths();
     }
 }
