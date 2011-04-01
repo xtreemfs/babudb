@@ -77,21 +77,22 @@ class PersistenceManagerImpl extends PersistenceManagerInternal {
             
             @Override
             public void synced(LogEntry entry) {
-                if (entry != null) entry.free();
                 try {
                     processing.after(args);
                     result.finished();
                 } catch (BabuDBException e) {
                     result.failed(e);
+                } finally {
+                    if (entry != null) entry.free();
                 }
             }
             
             @Override
             public void failed(LogEntry entry, Exception ex) {
-                if (entry != null) entry.free();
                 result.failed((ex != null && ex instanceof BabuDBException) ? 
                         (BabuDBException) ex : new BabuDBException(
                                 ErrorCode.INTERNAL_ERROR, ex.getMessage()));
+                if (entry != null) entry.free();
             }
         });
         

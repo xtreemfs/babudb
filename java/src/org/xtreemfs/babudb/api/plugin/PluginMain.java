@@ -7,6 +7,8 @@
  */
 package org.xtreemfs.babudb.api.plugin;
 
+import java.io.IOException;
+
 import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.api.BabuDB;
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
@@ -31,8 +33,8 @@ public abstract class PluginMain {
      * Pattern:<br> 
      * from-to<br>
      * <br>
-     * from: 0-9:0-9:0-9<br>
-     * to: 0-9:0-9:0-9<br>
+     * from: 0-9.0-9.0-9<br>
+     * to: 0-9.0-9.0-9<br>
      * <br>
      * If you are not sure about how to build a valid compatible-version string, please use the 
      * static method <b>PluginMain.buildCompatibleVersionString()</b>.
@@ -55,6 +57,18 @@ public abstract class PluginMain {
      */
     public abstract BabuDBInternal start(BabuDBInternal babuDB, String configPath) 
             throws BabuDBException;
+    
+    /**
+     * Method to register required dependencies of a plugin to BabuDB to be available on plugin 
+     * start.
+     * 
+     * @param configPath - may be null if no dependencies are required.
+     * @return a list of paths where the jars of libraries are to be found on which this plugin 
+     *         depends on, or null if the plugin has no dependencies.
+     *         
+     * @throws IOException
+     */
+    public abstract String[] getDependencies(String configPath) throws IOException;
     
     public final BabuDBInternal execute(BabuDBInternal babuDB, String configPath)
             throws BabuDBException {
@@ -90,7 +104,7 @@ public abstract class PluginMain {
      * Your string will look like this, if you would provide the same values for the parameters as
      * given in their description:<br>
      * <br>
-     * 1:2:3-4:5:6
+     * 1.2.3-4.5.6
      * 
      * @param from0 - 1
      * @param from1 - 2
