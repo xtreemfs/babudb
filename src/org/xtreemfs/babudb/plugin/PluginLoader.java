@@ -149,7 +149,7 @@ public final class PluginLoader extends ClassLoader {
         try {
             
             clazz =  findSystemClass(name);
-        } catch (ClassNotFoundException ce) {
+        } catch (Exception e) {
             
             clazz = findLoadedClass(name);
             if (clazz == null) {
@@ -157,7 +157,7 @@ public final class PluginLoader extends ClassLoader {
                 if (classBytes != null) {
                     clazz = defineClass(name, classBytes, 0, classBytes.length);
                 } else {
-                    throw ce;
+                    throw new ClassNotFoundException(e.getMessage(), e);
                 }
             }
         }
