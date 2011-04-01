@@ -56,8 +56,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
         
         try {
             final RPCResponse<ErrorCodeResponse> result = makePersistent(master, 
-                    AUTHENTICATION, 
-                    USER_CREDENTIALS, type, data);
+                    AUTHENTICATION, USER_CREDENTIALS, type, data);
             
             return new ClientResponseFuture<Object, ErrorCodeResponse>(result) {
                 
@@ -84,8 +83,6 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                     throw e;
                 }
             };
-        } finally {
-            BufferPool.free(data);
         }
     }
     

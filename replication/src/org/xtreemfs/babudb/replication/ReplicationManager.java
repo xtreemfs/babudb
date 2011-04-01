@@ -107,8 +107,7 @@ public class ReplicationManager implements LifeCycleListener {
      * @return the {@link ReplicateResponse}.
      */
     public ReplicateResponse replicate(LogEntry le) {
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, 
-                "Performing requests: replicate...");
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "Performing requests: replicate...");
         
         return serviceLayer.replicate(le);
     }

@@ -17,7 +17,8 @@ import org.xtreemfs.babudb.lsmdb.LSN;
  */
 
 public abstract class LatestLSNUpdateListener implements Comparable<LatestLSNUpdateListener> {
-    final LSN lsn;
+    
+    protected final LSN lsn;
     
     public LatestLSNUpdateListener(LSN lsn) {
         this.lsn = lsn;
