@@ -22,8 +22,8 @@ import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
  */
 public abstract class PluginMain {
     
-    private final static String VERSION_PART_DELIMITER = ".";
-    private final static String VERSION_RANGE_DELIMITER = "-";
+    private final static char VERSION_PART_DELIMITER = '.';
+    private final static char VERSION_RANGE_DELIMITER = '-';
         
     /**
      * The range of BabuDB versions this Plugin is compatible to.<br>
@@ -31,8 +31,8 @@ public abstract class PluginMain {
      * Pattern:<br> 
      * from-to<br>
      * <br>
-     * from: 0-9.0-9.0-9<br>
-     * to: 0-9.0-9.0-9<br>
+     * from: 0-9:0-9:0-9<br>
+     * to: 0-9:0-9:0-9<br>
      * <br>
      * If you are not sure about how to build a valid compatible-version string, please use the 
      * static method <b>PluginMain.buildCompatibleVersionString()</b>.
@@ -59,16 +59,16 @@ public abstract class PluginMain {
     public final BabuDBInternal execute(BabuDBInternal babuDB, String configPath)
             throws BabuDBException {
         
-        String[] comp = compatibleBabuDBVersion().split(VERSION_RANGE_DELIMITER);
-        String[] f = comp[0].split(VERSION_PART_DELIMITER);
-        int[] from = new int[] { Integer.parseInt(f[0]), Integer.parseInt(f[1], 
-                                 Integer.parseInt(f[2])) };
+        String[] comp = compatibleBabuDBVersion().split("\\" + VERSION_RANGE_DELIMITER);
+        String[] f = comp[0].split("\\" + VERSION_PART_DELIMITER);
+        int[] from = new int[] { Integer.parseInt(f[0]), Integer.parseInt(f[1]), 
+                                 Integer.parseInt(f[2]) };
         
-        String[] t = comp[1].split(VERSION_PART_DELIMITER);
-        int[] to = new int[] { Integer.parseInt(t[0]), Integer.parseInt(t[1], 
-                               Integer.parseInt(t[2])) };
+        String[] t = comp[1].split("\\" + VERSION_PART_DELIMITER);
+        int[] to = new int[] { Integer.parseInt(t[0]), Integer.parseInt(t[1]), 
+                               Integer.parseInt(t[2]) };
                              
-        String[] b = BabuDBFactory.BABUDB_VERSION.split(VERSION_PART_DELIMITER);
+        String[] b = BabuDBFactory.BABUDB_VERSION.split("\\" + VERSION_PART_DELIMITER);
         int[] babu = new int[] { Integer.parseInt(b[0]), Integer.parseInt(b[1]),
                                  Integer.parseInt(b[2])};
         
@@ -90,7 +90,7 @@ public abstract class PluginMain {
      * Your string will look like this, if you would provide the same values for the parameters as
      * given in their description:<br>
      * <br>
-     * 1.2.3-4.5.6
+     * 1:2:3-4:5:6
      * 
      * @param from0 - 1
      * @param from1 - 2
@@ -103,7 +103,7 @@ public abstract class PluginMain {
     public static String buildCompatibleVersionString(int from0, int from1,int from2,
                                                       int to0, int to1, int to2) {
         
-        return from0 + VERSION_PART_DELIMITER + from1 + VERSION_PART_DELIMITER + from2 + 
+        return "" + from0 + VERSION_PART_DELIMITER + from1 + VERSION_PART_DELIMITER + from2 + 
                VERSION_RANGE_DELIMITER +
                to0 + VERSION_PART_DELIMITER + to1 + VERSION_PART_DELIMITER + to2;
     }
