@@ -129,8 +129,11 @@ public final class PluginLoader extends ClassLoader {
                 main = className;
             }
             
-            byte[] same = classes.put(className, out.toByteArray());
-            assert (same == null);
+            if (!classes.containsKey(className)) {
+                classes.put(className, out.toByteArray());
+            }
+            //byte[] same = 
+            //assert (same == null) : "Class " + className + " already exists!";
             out.close();
         }
         jis.close();
