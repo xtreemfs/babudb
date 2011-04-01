@@ -9,6 +9,7 @@ package org.xtreemfs.babudb.plugin;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -32,9 +33,7 @@ import static org.xtreemfs.babudb.BabuDBFactory.*;
 public final class PluginLoader extends ClassLoader {
 
     private final Map<String, byte[]>   classes = new HashMap<String, byte[]>();
-    
-    private String main = null;
-    
+        
     private BabuDBInternal              babuDB;
     
     /**
@@ -46,50 +45,32 @@ public final class PluginLoader extends ClassLoader {
      * 
      * @throws IOException if an I/O error occurred
      */
-    private PluginLoader(BabuDBInternal babuDB) throws IOException {
+    private PluginLoader(BabuDBInternal dbs) throws IOException {
         super(BabuDBImpl.class.getClassLoader());
         
-        this.babuDB = babuDB;
+        this.babuDB = dbs;
         
-        for (Entry<String, String> plugin : babuDB.getConfig().getPlugins().entrySet()) {
+        // start all plugins registered
+        for (Entry<String, String> plugin : dbs.getConfig().getPlugins().entrySet()) {
             
+            String main = null;
             String pluginPath = plugin.getKey();
             String configPath = plugin.getValue();
-            
-            // load all classes from the plugin JARs
-            JarInputStream jis = new JarInputStream(new FileInputStream(pluginPath)); 
-            
-            JarEntry next = null;
-            while ((next = jis.getNextJarEntry()) != null) {
-                
-                if (!next.getName().endsWith(".class")) {
-                    continue;
-                }
-                
-                byte[] buf = new byte[4096];
-                ByteArrayOutputStream out = new ByteArrayOutputStream();
-                
-                int len = -1;
-                while ((len = jis.read(buf)) > 0) {
-                    out.write(buf, 0, len);
-                }
-                
-                String className = next.getName().substring(0, 
-                        next.getName().length() - ".class".length()).replace('/', '.');
-                
-                if (className.endsWith("Main")) {
-                    main = className;
-                }
-                
-                classes.put(className, out.toByteArray());
-                out.close();
-            }
-            
-            jis.close();
-                        
             try {
-                this.babuDB = ((PluginMain) loadClass(main).newInstance()).execute(
-                        babuDB, configPath);
+                // load all classes from the plugin JARs
+                main = loadJar(pluginPath, "Main");
+                if (main == null) {
+                    throw new Exception("Main class (extending PluginMain) not found!");
+                }
+                
+                // load the plugins dependencies
+                PluginMain m = (PluginMain) loadClass(main).newInstance();
+                for (String depPath : m.getDependencies(configPath)) {
+                    loadJar(depPath);
+                }
+                
+                // start the plugin
+                babuDB = m.execute(babuDB, configPath);
             
             } catch (Exception e) {
                 throw new IOException("Plugin at '" + pluginPath + "' for version " + 
@@ -98,6 +79,63 @@ public final class PluginLoader extends ClassLoader {
                         "!", e.getCause());
             }
         }
+    }
+    
+    /**
+     * Loads all classes from the jar found at path to be available to the ClassLoader.
+     * 
+     * @param path
+     * @throws IOException 
+     * @throws FileNotFoundException 
+     */
+    private final void loadJar(String path) throws FileNotFoundException, IOException {
+        loadJar(path, null);
+    }
+    
+    /**
+     * Loads all classes from the jar found at path to be available to the ClassLoader.
+     * 
+     * @param path
+     * @param classToSearchFor
+     * @throws IOException 
+     * @throws FileNotFoundException 
+     */
+    private final String loadJar(String path, String classToSearchFor) throws FileNotFoundException, 
+            IOException {
+        
+        JarInputStream jis = new JarInputStream(new FileInputStream(path)); 
+        
+        JarEntry next = null;
+        String main = null;
+        while ((next = jis.getNextJarEntry()) != null) {
+            
+            if (!next.getName().endsWith(".class")) {
+                continue;
+            }
+            
+            byte[] buf = new byte[4096];
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            
+            int len = -1;
+            while ((len = jis.read(buf)) > 0) {
+                out.write(buf, 0, len);
+            }
+            
+            String className = next.getName().substring(0, 
+                    next.getName().length() - ".class".length()).replace('/', '.');
+                        
+            if (classToSearchFor != null && className.endsWith(classToSearchFor)) {
+                assert (main == null);
+                main = className;
+            }
+            
+            byte[] same = classes.put(className, out.toByteArray());
+            assert (same == null);
+            out.close();
+        }
+        jis.close();
+        
+        return main;
     }
     
     /*
@@ -124,34 +162,6 @@ public final class PluginLoader extends ClassLoader {
         }
         
         return clazz;
-    }
-    
-    /**
-     * Checks if a certain plugin is available to be loaded by this class 
-     * loader.
-     * 
-     * @param name - of the plugin JAR.
-     * 
-     * @return <code>true</code>, if it is supported, <code>false</code>,
-     *         otherwise.
-     */
-    public static boolean checkPluginSupport(String path) {
-        
-        JarInputStream jis = null;
-        try {
-            jis = new JarInputStream(PluginLoader.class.getResourceAsStream(path));
-            return true;
-        } catch (Exception exc) {
-            return false;
-        } finally {
-            if (jis != null) {
-                try {
-                    jis.close();
-                } catch (IOException exc) {
-                    // ignore
-                }
-            }
-        }   
     }
     
     /**
