@@ -18,12 +18,18 @@ public final class TestParameters {
     
     private TestParameters() { }
     
-    public final static BabuDBConfig mock0Conf = new ConfigBuilder().setDataPath(
-            "/tmp/babudb0/base", "/tmp/babudb0/log").build();
+    public final static BabuDBConfig conf0 = new ConfigBuilder()
+            .setDataPath("/tmp/babudb0/base", "/tmp/babudb0/log")
+            .putPlugin("dist/Replication-1.0.0_0.5.0.jar", "config/replication_server0.test")
+            .build();
     
-    public final static BabuDBConfig mock1Conf = new ConfigBuilder().setDataPath(
-            "/tmp/babudb1/base", "/tmp/babudb1/log").build();
+    public final static BabuDBConfig conf1 = new ConfigBuilder()
+            .setDataPath("/tmp/babudb1/base", "/tmp/babudb1/log")
+            .putPlugin("dist/Replication-1.0.0_0.5.0.jar", "config/replication_server1.test")
+            .build();
 
-    public final static BabuDBConfig mock2Conf = new ConfigBuilder().setDataPath(
-            "/tmp/babudb2/base", "/tmp/babudb2/log").build();
+    public final static BabuDBConfig conf2 = new ConfigBuilder()
+            .setDataPath("/tmp/babudb2/base", "/tmp/babudb2/log")
+            .putPlugin("dist/Replication-1.0.0_0.5.0.jar", "config/replication_server2.test")
+            .build();
 }

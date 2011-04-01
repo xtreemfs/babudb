@@ -44,6 +44,7 @@ import org.xtreemfs.babudb.replication.service.clients.MasterClient;
 import org.xtreemfs.babudb.replication.service.clients.SlaveClient;
 import org.xtreemfs.babudb.replication.transmission.TransmissionToServiceInterface;
 import org.xtreemfs.foundation.LifeCycleListener;
+import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.flease.Flease;
 import org.xtreemfs.foundation.logging.Logging;
@@ -184,7 +185,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
             synchronized(checksum) {
                 CRC32 csumAlgo = checksum.get();
                 try {
-                    payload = le.serialize(csumAlgo);
+                    payload = le.serialize(csumAlgo).createViewBuffer();
                 } finally {
                     csumAlgo.reset();
                 }
@@ -192,7 +193,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
             
             // send the LogEntry to the other servers
             for (final SlaveClient slave : slaves) {
-                slave.replicate(le.getLSN(), payload).registerListener(
+                slave.replicate(le.getLSN(), payload.createViewBuffer()).registerListener(
                         new ClientResponseAvailableListener<Object>() {
                 
                     @Override
@@ -218,6 +219,8 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
                     }
                 });
             }
+            
+            BufferPool.free(payload);
         }    
         return result;
     }
