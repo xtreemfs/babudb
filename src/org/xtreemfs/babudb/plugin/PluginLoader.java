@@ -32,7 +32,7 @@ import static org.xtreemfs.babudb.BabuDBFactory.*;
  */
 public final class PluginLoader extends ClassLoader {
 
-    private final Map<String, byte[]>   classes = new HashMap<String, byte[]>();
+    private final Map<String, byte[]>   clazzes = new HashMap<String, byte[]>();
         
     private BabuDBInternal              babuDB;
     
@@ -66,6 +66,8 @@ public final class PluginLoader extends ClassLoader {
                 // load the plugins dependencies
                 PluginMain m = (PluginMain) loadClass(main).newInstance();
                 for (String depPath : m.getDependencies(configPath)) {
+                    Logging.logMessage(Logging.LEVEL_INFO, this, "Loading plugin dependency %s.", 
+                            depPath);                 
                     loadJar(depPath);
                 }
                 
@@ -73,10 +75,10 @@ public final class PluginLoader extends ClassLoader {
                 babuDB = m.execute(babuDB, configPath);
             
             } catch (Exception e) {
-                throw new IOException("Plugin at '" + pluginPath + "' for version " + 
-                        BABUDB_VERSION + ((configPath != null) ? " with config at path " + 
-                        configPath : "") + " could not be initialized, because " + e.getMessage() + 
-                        "!", e.getCause());
+                throw new IOException("Plugin at '" + pluginPath + "' for version " + BABUDB_VERSION 
+                        + ((configPath != null) ? " with config at path " + configPath : "") 
+                        + " could not be initialized, because " + e.getMessage() 
+                        + "!", e.getCause());
             }
         }
     }
@@ -121,16 +123,16 @@ public final class PluginLoader extends ClassLoader {
                 out.write(buf, 0, len);
             }
             
-            String className = next.getName().substring(0, 
-                    next.getName().length() - ".class".length()).replace('/', '.');
+            String className = next.getName().substring(0, next.getName().length() - 
+                    ".class".length()).replace('/', '.');
                         
             if (classToSearchFor != null && className.endsWith(classToSearchFor)) {
                 assert (main == null);
                 main = className;
             }
             
-            if (!classes.containsKey(className)) {
-                classes.put(className, out.toByteArray());
+            if (!clazzes.containsKey(className)) {
+                clazzes.put(className, out.toByteArray());
             } else {
                 Logging.logMessage(Logging.LEVEL_INFO, this, "Did not load %s from %s, " +
                 		"because it already exists.", className, path);
@@ -148,21 +150,14 @@ public final class PluginLoader extends ClassLoader {
      */
     @Override
     public Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-        
-        Class<?> clazz = null;
-        try {
-            
-            clazz =  findSystemClass(name);
-        } catch (Throwable t) {
-            
-            clazz = findLoadedClass(name);
-            if (clazz == null) {
-                byte[] classBytes = classes.get(name);
-                if (classBytes != null) {
-                    clazz = defineClass(name, classBytes, 0, classBytes.length);
-                } else {
-                    throw new ClassNotFoundException(t.getMessage(), t);
-                }
+                
+        Class<?> clazz = findLoadedClass(name);        
+        if (clazz == null) {
+            byte[] classBytes = clazzes.get(name);
+            if (classBytes != null) {
+                clazz = defineClass(name, classBytes, 0, classBytes.length);
+            } else {
+                clazz = getParent().loadClass(name);
             }
         }
         
