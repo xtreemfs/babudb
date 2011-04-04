@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2008 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -64,6 +64,8 @@ public class LogEntry {
     }
         
     public LogEntry(ReusableBuffer payload, SyncListener l, byte payloadType) {
+        assert(payload != null);
+        
         this.payload = payload;
         this.listener = l;
         this.payloadType = payloadType;
@@ -214,5 +216,17 @@ public class LogEntry {
     
     public byte getPayloadType() {
         return payloadType;
+    }
+    
+    /* (non-Javadoc)
+     * @see java.lang.Object#clone()
+     */
+    @Override
+    public LogEntry clone() {
+        LogEntry result = new LogEntry(payload.createViewBuffer(), listener, payloadType);
+        result.assignId(viewId, logSequenceNo);
+        result.attachment = attachment;
+        result.checksum = checksum;
+        return result;
     }
 }
