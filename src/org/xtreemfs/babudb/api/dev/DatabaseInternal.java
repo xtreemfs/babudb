@@ -8,10 +8,12 @@
 package org.xtreemfs.babudb.api.dev;
 
 import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
 import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
+import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
 import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
@@ -40,6 +42,24 @@ public interface DatabaseInternal extends Database {
      * @param lsmDatabase
      */
     public void setLSMDB(LSMDatabase lsmDatabase);
+    
+    /**
+     * Creates a new group of inserts.
+     * 
+     * @return an insert record group
+     */
+    public BabuDBInsertGroup createInsertGroup();
+    
+    /**
+     * Inserts a group of key value pairs.
+     * 
+     * @param irg
+     *            the insert record group to execute
+     * @param context
+     *            arbitrary context which is passed to the listener
+     * @return a future as proxy for the request result.
+     */
+    public DatabaseRequestResult<Object> insert(BabuDBInsertGroup irg, Object context);
     
 /*
  * snapshot specific operations

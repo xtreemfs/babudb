@@ -70,7 +70,7 @@ public class DatabaseImpl implements DatabaseInternal {
      * @see org.xtreemfs.babudb.api.database.Database#createInsertGroup()
      */
     @Override
-    public DatabaseInsertGroup createInsertGroup() {
+    public BabuDBInsertGroup createInsertGroup() {
         
         return new BabuDBInsertGroup(lsmDB);
     }
@@ -102,13 +102,12 @@ public class DatabaseImpl implements DatabaseInternal {
      * BabuDBInsertGroup, java.lang.Object)
      */
     @Override
-    public DatabaseRequestResult<Object> insert(DatabaseInsertGroup irg, 
-            Object context) {
+    public DatabaseRequestResult<Object> insert(BabuDBInsertGroup irg, Object context) {
         
         final BabuDBRequestResultImpl<Object> result = 
             new BabuDBRequestResultImpl<Object>(context);
         
-        InsertRecordGroup ins = ((BabuDBInsertGroup) irg).getRecord();
+        InsertRecordGroup ins = irg.getRecord();
         int dbId = ins.getDatabaseId();
         
         LSMDBWorker w = dbs.getWorker(dbId);
@@ -609,6 +608,14 @@ public class DatabaseImpl implements DatabaseInternal {
     @Override
     public String getName() {
         return lsmDB.getDatabaseName();
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.database.Database#insert(org.xtreemfs.babudb.api.database.DatabaseInsertGroup, java.lang.Object)
+     */
+    @Override
+    public DatabaseRequestResult<Object> insert(DatabaseInsertGroup irg, Object context) {
+        return insert((BabuDBInsertGroup) irg, context);
     }
     
 }
