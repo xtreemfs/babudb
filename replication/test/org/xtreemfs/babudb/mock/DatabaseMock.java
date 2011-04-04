@@ -14,6 +14,7 @@ import org.xtreemfs.babudb.api.database.UserDefinedLookup;
 import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
+import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.foundation.logging.Logging;
@@ -43,7 +44,7 @@ public class DatabaseMock implements DatabaseInternal {
     }
     
     @Override
-    public DatabaseInsertGroup createInsertGroup() {
+    public BabuDBInsertGroup createInsertGroup() {
         // TODO Auto-generated method stub
         return null;
     }
@@ -57,8 +58,8 @@ public class DatabaseMock implements DatabaseInternal {
     @Override
     public DatabaseRequestResult<Object> insert(DatabaseInsertGroup irg,
             Object context) {
-        // TODO Auto-generated method stub
-        return null;
+        
+        return insert((BabuDBInsertGroup) irg, context);
     }
 
     @Override
@@ -228,6 +229,15 @@ public class DatabaseMock implements DatabaseInternal {
     @Override
     public ResultSet<byte[], byte[]> directRangeLookup(int indexId, int snapId, byte[] from, byte[] to,
             boolean ascending) throws BabuDBException {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#insert(org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup, java.lang.Object)
+     */
+    @Override
+    public DatabaseRequestResult<Object> insert(BabuDBInsertGroup irg, Object context) {
         // TODO Auto-generated method stub
         return null;
     }
