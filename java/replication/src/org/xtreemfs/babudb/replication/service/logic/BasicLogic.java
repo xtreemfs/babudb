@@ -95,7 +95,7 @@ public class BasicLogic extends Logic {
         // try to finish the request
         try {     
             // perform the operation
-            stage.getBabuDB().appendToLocalPersistenceManager((LogEntry) op.getArgs()[1], 
+            stage.getBabuDB().appendToLocalPersistenceManager(((LogEntry) op.getArgs()[1]).clone(), 
                     new DatabaseRequestListener<Object>() {
                         
                         @Override

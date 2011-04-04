@@ -510,7 +510,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
             return new ClientResponseFuture<Object, ErrorCodeResponse>(result) {
                 
                 @Override
-                public ReusableBuffer get() throws IOException, 
+                public Object get() throws IOException, 
                         InterruptedException, ErrorCodeException {
                     try {
                         ErrorCodeResponse response = result.get();

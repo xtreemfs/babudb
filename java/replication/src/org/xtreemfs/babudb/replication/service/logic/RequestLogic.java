@@ -108,8 +108,7 @@ public class RequestLogic extends Logic {
             LSN check = null;
             for (ReusableBuffer le : logEntries) {
                 try {
-                    final LogEntry logentry = 
-                        LogEntry.deserialize(le, this.checksum);
+                    final LogEntry logentry = LogEntry.deserialize(le, this.checksum);
                     final LSN lsn = logentry.getLSN();
                     
                     // assertion whether the received entry does match the order 
@@ -139,7 +138,6 @@ public class RequestLogic extends Logic {
                                 if (count.decrementAndGet() == 0)
                                     count.notify();
                             }
-                            logentry.free();
                         }
                         
                         @Override
@@ -149,7 +147,6 @@ public class RequestLogic extends Logic {
                                 count.set(-1);
                                 count.notify();
                             }
-                            logentry.free();
                         }
                     });
                 } finally {
@@ -164,14 +161,16 @@ public class RequestLogic extends Logic {
             }
             
             // at least one insert failed
-            if (count.get() == -1) 
+            if (count.get() == -1) {
                 throw new LogEntryException("At least one insert could not be" +
                 		" proceeded.");
- 
+            }
+            
             finish();
-            if (Thread.interrupted()) 
+            if (Thread.interrupted()) {
                 throw new InterruptedException("Replication was interrupted" +
                 		" after executing a replicaOperation.");
+            }
         } catch (ErrorCodeException e) {
             // server-side error
             throw new ConnectionLostException(e.getCode());
