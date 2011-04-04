@@ -7,7 +7,6 @@
  */
 package org.xtreemfs.babudb.config;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,15 +30,6 @@ public class DependencyConfig extends Config {
         int i = 0;
         String path;
         while ((path = readOptionalString("babudb.repl.dependency." + i++, null)) != null) {
-            if (!path.endsWith("/") && !path.endsWith("\\")) {
-                if (path.contains("/")) {
-                    path = path + "/";
-                } else if (path.contains("\\")) {
-                    path = path + "\\";
-                } else {
-                    path = path + File.separator;
-                }
-            }
             paths.add(path);
         }
     }
