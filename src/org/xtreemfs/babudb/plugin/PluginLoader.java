@@ -17,9 +17,9 @@ import java.util.Map.Entry;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 
-import org.xtreemfs.babudb.BabuDBImpl;
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.plugin.PluginMain;
+import org.xtreemfs.foundation.logging.Logging;
 
 import static org.xtreemfs.babudb.BabuDBFactory.*;
 
@@ -46,7 +46,7 @@ public final class PluginLoader extends ClassLoader {
      * @throws IOException if an I/O error occurred
      */
     private PluginLoader(BabuDBInternal dbs) throws IOException {
-        super(BabuDBImpl.class.getClassLoader());
+        super();
         
         this.babuDB = dbs;
         
@@ -60,7 +60,7 @@ public final class PluginLoader extends ClassLoader {
                 // load all classes from the plugin JARs
                 main = loadJar(pluginPath, "Main");
                 if (main == null) {
-                    throw new Exception("Main class (extending PluginMain) not found!");
+                    throw new Exception("main class (extending PluginMain) not found!");
                 }
                 
                 // load the plugins dependencies
@@ -131,9 +131,10 @@ public final class PluginLoader extends ClassLoader {
             
             if (!classes.containsKey(className)) {
                 classes.put(className, out.toByteArray());
+            } else {
+                Logging.logMessage(Logging.LEVEL_INFO, this, "Did not load %s from %s, " +
+                		"because it already exists.", className, path);
             }
-            //byte[] same = 
-            //assert (same == null) : "Class " + className + " already exists!";
             out.close();
         }
         jis.close();
@@ -152,7 +153,7 @@ public final class PluginLoader extends ClassLoader {
         try {
             
             clazz =  findSystemClass(name);
-        } catch (Exception e) {
+        } catch (Throwable t) {
             
             clazz = findLoadedClass(name);
             if (clazz == null) {
@@ -160,7 +161,7 @@ public final class PluginLoader extends ClassLoader {
                 if (classBytes != null) {
                     clazz = defineClass(name, classBytes, 0, classBytes.length);
                 } else {
-                    throw new ClassNotFoundException(e.getMessage(), e);
+                    throw new ClassNotFoundException(t.getMessage(), t);
                 }
             }
         }
