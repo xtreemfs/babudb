@@ -100,38 +100,40 @@ public class IntegrationTest {
         Database test1 = babu1.getDatabaseManager().createDatabase("1", 3);
         Database test2 = babu2.getDatabaseManager().createDatabase("2", 3);
                 
-//        // retrieve the databases
-//        test0 = babu2.getDatabaseManager().getDatabase("0");
-//        test1 = babu0.getDatabaseManager().getDatabase("1");
-//        test2 = babu1.getDatabaseManager().getDatabase("2");
-//        
-//        // make some inserts
-//        DatabaseInsertGroup ig = test0.createInsertGroup();
-//        ig.addInsert(0, "bla00".getBytes(), "blub00".getBytes());
-//        ig.addInsert(1, "bla01".getBytes(), "blub01".getBytes());
-//        ig.addInsert(2, "bla02".getBytes(), "blub02".getBytes());
-//        test0.insert(ig, test0).get();
-//        
-//        ig = test1.createInsertGroup();
-//        ig.addInsert(0, "bla10".getBytes(), "blub10".getBytes());
-//        ig.addInsert(1, "bla11".getBytes(), "blub11".getBytes());
-//        ig.addInsert(2, "bla12".getBytes(), "blub12".getBytes());
-//        test1.insert(ig, test1).get();
-//        
-//        ig = test2.createInsertGroup();
-//        ig.addInsert(0, "bla20".getBytes(), "blub20".getBytes());
-//        ig.addInsert(1, "bla21".getBytes(), "blub21".getBytes());
-//        ig.addInsert(2, "bla22".getBytes(), "blub22".getBytes());
-//        test2.insert(ig, test2).get();
-//        
-//        // retrieve the databases
-//        test0 = babu1.getDatabaseManager().getDatabase("0");
-//        test1 = babu2.getDatabaseManager().getDatabase("1");
-//        test2 = babu0.getDatabaseManager().getDatabase("2");
-//        
-//        // make some lookups
-//        assertEquals("blub00", new String(test0.lookup(0, "bla00".getBytes(), test0).get()));
-//        
-//        test0.lookup(0, "bla20".getBytes(), test0).get();
+        // retrieve the databases
+        test0 = babu2.getDatabaseManager().getDatabase("0");
+        test1 = babu0.getDatabaseManager().getDatabase("1");
+        test2 = babu1.getDatabaseManager().getDatabase("2");
+        
+        // make some inserts
+        DatabaseInsertGroup ig = test0.createInsertGroup();
+        ig.addInsert(0, "bla00".getBytes(), "blub00".getBytes());
+        ig.addInsert(1, "bla01".getBytes(), "blub01".getBytes());
+        ig.addInsert(2, "bla02".getBytes(), "blub02".getBytes());
+        test0.insert(ig, test0).get();
+        
+        ig = test1.createInsertGroup();
+        ig.addInsert(0, "bla10".getBytes(), "blub10".getBytes());
+        ig.addInsert(1, "bla11".getBytes(), "blub11".getBytes());
+        ig.addInsert(2, "bla12".getBytes(), "blub12".getBytes());
+        test1.insert(ig, test1).get();
+        
+        ig = test2.createInsertGroup();
+        ig.addInsert(0, "bla20".getBytes(), "blub20".getBytes());
+        ig.addInsert(1, "bla21".getBytes(), "blub21".getBytes());
+        ig.addInsert(2, "bla22".getBytes(), "blub22".getBytes());
+        test2.insert(ig, test2).get();
+        
+        // retrieve the databases
+        test0 = babu1.getDatabaseManager().getDatabase("0");
+        test1 = babu2.getDatabaseManager().getDatabase("1");
+        test2 = babu0.getDatabaseManager().getDatabase("2");
+        
+        // make some lookups
+        byte[] res = test0.lookup(0, "bla00".getBytes(), test0).get();
+        assertNotNull(res);
+        assertEquals("blub00", new String(res));
+        
+        test0.lookup(0, "bla20".getBytes(), test0).get();
     }
 }

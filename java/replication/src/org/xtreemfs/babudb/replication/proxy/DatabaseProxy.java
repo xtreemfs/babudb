@@ -605,7 +605,7 @@ class DatabaseProxy implements DatabaseInternal {
      * @see org.xtreemfs.babudb.api.database.Database#createInsertGroup()
      */
     @Override
-    public DatabaseInsertGroup createInsertGroup() {
+    public BabuDBInsertGroup createInsertGroup() {
         return BabuDBInsertGroup.createInsertGroup(id);
     }
 
@@ -641,19 +641,28 @@ class DatabaseProxy implements DatabaseInternal {
         irg.addInsert(indexId, key, value);
         return insert(irg, context);
     }
-
+    
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.database.Database#insert(
-     *          org.xtreemfs.babudb.api.database.DatabaseInsertGroup, 
-     *          java.lang.Object)
+     *          org.xtreemfs.babudb.api.database.DatabaseInsertGroup, java.lang.Object)
      */
     @Override
-    public DatabaseRequestResult<Object> insert(DatabaseInsertGroup irg, final Object context) {
+    public DatabaseRequestResult<Object> insert(DatabaseInsertGroup irg, Object context) {
+        return insert((BabuDBInsertGroup) irg, context);
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseInternal#insert(
+     *          org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup, java.lang.Object)
+     */
+    @Override
+    public DatabaseRequestResult<Object> insert(BabuDBInsertGroup irg, final Object context) {
         
         try {
             
             return dbMan.getPersistenceManager().makePersistent(LogEntry.PAYLOAD_TYPE_INSERT, 
-                                                                new Object[] { irg, null, null });
+                                                                new Object[] { irg.getRecord(), 
+                                                                null, null });
         } catch (final BabuDBException e) {
             
             return new DatabaseRequestResult<Object>() {
