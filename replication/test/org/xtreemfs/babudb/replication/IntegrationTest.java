@@ -42,7 +42,7 @@ public class IntegrationTest {
      */
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
-        Logging.start(Logging.LEVEL_INFO, Category.all);
+        Logging.start(Logging.LEVEL_WARN, Category.all);
     }
 
     /**
@@ -94,14 +94,12 @@ public class IntegrationTest {
      */
     @Test
     public void testBasicIO() throws Exception {
-                
+        
         // create some DBs
         Database test0 = babu0.getDatabaseManager().createDatabase("0", 3);    
         Database test1 = babu1.getDatabaseManager().createDatabase("1", 3);
         Database test2 = babu2.getDatabaseManager().createDatabase("2", 3);
-        
-        Thread.sleep(20 * 1000);
-        
+                
 //        // retrieve the databases
 //        test0 = babu2.getDatabaseManager().getDatabase("0");
 //        test1 = babu0.getDatabaseManager().getDatabase("1");

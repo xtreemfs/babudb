@@ -76,7 +76,7 @@ public class ReplicationConfig extends Config {
     /** 
      * the maximal delay to wait for an valid lease to become available 
      */
-    public static final int         DELAY_TO_WAIT_FOR_LEASE_MS = MESSAGE_TIMEOUT / 2;
+    public static final int         DELAY_TO_WAIT_FOR_LEASE_MS = MESSAGE_TIMEOUT;
     
     // for master usage only
     

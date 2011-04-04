@@ -21,7 +21,7 @@ public interface SlaveClient extends ClientInterface {
 
     /**
      * The slave is requested to replicate the given LogEntry identified by its
-     * {@link org.xtreemfs.babudb.lsmdb.LSN}.
+     * {@link org.xtreemfs.babudb.lsmdb.LSN}. The buffer will be freed afterwards.
      * 
      * @param lsn
      * @param data

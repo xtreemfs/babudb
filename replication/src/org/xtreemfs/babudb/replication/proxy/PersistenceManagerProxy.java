@@ -73,6 +73,8 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
     public <T> DatabaseRequestResult<T> makePersistent(byte type, Object[] args, 
             ReusableBuffer serialized) throws BabuDBException {
         
+        assert (serialized != null);
+        
         InetSocketAddress master = getServerToPerformAt(type);
         if (master == null) {
             
@@ -102,12 +104,12 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
      * @return the requests result future.
      * @throws BabuDBException
      */
-    private <T> DatabaseRequestResult<T> executeLocallyAndReplicate(byte type, 
-            ReusableBuffer payload) throws BabuDBException {
+    private <T> DatabaseRequestResult<T> executeLocallyAndReplicate(final byte type, 
+            final ReusableBuffer payload) throws BabuDBException {
         
         final ListenerWrapper<T> wrapper = new ListenerWrapper<T>();
                 
-        localPersMan.makePersistent(type, payload).registerListener(
+        localPersMan.makePersistent(type, payload.createViewBuffer()).registerListener(
                 (DatabaseRequestListener<Object>) new DatabaseRequestListener<Object>() {
         
             @Override
@@ -120,9 +122,8 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
                     }
                 }
                 
-                LogEntry le = (LogEntry) context;
-                                
-                le.setListener(new SyncListener() {
+                LSN assignedByDiskLogger = ((LogEntry) context).getLSN();
+                LogEntry le = new LogEntry(payload, new SyncListener() {
                 
                     @Override
                     public void synced(LogEntry entry) {
@@ -135,12 +136,15 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
                                 ErrorCode.REPLICATION_FAILURE, 
                                 ex.getMessage()));
                     }
-                });
+                }, type);
+                le.assignId(assignedByDiskLogger.getViewId(), assignedByDiskLogger.getSequenceNo());
                 
                 ReplicateResponse rp = replMan.replicate(le);
                 if (!rp.hasFailed()) {
                     replMan.subscribeListener(rp);
                 }
+                
+                le.free();
             }
             
             @Override

@@ -185,7 +185,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
             synchronized(checksum) {
                 CRC32 csumAlgo = checksum.get();
                 try {
-                    payload = le.serialize(csumAlgo).createViewBuffer();
+                    payload = le.serialize(csumAlgo);
                 } finally {
                     csumAlgo.reset();
                 }
