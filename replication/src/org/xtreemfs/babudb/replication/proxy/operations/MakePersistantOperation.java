@@ -69,7 +69,6 @@ public class MakePersistantOperation extends Operation {
                 }
             });
         } catch (BabuDBException be) {
-            
             rq.sendSuccess(ErrorCodeResponse.newBuilder().setErrorCode(
                     ErrorCode.SERVICE_UNAVAILABLE).build());
         } 

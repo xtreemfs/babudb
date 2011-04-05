@@ -78,6 +78,8 @@ class DatabaseProxy implements DatabaseInternal {
     public DatabaseRequestResult<byte[]> lookup(int indexId, byte[] key, 
             final Object context) {
         
+        assert (key != null);
+        
         InetSocketAddress master = null;
         try {
             master = getServerToPerformAt();

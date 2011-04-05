@@ -28,7 +28,6 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.FleaseMessageReceiver;
 import org.xtreemfs.babudb.replication.Layer;
-import org.xtreemfs.babudb.replication.LockableService;
 import org.xtreemfs.babudb.replication.TopLayer;
 import org.xtreemfs.babudb.replication.proxy.RPCRequestHandler;
 import org.xtreemfs.babudb.replication.service.accounting.LatestLSNUpdateListener;
@@ -68,8 +67,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
     private final ReplicationStage               replicationStage;
     
     /** the last acknowledged LSN of the last view */
-    private final AtomicReference<LSN>           lastOnView = 
-        new AtomicReference<LSN>();
+    private final AtomicReference<LSN>           lastOnView = new AtomicReference<LSN>();
     
     /** interface for operation performed on BabuDB */
     private final BabuDBInterface                babuDB;
@@ -79,8 +77,8 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         
     /** thread safe checksum object for serialization of LogEntries to replicate */
     private final AtomicReference<CRC32>         checksum = new AtomicReference<CRC32>(new CRC32());
-    
-    private final int                            maxChunkSize;
+        
+    private final ReplicationConfig              config;
     
     /**
      * @param config
@@ -92,7 +90,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
     public ServiceLayer(ReplicationConfig config, BabuDBInterface babuDB,
             TransmissionToServiceInterface transLayer) throws IOException {
         
-        this.maxChunkSize = config.getChunkSize();
+        this.config = config;
         this.transmissionInterface = transLayer;
         this.babuDB = babuDB;
         
@@ -119,13 +117,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         // ----------------------------------
         replicationStage = new ReplicationStage(
                 config.getBabuDBConfig().getMaxQueueLength(), heartbeatThread, this, 
-                transLayer.getFileIOInterface(), babuDB, lastOnView, maxChunkSize);
-        
-        // ----------------------------------
-        // initialize request logic for 
-        // handling BabuDB remote calls
-        // ----------------------------------
-        transmissionInterface.addRequestHandler(new RPCRequestHandler(babuDB));
+                transLayer.getFileIOInterface(), babuDB, lastOnView, config.getChunkSize()); 
     }
     
     /**
@@ -134,19 +126,26 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
      */
     public <T extends TopLayer & FleaseMessageReceiver> void init(T receiver) {
         assert (receiver != null);
-              
+        
+        // ----------------------------------
+        // initialize request logic for 
+        // handling BabuDB remote calls
+        // ----------------------------------
+        RPCRequestHandler rqCtrl = new RPCRequestHandler(babuDB, 
+                config.getBabuDBConfig().getMaxQueueLength());
+        transmissionInterface.addRequestHandler(rqCtrl);
+        receiver.registerProxyRequestControl(rqCtrl);
+        
         // ----------------------------------
         // coin the dispatcher of the 
         // underlying layer
         // ----------------------------------
         transmissionInterface.addRequestHandler(
                 new ReplicationRequestHandler(participantsStates, receiver, babuDB, 
-                        replicationStage, lastOnView, maxChunkSize, 
+                        replicationStage, lastOnView, config.getChunkSize(), 
                         transmissionInterface.getFileIOInterface()));
-    }
-    
-    public LockableService getLockableService() {
-        return replicationStage;
+        
+        receiver.registerReplicationInterface(replicationStage);
     }
     
 /*

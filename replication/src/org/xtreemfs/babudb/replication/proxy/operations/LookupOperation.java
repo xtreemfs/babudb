@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -59,8 +59,8 @@ public class LookupOperation extends Operation {
                 
                 @Override
                 public void finished(byte[] result, Object context) {
-                    rq.sendSuccess(ErrorCodeResponse.getDefaultInstance(), 
-                                   ReusableBuffer.wrap(result));
+                    rq.sendSuccess(ErrorCodeResponse.getDefaultInstance(), (result == null) ? 
+                            null : ReusableBuffer.wrap(result));
                 }
                 
                 @Override

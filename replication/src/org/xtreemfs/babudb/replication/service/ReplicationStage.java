@@ -315,6 +315,7 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
         
         // if slave already is in a stable DB state, unlock user operations immediately and return
         if (lastOnView.get().equals(lastLSNOnView)) {
+            topLayer.notifyForSuccessfulFailover(master);
             topLayer.unlockUser();
             
         // otherwise establish a stable global DB state
@@ -330,6 +331,7 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                     try {
                         
                         lastOnView.set(babudb.checkpoint());
+                        topLayer.notifyForSuccessfulFailover(master);
                         topLayer.unlockUser();
                         
                     } catch (BabuDBException e) {

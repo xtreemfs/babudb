@@ -54,8 +54,6 @@ public class ReplicationManager implements LifeCycleListener {
         serviceLayer = new ServiceLayer(conf, new BabuDBInterface(dbs), transmissionLayer);
         ControlLayer c = new ControlLayer(serviceLayer, conf);
         serviceLayer.init(c);
-        c.registerReplicationInterface(serviceLayer.getLockableService());
-        
         controlLayer = c;
         
         transmissionLayer.setLifeCycleListener(this);

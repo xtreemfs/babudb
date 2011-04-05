@@ -13,6 +13,7 @@ import org.xtreemfs.babudb.api.BabuDB;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.LockableService;
 import org.xtreemfs.babudb.replication.LockableService.ServiceLockedException;
+import org.xtreemfs.babudb.replication.transmission.RequestControl;
 
 /**
  * Interface between ControlLayer and {@link BabuDBInterface}.
@@ -39,14 +40,21 @@ public interface ControlToBabuDBInterface {
      * 
      * @param service
      */
-    public abstract void registerUserInterface(LockableService service);
+    public void registerUserInterface(LockableService service);
     
     /**
      * Method to register a {@link LockableService} to the control layer.
      * 
      * @param service
      */
-    public abstract void registerReplicationInterface(LockableService service);
+    public void registerReplicationInterface(LockableService service);
+    
+    /**
+     * Method to register the proxy {@link RequestControl} to the control layer;
+     * 
+     * @param control
+     */
+    public void registerProxyRequestControl(RequestControl control);
     
     /**
      * Completely locks all {@link BabuDB} services. They will throw {@link ServiceLockedException},
@@ -55,12 +63,19 @@ public interface ControlToBabuDBInterface {
      * 
      * @throws InterruptedException
      */
-    public abstract void lockAll() throws InterruptedException;
+    public void lockAll() throws InterruptedException;
     
     /**
      * Unlocks all user accessible services.
      */
-    public abstract void unlockUser();
+    public void unlockUser();
+    
+    /**
+     * Method to notify about a successfully processed failover request triggered by master.
+     * 
+     * @param master
+     */
+    public void notifyForSuccessfulFailover(InetSocketAddress master);
     
     /**
      * Unlocks the replication related services.
