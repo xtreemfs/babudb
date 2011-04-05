@@ -21,9 +21,7 @@ import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
-import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
-import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.foundation.logging.Logging;
 
@@ -124,7 +122,7 @@ public class DatabaseImpl implements DatabaseInternal {
                         "operation was interrupted", ex));
             }
         } else {
-            directInsert((BabuDBInsertGroup) irg, result);
+            directInsert(irg, result);
         }
         
         return result;
@@ -142,23 +140,7 @@ public class DatabaseImpl implements DatabaseInternal {
 
         try {
             dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_INSERT, 
-                           new Object[]{ irg.getRecord(), lsmDB, listener }); 
-            
-            // in case of asynchronous inserts, complete the request immediately
-            if (dbs.getConfig().getSyncMode() == SyncMode.ASYNC) {
-                
-                // insert into the in-memory-tree
-                for (InsertRecord ir : irg.getRecord().getInserts()) {
-                    LSMTree index = lsmDB.getIndex(ir.getIndexId());
-                    if (ir.getValue() != null) {
-                        index.insert(ir.getKey(), ir.getValue());
-                    } else {
-                        index.delete(ir.getKey());
-                    }
-                }
-                listener.finished();
-            }
-            
+                           new Object[]{ irg.getRecord(), lsmDB, listener });             
         } catch (BabuDBException e) {
             
             // if an exception occurred while writing the log, respond with an
