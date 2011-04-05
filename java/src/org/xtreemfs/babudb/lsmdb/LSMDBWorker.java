@@ -15,14 +15,11 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
 import org.xtreemfs.babudb.api.database.UserDefinedLookup;
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
-import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.log.LogEntry;
-import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.foundation.logging.Logging;
 
 /**
@@ -152,24 +149,6 @@ public class LSMDBWorker extends Thread {
         try {
             dbs.getPersistenceManager().makePersistent(LogEntry.PAYLOAD_TYPE_INSERT, 
                     new Object[] { r.getInsertData(), r.getDatabase(), r.getListener() });
-            
-            if (dbs.getConfig().getSyncMode() == SyncMode.ASYNC) {
-                
-                InsertRecordGroup irg = r.getInsertData();
-                LSMDatabase db = r.getDatabase();
-                
-                // insert into the in-memory-tree
-                for (InsertRecord ir : irg.getInserts()) {
-                    LSMTree index = db.getIndex(ir.getIndexId());
-                    
-                    if (ir.getValue() != null) {
-                        index.insert(ir.getKey(), ir.getValue());
-                    } else {
-                        index.delete(ir.getKey());
-                    }
-                }
-                r.getListener().finished();
-            }
         } catch (BabuDBException e) {
             r.getListener().failed(e);
         }

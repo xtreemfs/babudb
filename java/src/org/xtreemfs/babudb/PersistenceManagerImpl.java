@@ -9,8 +9,8 @@ package org.xtreemfs.babudb;
 
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.xtreemfs.babudb.api.InMemoryProcessing;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
+import org.xtreemfs.babudb.api.dev.InMemoryProcessing;
 import org.xtreemfs.babudb.api.dev.PersistenceManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
@@ -112,6 +112,8 @@ class PersistenceManagerImpl extends PersistenceManagerInternal {
                         "could not have been stored persistent to disk an " +
                         "will therefore be discarded.", ie.getCause());
         }
+        
+        processing.meanwhile(args);
         
         return result;
     }

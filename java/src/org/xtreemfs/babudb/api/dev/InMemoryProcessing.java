@@ -5,9 +5,8 @@
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-package org.xtreemfs.babudb.api;
+package org.xtreemfs.babudb.api.dev;
 
-import org.xtreemfs.babudb.api.dev.PersistenceManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
@@ -53,6 +52,14 @@ public abstract class InMemoryProcessing {
      * @throws BabuDBException if method fails. 
      */
     public void before(Object[] args) throws BabuDBException {}
+    
+    /**
+     * Optional method to execute while the request was already successfully queued to be made
+     * persistent.
+     * 
+     * @param args
+     */
+    public void meanwhile(Object[] args) {}
     
     /**
      * Optional method to execute after making an Operation successfully 

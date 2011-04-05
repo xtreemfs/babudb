@@ -17,12 +17,12 @@ import java.util.Vector;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.xtreemfs.babudb.api.BabuDB;
-import org.xtreemfs.babudb.api.InMemoryProcessing;
 import org.xtreemfs.babudb.api.StaticInitialization;
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.dev.CheckpointerInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
+import org.xtreemfs.babudb.api.dev.InMemoryProcessing;
 import org.xtreemfs.babudb.api.dev.PersistenceManagerInternal;
 import org.xtreemfs.babudb.api.dev.SnapshotManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;

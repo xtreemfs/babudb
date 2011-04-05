@@ -11,7 +11,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.xtreemfs.babudb.api.BabuDB;
-import org.xtreemfs.babudb.api.InMemoryProcessing;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.log.DiskLogger;
