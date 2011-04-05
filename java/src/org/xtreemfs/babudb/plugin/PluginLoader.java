@@ -134,7 +134,7 @@ public final class PluginLoader extends ClassLoader {
             if (!clazzes.containsKey(className)) {
                 clazzes.put(className, out.toByteArray());
             } else {
-                Logging.logMessage(Logging.LEVEL_INFO, this, "Did not load %s from %s, " +
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, "Did not load %s from %s, " +
                 		"because it already exists.", className, path);
             }
             out.close();
