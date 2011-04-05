@@ -176,7 +176,7 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                     AUTHENTICATION, 
                     USER_CREDENTIALS, dbName, indexId, key);
             
-            return new ClientResponseFuture<byte[],ErrorCodeResponse>(result) {
+            return new ClientResponseFuture<byte[], ErrorCodeResponse>(result) {
                 
                 @Override
                 public byte[] get() throws ErrorCodeException, 
@@ -187,9 +187,9 @@ public class RemoteClientAdapter extends RemoteAccessServiceClient
                     }
                     ReusableBuffer data = result.getData();
                     try {
-                        return data.array();
+                        return (data == null) ? null : data.array();
                     } finally {
-                        BufferPool.free(data);
+                        if (data != null) BufferPool.free(data);
                     }
                 }
             };

@@ -11,9 +11,9 @@ import java.net.InetSocketAddress;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.xtreemfs.babudb.api.InMemoryProcessing;
 import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
+import org.xtreemfs.babudb.api.dev.InMemoryProcessing;
 import org.xtreemfs.babudb.api.dev.PersistenceManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
@@ -48,7 +48,7 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
     private final Policy                        replicationPolicy;
     private final RemoteAccessClient            client;
     private final AtomicInteger                 accessCounter = new AtomicInteger(0);
-    private boolean                             locked = false;
+    private boolean                             locked = true;
     
     public PersistenceManagerProxy(ReplicationManager replMan, 
             PersistenceManagerInternal localPersMan, Policy replicationPolicy, 
@@ -224,8 +224,7 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
                 try {
                     return rp.get();
                 } catch (Exception e) {
-                    throw new BabuDBException(ErrorCode.IO_ERROR, 
-                            e.getMessage());
+                    throw new BabuDBException(ErrorCode.IO_ERROR, e.getMessage());
                 }
             }
         };
@@ -324,7 +323,7 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
      * @see org.xtreemfs.babudb.replication.proxy.LockableService#lock()
      */
     @Override
-    public void lock() throws InterruptedException {
+    public void lock() throws InterruptedException {       
         synchronized (accessCounter) {
             locked = true;
             while (locked && accessCounter.get() > 0) {

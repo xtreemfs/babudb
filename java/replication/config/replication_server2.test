@@ -22,7 +22,7 @@ babudb.repl.sync.n = 3
 # BabuDB instance.
 #
 # default setting is MasterOnly.
-babudb.repl.policy = NoRestriction
+babudb.repl.policy = MasterOnly
 
 # it is possible to set the local address and port of this server explicitly. if not it will be
 # chosen from the list of participants added right hereafter (default).

@@ -7,8 +7,6 @@
  */
 package org.xtreemfs.babudb.replication.service;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview;
 import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.ClientResponseAvailableListener;
@@ -25,20 +23,20 @@ import org.xtreemfs.foundation.logging.Logging;
 
 public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
     
-    /** 10 seconds */
-    public final static long            MAX_DELAY_BETWEEN_HEARTBEATS = 10*1000; 
+    /** just a second in ms */
+    public final static long            MAX_DELAY_BETWEEN_HEARTBEATS = 1000; 
     
     /** approach to get the master to send the heartbeat messages to */
     private final ParticipantsOverview  pOverview;
     
     /** holds the identifier of the last written LogEntry. */
-    private volatile LSN                latestLSN;
+    private LSN                         latestLSN;
+    
+    /** set to true, if the thread should be stopped temporarily */
+    private boolean                     halted = false;
        
     /** set to true, if thread should shut down */
     private volatile boolean            quit = false;
-    
-    /** set to true, if the thread should be stopped temporarily */
-    private final AtomicBoolean         halted = new AtomicBoolean(false);
     
     /** port that identifies the local service */
     private final int                   localPort;
@@ -60,12 +58,10 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
      *          org.xtreemfs.babudb.lsmdb.LSN)
      */
     public synchronized void updateLSN(LSN lsn) {
-        if (latestLSN.compareTo(lsn) < 0) {
+        if (latestLSN.compareTo(lsn) < 0 || halted) {
             latestLSN = lsn;
-            synchronized (halted) {
-                if (halted.compareAndSet(true, false)) halted.notify();
-                else interrupt();
-            }
+            halted = false;
+            notify();
         }
     }
     
@@ -73,7 +69,7 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
      * @see java.lang.Thread#start()
      */
     @Override
-    public synchronized void start() {
+    public void start() {
         throw new UnsupportedOperationException("Use start(LSN initial) instead!");
     }
 
@@ -82,7 +78,7 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
      * @param initial
      */
     public synchronized void start(LSN initial) {
-        this.latestLSN = initial;
+        latestLSN = initial;
         super.start();
     }
     
@@ -92,28 +88,23 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
      */
     @Override
     public void run() {
-        this.quit = false;
+        quit = false;
         notifyStarted();
         
-        while (!this.quit) {
-            processHeartbeat();
-            
-            try {
-                sleep(MAX_DELAY_BETWEEN_HEARTBEATS);
-            } catch(InterruptedException e) { 
-                /* ignored */
-            }
-            
-            synchronized (halted) {
-                try {
-                    if (halted.get())
-                        halted.wait();
-                } catch (InterruptedException e) {
-                    if (!quit) notifyCrashed(e);
-                    assert (quit==true) : "Halted must be notified, if thread "+
-                    		"should not shut down";
+        try {
+            while (!quit) {
+                processHeartbeat();
+                
+                synchronized (this) {
+                    wait(MAX_DELAY_BETWEEN_HEARTBEATS);
+                    
+                    if (halted) {
+                        wait();
+                    }
                 }
             }
+        } catch (InterruptedException e) {
+            if (!quit) notifyCrashed(e);
         }
         
         notifyStopped();
@@ -149,19 +140,18 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.service.Pacemaker#infarction()
      */
-    public void infarction() {
-        synchronized (halted) {
-            if (halted.compareAndSet(false, true)) interrupt();
-        }
+    public synchronized void infarction() {
+        halted = true;
     }
     
-    /**
-     * shut the thread down
+    /* (non-Javadoc)
+     * @see org.xtreemfs.foundation.LifeCycleThread#shutdown()
      */
+    @Override
     public void shutdown() {
-        if (quit != true) {
-            this.quit = true;
-            this.interrupt();
+        if (!quit) {
+            quit = true;
+            interrupt();
         }
     }
 }

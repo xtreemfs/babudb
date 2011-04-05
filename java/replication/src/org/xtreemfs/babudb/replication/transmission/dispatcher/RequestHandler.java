@@ -11,6 +11,7 @@ import static org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.POSIXErrno.P
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.ErrorType;
@@ -28,10 +29,25 @@ import org.xtreemfs.foundation.util.OutputUtils;
  */
 public abstract class RequestHandler {
     
+    /** flag to determine whether queuing of requests shall be permitted, or not */
+    protected final AtomicBoolean queuingEnabled = new AtomicBoolean(false);
+    
     /** table of available Operations */
     protected final Map<Integer, Operation>  operations = new HashMap<Integer, Operation>();
             
+    /** method to identify the messages that have to be processed by this handler */
     public abstract int getInterfaceID();
+    
+    /**
+     * Method to temporarily queue requests and execute them later.
+     * 
+     * @param operationId
+     * @param rq
+     */
+    public void queue(int operationId, Request rq) {
+        throw new UnsupportedOperationException("This method has to be implemented by a " +
+        		"superclass to support message queuing.");
+    }
     
     public void handleRequest(RPCServerRequest rq) {
                 
@@ -58,18 +74,24 @@ public abstract class RequestHandler {
         Logging.logMessage(Logging.LEVEL_DEBUG, this, 
                 "... parsed successfully ...");
         
-        try {
-            op.startRequest(rpcrq);
-        } catch (Throwable ex) {
-            Logging.logError(Logging.LEVEL_ERROR, this, ex);
-            
-            rq.sendError(ErrorType.INTERNAL_SERVER_ERROR, POSIX_ERROR_NONE, 
-                    "internal server error: "+ex.toString(), 
-                    OutputUtils.stackTraceToString(ex));
-            return;
+        synchronized (queuingEnabled) {
+            if (queuingEnabled.get()) {
+                queue(op.getProcedureId(), rpcrq);
+            } else {      
+                
+                try {
+                    op.startRequest(rpcrq);
+                } catch (Throwable ex) {
+                    Logging.logError(Logging.LEVEL_ERROR, this, ex);
+                    
+                    rq.sendError(ErrorType.INTERNAL_SERVER_ERROR, POSIX_ERROR_NONE, 
+                            "internal server error: " + ex.toString(), 
+                            OutputUtils.stackTraceToString(ex));
+                    return;
+                }
+                
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, "... finished.");
+            }
         }
-        
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, 
-            "... finished.");
     }
 }

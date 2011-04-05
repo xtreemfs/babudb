@@ -22,6 +22,7 @@ import org.xtreemfs.babudb.replication.LockableService;
 import org.xtreemfs.babudb.replication.TopLayer;
 import org.xtreemfs.babudb.replication.control.TimeDriftDetector.TimeDriftListener;
 import org.xtreemfs.babudb.replication.service.ServiceToControlInterface;
+import org.xtreemfs.babudb.replication.transmission.RequestControl;
 import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.LifeCycleThread;
 import org.xtreemfs.foundation.buffer.ASCIIString;
@@ -69,6 +70,14 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
     /** services that have to be locked during failover */
     private LockableService                 userInterface;
     private LockableService                 replicationInterface;
+    private RequestControl                  proxyRequestCtrl;
+    
+    /** 
+     * to ensure services not to be locked after unlock this flag tracks the currently registered 
+     * master 
+     */
+    private AtomicReference<InetSocketAddress> masterLock = 
+        new AtomicReference<InetSocketAddress>(null);
     
     public ControlLayer(ServiceToControlInterface serviceLayer, ReplicationConfig config) 
             throws IOException {
@@ -117,8 +126,10 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
      */
     @Override
     public void lockAll() throws InterruptedException {
+        proxyRequestCtrl.enableQueuing();
         userInterface.lock();
         replicationInterface.lock();
+        serviceInterface.reset();
     }
     
     /* (non-Javadoc)
@@ -127,6 +138,7 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
     @Override
     public void unlockUser() {
         userInterface.unlock();
+        proxyRequestCtrl.processQueue();
     }
     
     /* (non-Javadoc)
@@ -135,6 +147,16 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
     @Override
     public void unlockReplication() {
         replicationInterface.unlock();
+    }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.control.ControlToBabuDBInterface#notifySuccessfulFailover(java.net.InetSocketAddress)
+     */
+    @Override
+    public void notifyForSuccessfulFailover(InetSocketAddress master) {
+        synchronized (master) {
+            masterLock.set(master);
+        }
     }
     
     /* (non-Javadoc)
@@ -249,6 +271,14 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
     public void registerReplicationInterface(LockableService service) {
         replicationInterface = service;
     }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.control.ControlToBabuDBInterface#registerProxyRequestControl(org.xtreemfs.babudb.replication.transmission.RequestControl)
+     */
+    @Override
+    public void registerProxyRequestControl(RequestControl control) {
+        proxyRequestCtrl = control;
+    }
 
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.control.FleaseEventListener#updateLeaseHolder(
@@ -313,13 +343,13 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
          */
         @Override
         public synchronized void start() {
-            quit = false;
             super.start();
         }
         
-        /**
-         * Stops this thread gracefully.
+        /* (non-Javadoc)
+         * @see org.xtreemfs.foundation.LifeCycleThread#shutdown()
          */
+        @Override
         public void shutdown() {
             quit = true;
             interrupt();
@@ -330,9 +360,10 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
          */
         @Override
         public void run() {
+            quit = false;
+            notifyStarted();
             
             InetSocketAddress newLeaseHolder = null;
-            
             try {
                 while (!quit) {
                     
@@ -345,19 +376,51 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
                     }
                     
                     try {
+                        
+                        prepareFailover(newLeaseHolder);
+                        
                         if (thisAddress.equals(newLeaseHolder)) {
                             becomeMaster();
                         } else {
                             becomeSlave(newLeaseHolder);
                         }
                     } catch (Exception e) {
-                        Logging.logError(Logging.LEVEL_WARN, this, e);
-                        leaseHolder.reset();
+                        if (!quit) {
+                            Logging.logMessage(Logging.LEVEL_WARN, this, "Processing a failover " +
+                            		"did not succeed, because: ", e.getMessage());
+                            leaseHolder.reset();
+                        }
                     }
                 }
             } catch (InterruptedException e) {
                 if (!quit) {
-                    Logging.logError(Logging.LEVEL_ERROR, this, e);
+                    notifyCrashed(e);
+                }
+            }
+            
+            notifyStopped();
+        }
+        
+        /**
+         * Causes a solid state of BabuDB to prepare the failover. Therefore all local executions 
+         * will be stopped. By checking the masterLock this method also ensures that BabuDB will not
+         * be locked after unlock.
+         * 
+         * @param newLeaseholder
+         * @throws InterruptedException
+         */
+        private void prepareFailover(InetSocketAddress newLeaseholder) throws InterruptedException {
+            
+            synchronized (masterLock) {
+                InetSocketAddress mLock = masterLock.get();
+                
+                // we change the locally registered master
+                if (mLock != null && !newLeaseholder.equals(masterLock.get())) {
+                    try {
+                        lockAll();
+                    } finally {
+                        unlockReplication();
+                    }
                 }
             }
         }
@@ -370,15 +433,7 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
         private void becomeMaster() throws Exception {
             
             Logging.logMessage(Logging.LEVEL_INFO, this, "Becoming the replication master.");
-            
-            // stop all local executions
-            try {
-                lockAll();
-                serviceInterface.reset();
-            } finally {
-                unlockReplication();
-            }
-            
+                  
             // synchronize with other servers 
             serviceInterface.synchronize(new SyncListener() {
                 
@@ -386,7 +441,10 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
                 public void synced(LogEntry entry) {
                     assert (entry == null);
                     
+                    notifyForSuccessfulFailover(thisAddress);
                     unlockUser();
+                    
+                    Logging.logMessage(Logging.LEVEL_INFO, this, "Master failover succeeded.");
                 }
                 
                 @Override
@@ -416,10 +474,6 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
             
             Logging.logMessage(Logging.LEVEL_INFO, this, "Becoming a slave for %s.", 
                     masterAddress.toString());
-            
-            lockAll();
-            serviceInterface.reset();
-            unlockReplication();
             
             // user requests may only be permitted on slaves that have been synchronized with the 
             // master, which is only possible after the master they obey internally has been changed 
