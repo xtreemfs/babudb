@@ -589,7 +589,7 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                             index.delete(ir.getKey());
                         }
                     }
-                    listener.finished();
+                    if (listener != null) listener.finished();
                 }
             }
             
