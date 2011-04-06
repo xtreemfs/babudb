@@ -9,14 +9,23 @@ package org.xtreemfs.babudb.replication;
 
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.config.ConfigBuilder;
+import org.xtreemfs.babudb.config.ReplicationConfig;
 
 /**
+ * Default parameters for the replication TestSuite.
+ * 
  * @author flangner
  * @since 02/25/2011
  */
 public final class TestParameters {
     
     private TestParameters() { }
+    
+    public final static int MAX_Q               = 100;
+    public final static int RQ_TIMEOUT          = ReplicationConfig.REQUEST_TIMEOUT;
+    public final static int CON_TIMEOUT         = ReplicationConfig.CONNECTION_TIMEOUT;
+    public final static int TIMESYNC_GLOBAL     = 3 * 1000;
+    public final static int TIMESYNC_LOCAL      = 3 * 1000;
     
     public final static BabuDBConfig conf0 = new ConfigBuilder()
             .setDataPath("/tmp/babudb0/base", "/tmp/babudb0/log")

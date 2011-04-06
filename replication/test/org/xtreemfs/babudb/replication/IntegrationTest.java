@@ -42,7 +42,7 @@ public class IntegrationTest {
      */
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
-        Logging.start(Logging.LEVEL_INFO, Category.all);
+        Logging.start(Logging.LEVEL_ERROR, Category.all);
     }
 
     /**
@@ -57,14 +57,7 @@ public class IntegrationTest {
         FSUtils.delTree(new File(conf0.getDbLogDir()));
         FSUtils.delTree(new File(conf1.getDbLogDir()));
         FSUtils.delTree(new File(conf2.getDbLogDir()));
-        
-        FSUtils.delTree(new File(conf0.getBaseDir()));
-        FSUtils.delTree(new File(conf1.getBaseDir()));
-        FSUtils.delTree(new File(conf2.getBaseDir()));
-        FSUtils.delTree(new File(conf0.getDbLogDir()));
-        FSUtils.delTree(new File(conf1.getDbLogDir()));
-        FSUtils.delTree(new File(conf2.getDbLogDir()));
-        
+                
         // starting three local BabuDB services supporting replication; based on mock databases
         FSUtils.delTree(new File(
                 new ReplicationConfig("config/replication_server0.test", conf0).getTempDir()));
@@ -134,6 +127,6 @@ public class IntegrationTest {
         assertNotNull(res);
         assertEquals("blub00", new String(res));
         
-        test0.lookup(0, "bla20".getBytes(), test0).get();
+        assertNull(test0.lookup(0, "bla20".getBytes(), test0).get());
     }
 }

@@ -8,7 +8,6 @@
 package org.xtreemfs.babudb.replication;
 
 import java.io.File;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.After;
 import org.junit.Before;
@@ -16,9 +15,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
-import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
-import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.mock.BabuDBMock;
 import org.xtreemfs.foundation.logging.Logging;
@@ -44,9 +41,7 @@ public class MockIntegrationTest {
     
     private BabuDBInternal mock2;
     private BabuDBInternal repl2;
-    
-    private final AtomicBoolean finishingLock = new AtomicBoolean(false);
-    
+        
     /**
      * @throws java.lang.Exception
      */
@@ -110,11 +105,12 @@ public class MockIntegrationTest {
      */
     @Test
     public void testBasicIO() throws Exception {
-        // create some DBs
+        
+     // create some DBs
         Database test0 = repl0.getDatabaseManager().createDatabase("0", 3);    
         Database test1 = repl1.getDatabaseManager().createDatabase("1", 3);
         Database test2 = repl2.getDatabaseManager().createDatabase("2", 3);
-        
+                
         // retrieve the databases
         test0 = repl2.getDatabaseManager().getDatabase("0");
         test1 = repl0.getDatabaseManager().getDatabase("1");
@@ -125,70 +121,19 @@ public class MockIntegrationTest {
         ig.addInsert(0, "bla00".getBytes(), "blub00".getBytes());
         ig.addInsert(1, "bla01".getBytes(), "blub01".getBytes());
         ig.addInsert(2, "bla02".getBytes(), "blub02".getBytes());
-        test0.insert(ig, main).registerListener(new DatabaseRequestListener<Object>() {
-            
-            @Override
-            public void finished(Object result, Object context) {
-                assertEquals(main, context);
-            
-                finish();
-            }
-            
-            @Override
-            public void failed(BabuDBException error, Object context) {
-                fail("Insert failed!");
-                
-                finish();
-            }
-        });
-        
-        waitForFinish();
+        test0.insert(ig, test0).get();
         
         ig = test1.createInsertGroup();
         ig.addInsert(0, "bla10".getBytes(), "blub10".getBytes());
         ig.addInsert(1, "bla11".getBytes(), "blub11".getBytes());
         ig.addInsert(2, "bla12".getBytes(), "blub12".getBytes());
-        test1.insert(ig, main).registerListener(new DatabaseRequestListener<Object>() {
-            
-            @Override
-            public void finished(Object result, Object context) {
-                assertEquals(main, context);
-                
-                finish();
-            }
-            
-            @Override
-            public void failed(BabuDBException error, Object context) {
-                fail("Insert failed!");
-                
-                finish();
-            }
-        });
-        
-        waitForFinish();
+        test1.insert(ig, test1).get();
         
         ig = test2.createInsertGroup();
         ig.addInsert(0, "bla20".getBytes(), "blub20".getBytes());
         ig.addInsert(1, "bla21".getBytes(), "blub21".getBytes());
         ig.addInsert(2, "bla22".getBytes(), "blub22".getBytes());
-        test2.insert(ig, main).registerListener(new DatabaseRequestListener<Object>() {
-            
-            @Override
-            public void finished(Object result, Object context) {
-                assertEquals(main, context);
-                
-                finish();
-            }
-            
-            @Override
-            public void failed(BabuDBException error, Object context) {
-                fail("Insert failed!");
-                
-                finish();
-            }
-        });
-        
-        waitForFinish();
+        test2.insert(ig, test2).get();
         
         // retrieve the databases
         test0 = repl1.getDatabaseManager().getDatabase("0");
@@ -196,59 +141,10 @@ public class MockIntegrationTest {
         test2 = repl0.getDatabaseManager().getDatabase("2");
         
         // make some lookups
-        test0.lookup(0, "bla00".getBytes(), main).registerListener(new DatabaseRequestListener<byte[]>() {
-            
-            @Override
-            public void finished(byte[] result, Object context) {
-                assertEquals(main, context);
-                assertEquals("blub00", new String(result));
-                
-                finish();
-            }
-            
-            @Override
-            public void failed(BabuDBException error, Object context) {
-                fail("Lookup failed!");
-                
-                finish();
-            }
-        });
+        byte[] res = test0.lookup(0, "bla00".getBytes(), test0).get();
+        assertNotNull(res);
+        assertEquals("blub00", new String(res));
         
-        waitForFinish();
-        
-        test0.lookup(0, "bla20".getBytes(), main).registerListener(new DatabaseRequestListener<byte[]>() {
-            
-            @Override
-            public void finished(byte[] result, Object context) {
-                fail("Lookup succeeded but had to fail!");
-                
-                finish();
-            }
-            
-            @Override
-            public void failed(BabuDBException error, Object context) {
-                assertEquals(main, context);
-                
-                finish();
-            }
-        });
-        
-        waitForFinish();
-    }
-    
-    private void waitForFinish() throws InterruptedException {
-        synchronized (finishingLock) {
-            if (!finishingLock.get())
-                finishingLock.wait();
-            
-            finishingLock.set(false);
-        }
-    }
-    
-    private final void finish() {
-        synchronized (finishingLock) {
-            finishingLock.set(true);
-            finishingLock.notify();
-        }
+        assertNull(test0.lookup(0, "bla20".getBytes(), test0).get());
     }
 }
