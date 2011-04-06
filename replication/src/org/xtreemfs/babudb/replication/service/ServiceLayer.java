@@ -143,7 +143,8 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         transmissionInterface.addRequestHandler(
                 new ReplicationRequestHandler(participantsStates, receiver, babuDB, 
                         replicationStage, lastOnView, config.getChunkSize(), 
-                        transmissionInterface.getFileIOInterface()));
+                        transmissionInterface.getFileIOInterface(), 
+                        config.getBabuDBConfig().getMaxQueueLength()));
         
         receiver.registerReplicationInterface(replicationStage);
     }

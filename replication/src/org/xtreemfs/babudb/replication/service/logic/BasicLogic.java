@@ -62,7 +62,7 @@ public class BasicLogic extends Logic {
      */
     @Override
     public void run() throws InterruptedException {     
-        assert (stage.missing == null) : "Blame the developer!";
+        assert (stage.missing == null) : "PROGRAMATICAL ERROR!";
         
         final StageRequest op = stage.getQueue().take();
         

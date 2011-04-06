@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009-2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2009 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
@@ -9,6 +9,10 @@ package org.xtreemfs.babudb.replication.transmission.dispatcher;
 
 import java.io.IOException;
 
+import org.xtreemfs.babudb.config.ReplicationConfig;
+import org.xtreemfs.babudb.log.LogEntry;
+import org.xtreemfs.foundation.TimeSync;
+import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.logging.Logging.Category;
@@ -28,7 +32,7 @@ import com.google.protobuf.Message;
  * @author flangner
  */
 
-public class Request {
+public class Request implements Comparable<Request> {
     
     private final RPCServerRequest      rpcRequest;
     
@@ -42,13 +46,15 @@ public class Request {
     /**
      * Request operation which contains state machine.
      */
-    private Operation                   replicationOperation;
+    private final Operation             replicationOperation;
     
+    private final long                  timestamp;
     
-    
-    Request(RPCServerRequest rpcRequest) {
+    Request(RPCServerRequest rpcRequest, long timestamp, Operation operation) {
         this.rpcRequest = rpcRequest;
         this.requestId = rqIdCounter++;
+        this.timestamp = timestamp;
+        this.replicationOperation = operation;
     }
     
     public void deserializeMessage(Message message) throws IOException {
@@ -150,13 +156,6 @@ public class Request {
     }
 
     /**
-     * @param operation the operation to set
-     */
-    public void setOperation(Operation operation) {
-        this.replicationOperation = operation;
-    }
-
-    /**
      * @return the attachment
      */
     public Object getAttachment() {
@@ -168,5 +167,32 @@ public class Request {
      */
     public void setAttachment(Object attachment) {
         this.attachment = attachment;
+    }
+    
+    /**
+     * @return true if the request has been expired.
+     */
+    public boolean expired() {
+        return timestamp + ReplicationConfig.REQUEST_TIMEOUT < TimeSync.getGlobalTime();
+    }
+
+    /* (non-Javadoc)
+     * @see java.lang.Comparable#compareTo(java.lang.Object)
+     */
+    @Override
+    public int compareTo(Request o) {
+        return (int) (timestamp - o.timestamp);
+    }
+    
+    /**
+     * Frees the rpcRequest and all data stored at the attachment.
+     */
+    public void free() {
+        rpcRequest.freeBuffers();
+        if (attachment instanceof ReusableBuffer) {
+            BufferPool.free((ReusableBuffer) attachment);
+        } else if (attachment instanceof LogEntry) {
+            ((LogEntry) attachment).free();
+        }
     }
 }
