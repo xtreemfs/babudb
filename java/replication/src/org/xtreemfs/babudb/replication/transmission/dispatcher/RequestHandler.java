@@ -9,10 +9,16 @@ package org.xtreemfs.babudb.replication.transmission.dispatcher;
 
 import static org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.POSIXErrno.POSIX_ERROR_NONE;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.xtreemfs.babudb.replication.transmission.RequestControl;
+import org.xtreemfs.foundation.TimeSync;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.ErrorType;
 import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.RPCHeader.ErrorResponse;
@@ -21,16 +27,14 @@ import org.xtreemfs.foundation.pbrpc.server.RPCServerRequest;
 import org.xtreemfs.foundation.util.OutputUtils;
 
 /**
- * Interface for objects handling RPC requests logically. There has to be one
- * RequestHandler for each RPC interface available.
+ * Interface for objects handling RPC requests logically. There has to be one RequestHandler for 
+ * each RPC interface available. Also capable to queue requests for a short time period 
+ * (eg. failover).
  * 
  * @author flangner
  * @since 19.01.2011
  */
-public abstract class RequestHandler {
-    
-    /** flag to determine whether queuing of requests shall be permitted, or not */
-    protected final AtomicBoolean queuingEnabled = new AtomicBoolean(false);
+public abstract class RequestHandler implements RequestControl {
     
     /** table of available Operations */
     protected final Map<Integer, Operation>  operations = new HashMap<Integer, Operation>();
@@ -38,17 +42,57 @@ public abstract class RequestHandler {
     /** method to identify the messages that have to be processed by this handler */
     public abstract int getInterfaceID();
     
-    /**
-     * Method to temporarily queue requests and execute them later.
-     * 
-     * @param operationId
-     * @param rq
-     */
-    public void queue(int operationId, Request rq) {
-        throw new UnsupportedOperationException("This method has to be implemented by a " +
-        		"superclass to support message queuing.");
+    /** flag to determine whether queuing of requests shall be permitted, or not */
+    private final AtomicBoolean queuingEnabled = new AtomicBoolean(false);
+    
+    private final List<Request> queue = new ArrayList<Request>();
+    
+    private final int MAX_Q;
+    
+    public RequestHandler(int maxQ) {
+        this.MAX_Q = maxQ;
     }
     
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.RequestControl#enableQueuing()
+     */
+    @Override
+    public void enableQueuing() {
+        synchronized (queuingEnabled) {
+            queuingEnabled.set(true);  
+        }
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.RequestControl#processQueue()
+     */
+    @Override
+    public void processQueue() {
+        
+        List<Request> todo;
+        synchronized (queuingEnabled) {
+            queuingEnabled.set(false);
+            todo = new ArrayList<Request>(queue);
+            queue.clear();
+        }
+        
+        Collections.sort(todo);
+        Iterator<Request> iter = todo.iterator();
+        while (iter.hasNext()) {
+            Request req = iter.next();
+            if (!req.expired()) {
+                req.getOperation().startRequest(req);
+                iter.remove(); 
+            }
+        }
+        
+        iter = todo.iterator();
+        while (iter.hasNext()) {
+            iter.next().free();
+        }
+    }
+        
     public void handleRequest(RPCServerRequest rq) {
                 
         final RequestHeader rqHdr = rq.getHeader().getRequestHeader();
@@ -64,7 +108,7 @@ public abstract class RequestHandler {
         Logging.logMessage(Logging.LEVEL_DEBUG, this, 
                 "... using operation %d ...", op.getProcedureId());
         
-        Request rpcrq = new Request(rq);
+        Request rpcrq = new Request(rq, TimeSync.getGlobalTime(), op);
         ErrorResponse message = op.parseRPCMessage(rpcrq);
         if (message != null) {
             rq.sendError(message);
@@ -76,7 +120,7 @@ public abstract class RequestHandler {
         
         synchronized (queuingEnabled) {
             if (queuingEnabled.get()) {
-                queue(op.getProcedureId(), rpcrq);
+                queue(rpcrq);
             } else {      
                 
                 try {
@@ -93,5 +137,28 @@ public abstract class RequestHandler {
                 Logging.logMessage(Logging.LEVEL_DEBUG, this, "... finished.");
             }
         }
+    }
+    
+    /**
+     * Method to temporarily queue requests and execute them later.
+     * 
+     * @param rq
+     */
+    private void queue(Request rq) {
+        
+        // ensure that the queue does not growth beyond the MAX_Q limit by rejecting the oldest 
+        // request queued
+        if (queue.size() == MAX_Q) {
+            Request req = queue.remove(0);
+            if (!req.expired()) {
+                req.sendError(ErrorType.INTERNAL_SERVER_ERROR, 
+                        "Replication setup could not have been stabilized and " +
+                        "servers run out of buffer.");
+            } else {
+                req.free();
+            }
+        }
+        
+        queue.add(rq);
     }
 }

@@ -40,7 +40,9 @@ public class ReplicationRequestHandler extends RequestHandler {
     public <T extends TopLayer & FleaseMessageReceiver> ReplicationRequestHandler(
             ParticipantsStates pStates, T fleaseReceiver, BabuDBInterface babuDBI,
             ReplicationStage replStage, AtomicReference<LSN> lastOnView, int maxChunkSize, 
-            FileIOInterface fileIO) {
+            FileIOInterface fileIO, int maxQ) {
+        
+        super(maxQ);
         
         Operation op = new LocalTimeOperation();
         operations.put(op.getProcedureId(), op);
