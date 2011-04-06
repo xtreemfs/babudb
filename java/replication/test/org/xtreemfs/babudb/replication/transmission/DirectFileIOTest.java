@@ -19,7 +19,6 @@ import java.io.IOException;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.replication.TestParameters;
@@ -28,38 +27,32 @@ import org.xtreemfs.babudb.replication.transmission.FileIOInterface;
 import org.xtreemfs.foundation.util.FSUtils;
 
 /**
- * 
  * @author flangner
- *
  */
 
 public class DirectFileIOTest {
 
-    private static ReplicationConfig conf;
-    private static FileIOInterface fileIO;
+    private ReplicationConfig conf;
+    private FileIOInterface fileIO;
     
     // define the test data
-    String baseFile = "base.file";
-    String baseDir = "baseDir";
-    String baseDirFile = "baseDir.file";
-    String baseTestString = "base";
+    private final String baseFile = "base.file";
+    private final String baseDir = "baseDir";
+    private final String baseDirFile = "baseDir.file";
+    private final String baseTestString = "base";
     
-    String logFile = "log.file";
-    String logDir = "logDir";
-    String logDirFile = "logDir.file";
-    String logTestString = "log";
-        
-    @BeforeClass
-    public static void setUpBeforeClass() throws Exception {
-        conf = new ReplicationConfig("config/replication_server0.test", TestParameters.conf0);
-        fileIO = new FileIO(conf);
-    }
-    
+    private final String logFile = "log.file";
+    private final String logDir = "logDir";
+    private final String logDirFile = "logDir.file";
+    private final String logTestString = "log";
+            
     @Before
     public void setUpBefore() throws Exception {   
+        conf = new ReplicationConfig("config/replication_server0.test", TestParameters.conf0);
         FSUtils.delTree(new File(conf.getBabuDBConfig().getBaseDir()));
         FSUtils.delTree(new File(conf.getBabuDBConfig().getDbLogDir()));
         FSUtils.delTree(new File(conf.getTempDir()));
+        fileIO = new FileIO(conf);
     }
     
     @After
@@ -200,6 +193,7 @@ public class DirectFileIOTest {
         
         FileWriter w = new FileWriter(bdf);
         w.write(baseTestString);
+        w.flush();
         w.close();
         w = null;
         bdf = null;
@@ -223,6 +217,7 @@ public class DirectFileIOTest {
         
         w = new FileWriter(ldf);
         w.write(logTestString);
+        w.flush();
         w.close();
         w = null;
         ldf = null;

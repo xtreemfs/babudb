@@ -7,7 +7,6 @@
  */
 package org.xtreemfs.babudb.replication.transmission;
 
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -18,6 +17,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.mock.RequestHandlerMock;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.Chunk;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.Database;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.DatabaseName;
@@ -28,9 +28,7 @@ import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestDispatcher;
-import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestHandler;
 import org.xtreemfs.foundation.LifeCycleListener;
-import org.xtreemfs.foundation.SSLOptions;
 import org.xtreemfs.foundation.TimeSync;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
@@ -40,7 +38,7 @@ import org.xtreemfs.foundation.pbrpc.client.RPCNIOSocketClient;
 import com.google.protobuf.Message;
 
 import static junit.framework.Assert.*;
-import static org.xtreemfs.babudb.replication.TestParameters.conf0;
+import static org.xtreemfs.babudb.replication.TestParameters.*;
 
 /**
  * These tests are just a proof of concept and neither do nor will ever probe all RPCs provided by
@@ -50,19 +48,10 @@ import static org.xtreemfs.babudb.replication.TestParameters.conf0;
  * @since 02/25/2011
  */
 public class PBRPCTest implements LifeCycleListener {
-
-    private final static int RQ_TIMEOUT = 10 * 1000;
-    private final static int CON_TIMEOUT = 20 * 60 * 1000;
-    private final static int TIMESYNC_GLOBAL = 3 * 1000;
-    private final static int TIMESYNC_LOCAL = 3 * 1000;
     
     private RequestDispatcher dispatcher;
-    
     private RPCNIOSocketClient client;
-    
     private ReplicationConfig config;
-    
-    private SSLOptions ssl = null;
     
     /**
      * @throws java.lang.Exception
@@ -93,7 +82,7 @@ public class PBRPCTest implements LifeCycleListener {
         dispatcher = new RequestDispatcher(config);
         dispatcher.setLifeCycleListener(this);
         
-        client = new RPCNIOSocketClient(ssl, RQ_TIMEOUT, CON_TIMEOUT);
+        client = new RPCNIOSocketClient(config.getSSLOptions(), RQ_TIMEOUT, CON_TIMEOUT);
         client.start();
         client.waitForStartup();
     }
@@ -103,11 +92,11 @@ public class PBRPCTest implements LifeCycleListener {
      */
     @After
     public void tearDown() throws Exception {
-        dispatcher.shutdown();
-        dispatcher.waitForShutdown();
-        
         client.shutdown();
         client.waitForShutdown();
+        
+        dispatcher.shutdown();
+        dispatcher.waitForShutdown();
     }
     
     /**
@@ -172,7 +161,7 @@ public class PBRPCTest implements LifeCycleListener {
             }
         });
         dispatcher.addHandler(
-                new RequestHandlerMock(ReplicationServiceConstants.INTERFACE_ID, ops));
+                new RequestHandlerMock(MAX_Q, ReplicationServiceConstants.INTERFACE_ID, ops));
         dispatcher.start();
         dispatcher.waitForStartup();
         
@@ -221,7 +210,7 @@ public class PBRPCTest implements LifeCycleListener {
             }
         });
         dispatcher.addHandler(
-                new RequestHandlerMock(RemoteAccessServiceConstants.INTERFACE_ID, ops));
+                new RequestHandlerMock(MAX_Q, RemoteAccessServiceConstants.INTERFACE_ID, ops));
         dispatcher.start();
         dispatcher.waitForStartup();
         
@@ -252,30 +241,5 @@ public class PBRPCTest implements LifeCycleListener {
     @Override
     public void crashPerformed(Throwable cause) {
         fail("Dispatcher crashed: " + cause.getMessage());
-    }
-
-    /**
-     * Mock for request handler logic.
-     * 
-     * @author flangner
-     * @since 02/25/2011
-     */
-    private final class RequestHandlerMock extends RequestHandler {
-
-        private final int interfaceID;
-        
-        RequestHandlerMock(int interfaceID, Map<Integer, Operation> ops) {
-            this.interfaceID = interfaceID;
-            this.operations.putAll(ops);
-        }
-        
-        /* (non-Javadoc)
-         * @see org.xtreemfs.babudb.replication.transmission.dispatcher.RequestHandler#
-         *              getInterfaceID()
-         */
-        @Override
-        public int getInterfaceID() {
-            return interfaceID;
-        }
     }
 }
