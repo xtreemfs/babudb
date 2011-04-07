@@ -65,7 +65,7 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
     private final FleaseHolder              leaseHolder;
     
     /** thread to execute failover requests */
-    private final FailoverTaskRunner        failoverTaskRunner = new FailoverTaskRunner();
+    private final FailoverTaskRunner        failoverTaskRunner;
     
     /** services that have to be locked during failover */
     private LockableService                 userInterface;
@@ -94,6 +94,7 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
         // controller
         // ---------------------------------- 
         thisAddress = config.getInetSocketAddress();
+        failoverTaskRunner = new FailoverTaskRunner();
         serviceInterface = serviceLayer;
         leaseHolder = new FleaseHolder(REPLICATION_CELL, this);
         
@@ -103,7 +104,7 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
         File bDir = new File(config.getBabuDBConfig().getBaseDir());
         if (!bDir.exists()) bDir.mkdirs();
 
-        fleaseParticipants = new LinkedList<InetSocketAddress>(config.getParticipants());
+        fleaseParticipants = new LinkedList<InetSocketAddress>(config.getParticipants());       
         fleaseStage = new FleaseStage(config.getFleaseConfig(), 
                 config.getBabuDBConfig().getBaseDir(), 
                 new FleaseMessageSender(serviceLayer.getParticipantOverview(), 
@@ -322,7 +323,7 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
         private boolean quit = true;
         
         private FailoverTaskRunner() {
-            super("FailoverTaskRunner");
+            super("FailOverT@" + thisAddress.getPort());
         }
         
         /**

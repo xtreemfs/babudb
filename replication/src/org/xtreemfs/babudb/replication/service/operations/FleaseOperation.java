@@ -70,7 +70,7 @@ public class FleaseOperation extends Operation {
         ErrorResponse resp = super.parseRPCMessage(rq);
         
         if (resp == null) {
-            FleaseMessage message = new FleaseMessage(rq.getRpcRequest().getData());
+            FleaseMessage message = new FleaseMessage(rq.getData());
             FLease rpcrq = (FLease) rq.getRequestMessage();
             assert (message != null);
             
@@ -93,18 +93,17 @@ public class FleaseOperation extends Operation {
         return resp;
     }
 
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#
-     * startRequest(org.xtreemfs.babudb.replication.Request)
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
+     *          processRequest(org.xtreemfs.babudb.replication.transmission.dispatcher.Request)
      */
     @Override
-    public void startRequest(final Request rq) {
+    public void processRequest(Request rq) {
         FleaseMessage msg = (FleaseMessage) rq.getAttachment();
 
-        Logging.logMessage(Logging.LEVEL_INFO, this, "received rpc-flease (%s)", msg.toString());
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "received rpc-flease (%s)", msg.toString());
         
         this.receiver.receive(msg);
-        rq.sendSuccess(ErrorCodeResponse.getDefaultInstance());
+        rq.sendSuccess(ErrorCodeResponse.getDefaultInstance()); 
     }
 }

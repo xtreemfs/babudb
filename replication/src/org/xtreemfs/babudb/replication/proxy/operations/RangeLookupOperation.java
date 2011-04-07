@@ -47,21 +47,29 @@ public class RangeLookupOperation extends Operation {
     public int getProcedureId() {
         return RemoteAccessServiceConstants.PROC_ID_RLOOKUP;
     }
-    
+
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
-     *          startRequest(
-     *          org.xtreemfs.babudb.replication.transmission.dispatcher.Request)
+     *          getDefaultRequest()
      */
     @Override
-    public void startRequest(final Request rq) {
+    public Message getDefaultRequest() {
+        return RangeLookup.getDefaultInstance();
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
+     *          processRequest(org.xtreemfs.babudb.replication.transmission.dispatcher.Request)
+     */
+    @Override
+    public void processRequest(final Request rq) {
         RangeLookup req = (RangeLookup) rq.getRequestMessage();
         
         int limit = req.getFromLength();       
-        ReusableBuffer f = rq.getRpcRequest().getData().createViewBuffer();
+        ReusableBuffer f = rq.getData().createViewBuffer();
         f.limit(limit);
         byte[] from = f.getData();
-        ReusableBuffer t = rq.getRpcRequest().getData().createViewBuffer();
+        ReusableBuffer t = rq.getData().createViewBuffer();
         t.position(limit);
         byte[] to = t.getData();
        
@@ -112,14 +120,5 @@ public class RangeLookupOperation extends Operation {
             BufferPool.free(f);
             BufferPool.free(t);
         }
-    }
-
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
-     *          getDefaultRequest()
-     */
-    @Override
-    public Message getDefaultRequest() {
-        return RangeLookup.getDefaultInstance();
     }
 }

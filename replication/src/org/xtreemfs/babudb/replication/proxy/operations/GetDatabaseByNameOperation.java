@@ -41,14 +41,22 @@ public class GetDatabaseByNameOperation extends Operation {
     public int getProcedureId() {
         return RemoteAccessServiceConstants.PROC_ID_GETDATABASEBYNAME;
     }
-    
+  
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
-     *          startRequest(
-     *          org.xtreemfs.babudb.replication.transmission.dispatcher.Request)
+     *          getDefaultRequest()
      */
     @Override
-    public void startRequest(final Request rq) {
+    public Message getDefaultRequest() {
+        return DatabaseName.getDefaultInstance();
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
+     *          processRequest(org.xtreemfs.babudb.replication.transmission.dispatcher.Request)
+     */
+    @Override
+    public void processRequest(Request rq) {
         String dbName = ((DatabaseName) rq.getRequestMessage()).getDatabaseName();
         try {
             
@@ -61,14 +69,5 @@ public class GetDatabaseByNameOperation extends Operation {
             rq.sendSuccess(Database.newBuilder().setErrorCode(ErrorCode.DB_UNAVAILABLE)
                     .setDatabaseId(-1).setDatabaseName(dbName).build());
         }
-    }
-
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
-     *          getDefaultRequest()
-     */
-    @Override
-    public Message getDefaultRequest() {
-        return DatabaseName.getDefaultInstance();
     }
 }

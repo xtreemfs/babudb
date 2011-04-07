@@ -45,16 +45,24 @@ public class LookupOperation extends Operation {
     
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
-     *          startRequest(
-     *          org.xtreemfs.babudb.replication.transmission.dispatcher.Request)
+     *          getDefaultRequest()
      */
     @Override
-    public void startRequest(final Request rq) {
+    public Message getDefaultRequest() {
+        return Lookup.getDefaultInstance();
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
+     *          processRequest(org.xtreemfs.babudb.replication.transmission.dispatcher.Request)
+     */
+    @Override
+    public void processRequest(final Request rq) {
         Lookup req = (Lookup) rq.getRequestMessage();
         
         try {
             dbs.getDatabase(req.getDatabaseName()).lookup(req.getIndexId(), 
-                            rq.getRpcRequest().getData().array(), null).registerListener(
+                            rq.getData().array(), null).registerListener(
                                         new DatabaseRequestListener<byte[]>() {
                 
                 @Override
@@ -73,14 +81,5 @@ public class LookupOperation extends Operation {
             rq.sendSuccess(ErrorCodeResponse.newBuilder().setErrorCode(
                     ErrorCode.DB_UNAVAILABLE).build());
         }
-    }
-
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
-     *          getDefaultRequest()
-     */
-    @Override
-    public Message getDefaultRequest() {
-        return Lookup.getDefaultInstance();
     }
 }

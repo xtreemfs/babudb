@@ -116,17 +116,7 @@ public class PBRPCTest implements LifeCycleListener {
         // registers operations at the handler
         Map<Integer, Operation> ops = new HashMap<Integer, Operation>();
         ops.put(ReplicationServiceConstants.PROC_ID_HEARTBEAT, new Operation() {
-            
-            @Override
-            public void startRequest(Request rq) {
-                HeartbeatMessage hbm = (HeartbeatMessage) rq.getRequestMessage();
-                assertEquals(port, hbm.getPort());
-                assertEquals(lsn.getViewId(), hbm.getLsn().getViewId());
-                assertEquals(lsn.getSequenceNo(), hbm.getLsn().getSequenceNo());
-                
-                rq.sendSuccess(ErrorCodeResponse.getDefaultInstance());
-            }
-            
+                        
             @Override
             public int getProcedureId() {
                 return ReplicationServiceConstants.PROC_ID_HEARTBEAT;
@@ -136,20 +126,19 @@ public class PBRPCTest implements LifeCycleListener {
             public Message getDefaultRequest() {
                 return HeartbeatMessage.getDefaultInstance();
             }
+
+            @Override
+            public void processRequest(Request rq) {
+                HeartbeatMessage hbm = (HeartbeatMessage) rq.getRequestMessage();
+                assertEquals(port, hbm.getPort());
+                assertEquals(lsn.getViewId(), hbm.getLsn().getViewId());
+                assertEquals(lsn.getSequenceNo(), hbm.getLsn().getSequenceNo());
+                
+                rq.sendSuccess(ErrorCodeResponse.getDefaultInstance());
+            }
         });
         ops.put(ReplicationServiceConstants.PROC_ID_CHUNK, new Operation() {
-            
-            @Override
-            public void startRequest(Request rq) {
-                Chunk req = (Chunk) rq.getRequestMessage();
-                assertEquals(fileName, req.getFileName());
-                assertEquals(offsetStart, req.getStart());
-                assertEquals(offsetEnd, req.getEnd());
-                
-                rq.sendSuccess(ErrorCodeResponse.getDefaultInstance(), 
-                        ReusableBuffer.wrap(chunkResult.getBytes()));
-            }
-            
+                        
             @Override
             public int getProcedureId() {
                 return ReplicationServiceConstants.PROC_ID_CHUNK;
@@ -158,6 +147,17 @@ public class PBRPCTest implements LifeCycleListener {
             @Override
             public Message getDefaultRequest() {
                 return Chunk.getDefaultInstance();
+            }
+
+            @Override
+            public void processRequest(Request rq) {
+                Chunk req = (Chunk) rq.getRequestMessage();
+                assertEquals(fileName, req.getFileName());
+                assertEquals(offsetStart, req.getStart());
+                assertEquals(offsetEnd, req.getEnd());
+                
+                rq.sendSuccess(ErrorCodeResponse.getDefaultInstance(), 
+                        ReusableBuffer.wrap(chunkResult.getBytes()));
             }
         });
         dispatcher.addHandler(
@@ -189,16 +189,7 @@ public class PBRPCTest implements LifeCycleListener {
         // registers operations at the handler
         Map<Integer, Operation> ops = new HashMap<Integer, Operation>();
         ops.put(RemoteAccessServiceConstants.PROC_ID_GETDATABASEBYNAME, new Operation() {
-            
-            @Override
-            public void startRequest(Request rq) {
-                DatabaseName req = (DatabaseName) rq.getRequestMessage();
-                assertEquals(testDatabaseName, req.getDatabaseName());
-                
-                rq.sendSuccess(Database.newBuilder().setDatabaseId(4711)
-                                                    .setDatabaseName(testDatabaseName).build());
-            }
-            
+                        
             @Override
             public int getProcedureId() {
                 return RemoteAccessServiceConstants.PROC_ID_GETDATABASEBYNAME;
@@ -207,6 +198,15 @@ public class PBRPCTest implements LifeCycleListener {
             @Override
             public Message getDefaultRequest() {
                 return DatabaseName.getDefaultInstance();
+            }
+
+            @Override
+            public void processRequest(Request rq) {
+                DatabaseName req = (DatabaseName) rq.getRequestMessage();
+                assertEquals(testDatabaseName, req.getDatabaseName());
+                
+                rq.sendSuccess(Database.newBuilder().setDatabaseId(4711)
+                                                    .setDatabaseName(testDatabaseName).build());
             }
         });
         dispatcher.addHandler(

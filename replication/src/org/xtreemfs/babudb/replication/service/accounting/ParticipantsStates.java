@@ -140,6 +140,9 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
     private final PriorityBlockingQueue<LatestLSNUpdateListener> listeners = 
         new PriorityBlockingQueue<LatestLSNUpdateListener>();
         
+    /**
+     * local synchronization n (local instance is excluded)
+     */
     private final int                           syncN;
     
     private final int                           participantsCount;
@@ -153,7 +156,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
     /**
      * Sets the stateTable up. 
      * 
-     * @param syncN
+     * @param syncN - global synchronization n.
      * @param localAddress
      * @param participants - to register.
      * @throws UnknownParticipantException if the address of at least one participant could not have 
@@ -165,7 +168,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
         assert(participants!=null);
         
         this.latestCommon = new LSN(0,0L);
-        this.syncN = syncN;
+        this.syncN = ((syncN > 0) ? syncN - 1 : syncN);
         this.participantsCount = this.availableSlaves = participants.size();
         this.deadSlaves = 0;
         
@@ -185,9 +188,9 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
     }
     
     /**
-     * @return the syncN
+     * @return the local synchronization n (local instance excluded)
      */
-    public int getSyncN() {
+    public int getLocalSyncN() {
         return syncN;
     }
     
@@ -223,14 +226,14 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
         synchronized (stateTable) {
             
             // wait until enough slaves are available, if they are ...
-            while (availableSlaves < getSyncN() && 
-                  !((participantsCount - deadSlaves) < getSyncN()))
+            while (availableSlaves < syncN && 
+                  !((participantsCount - deadSlaves) < syncN))
                 stateTable.wait(DELAY_TILL_REFUSE);
             
             long time = TimeSync.getGlobalTime();
             
             // get all available slaves, if they are enough ...
-            if (!((participantsCount - deadSlaves) < getSyncN())) {
+            if (!((participantsCount - deadSlaves) < syncN)) {
                 for (final State s : stateTable.values()){
                     if (!s.dead){
                         if ( time > ( s.lastUpdate + DELAY_TILL_DEAD ) ) {
@@ -254,7 +257,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
             }
             
             // throw an exception, if they are not.
-            if (result.size() < getSyncN()) {
+            if (result.size() < syncN) {
                 
                 // recycle the slaves from the result, before throwing an exception
                 for (SlaveClient c : result) {
@@ -290,7 +293,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
     public void subscribeListener(LatestLSNUpdateListener listener) {
         
         // fully asynchronous mode
-        if (getSyncN() == 0){
+        if (syncN == 0){
             latestCommon = listener.lsn;
             listener.upToDate();
             
@@ -352,7 +355,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
                         if (!s.dead && s.lastAcknowledged.compareTo(acknowledgedLSN) >= 0) {
                             
                             count++;
-                            if (count >= getSyncN()) {
+                            if (count >= syncN) {
                                 
                                 this.latestCommon = acknowledgedLSN;
                                 notifyListeners();

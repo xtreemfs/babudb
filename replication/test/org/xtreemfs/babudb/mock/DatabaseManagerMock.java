@@ -49,14 +49,14 @@ public class DatabaseManagerMock implements DatabaseManagerInternal {
     }
 
     @Override
-    public Database createDatabase(String databaseName, int numIndices)
+    public DatabaseInternal createDatabase(String databaseName, int numIndices)
             throws BabuDBException {
         
         return createDatabase(databaseName, numIndices, null);
     }
 
     @Override
-    public Database createDatabase(String databaseName, int numIndices,
+    public DatabaseInternal createDatabase(String databaseName, int numIndices,
             ByteRangeComparator[] comparators) throws BabuDBException {
         
         if (comparators == null) {

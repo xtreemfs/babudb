@@ -48,17 +48,17 @@ public class VolatileStateOperation extends Operation {
         return LSN.getDefaultInstance();
     }
 
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#startRequest(
-     *          org.xtreemfs.babudb.replication.Request)
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
+     *          processRequest(org.xtreemfs.babudb.replication.transmission.dispatcher.Request)
      */
     @Override
-    public void startRequest(Request rq) {
+    public void processRequest(Request rq) {
+        
         org.xtreemfs.babudb.lsmdb.LSN state = dbInterface.getState();
         Logging.logMessage(Logging.LEVEL_INFO, this, "StateOperation:" +
-        		" reporting %s to %s.", state.toString(),
-        		rq.getRPCRequest().getSenderAddress().toString());
+                        " reporting %s to %s.", state.toString(),
+                        rq.getSenderAddress().toString());
         
         rq.sendSuccess(LSN.newBuilder().setViewId(state.getViewId())
                                        .setSequenceNo(state.getSequenceNo()).build());

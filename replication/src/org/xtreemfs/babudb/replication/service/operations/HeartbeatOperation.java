@@ -19,6 +19,7 @@ import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates.Unk
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
 import org.xtreemfs.foundation.TimeSync;
+import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.ErrorType;
 import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.RPCHeader.ErrorResponse;
 
@@ -60,26 +61,27 @@ public class HeartbeatOperation extends Operation {
     public Message getDefaultRequest() {
         return HeartbeatMessage.getDefaultInstance();
     }
-    
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#
-     * startRequest(org.xtreemfs.babudb.replication.Request)
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
+     *          processRequest(org.xtreemfs.babudb.replication.transmission.dispatcher.Request)
      */
     @Override
-    public void startRequest(final Request rq) {
+    public void processRequest(Request rq) {
+        
         HeartbeatMessage message = (HeartbeatMessage) rq.getRequestMessage();
-        LSN lsn = message.getLsn();
+        LSN rawLSN = message.getLsn();
+        org.xtreemfs.babudb.lsmdb.LSN lsn = new org.xtreemfs.babudb.lsmdb.LSN(rawLSN.getViewId(), 
+                                                        rawLSN.getSequenceNo());
         try {
             
             InetSocketAddress participant = new InetSocketAddress(
-                    ((InetSocketAddress) rq.getRPCRequest().getSenderAddress()).getAddress(), 
-                    message.getPort());
+                    rq.getSenderAddress().getAddress(), message.getPort());
             
-            sManipulator.update(participant, 
-                                new org.xtreemfs.babudb.lsmdb.LSN(lsn.getViewId(), 
-                                                                  lsn.getSequenceNo()), 
-                                TimeSync.getGlobalTime());
+            sManipulator.update(participant, lsn, TimeSync.getGlobalTime());
+            
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "HeartbeatOperation:" +
+                    " received %s from %s.", lsn.toString(), participant);
             
             rq.sendSuccess(ErrorCodeResponse.getDefaultInstance());
         } catch (UnknownParticipantException e) {

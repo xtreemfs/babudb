@@ -56,23 +56,22 @@ public class SynchronizeOperation extends Operation {
         return HeartbeatMessage.getDefaultInstance();
     }
     
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#
-     * startRequest(org.xtreemfs.babudb.replication.Request)
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
+     *          processRequest(org.xtreemfs.babudb.replication.transmission.dispatcher.Request)
      */
     @Override
-    public void startRequest(final Request rq) {
+    public void processRequest(Request rq) {
+        
         HeartbeatMessage message = (HeartbeatMessage) rq.getRequestMessage();
         org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN mLSN = message.getLsn();
         LSN lsn = new LSN(mLSN.getViewId(), mLSN.getSequenceNo());
             
         InetSocketAddress participant = new InetSocketAddress(
-                ((InetSocketAddress) rq.getRPCRequest().getSenderAddress()).getAddress(), 
-                message.getPort());
+                rq.getSenderAddress().getAddress(), message.getPort());
         
         rqMan.createStableState(lsn, participant);
         
         rq.sendSuccess(ErrorCodeResponse.getDefaultInstance());
-   }
+    }
 }

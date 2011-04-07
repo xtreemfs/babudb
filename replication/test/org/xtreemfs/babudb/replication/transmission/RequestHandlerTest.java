@@ -60,16 +60,7 @@ public class RequestHandlerTest implements LifeCycleListener {
     private final int interfaceId = 815;
     private final int operationId = 4711;
     private final Operation operation = new Operation() {
-        
-        @Override
-        public void startRequest(Request rq) {
-            
-            // simply echo the request
-            ErrorCodeResponse request = (ErrorCodeResponse) rq.getRequestMessage();
-            assertTrue(request.getErrorCode() != -1);
-            rq.sendSuccess(request);
-        }
-        
+                
         @Override
         public int getProcedureId() {
             return operationId;
@@ -78,6 +69,15 @@ public class RequestHandlerTest implements LifeCycleListener {
         @Override
         public Message getDefaultRequest() {
             return ErrorCodeResponse.getDefaultInstance();
+        }
+
+        @Override
+        public void processRequest(Request rq) {
+            
+            // simply echo the request
+            ErrorCodeResponse request = (ErrorCodeResponse) rq.getRequestMessage();
+            assertTrue(request.getErrorCode() != -1);
+            rq.sendSuccess(request);
         }
     };
     

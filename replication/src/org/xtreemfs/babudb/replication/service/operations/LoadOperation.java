@@ -63,19 +63,17 @@ public class LoadOperation extends Operation {
     public Message getDefaultRequest() {
         return org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN.getDefaultInstance();
     }
-    
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#
-     * startRequest(org.xtreemfs.babudb.replication.Request)
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
+     *          processRequest(org.xtreemfs.babudb.replication.transmission.dispatcher.Request)
      */
     @Override
-    public void startRequest(Request rq) {
+    public void processRequest(Request rq) {
         LSN request = (LSN) rq.getRequestMessage();
         
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "LOAD from %s, by %s", 
-                request.toString(), rq.getRPCRequest()
-                .getSenderAddress().toString());
+                request.toString(), rq.getSenderAddress().toString());
         
         if (new org.xtreemfs.babudb.lsmdb.LSN(request.getViewId(), 
                                               request.getSequenceNo())

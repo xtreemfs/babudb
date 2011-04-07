@@ -97,10 +97,8 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         // ----------------------------------
         // initialize the participants states
         // ----------------------------------
-        int syncN = ((config.getSyncN() > 0) ? config.getSyncN() - 1 : 
-                                               config.getSyncN());
         try {
-            participantsStates = new ParticipantsStates(syncN, config.getParticipants(), 
+            participantsStates = new ParticipantsStates(config.getSyncN(), config.getParticipants(), 
                     transLayer);
         } catch (UnknownParticipantException e) {
             throw new IOException("The address of at least one participant could not have been " +
@@ -171,7 +169,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
             return new ReplicateResponse(le, e);
         }  
         final ReplicateResponse result = new ReplicateResponse(le,
-                slaves.size() - participantsStates.getSyncN());
+                slaves.size() - participantsStates.getLocalSyncN());
         
         // make the replicate call at the clients
         if (slaves.size() == 0) { 
@@ -233,7 +231,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
     public void synchronize(SyncListener listener, int port) throws BabuDBException, 
             InterruptedException, IOException {
             
-        final int localSyncN = participantsStates.getSyncN();
+        final int localSyncN = participantsStates.getLocalSyncN();
         List<ConditionClient> slaves = participantsStates.getConditionClients();
         if (localSyncN > 0) {
             
