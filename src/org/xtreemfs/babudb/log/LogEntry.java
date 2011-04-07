@@ -229,4 +229,12 @@ public class LogEntry {
         result.checksum = checksum;
         return result;
     }
+    
+    /* (non-Javadoc)
+     * @see java.lang.Object#toString()
+     */
+    @Override
+    public String toString() {
+        return "LSN(" + viewId + ":" + logSequenceNo + ")";
+    }
 }

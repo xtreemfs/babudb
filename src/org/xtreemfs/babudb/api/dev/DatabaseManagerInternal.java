@@ -27,6 +27,39 @@ import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 public interface DatabaseManagerInternal extends DatabaseManager {
 
     /**
+     * Creates a new database.
+     * 
+     * @param databaseName
+     *            name, must be unique
+     * @param numIndices
+     *            the number of indices (cannot be changed afterwards)
+     * @return the newly created database
+     * @throws BabuDBException
+     *             if the database directory cannot be created or the config
+     *             cannot be saved
+     */
+    public DatabaseInternal createDatabase(String databaseName, int numIndices) 
+            throws BabuDBException;
+    
+    /**
+     * Creates a new database.
+     * 
+     * @param databaseName
+     *            name, must be unique
+     * @param numIndices
+     *            the number of indices (cannot be changed afterwards)
+     * @param comparators
+     *            an array of ByteRangeComparators for each index (use only one
+     *            instance)
+     * @return the newly created database
+     * @throws BabuDBException
+     *             if the database directory cannot be created or the config
+     *             cannot be saved
+     */
+    public DatabaseInternal createDatabase(String databaseName, int numIndices, 
+            ByteRangeComparator[] comparators) throws BabuDBException;
+    
+    /**
      * Returns the database with the given name.
      * 
      * @param dbName
