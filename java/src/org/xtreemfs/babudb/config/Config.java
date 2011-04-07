@@ -131,7 +131,7 @@ abstract public class Config {
     }
     
     protected int readOptionalDebugLevel() {
-        String level = props.getProperty("debug.level");
+        String level = props.getProperty("babudb.debug.level");
         if (level == null)
             return Logging.LEVEL_WARN;
         else {
