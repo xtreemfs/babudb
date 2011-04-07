@@ -93,6 +93,7 @@ public final class BabuDBFactory {
         try {
             babuDB = PluginLoader.init(babuDB);
         } catch (IOException e) {
+            if (e.getMessage() == null) Logging.logError(Logging.LEVEL_ERROR, babuDB, e);
             throw new BabuDBException(ErrorCode.BROKEN_PLUGIN, e.getMessage(), e.getCause());
         }
         

@@ -114,12 +114,6 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
         }
     }
     
-    public Map<Integer, Database> getDatabasesById() {
-        synchronized (dbModificationLock) {
-            return new HashMap<Integer, Database>(dbsById);
-        }
-    }
-    
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getDatabaseList()
      */
@@ -161,7 +155,9 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
      * @see org.xtreemfs.babudb.api.DatabaseManager#createDatabase(java.lang.String, int)
      */
     @Override
-    public Database createDatabase(String databaseName, int numIndices) throws BabuDBException {
+    public DatabaseInternal createDatabase(String databaseName, int numIndices) 
+            throws BabuDBException {
+        
         return createDatabase(databaseName, numIndices, null);
     }
     
@@ -170,7 +166,7 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
      *          org.xtreemfs.babudb.api.index.ByteRangeComparator[])
      */
     @Override
-    public Database createDatabase(String databaseName, int numIndices, 
+    public DatabaseInternal createDatabase(String databaseName, int numIndices, 
             ByteRangeComparator[] comparators) throws BabuDBException {
         
         dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_CREATE, 

@@ -75,6 +75,7 @@ public final class PluginLoader extends ClassLoader {
                 babuDB = m.execute(babuDB, configPath);
             
             } catch (Exception e) {
+                if (e.getMessage() == null) Logging.logError(Logging.LEVEL_WARN, this, e);
                 throw new IOException("Plugin at '" + pluginPath + "' for version " + BABUDB_VERSION 
                         + ((configPath != null) ? " with config at path " + configPath : "") 
                         + " could not be initialized, because " + e.getMessage() 
