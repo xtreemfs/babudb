@@ -87,9 +87,8 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
                     accessCounter.incrementAndGet();
                 }   
             }
-            return executeLocallyAndReplicate(type, serialized);
+            return executeLocallyAndReplicate(type, serialized, args);
         } else {      
-            
             return redirectToMaster(type, serialized, master);
         }
     }
@@ -105,11 +104,11 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
      * @throws BabuDBException
      */
     private <T> DatabaseRequestResult<T> executeLocallyAndReplicate(final byte type, 
-            final ReusableBuffer payload) throws BabuDBException {
+            final ReusableBuffer payload, Object[] args) throws BabuDBException {
         
         final ListenerWrapper<T> wrapper = new ListenerWrapper<T>();
                 
-        localPersMan.makePersistent(type, payload.createViewBuffer()).registerListener(
+        localPersMan.makePersistent(type, args, payload.createViewBuffer()).registerListener(
                 (DatabaseRequestListener<Object>) new DatabaseRequestListener<Object>() {
         
             @Override
@@ -192,7 +191,7 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
      * @param master
      * @return the request response future.
      */
-    <T> DatabaseRequestResult<T> redirectToMaster(byte type, ReusableBuffer load, 
+    private <T> DatabaseRequestResult<T> redirectToMaster(byte type, ReusableBuffer load, 
             InetSocketAddress master) {
         
         final ClientResponseFuture<T, ErrorCodeResponse> rp = 

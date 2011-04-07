@@ -50,20 +50,19 @@ public class ChunkOperation extends Operation {
     public Message getDefaultRequest() {
         return Chunk.getDefaultInstance();
     }
-    
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#
-     * startRequest(org.xtreemfs.babudb.replication.Request)
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
+     *          processRequest(org.xtreemfs.babudb.replication.transmission.dispatcher.Request)
      */
     @Override
-    public void startRequest(Request rq) {
+    public void processRequest(Request rq) {
         Chunk chunk = (Chunk) rq.getRequestMessage();
         int length = (int) (chunk.getEnd() - chunk.getStart());
       
         Logging.logMessage(Logging.LEVEL_INFO, this, 
                 "%s request received from %s", chunk.toString(), 
-                rq.getRPCRequest().getSenderAddress().toString());
+                rq.getSenderAddress().toString());
         
         FileChannel channel = null;
         ReusableBuffer payload = null;

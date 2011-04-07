@@ -77,11 +77,10 @@ public class ReplicaOperation extends Operation {
     }
 
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#
-     * startRequest(org.xtreemfs.babudb.replication.Request)
+     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#processRequest(org.xtreemfs.babudb.replication.transmission.dispatcher.Request)
      */
     @Override
-    public void startRequest(Request rq) {
+    public void processRequest(Request rq) {
         LSNRange request = (LSNRange) rq.getRequestMessage();
         
         final LSN start = new LSN(request.getStart().getViewId(), 
@@ -94,7 +93,7 @@ public class ReplicaOperation extends Operation {
         
         Logging.logMessage(Logging.LEVEL_INFO, this, "REQUEST received " +
                 "(start: %s, end: %s) from %s", start.toString(), 
-                end.toString(), rq.getRPCRequest().getSenderAddress());
+                end.toString(), rq.getSenderAddress().toString());
         
         // enhancement to prevent slaves from loading the DB from the master unnecessarily
         if (start.equals(lastOnView.get())) {
@@ -168,8 +167,7 @@ public class ReplicaOperation extends Operation {
                     // send the response, if the requested log entries are found
                     Logging.logMessage(Logging.LEVEL_DEBUG, this, 
                             "REQUEST: returning %d log-entries to %s.", 
-                            result.getLogEntriesCount(), 
-                            rq.getRPCRequest().getSenderAddress());
+                            result.getLogEntriesCount(), rq.getSenderAddress().toString());
                     
                     rq.sendSuccess(result.build(), resultPayLoad);
                 } else {

@@ -80,7 +80,7 @@ public class ReplicateOperation extends Operation {
         //dezerialize payload (serialized logEntry)
         if (resp == null) {
             
-            ReusableBuffer data = rq.getRpcRequest().getData().createViewBuffer();
+            ReusableBuffer data = rq.getData().createViewBuffer();
             try {
                 rq.setAttachment(LogEntry.deserialize(data, checksum));
             } catch (LogEntryException e){
@@ -95,13 +95,13 @@ public class ReplicateOperation extends Operation {
         }
         return resp;
     }
-    
+
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#
-     * startRequest(org.xtreemfs.babudb.replication.Request)
+     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
+     *          processRequest(org.xtreemfs.babudb.replication.transmission.dispatcher.Request)
      */
     @Override
-    public void startRequest(Request rq) {
+    public void processRequest(Request rq) {
         
         LogEntry le = (LogEntry) rq.getAttachment();
         final LSN lsn = le.getLSN();

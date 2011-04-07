@@ -85,8 +85,7 @@ public class BabuDBProxy implements BabuDBInternal {
         try {
             replMan.shutdown();
         } catch (Exception e) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
-                                      e.getMessage());
+            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
         } finally {
             localBabuDB.shutdown(); 
         }

@@ -53,20 +53,19 @@ public class StateOperation extends Operation {
         return LSN.getDefaultInstance();
     }
 
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#startRequest(
-     *          org.xtreemfs.babudb.replication.Request)
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
+     *          processRequest(org.xtreemfs.babudb.replication.transmission.dispatcher.Request)
      */
     @Override
-    public void startRequest(Request rq) {
+    public void processRequest(Request rq) {
         
         try {
             topLayer.lockAll();
             org.xtreemfs.babudb.lsmdb.LSN state = dbInterface.getState();
             Logging.logMessage(Logging.LEVEL_INFO, this, "StateOperation:" +
-            		" reporting %s to %s.", state.toString(),
-            		rq.getRPCRequest().getSenderAddress().toString());
+                        " reporting %s to %s.", state.toString(),
+                        rq.getSenderAddress().toString());
         
             rq.sendSuccess(LSN.newBuilder().setViewId(state.getViewId())
                                            .setSequenceNo(state.getSequenceNo()).build());
@@ -75,7 +74,7 @@ public class StateOperation extends Operation {
             
             Logging.logError(Logging.LEVEL_WARN, this, e);
             rq.sendError(ErrorType.INTERNAL_SERVER_ERROR, "Server could not establish a stable " +
-            		"state, because: " + e.getMessage());
+                        "state, because: " + e.getMessage());
         } finally {
             topLayer.unlockReplication();
         }

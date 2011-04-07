@@ -96,16 +96,21 @@ class DatabaseManagerProxy implements DatabaseManagerInternal {
         try {
             InetSocketAddress master = getServerToPerformAt();
             
-            if (master == null) {  
-                return localDBMan.getDatabasesInternal();
-            }
-            
             Map<String, DatabaseInternal> r = new HashMap<String, DatabaseInternal>();
-            for (Entry<String, Integer> e : 
-                client.getDatabases(master).get().entrySet()) {
-                                
-                r.put(e.getKey(), new DatabaseProxy(e.getKey(), e.getValue(), replicationPolicy, 
-                        this));
+            if (master == null) {  
+                
+                for (Entry<String, DatabaseInternal> e : 
+                    localDBMan.getDatabasesInternal().entrySet()) {
+                    
+                    r.put(e.getKey(), new DatabaseProxy(e.getValue(), replicationPolicy, this));
+                }
+            } else {
+                for (Entry<String, Integer> e : 
+                    client.getDatabases(master).get().entrySet()) {
+                                    
+                    r.put(e.getKey(), new DatabaseProxy(e.getKey(), e.getValue(), replicationPolicy, 
+                            this));
+                }
             }
             return r; 
         } catch (Exception e) {
@@ -127,9 +132,9 @@ class DatabaseManagerProxy implements DatabaseManagerInternal {
      *          java.lang.String, int)
      */
     @Override
-    public Database createDatabase(String databaseName, int numIndices) 
+    public DatabaseInternal createDatabase(String databaseName, int numIndices) 
             throws BabuDBException {
-        return localDBMan.createDatabase(databaseName, numIndices);
+        return createDatabase(databaseName, numIndices, null);
     }
 
     /* (non-Javadoc)
@@ -138,9 +143,10 @@ class DatabaseManagerProxy implements DatabaseManagerInternal {
      *          org.xtreemfs.babudb.api.index.ByteRangeComparator[])
      */
     @Override
-    public Database createDatabase(String databaseName, int numIndices, 
+    public DatabaseInternal createDatabase(String databaseName, int numIndices, 
             ByteRangeComparator[] comparators) throws BabuDBException {
-        return localDBMan.createDatabase(databaseName, numIndices, comparators);
+        return new DatabaseProxy(localDBMan.createDatabase(databaseName, numIndices, comparators), 
+                replicationPolicy, this);
     }
 
     /* (non-Javadoc)

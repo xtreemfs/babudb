@@ -10,9 +10,7 @@ package org.xtreemfs.babudb.replication.transmission.dispatcher;
 import static org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.POSIXErrno.POSIX_ERROR_NONE;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -32,16 +30,13 @@ import org.xtreemfs.foundation.util.OutputUtils;
  * (eg. failover).
  * 
  * @author flangner
- * @since 19.01.2011
+ * @since 01/19/2011
  */
 public abstract class RequestHandler implements RequestControl {
     
     /** table of available Operations */
     protected final Map<Integer, Operation>  operations = new HashMap<Integer, Operation>();
             
-    /** method to identify the messages that have to be processed by this handler */
-    public abstract int getInterfaceID();
-    
     /** flag to determine whether queuing of requests shall be permitted, or not */
     private final AtomicBoolean queuingEnabled = new AtomicBoolean(false);
     
@@ -53,6 +48,8 @@ public abstract class RequestHandler implements RequestControl {
         this.MAX_Q = maxQ;
     }
     
+    /** method to identify the messages that have to be processed by this handler */
+    public abstract int getInterfaceID();
 
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.transmission.RequestControl#enableQueuing()
@@ -77,19 +74,10 @@ public abstract class RequestHandler implements RequestControl {
             queue.clear();
         }
         
-        Collections.sort(todo);
-        Iterator<Request> iter = todo.iterator();
-        while (iter.hasNext()) {
-            Request req = iter.next();
+        for (Request req : todo) {
             if (!req.expired()) {
                 req.getOperation().startRequest(req);
-                iter.remove(); 
             }
-        }
-        
-        iter = todo.iterator();
-        while (iter.hasNext()) {
-            iter.next().free();
         }
     }
         
@@ -113,7 +101,7 @@ public abstract class RequestHandler implements RequestControl {
         if (message != null) {
             rq.sendError(message);
             return;
-        }
+        } 
         
         Logging.logMessage(Logging.LEVEL_DEBUG, this, 
                 "... parsed successfully ...");
@@ -133,8 +121,6 @@ public abstract class RequestHandler implements RequestControl {
                             OutputUtils.stackTraceToString(ex));
                     return;
                 }
-                
-                Logging.logMessage(Logging.LEVEL_DEBUG, this, "... finished.");
             }
         }
     }
@@ -154,8 +140,6 @@ public abstract class RequestHandler implements RequestControl {
                 req.sendError(ErrorType.INTERNAL_SERVER_ERROR, 
                         "Replication setup could not have been stabilized and " +
                         "servers run out of buffer.");
-            } else {
-                req.free();
             }
         }
         

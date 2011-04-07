@@ -42,18 +42,26 @@ public class MakePersistantOperation extends Operation {
     public int getProcedureId() {
         return RemoteAccessServiceConstants.PROC_ID_MAKEPERSISTENT;
     }
-    
+
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#startRequest(
-     *          org.xtreemfs.babudb.replication.transmission.dispatcher.Request)
+     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#getDefaultRequest()
      */
     @Override
-    public void startRequest(final Request rq) {
+    public Message getDefaultRequest() {
+        return Type.getDefaultInstance();
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
+     *          processRequest(org.xtreemfs.babudb.replication.transmission.dispatcher.Request)
+     */
+    @Override
+    public void processRequest(final Request rq) {
         Type type = (Type) rq.getRequestMessage();
         try {
             DatabaseRequestResult<Object> result = 
                 dbs.getPersistanceManager().makePersistent((byte) type.getValue(), 
-                        rq.getRpcRequest().getData().createViewBuffer());
+                        rq.getData().createViewBuffer());
             
             result.registerListener(new DatabaseRequestListener<Object>() {
                 
@@ -72,13 +80,5 @@ public class MakePersistantOperation extends Operation {
             rq.sendSuccess(ErrorCodeResponse.newBuilder().setErrorCode(
                     ErrorCode.SERVICE_UNAVAILABLE).build());
         } 
-    }
-
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#getDefaultRequest()
-     */
-    @Override
-    public Message getDefaultRequest() {
-        return Type.getDefaultInstance();
     }
 }

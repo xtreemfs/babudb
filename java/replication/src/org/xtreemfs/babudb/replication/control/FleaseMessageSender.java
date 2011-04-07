@@ -53,7 +53,7 @@ class FleaseMessageSender implements FleaseMessageSenderInterface {
             assert (c != null) : "could not retrieve client for " + recipient.toString();
             message.setSender(sender);
 
-            Logging.logMessage(Logging.LEVEL_INFO, this, "sending '%s' from '%s' to '%s' ... ", 
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "sending '%s' from '%s' to '%s' ... ", 
                     message.toString(), sender.toString(), recipient.toString());
             
             c.flease(message).registerListener(new ClientResponseAvailableListener<Object>() {

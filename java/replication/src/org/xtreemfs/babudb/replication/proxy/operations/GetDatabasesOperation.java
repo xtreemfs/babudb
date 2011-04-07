@@ -43,14 +43,21 @@ public class GetDatabasesOperation extends Operation {
     public int getProcedureId() {
         return RemoteAccessServiceConstants.PROC_ID_GETDATABASES;
     }
-    
+
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
-     *          startRequest(
-     *          org.xtreemfs.babudb.replication.transmission.dispatcher.Request)
+     *          getDefaultRequest()
      */
     @Override
-    public void startRequest(final Request rq) {
+    public Message getDefaultRequest() {
+        return emptyRequest.getDefaultInstance();
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#processRequest(org.xtreemfs.babudb.replication.transmission.dispatcher.Request)
+     */
+    @Override
+    public void processRequest(Request rq) {
         Databases.Builder rBuilder = Databases.newBuilder();
         Map<String, DatabaseInternal> databases = dbs.getDatabases();
         for (Entry<String, DatabaseInternal> e : databases.entrySet()) {
@@ -60,14 +67,5 @@ public class GetDatabasesOperation extends Operation {
                     .build());
         }
         rq.sendSuccess(rBuilder.build());
-    }
-
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
-     *          getDefaultRequest()
-     */
-    @Override
-    public Message getDefaultRequest() {
-        return emptyRequest.getDefaultInstance();
     }
 }

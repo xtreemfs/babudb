@@ -112,7 +112,17 @@ public class HeartbeatTest implements LifeCycleListener {
         ops.put(ReplicationServiceConstants.PROC_ID_HEARTBEAT, new Operation() {
                         
             @Override
-            public void startRequest(Request rq) {
+            public int getProcedureId() {
+                return ReplicationServiceConstants.PROC_ID_HEARTBEAT;
+            }
+            
+            @Override
+            public Message getDefaultRequest() {
+                return HeartbeatMessage.getDefaultInstance();
+            }
+
+            @Override
+            public void processRequest(Request rq) {
                 HeartbeatMessage hbm = (HeartbeatMessage) rq.getRequestMessage();
                 
                 long currentTimestamp = System.currentTimeMillis();
@@ -126,16 +136,6 @@ public class HeartbeatTest implements LifeCycleListener {
                 }
                 
                 rq.sendSuccess(ErrorCodeResponse.getDefaultInstance());
-            }
-            
-            @Override
-            public int getProcedureId() {
-                return ReplicationServiceConstants.PROC_ID_HEARTBEAT;
-            }
-            
-            @Override
-            public Message getDefaultRequest() {
-                return HeartbeatMessage.getDefaultInstance();
             }
         });
         dispatcher.addHandler(new RequestHandlerMock(MAX_Q, 

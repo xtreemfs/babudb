@@ -43,16 +43,15 @@ public class LocalTimeOperation extends Operation {
         return null;
     }
 
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.operations.Operation#startRequest(org.xtreemfs.babudb.replication.Request)
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#
+     *          processRequest(org.xtreemfs.babudb.replication.transmission.dispatcher.Request)
      */
     @Override
-    public void startRequest(final Request rq) {
+    public void processRequest(Request rq) {
         long time = TimeSync.getGlobalTime();
         Logging.logMessage(Logging.LEVEL_INFO, this, "LocalTimeOperation:" +
-                " reporting %d to %s.", time,
-                rq.getRPCRequest().getSenderAddress().toString());
+                " reporting %d to %s.", time, rq.getSenderAddress().toString());
         
         rq.sendSuccess(Timestamp.newBuilder().setValue(time).build());
     }

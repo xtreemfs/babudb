@@ -39,8 +39,7 @@ public class Main extends PluginMain {
         // load the plugins configuration
         ReplicationConfig configuration;
         try {
-            configuration = new ReplicationConfig(configPath, 
-                    babuDB.getConfig());
+            configuration = new ReplicationConfig(configPath, babuDB.getConfig());
         } catch (IOException ioe) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
                     "Replication configuration is broken.", ioe.getCause());
@@ -61,6 +60,7 @@ public class Main extends PluginMain {
         try {
             replMan = new ReplicationManager(babuDB, configuration);           
         } catch (Exception e) {
+            if (e.getMessage() == null) Logging.logError(Logging.LEVEL_ERROR, this, e);
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
                     e.getMessage(), e.getCause());
         } 

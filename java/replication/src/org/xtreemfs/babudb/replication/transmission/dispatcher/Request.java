@@ -8,6 +8,7 @@
 package org.xtreemfs.babudb.replication.transmission.dispatcher;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.LogEntry;
@@ -26,7 +27,7 @@ import org.xtreemfs.foundation.pbrpc.utils.ReusableBufferInputStream;
 import com.google.protobuf.Message;
 
 /**
- * Request object.
+ * Request object. Access is not thread-safe.
  * 
  * @since 05/02/2009
  * @author flangner
@@ -34,11 +35,12 @@ import com.google.protobuf.Message;
 
 public class Request implements Comparable<Request> {
     
+    private static long                 rqIdCounter = 1;  
+    
     private final RPCServerRequest      rpcRequest;
     
     private Message                     requestMessage;
     
-    private static long rqIdCounter = 1;  
     private long                        requestId;
     
     private Object                      attachment;
@@ -49,6 +51,8 @@ public class Request implements Comparable<Request> {
     private final Operation             replicationOperation;
     
     private final long                  timestamp;
+    
+    private boolean                     expired;
     
     Request(RPCServerRequest rpcRequest, long timestamp, Operation operation) {
         this.rpcRequest = rpcRequest;
@@ -90,7 +94,7 @@ public class Request implements Comparable<Request> {
     }
 
     public void sendInternalServerError(Throwable cause) {
-        if (getRpcRequest() != null) {
+        if (rpcRequest != null) {
             rpcRequest.sendError(ErrorType.INTERNAL_SERVER_ERROR, 
                     POSIXErrno.POSIX_ERROR_NONE, "internal server error:" + 
                     cause, OutputUtils.stackTraceToString(cause));
@@ -120,12 +124,12 @@ public class Request implements Comparable<Request> {
     }
     
     public void sendError(ErrorResponse error) {
-        this.getRPCRequest().sendError(error);
+        rpcRequest.sendError(error);
     }
     
-    public RPCServerRequest getRPCRequest() {
-        return this.getRpcRequest();
-    }
+//    public RPCServerRequest getRPCRequest() {
+//        return this.getRpcRequest();
+//    }
 
     /**
      * @return the requestId
@@ -134,15 +138,26 @@ public class Request implements Comparable<Request> {
         return requestId;
     }
     
-    /**
-     * @return the rpcRequest
-     */
-    public RPCServerRequest getRpcRequest() {
-        return rpcRequest;
-    }
+//    /**
+//     * @return the rpcRequest
+//     */
+//    public RPCServerRequest getRpcRequest() {
+//        return rpcRequest;
+//    }
 
     /**
-     * @return the requestMessages
+     * @return the data attached to the request.
+     */
+    public ReusableBuffer getData() {
+        return rpcRequest.getData();
+    }
+    
+    public InetSocketAddress getSenderAddress() {
+        return (InetSocketAddress) rpcRequest.getSenderAddress();
+    }
+    
+    /**
+     * @return the requestMessage.
      */
     public Message getRequestMessage() {
         return requestMessage;
@@ -173,7 +188,15 @@ public class Request implements Comparable<Request> {
      * @return true if the request has been expired.
      */
     public boolean expired() {
-        return timestamp + ReplicationConfig.REQUEST_TIMEOUT < TimeSync.getGlobalTime();
+        if (expired) {
+            return true;
+        } else if ((timestamp + ReplicationConfig.REQUEST_TIMEOUT) < TimeSync.getGlobalTime()) {
+            free();
+            expired = true;
+            return true;
+        }
+        
+        return false;
     }
 
     /* (non-Javadoc)
@@ -187,7 +210,7 @@ public class Request implements Comparable<Request> {
     /**
      * Frees the rpcRequest and all data stored at the attachment.
      */
-    public void free() {
+    private final void free() {
         rpcRequest.freeBuffers();
         if (attachment instanceof ReusableBuffer) {
             BufferPool.free((ReusableBuffer) attachment);

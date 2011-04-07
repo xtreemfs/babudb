@@ -42,6 +42,9 @@ public class ReplicationConfig extends Config {
     
     protected SSLOptions             sslOptions;
     
+    /**
+     * List of participants without the local instance.
+     */
     protected Set<InetSocketAddress> participants;
     
     protected int                    localTimeRenew;
@@ -54,9 +57,9 @@ public class ReplicationConfig extends Config {
     protected final Policy           replicationPolicy;
     
     /** 
-     * longest duration a message can live on the wire, before it becomes void 
+     * longest duration a message can live on the wire, before it becomes void (one-way)
      */
-    private static final int         MESSAGE_TIMEOUT        = 10 * 1000;
+    private static final int         MESSAGE_TIMEOUT        = 5 * 1000;
     
     /** 
      * longest duration a connection can be established without getting closed 
@@ -64,9 +67,9 @@ public class ReplicationConfig extends Config {
     public static final int          LEASE_TIMEOUT          = 60 * 1000;
         
     /** 
-     * longest duration before an RPC-Call is timed out 
+     * longest duration before an RPC-Call is timed out (RTT) 
      */
-    public static final int          REQUEST_TIMEOUT        = 10 * 1000;
+    public static final int          REQUEST_TIMEOUT        = 2 * MESSAGE_TIMEOUT;
     
     /** 
      * longest duration before an idle connection is closed 
@@ -76,7 +79,7 @@ public class ReplicationConfig extends Config {
     /** 
      * the maximal delay to wait for an valid lease to become available 
      */
-    public static final int         DELAY_TO_WAIT_FOR_LEASE_MS = MESSAGE_TIMEOUT;
+    public static final int         DELAY_TO_WAIT_FOR_LEASE_MS = REQUEST_TIMEOUT;
     
     // for master usage only
     
@@ -91,7 +94,7 @@ public class ReplicationConfig extends Config {
     
     // for slave usage only
     
-    protected String                 tempDir;
+    protected String                 backupDir;
         
     /** 
      * maximal retries per failure 
@@ -152,13 +155,13 @@ public class ReplicationConfig extends Config {
             s = new Socket();
             try {
                 s.bind(participant);
-                if (this.address == null) {
-                    this.address = participant;
-                } else {
-                    this.participants.add(participant);
+                if (address == null) {
+                    address = participant;
+                } else if (!address.equals(participant)) {
+                    participants.add(participant);
                 }
             } catch (Exception e) {
-                this.participants.add(participant);
+                participants.add(participant);
             } finally {
                 try {
                     s.close();
@@ -170,19 +173,19 @@ public class ReplicationConfig extends Config {
         this.sslOptions = sslOptions;
         this.syncN = syncN;
         this.chunkSize = DEFAULT_MAX_CHUNK_SIZE;
-        this.tempDir = tempDir;
+        this.backupDir = tempDir;
                 
         this.fleaseConfig = new FleaseConfig(LEASE_TIMEOUT, this.localTimeRenew,
-                MESSAGE_TIMEOUT, this.address, 
-                FleaseHolder.getIdentity(this.address), MAX_RETRIES);
+                MESSAGE_TIMEOUT, address, 
+                FleaseHolder.getIdentity(address), MAX_RETRIES);
         
         checkArgs(babuDBConfig, address, sslOptions, participants, 
                 localTimeRenew, timeSyncInterval, syncN, chunkSize, 
-                this.tempDir, policyName);
+                this.backupDir, policyName);
         
         // get the replication policy
         try {
-            this.replicationPolicy = (Policy) Policy.class.getClassLoader().
+            replicationPolicy = (Policy) Policy.class.getClassLoader().
                         loadClass(POLICY_PACKAGE + policyName).newInstance();
             
         } catch (Exception e) {
@@ -195,13 +198,13 @@ public class ReplicationConfig extends Config {
         
         String tempDir = this.readRequiredString("babudb.repl.backupDir");
         if (tempDir.endsWith("/") || tempDir.endsWith("\\")) {
-            this.tempDir = tempDir;
+            backupDir = tempDir;
         } else if (tempDir.contains("/")) {
-            this.tempDir = tempDir + "/";
+            backupDir = tempDir + "/";
         } else if (tempDir.contains("\\")) {
-            this.tempDir = tempDir + "\\";
+            backupDir = tempDir + "\\";
         } else {
-            this.tempDir = tempDir + File.separator;
+            backupDir = tempDir + File.separator;
         }
         
         this.localTimeRenew = this.readOptionalInt("babudb.localTimeRenew", 
@@ -236,56 +239,58 @@ public class ReplicationConfig extends Config {
         int number = 0;
         Socket s;
         InetSocketAddress addrs;
-        while ((addrs = this.readOptionalInetSocketAddr(
-                "babudb.repl.participant." + number,
-                "babudb.repl.participant." + number + ".port", null)) != null) {
+        while ((addrs = readOptionalInetSocketAddr("babudb.repl.participant." + number,
+                        "babudb.repl.participant." + number + ".port", null)) != null) {
             
             if (address == null) {
                 s = new Socket();
                 try {
                     s.bind(addrs);
-                    this.address = addrs;
+                    address = addrs;
                 } catch (Throwable t) {
                     // even if a participant's address is not reachable, or cannot
                     // be resolved, it never will be ignored completely, because
                     // it may become available later
-                    this.participants.add(addrs);
+                    participants.add(addrs);
                 } finally {
                     try {
                         s.close();
                     } catch (IOException e) { /* ignored */ }
                 }
-            } else {
-                this.participants.add(addrs);
+            } else if (!address.equals(addrs)) {
+                participants.add(addrs);
             }
             number++;
         }
         
-        this.policyName = this.readOptionalString("babudb.repl.policy", 
-                                                  "MasterOnly");
+        policyName = readOptionalString("babudb.repl.policy", "MasterOnly");
         
         checkArgs(babuDBConfig, address, sslOptions, participants, localTimeRenew, timeSyncInterval, 
-                  syncN, chunkSize, tempDir, policyName);
+                  syncN, chunkSize, backupDir, policyName);
     }
     
     public InetSocketAddress getInetSocketAddress() {
-        return this.address;
+        return address;
     }
     
     public int getPort() {
-        return this.address.getPort();
+        return address.getPort();
     }
     
     public InetAddress getAddress() {
-        return this.address.getAddress();
+        return address.getAddress();
     }
     
     public SSLOptions getSSLOptions() {
-        return this.sslOptions;
+        return sslOptions;
     }
     
+    /**
+     * @return a set of addresses for participants of the replication setup without the address
+     *         of the local instance.
+     */
     public Set<InetSocketAddress> getParticipants() {
-        return this.participants;
+        return participants;
     }
     
     public int getLocalTimeRenew() {
@@ -297,15 +302,15 @@ public class ReplicationConfig extends Config {
     }
     
     public int getSyncN() {
-        return this.syncN;
+        return syncN;
     }
     
     public int getChunkSize() {
-        return this.chunkSize;
+        return chunkSize;
     }
     
     public String getTempDir() {
-        return tempDir;
+        return backupDir;
     }
     
     public FleaseConfig getFleaseConfig() {
@@ -339,7 +344,7 @@ public class ReplicationConfig extends Config {
         buf.append("#        policy: " + policyName + "\n");
         buf.append("#        local time renew: " + localTimeRenew + "\n");
         buf.append("#        time sync interval: " + timeSyncInterval + "\n");
-        buf.append("#        temporary directory: " + tempDir + "\n");
+        buf.append("#        temporary directory: " + backupDir + "\n");
         buf.append("#        chunk size: " + chunkSize + "\n");
         return buf.toString();
     }

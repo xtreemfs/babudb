@@ -8,11 +8,9 @@
 package org.xtreemfs.babudb.replication.transmission.dispatcher;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.xtreemfs.babudb.pbrpc.Common.emptyRequest;
-import org.xtreemfs.foundation.pbrpc.client.RPCResponse;
-import org.xtreemfs.foundation.pbrpc.client.RPCResponseAvailableListener;
+import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.ErrorType;
 import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.RPCHeader.ErrorResponse;
 import org.xtreemfs.foundation.pbrpc.server.RPCServerRequest;
@@ -35,10 +33,25 @@ public abstract class Operation {
     public abstract int getProcedureId();
     
     /**
-     * called after request was parsed and operation assigned.
+     * Called after request was parsed and operation assigned. Before the logic of the request is 
+     * processed it is tested for expiration.
+     * 
      * @param rq the new request
      */
-    public abstract void startRequest(Request rq);
+    public final void startRequest(Request rq) {
+        
+        if (!rq.expired()) {
+            processRequest(rq);
+        }
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "... finished.");
+    }
+    
+    /**
+     * Logic for processing a request.
+     * 
+     * @param rq the new request
+     */
+    public abstract void processRequest(Request rq);
     
     /**
      * @return an empty message of the type of expected request message. may be
@@ -48,8 +61,9 @@ public abstract class Operation {
     
     /**
      * Parses the request.
+     * 
      * @param rq the request
-     * @return null if successful, error message otherwise
+     * @return null if successful, error message otherwise.
      */
     public ErrorResponse parseRPCMessage(Request rq) {
         ErrorResponse result = null;
@@ -62,38 +76,5 @@ public abstract class Operation {
                 .setDebugInfo(OutputUtils.stackTraceToString(e)).build();
         }
         return result;
-    }
-    
-    /**
-     * Wait for responses of a broadcast-request.
-     * 
-     * @param responses
-     * @param listener
-     */
-    public <T extends Message> void waitForResponses(final RPCResponse<T>[] responses, 
-            final ResponsesListener listener) {
-
-        assert(responses.length > 0);
-
-        final AtomicInteger count = new AtomicInteger(0);
-        final RPCResponseAvailableListener<T> l = 
-            new RPCResponseAvailableListener<T>() {
-
-            @Override
-            public void responseAvailable(RPCResponse<T> r) {
-                if (count.incrementAndGet() == responses.length) {
-                    listener.responsesAvailable();
-                }
-            }
-        };
-
-        for (RPCResponse<T> r : responses) {
-            r.registerListener(l);
-        }
-
-    }
-
-    public static interface ResponsesListener {
-        public void responsesAvailable();
     }
 }
