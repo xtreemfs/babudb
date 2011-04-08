@@ -27,6 +27,7 @@ import org.xtreemfs.babudb.mock.RequestHandlerMock;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
+import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestControl;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestDispatcher;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestHandler;
 import org.xtreemfs.foundation.LifeCycleListener;

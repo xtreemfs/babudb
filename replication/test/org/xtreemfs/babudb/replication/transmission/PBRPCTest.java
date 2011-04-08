@@ -25,6 +25,8 @@ import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage;
 import org.xtreemfs.babudb.pbrpc.RemoteAccessServiceConstants;
 import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
+import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter;
+import org.xtreemfs.babudb.replication.transmission.client.ProxyAccessClientAdapter;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestDispatcher;
@@ -166,7 +168,7 @@ public class PBRPCTest implements LifeCycleListener {
         dispatcher.waitForStartup();
         
         // setup the client 
-        PBRPCClientAdapter testClient = new PBRPCClientAdapter(client, 
+        ReplicationClientAdapter testClient = new ReplicationClientAdapter(client, 
                 config.getInetSocketAddress());
         
         // run some test operations
@@ -215,7 +217,7 @@ public class PBRPCTest implements LifeCycleListener {
         dispatcher.waitForStartup();
         
         // setup the client
-        RemoteClientAdapter testClient = new RemoteClientAdapter(client);
+        ProxyAccessClientAdapter testClient = new ProxyAccessClientAdapter(client);
         
         // run some test operations
         int result = testClient.getDatabase(testDatabaseName, 

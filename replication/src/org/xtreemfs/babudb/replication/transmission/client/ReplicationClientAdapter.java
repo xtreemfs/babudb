@@ -5,7 +5,7 @@
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-package org.xtreemfs.babudb.replication.transmission;
+package org.xtreemfs.babudb.replication.transmission.client;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -39,7 +39,7 @@ import static org.xtreemfs.babudb.replication.transmission.TransmissionLayer.*;
  * @author flangner
  * @since 01/04/2011
  */
-public class PBRPCClientAdapter extends ReplicationServiceClient 
+public class ReplicationClientAdapter extends ReplicationServiceClient 
     implements MasterClient, SlaveClient {
 
     private final InetSocketAddress defaultServer;
@@ -48,7 +48,7 @@ public class PBRPCClientAdapter extends ReplicationServiceClient
      * @param client
      * @param defaultServer
      */
-    public PBRPCClientAdapter(RPCNIOSocketClient client, 
+    public ReplicationClientAdapter(RPCNIOSocketClient client, 
                               InetSocketAddress defaultServer) {
         
         super(client, defaultServer);

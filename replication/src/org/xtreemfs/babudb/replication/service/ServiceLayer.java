@@ -28,8 +28,8 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.FleaseMessageReceiver;
 import org.xtreemfs.babudb.replication.Layer;
-import org.xtreemfs.babudb.replication.TopLayer;
-import org.xtreemfs.babudb.replication.proxy.RPCRequestHandler;
+import org.xtreemfs.babudb.replication.control.ControlLayerInterface;
+import org.xtreemfs.babudb.replication.proxy.ProxyRequestHandler;
 import org.xtreemfs.babudb.replication.service.accounting.LatestLSNUpdateListener;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates;
@@ -122,14 +122,14 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
      * @param <T>
      * @param receiver
      */
-    public <T extends TopLayer & FleaseMessageReceiver> void init(T receiver) {
+    public <T extends ControlLayerInterface & FleaseMessageReceiver> void init(T receiver) {
         assert (receiver != null);
         
         // ----------------------------------
         // initialize request logic for 
         // handling BabuDB remote calls
         // ----------------------------------
-        RPCRequestHandler rqCtrl = new RPCRequestHandler(babuDB, 
+        ProxyRequestHandler rqCtrl = new ProxyRequestHandler(babuDB, 
                 config.getBabuDBConfig().getMaxQueueLength());
         transmissionInterface.addRequestHandler(rqCtrl);
         receiver.registerProxyRequestControl(rqCtrl);
@@ -144,7 +144,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
                         transmissionInterface.getFileIOInterface(), 
                         config.getBabuDBConfig().getMaxQueueLength()));
         
-        receiver.registerReplicationInterface(replicationStage);
+        receiver.registerReplicationControl(replicationStage);
     }
     
 /*
@@ -365,7 +365,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
      * 
      * @param userService
      */
-    public void start(TopLayer topLayer) {
+    public void start(ControlLayerInterface topLayer) {
         LSN latest = babuDB.getState();
         LSN normalized = (latest.getSequenceNo() == 0L) ? new LSN(0,0L) : latest;
             

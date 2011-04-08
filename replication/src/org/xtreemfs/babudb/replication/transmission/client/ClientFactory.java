@@ -5,12 +5,12 @@
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-package org.xtreemfs.babudb.replication.transmission;
+package org.xtreemfs.babudb.replication.transmission.client;
 
 import java.net.InetSocketAddress;
 
 import org.xtreemfs.babudb.pbrpc.ReplicationServiceClient;
-import org.xtreemfs.babudb.replication.RemoteAccessClient;
+import org.xtreemfs.babudb.replication.proxy.ProxyAccessClient;
 
 /**
  * Interface for {@link ReplicationServiceClient}-generating objects.
@@ -22,15 +22,15 @@ public interface ClientFactory {
 
     /**
      * @param receiver
-     * @return the {@link RemoteClientAdapter}, an abstraction from the 
+     * @return the {@link ProxyAccessClientAdapter}, an abstraction from the 
      *         underlying RPC architecture.
      */
-    public PBRPCClientAdapter getClient(InetSocketAddress receiver);
+    public ReplicationClientAdapter getClient(InetSocketAddress receiver);
     
     /**
      * 
      * @return a generic proxy-client instance as abstraction from the 
      *         underlying RPC architecture.
      */
-    public RemoteAccessClient getProxyClient();
+    public ProxyAccessClient getProxyClient();
 }

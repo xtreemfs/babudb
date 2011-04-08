@@ -27,13 +27,13 @@ import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestHandler;
  * @author flangner
  * @since 01/19/2011
  */
-public class RPCRequestHandler extends RequestHandler {
+public class ProxyRequestHandler extends RequestHandler {
     
     /**
      * @param maxQ
      * @param dbs - interface for local BabuDB operations.
      */
-    public RPCRequestHandler(BabuDBInterface dbs, int maxQ) {
+    public ProxyRequestHandler(BabuDBInterface dbs, int maxQ) {
         super(maxQ);
         
         Operation op = new MakePersistantOperation(dbs); 

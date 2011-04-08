@@ -22,10 +22,9 @@ import org.xtreemfs.babudb.api.dev.PersistenceManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
-import org.xtreemfs.babudb.replication.RemoteAccessClient;
 import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.replication.policy.Policy;
-import org.xtreemfs.babudb.replication.transmission.PBRPCClientAdapter.ErrorCodeException;
+import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter.ErrorCodeException;
 import org.xtreemfs.foundation.logging.Logging;
 
 /**
@@ -41,11 +40,11 @@ class DatabaseManagerProxy implements DatabaseManagerInternal {
     private final    DatabaseManagerInternal    localDBMan;
     private final    Policy                     replicationPolicy;
     private final    ReplicationManager         replicationManager;
-    private final    RemoteAccessClient         client;
+    private final    ProxyAccessClient         client;
     private final    PersistenceManagerInternal persManProxy;
 
     public DatabaseManagerProxy(DatabaseManagerInternal localDBMan, Policy policy, 
-            ReplicationManager replMan, RemoteAccessClient client, 
+            ReplicationManager replMan, ProxyAccessClient client, 
             PersistenceManagerInternal persMan) {
         
         assert (localDBMan != null);
@@ -204,7 +203,7 @@ class DatabaseManagerProxy implements DatabaseManagerInternal {
         return localDBMan.getDatabase(name);
     }
     
-    RemoteAccessClient getClient() {
+    ProxyAccessClient getClient() {
         return client;
     }
     

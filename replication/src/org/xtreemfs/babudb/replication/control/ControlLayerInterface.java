@@ -11,9 +11,11 @@ import java.net.InetSocketAddress;
 
 import org.xtreemfs.babudb.api.BabuDB;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
+import org.xtreemfs.babudb.replication.FleaseMessageReceiver;
 import org.xtreemfs.babudb.replication.LockableService;
 import org.xtreemfs.babudb.replication.LockableService.ServiceLockedException;
-import org.xtreemfs.babudb.replication.transmission.RequestControl;
+import org.xtreemfs.babudb.replication.control.TimeDriftDetector.TimeDriftListener;
+import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestControl;
 
 /**
  * Interface between ControlLayer and {@link BabuDBInterface}.
@@ -21,7 +23,8 @@ import org.xtreemfs.babudb.replication.transmission.RequestControl;
  * @author flangner
  * @since 04/15/2010
  */
-public interface ControlToBabuDBInterface {
+public interface ControlLayerInterface extends TimeDriftListener, FleaseMessageReceiver, 
+        FleaseEventListener{
 
     /**
      * @return the address of the current lease holder, or null if the lease is 
@@ -47,7 +50,7 @@ public interface ControlToBabuDBInterface {
      * 
      * @param service
      */
-    public void registerReplicationInterface(LockableService service);
+    public void registerReplicationControl(LockableService service);
     
     /**
      * Method to register the proxy {@link RequestControl} to the control layer;
@@ -80,5 +83,5 @@ public interface ControlToBabuDBInterface {
     /**
      * Unlocks the replication related services.
      */
-    public abstract void unlockReplication();
+    public void unlockReplication();
 }

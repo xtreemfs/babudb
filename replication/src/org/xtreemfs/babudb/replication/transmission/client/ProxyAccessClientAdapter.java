@@ -5,7 +5,7 @@
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-package org.xtreemfs.babudb.replication.transmission;
+package org.xtreemfs.babudb.replication.transmission.client;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -20,9 +20,9 @@ import org.xtreemfs.babudb.pbrpc.GlobalTypes.Databases;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap;
 import org.xtreemfs.babudb.pbrpc.RemoteAccessServiceClient;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
-import org.xtreemfs.babudb.replication.RemoteAccessClient;
+import org.xtreemfs.babudb.replication.proxy.ProxyAccessClient;
 import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture;
-import org.xtreemfs.babudb.replication.transmission.PBRPCClientAdapter.ErrorCodeException;
+import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter.ErrorCodeException;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.pbrpc.client.RPCNIOSocketClient;
@@ -37,10 +37,10 @@ import static org.xtreemfs.babudb.replication.transmission.TransmissionLayer.*;
  * @author flangner
  * @since 01/19/2011
  */
-public class RemoteClientAdapter extends RemoteAccessServiceClient 
-    implements RemoteAccessClient {
+public class ProxyAccessClientAdapter extends RemoteAccessServiceClient 
+    implements ProxyAccessClient {
 
-    public RemoteClientAdapter(RPCNIOSocketClient client) {
+    public ProxyAccessClientAdapter(RPCNIOSocketClient client) {
         super(client, null);
     }
 

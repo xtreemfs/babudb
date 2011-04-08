@@ -27,7 +27,7 @@ import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture;
 import org.xtreemfs.babudb.replication.service.clients.MasterClient;
 import org.xtreemfs.babudb.replication.transmission.ErrorCode;
 import org.xtreemfs.babudb.replication.transmission.FileIOInterface;
-import org.xtreemfs.babudb.replication.transmission.PBRPCClientAdapter.ErrorCodeException;
+import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter.ErrorCodeException;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;

@@ -8,7 +8,7 @@
 /*
  * AUTHORS: Felix Langner (ZIB)
  */
-package org.xtreemfs.babudb.replication;
+package org.xtreemfs.babudb.replication.proxy;
 
 import java.net.InetSocketAddress;
 import java.util.Map;
@@ -28,7 +28,7 @@ import org.xtreemfs.foundation.buffer.ReusableBuffer;
  * @author flangner
  * @since 01/19/2011
  */
-public interface RemoteAccessClient {
+public interface ProxyAccessClient {
     
     /**
      * RPC for delegating the duties of {@link PersistenceManager} to a remote
