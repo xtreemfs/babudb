@@ -9,7 +9,7 @@ package org.xtreemfs.babudb.replication.service.clients;
 
 import java.io.IOException;
 
-import org.xtreemfs.babudb.replication.transmission.PBRPCClientAdapter.ErrorCodeException;
+import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter.ErrorCodeException;
 import org.xtreemfs.foundation.pbrpc.client.RPCResponse;
 import org.xtreemfs.foundation.pbrpc.client.RPCResponseAvailableListener;
 

@@ -27,11 +27,11 @@ import org.xtreemfs.babudb.mock.RequestHandlerMock;
 import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage;
-import org.xtreemfs.babudb.replication.RemoteAccessClient;
+import org.xtreemfs.babudb.replication.proxy.ProxyAccessClient;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates;
-import org.xtreemfs.babudb.replication.transmission.ClientFactory;
-import org.xtreemfs.babudb.replication.transmission.PBRPCClientAdapter;
+import org.xtreemfs.babudb.replication.transmission.client.ClientFactory;
+import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestDispatcher;
@@ -45,12 +45,7 @@ import com.google.protobuf.Message;
 
 import static junit.framework.Assert.assertEquals;
 import static org.junit.Assert.*;
-import static org.xtreemfs.babudb.replication.TestParameters.CON_TIMEOUT;
-import static org.xtreemfs.babudb.replication.TestParameters.MAX_Q;
-import static org.xtreemfs.babudb.replication.TestParameters.RQ_TIMEOUT;
-import static org.xtreemfs.babudb.replication.TestParameters.TIMESYNC_GLOBAL;
-import static org.xtreemfs.babudb.replication.TestParameters.TIMESYNC_LOCAL;
-import static org.xtreemfs.babudb.replication.TestParameters.conf0;
+import static org.xtreemfs.babudb.replication.TestParameters.*;
 
 /**
  * Tests for the behavior of {@link HeartbeatThread}.
@@ -62,8 +57,6 @@ import static org.xtreemfs.babudb.replication.TestParameters.conf0;
 public class HeartbeatTest implements LifeCycleListener {
 
     // test parameters
-    private final static int MAX_PARTICIPANTS = 20;
-    private final static int MIN_PARTICIPANTS = 1;
     private final static int BASIC_PORT = 12345;
     private final static long MAX_DELAY_BETWEEN_HBS_ALLOWED = 
         HeartbeatThread.MAX_DELAY_BETWEEN_HEARTBEATS + 200L;
@@ -157,14 +150,14 @@ public class HeartbeatTest implements LifeCycleListener {
         ParticipantsOverview states = new ParticipantsStates(0, participants, new ClientFactory() {
             
             @Override
-            public RemoteAccessClient getProxyClient() {
+            public ProxyAccessClient getProxyClient() {
                 fail("Generation of RemoteAccessClients is not supported by this test.");
                 return null;
             }
             
             @Override
-            public PBRPCClientAdapter getClient(InetSocketAddress receiver) {
-                return new PBRPCClientAdapter(client, receiver);
+            public ReplicationClientAdapter getClient(InetSocketAddress receiver) {
+                return new ReplicationClientAdapter(client, receiver);
             }
         });
         

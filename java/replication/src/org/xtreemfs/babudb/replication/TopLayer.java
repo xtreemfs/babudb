@@ -8,7 +8,7 @@
 package org.xtreemfs.babudb.replication;
 
 import org.xtreemfs.babudb.api.BabuDB;
-import org.xtreemfs.babudb.replication.control.ControlToBabuDBInterface;
+import org.xtreemfs.babudb.replication.control.ControlLayerInterface;
 
 /**
  * Interface for {@link BabuDB} controlling the replication mechanism.
@@ -16,4 +16,4 @@ import org.xtreemfs.babudb.replication.control.ControlToBabuDBInterface;
  * @author flangner
  * @since 04/15/2010
  */
-public abstract class TopLayer extends Layer implements ControlToBabuDBInterface {}
+public abstract class TopLayer extends Layer implements ControlLayerInterface {}

@@ -12,9 +12,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
-import org.xtreemfs.babudb.replication.FleaseMessageReceiver;
-import org.xtreemfs.babudb.replication.TopLayer;
-import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates;
+import org.xtreemfs.babudb.replication.control.ControlLayerInterface;
+import org.xtreemfs.babudb.replication.service.accounting.StatesManipulation;
 import org.xtreemfs.babudb.replication.service.operations.ChunkOperation;
 import org.xtreemfs.babudb.replication.service.operations.FleaseOperation;
 import org.xtreemfs.babudb.replication.service.operations.HeartbeatOperation;
@@ -37,20 +36,19 @@ import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestHandler;
  */
 public class ReplicationRequestHandler extends RequestHandler {
     
-    public <T extends TopLayer & FleaseMessageReceiver> ReplicationRequestHandler(
-            ParticipantsStates pStates, T fleaseReceiver, BabuDBInterface babuDBI,
-            ReplicationStage replStage, AtomicReference<LSN> lastOnView, int maxChunkSize, 
-            FileIOInterface fileIO, int maxQ) {
+    public ReplicationRequestHandler(StatesManipulation pStates, 
+            ControlLayerInterface ctrlLayer, BabuDBInterface babuDBI, RequestManagement reqMan, 
+            AtomicReference<LSN> lastOnView, int maxChunkSize, FileIOInterface fileIO, int maxQ) {
         
         super(maxQ);
         
         Operation op = new LocalTimeOperation();
         operations.put(op.getProcedureId(), op);
         
-        op = new FleaseOperation(fleaseReceiver);
+        op = new FleaseOperation(ctrlLayer);
         operations.put(op.getProcedureId(), op);
         
-        op = new StateOperation(babuDBI, fleaseReceiver);
+        op = new StateOperation(babuDBI, ctrlLayer);
         operations.put(op.getProcedureId(), op);
         
         op = new VolatileStateOperation(babuDBI);
@@ -59,10 +57,10 @@ public class ReplicationRequestHandler extends RequestHandler {
         op = new HeartbeatOperation(pStates);
         operations.put(op.getProcedureId(), op);
         
-        op = new SynchronizeOperation(replStage);
+        op = new SynchronizeOperation(reqMan);
         operations.put(op.getProcedureId(),op);
         
-        op = new ReplicateOperation(replStage);
+        op = new ReplicateOperation(reqMan);
         operations.put(op.getProcedureId(),op);
         
         op = new ReplicaOperation(lastOnView, babuDBI, fileIO);

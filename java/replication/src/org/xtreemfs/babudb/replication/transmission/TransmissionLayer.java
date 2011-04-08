@@ -15,8 +15,11 @@ import java.net.InetSocketAddress;
 
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.replication.Layer;
-import org.xtreemfs.babudb.replication.RemoteAccessClient;
 import org.xtreemfs.babudb.replication.ReplicationManager;
+import org.xtreemfs.babudb.replication.proxy.ProxyAccessClient;
+import org.xtreemfs.babudb.replication.transmission.client.ClientFactory;
+import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter;
+import org.xtreemfs.babudb.replication.transmission.client.ProxyAccessClientAdapter;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestDispatcher;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestHandler;
 import org.xtreemfs.foundation.LifeCycleListener;
@@ -96,17 +99,17 @@ public class TransmissionLayer extends Layer implements ClientFactory,
      *      java.net.InetSocketAddress)
      */
     @Override
-    public PBRPCClientAdapter getClient(InetSocketAddress receiver) {
+    public ReplicationClientAdapter getClient(InetSocketAddress receiver) {
         
-        return new PBRPCClientAdapter(rpcClient, receiver);
+        return new ReplicationClientAdapter(rpcClient, receiver);
     }
     
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.transmission.ClientFactory#getProxyClient()
      */
     @Override
-    public RemoteAccessClient getProxyClient() {
-        return new RemoteClientAdapter(rpcClient);
+    public ProxyAccessClient getProxyClient() {
+        return new ProxyAccessClientAdapter(rpcClient);
     }
     
     /*

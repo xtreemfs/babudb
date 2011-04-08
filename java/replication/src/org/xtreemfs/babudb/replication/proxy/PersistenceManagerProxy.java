@@ -24,7 +24,6 @@ import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.replication.LockableService;
-import org.xtreemfs.babudb.replication.RemoteAccessClient;
 import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.replication.policy.Policy;
 import org.xtreemfs.babudb.replication.service.accounting.ReplicateResponse;
@@ -46,13 +45,13 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
     private final ReplicationManager            replMan;
     private final PersistenceManagerInternal    localPersMan;
     private final Policy                        replicationPolicy;
-    private final RemoteAccessClient            client;
+    private final ProxyAccessClient            client;
     private final AtomicInteger                 accessCounter = new AtomicInteger(0);
     private boolean                             locked = true;
     
     public PersistenceManagerProxy(ReplicationManager replMan, 
             PersistenceManagerInternal localPersMan, Policy replicationPolicy, 
-            RemoteAccessClient client) {
+            ProxyAccessClient client) {
         
         this.client = client;
         this.replicationPolicy = replicationPolicy;

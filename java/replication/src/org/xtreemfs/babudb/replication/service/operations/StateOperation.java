@@ -10,7 +10,7 @@ package org.xtreemfs.babudb.replication.service.operations;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.LSN;
 import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
-import org.xtreemfs.babudb.replication.TopLayer;
+import org.xtreemfs.babudb.replication.control.ControlLayerInterface;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
 import org.xtreemfs.foundation.logging.Logging;
@@ -28,10 +28,10 @@ import com.google.protobuf.Message;
 
 public class StateOperation extends Operation {
     
-    private final BabuDBInterface dbInterface;
-    private final TopLayer        topLayer;
+    private final BabuDBInterface               dbInterface;
+    private final ControlLayerInterface         topLayer;
     
-    public StateOperation(BabuDBInterface dbInterface, TopLayer topLayer) {
+    public StateOperation(BabuDBInterface dbInterface, ControlLayerInterface topLayer) {
         this.dbInterface = dbInterface;
         this.topLayer = topLayer;
     }

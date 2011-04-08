@@ -17,12 +17,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
-import org.xtreemfs.babudb.replication.FleaseMessageReceiver;
 import org.xtreemfs.babudb.replication.LockableService;
 import org.xtreemfs.babudb.replication.TopLayer;
-import org.xtreemfs.babudb.replication.control.TimeDriftDetector.TimeDriftListener;
 import org.xtreemfs.babudb.replication.service.ServiceToControlInterface;
-import org.xtreemfs.babudb.replication.transmission.RequestControl;
+import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestControl;
 import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.LifeCycleThread;
 import org.xtreemfs.foundation.buffer.ASCIIString;
@@ -38,8 +36,7 @@ import org.xtreemfs.foundation.logging.Logging;
  * @author flangner
  * @since 02/24/2010
  */
-public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseMessageReceiver, 
-        FleaseEventListener {
+public class ControlLayer extends TopLayer {
     
     /** designation of the flease-cell */
     private final static ASCIIString        REPLICATION_CELL = new ASCIIString("replication");
@@ -151,7 +148,7 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.control.ControlToBabuDBInterface#notifySuccessfulFailover(java.net.InetSocketAddress)
+     * @see org.xtreemfs.babudb.replication.control.ControlLayerInterface#notifySuccessfulFailover(java.net.InetSocketAddress)
      */
     @Override
     public void notifyForSuccessfulFailover(InetSocketAddress master) {
@@ -161,7 +158,7 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.control.ControlToBabuDBInterface#getLeaseHolder()
+     * @see org.xtreemfs.babudb.replication.control.ControlLayerInterface#getLeaseHolder()
      */
     @Override
     public InetSocketAddress getLeaseHolder() {
@@ -169,7 +166,7 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.control.ControlToBabuDBInterface#isItMe(
+     * @see org.xtreemfs.babudb.replication.control.ControlLayerInterface#isItMe(
      *          java.net.InetSocketAddress)
      */
     @Override
@@ -269,12 +266,12 @@ public class ControlLayer extends TopLayer implements TimeDriftListener, FleaseM
      *          org.xtreemfs.babudb.replication.LockableService)
      */
     @Override
-    public void registerReplicationInterface(LockableService service) {
+    public void registerReplicationControl(LockableService service) {
         replicationInterface = service;
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.control.ControlToBabuDBInterface#registerProxyRequestControl(org.xtreemfs.babudb.replication.transmission.RequestControl)
+     * @see org.xtreemfs.babudb.replication.control.ControlLayerInterface#registerProxyRequestControl(org.xtreemfs.babudb.replication.transmission.RequestControl)
      */
     @Override
     public void registerProxyRequestControl(RequestControl control) {

@@ -5,7 +5,7 @@
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-package org.xtreemfs.babudb.replication.transmission;
+package org.xtreemfs.babudb.replication.transmission.dispatcher;
 
 /**
  * Methods to control they way how requests will be handled on arrival.

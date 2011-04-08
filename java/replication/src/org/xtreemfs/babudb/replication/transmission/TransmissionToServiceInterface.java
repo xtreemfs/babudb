@@ -11,6 +11,7 @@
 package org.xtreemfs.babudb.replication.transmission;
 
 import org.xtreemfs.babudb.replication.service.ServiceLayer;
+import org.xtreemfs.babudb.replication.transmission.client.ClientFactory;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestHandler;
 
 /**

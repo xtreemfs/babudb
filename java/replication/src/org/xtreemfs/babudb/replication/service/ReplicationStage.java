@@ -26,7 +26,7 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.LockableService;
 import org.xtreemfs.babudb.replication.ReplicationManager;
-import org.xtreemfs.babudb.replication.TopLayer;
+import org.xtreemfs.babudb.replication.control.ControlLayerInterface;
 import org.xtreemfs.babudb.replication.service.logic.BasicLogic;
 import org.xtreemfs.babudb.replication.service.logic.LoadLogic;
 import org.xtreemfs.babudb.replication.service.logic.Logic;
@@ -89,7 +89,7 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
     /** interface to {@link BabuDB} internals */
     private final BabuDBInterface               babudb;
     
-    private TopLayer                            topLayer;
+    private ControlLayerInterface            topLayer;
     
     /**
      * @param lastOnView
@@ -135,7 +135,7 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
      * 
      * @param topLayer
      */
-    public synchronized void start(TopLayer topLayer) {
+    public synchronized void start(ControlLayerInterface topLayer) {
         this.topLayer = topLayer;
         super.start();
     }

@@ -21,6 +21,8 @@ public final class TestParameters {
     
     private TestParameters() { }
     
+    public final static int MAX_PARTICIPANTS    = 20;
+    public final static int MIN_PARTICIPANTS    = 1;
     public final static int MAX_Q               = 100;
     public final static int RQ_TIMEOUT          = ReplicationConfig.REQUEST_TIMEOUT;
     public final static int CON_TIMEOUT         = ReplicationConfig.CONNECTION_TIMEOUT;

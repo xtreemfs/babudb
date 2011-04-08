@@ -26,8 +26,8 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.service.HeartbeatThread;
 import org.xtreemfs.babudb.replication.service.clients.ConditionClient;
 import org.xtreemfs.babudb.replication.service.clients.SlaveClient;
-import org.xtreemfs.babudb.replication.transmission.ClientFactory;
-import org.xtreemfs.babudb.replication.transmission.PBRPCClientAdapter;
+import org.xtreemfs.babudb.replication.transmission.client.ClientFactory;
+import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter;
 import org.xtreemfs.foundation.TimeSync;
 import org.xtreemfs.foundation.logging.Logging;
 
@@ -56,14 +56,14 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
         boolean dead;
         LSN lastAcknowledged;
         int openRequests;
-        final PBRPCClientAdapter client;
+        final ReplicationClientAdapter client;
         
         /**
          * initial state
          * 
          * @param client
          */
-        State(PBRPCClientAdapter client) {
+        State(ReplicationClientAdapter client) {
             this.client = client;
             reset();
         }
