@@ -11,7 +11,6 @@ package org.xtreemfs.babudb.log;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -53,10 +52,11 @@ public class DiskLoggerTest extends TestCase {
     }
     
     @Before
-    public void setUp() throws IOException {
+    public void setUp() throws Exception {
         FSUtils.delTree(new File(testdir));
         l = new DiskLogger(testdir, 1, 1, SyncMode.FSYNC, 0, 0);
         l.start();
+        l.waitForStartup();
     }
     
     @After

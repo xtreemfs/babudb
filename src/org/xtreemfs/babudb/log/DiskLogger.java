@@ -17,7 +17,6 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
@@ -26,6 +25,7 @@ import java.util.zip.CRC32;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.foundation.LifeCycleThread;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
@@ -34,7 +34,7 @@ import org.xtreemfs.foundation.logging.Logging;
  * Writes entries to the on disc operations log and syncs after blocks of MAX_ENTRIES_PER_BLOCK.
  * @author bjko
  */
-public class DiskLogger extends Thread {
+public class DiskLogger extends LifeCycleThread {
 
     /**
      * how to write log entries to disk
@@ -85,12 +85,7 @@ public class DiskLogger extends Thread {
     /**
      * If set to true the thread will shutdown.
      */
-    private transient boolean quit;
-
-    /**
-     * If set to true the DiskLogger is down
-     */
-    private AtomicBoolean down;
+    private boolean quit;
 
     /**
      * LogFile name
@@ -136,7 +131,7 @@ public class DiskLogger extends Thread {
     public DiskLogger(String logfileDir, int viewId, long nextLSN, SyncMode syncMode,
             int pseudoSyncWait, int maxQ) throws FileNotFoundException, IOException {
 
-        super("DiskLogger thr.");
+        super("DiskLogger");
         
         if (logfileDir == null) {
             throw new RuntimeException("expected a non-null logfile directory name!");
@@ -182,9 +177,6 @@ public class DiskLogger extends Thread {
         else
             entries = new LinkedBlockingQueue<LogEntry>();
         
-        quit = false;
-        this.down = new AtomicBoolean(false);
-
         sync = new ReentrantLock();
 
         //final String sMode = (pseudoSyncWait == 0) ? "synchronous" : "asynchronous";
@@ -216,16 +208,14 @@ public class DiskLogger extends Thread {
      * @param entry to write
      * @throws InterruptedException if the entry could not be 
      */
-    public void append(LogEntry entry) throws InterruptedException {
+    public synchronized void append(LogEntry entry) throws InterruptedException {
         assert (entry != null);
         
-        synchronized (down) {
-            if (!down.get()) {
-                entries.put(entry);
-            } else {
-                throw new InterruptedException("Appending the LogEntry to the DiskLogger's " +
-                		"queue was interrupted, due DiskLogger shutdown.");
-            }
+        if (!quit) {
+            entries.put(entry);
+        } else {
+            throw new InterruptedException("Appending the LogEntry to the DiskLogger's " +
+            		"queue was interrupted, due DiskLogger shutdown.");
         }
     }
 
@@ -280,21 +270,31 @@ public class DiskLogger extends Thread {
         
         return lastSyncedLSN;
     }
+    
+    /* (non-Javadoc)
+     * @see java.lang.Thread#start()
+     */
+    @Override
+    public synchronized void start() {
+        quit = false;
+        super.start();
+    }
 
     /**
      * Main loop.
      */
     public void run() {
-
         ArrayList<LogEntry> tmpE = new ArrayList<LogEntry>(MAX_ENTRIES_PER_BLOCK);
                 
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "operational");
 
         CRC32 csumAlgo = new CRC32();
 
-        down.set(false);
+        notifyStarted();
+        
         while (!quit) {
             try {
+                
                 // wait for an entry
                 tmpE.add(entries.take());
                 sync.lockInterruptibly();
@@ -343,15 +343,18 @@ public class DiskLogger extends Thread {
                         le.getListener().synced(le); 
                     }  
                     tmpE.clear();
-                    
+
                     if (pseudoSyncWait > 0) {
-                        DiskLogger.sleep(pseudoSyncWait);
+                        synchronized (this) {
+                            wait(pseudoSyncWait);
+                        }
                     }
                 } finally {
                     sync.unlock();
                 }
                 
             } catch (IOException ex) {
+                
                 Logging.logError(Logging.LEVEL_ERROR, this, ex);
                 
                 for (LogEntry le : tmpE) {
@@ -359,32 +362,30 @@ public class DiskLogger extends Thread {
                 }
                 tmpE.clear();
             } catch (InterruptedException ex) {
-                /* ignored */
+                if (!quit) {
+                    notifyCrashed(ex);
+                    return;
+                }
             }
         }
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "disk logger shut down successfully");
-        synchronized (down) {
-            down.set(true);
-            down.notifyAll();
-        }
+        Logging.logMessage(Logging.LEVEL_INFO, this, "disk logger shut down successfully");
+        notifyStopped();
     }
 
     /**
      * stops this thread
      */
-    public void shutdown() {
+    public synchronized void shutdown() {
         quit = true;
-        synchronized (this) {
-            this.interrupt();
-        }
+        interrupt();
     }
     
     public void waitForShutdown() throws InterruptedException {
-        synchronized (down) {
-            if (!down.get()) {
-                down.wait();
-            }
-            
+        try {
+            super.waitForShutdown();
+        } catch (Exception e) {
+            throw new InterruptedException(e.getMessage());
+        } finally {
             destroy();
         }
     }
@@ -417,10 +418,6 @@ public class DiskLogger extends Thread {
             }
         }
     }
-
-    public int getQLength() {
-        return this.entries.size();
-    }
     
     /**
      * <p>Function is used by the Replication.</p>
@@ -429,14 +426,5 @@ public class DiskLogger extends Thread {
      */
     public LSN getLatestLSN(){
         return new LSN(this.currentViewId.get(),this.nextLogSequenceNo.get()-1L);
-    }
-    
-    /**
-     * <p>Function is used by the Replication.</p>
-     * 
-     * @return the actual logFile.
-     */
-    public String getLatestLogFileName(){
-        return currentLogFileName;
     }
 }
