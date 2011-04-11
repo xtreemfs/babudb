@@ -47,9 +47,7 @@ public class Main extends PluginMain {
         
         // replay the backup, if available
         try {
-            babuDB.stop();
             new FileIO(configuration).replayBackupFiles();
-            babuDB.restart();
         } catch (IOException io) {
             Logging.logMessage(Logging.LEVEL_ERROR, this, "Could not retrieve" +
             		" the slave backup files, because: ", io.getMessage());
