@@ -182,11 +182,13 @@ public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
         
         // set up and start the disk logger
         try {
-            this.logger = new DiskLogger(configuration.getDbLogDir(), nextLSN.getViewId(), nextLSN
+            logger = new DiskLogger(configuration.getDbLogDir(), nextLSN.getViewId(), nextLSN
                     .getSequenceNo(), configuration.getSyncMode(), configuration.getPseudoSyncWait(),
                 configuration.getMaxQueueLength() * Math.max(1, configuration.getNumThreads()));
-            this.logger.start();
-        } catch (IOException ex) {
+            logger.setLifeCycleListener(this);
+            logger.start();
+            logger.waitForStartup();
+        } catch (Exception ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot start database operations logger", ex);
         }
         this.permMan.init(new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo() - 1L));
@@ -317,8 +319,10 @@ public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
                 logger = new DiskLogger(configuration.getDbLogDir(), nextLSN.getViewId(), nextLSN
                         .getSequenceNo(), configuration.getSyncMode(), configuration.getPseudoSyncWait(),
                     configuration.getMaxQueueLength() * configuration.getNumThreads());
+                logger.setLifeCycleListener(this);
                 logger.start();
-            } catch (IOException ex) {
+                logger.waitForStartup();
+            } catch (Exception ex) {
                 throw new BabuDBException(ErrorCode.IO_ERROR,
                     "Cannot start " + "database operations logger!", ex);
             }
@@ -401,6 +405,7 @@ public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
             }
             
         } catch (InterruptedException ex) {
+            /* ignored */
         }
         Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB shutdown complete.");
     }
