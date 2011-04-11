@@ -16,6 +16,7 @@ import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
 import org.xtreemfs.babudb.replication.service.RequestManagement;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
+import org.xtreemfs.foundation.logging.Logging;
 
 import com.google.protobuf.Message;
 
@@ -69,6 +70,9 @@ public class SynchronizeOperation extends Operation {
             
         InetSocketAddress participant = new InetSocketAddress(
                 rq.getSenderAddress().getAddress(), message.getPort());
+        
+        Logging.logMessage(Logging.LEVEL_INFO, this, "SynchronizeOperation:  received %s by %s", 
+                lsn.toString(), participant.toString());
         
         rqMan.createStableState(lsn, participant);
         

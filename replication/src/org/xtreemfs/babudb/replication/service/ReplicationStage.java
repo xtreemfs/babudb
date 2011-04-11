@@ -68,7 +68,7 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
     private final BlockingQueue<StageRequest>   q;
         
     /** set to true if stage should shut down */
-    private volatile boolean                    quit;
+    private boolean                             quit;
     
     /** used for load balancing */
     private final int                           MAX_Q;
@@ -111,7 +111,6 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
         this.pacemaker = pacemaker;
         this.q = new PriorityBlockingQueue<StageRequest>();
         this.MAX_Q = max_q;
-        this.quit = false;
         
         // ---------------------
         // initialize logic
@@ -137,6 +136,7 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
      */
     public synchronized void start(ControlLayerInterface topLayer) {
         this.topLayer = topLayer;
+        this.quit = false;
         super.start();
     }
     
@@ -144,8 +144,8 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
      * Shut the stage thread down.
      * Resets inner state.
      */
-    public void shutdown() {
-        if (quit!=true) {
+    public synchronized void shutdown() {
+        if (!quit) {
             quit = true;
             interrupt();
         }
@@ -153,7 +153,16 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
         logicID = BASIC;
         clearQueue();
     }
-
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.foundation.LifeCycleThread#waitForShutdown()
+     */
+    @Override
+    public void waitForShutdown() throws Exception {
+        super.waitForShutdown();
+        clearQueue();
+    }
+    
     /*
      * (non-Javadoc)
      * @see java.lang.Thread#run()
@@ -213,7 +222,6 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                 }
             } catch(InterruptedException ie) {
                 if (!quit){
-                    quit = true;
                     notifyCrashed(ie);
                     return;
                 }
@@ -315,8 +323,26 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
         
         // if slave already is in a stable DB state, unlock user operations immediately and return
         if (lastOnView.get().equals(lastLSNOnView)) {
-            topLayer.notifyForSuccessfulFailover(master);
-            topLayer.unlockUser();
+            
+            try {
+                
+                // only take a checkpoint if the master also did
+                if (lastLSNOnView.getSequenceNo() != 0L) {
+                    lastOnView.set(babudb.checkpoint());
+                    pacemaker.updateLSN(babudb.getState());
+                }
+                topLayer.notifyForSuccessfulFailover(master);
+                topLayer.unlockUser();
+            } catch (BabuDBException e) {
+                
+                
+                // taking the checkpoint was interrupted, the only reason for that is a 
+                // crash, or a shutdown. either way these symptoms are treated like a crash 
+                // of the replication manager.
+                assert (e.getErrorCode() == ErrorCode.INTERRUPTED);
+                
+                notifyCrashed(e);
+            }
             
         // otherwise establish a stable global DB state
         } else {
@@ -330,7 +356,9 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                 public void finished(Object result, Object context) {
                     try {
                         
+                        // always take a checkpoint
                         lastOnView.set(babudb.checkpoint());
+                        pacemaker.updateLSN(babudb.getState());
                         topLayer.notifyForSuccessfulFailover(master);
                         topLayer.unlockUser();
                         

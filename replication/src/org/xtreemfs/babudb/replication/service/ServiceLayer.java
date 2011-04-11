@@ -284,12 +284,16 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
             beforeCP = babuDB.checkpoint();
             lastOnView.set(beforeCP);
         }
+        Logging.logMessage(Logging.LEVEL_INFO, this, 
+                "Agreed to synchronize to %s before the next view.", beforeCP.toString());
         
         // wait for the slaves to recognize the master-change and for at least N servers to 
         // establish a stable state
         LSN syncState = babuDB.getState();
         final ReplicateResponse result = new ReplicateResponse(syncState, listener,
                 slaves.size() - localSyncN);
+        
+        subscribeListener(result);
         
         for (ConditionClient slave : slaves) {
             slave.synchronize(beforeCP, port).registerListener(
@@ -305,10 +309,8 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
             });
         }
         
-        subscribeListener(result);
-                
-        Logging.logMessage(Logging.LEVEL_INFO, this, "Running in master-mode (%s)", 
-                syncState.toString());
+        Logging.logMessage(Logging.LEVEL_INFO, this, 
+                "The next view will start with %s.", syncState.toString());
     }
   
     /*
