@@ -21,6 +21,7 @@ import org.junit.Test;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.mock.BabuDBMock;
+import org.xtreemfs.babudb.mock.StatesManipulationMock;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.LockableService;
 import org.xtreemfs.babudb.replication.LockableService.ServiceLockedException;
@@ -29,10 +30,9 @@ import org.xtreemfs.babudb.replication.service.ReplicationRequestHandler;
 import org.xtreemfs.babudb.replication.service.RequestManagement;
 import org.xtreemfs.babudb.replication.service.StageRequest;
 import org.xtreemfs.babudb.replication.service.ReplicationStage.BusyServerException;
-import org.xtreemfs.babudb.replication.service.accounting.StatesManipulation;
-import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates.UnknownParticipantException;
 import org.xtreemfs.babudb.replication.service.clients.SlaveClient;
 import org.xtreemfs.babudb.replication.transmission.FileIO;
+import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestControl;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestDispatcher;
 import org.xtreemfs.foundation.LifeCycleListener;
@@ -43,16 +43,17 @@ import org.xtreemfs.foundation.logging.Logging.Category;
 import org.xtreemfs.foundation.pbrpc.client.RPCNIOSocketClient;
 
 /**
- * Test of the operation logic for replication requests.
+ * Test of the operation logic for slave replication requests.
  * 
  * @author flangner
  * @since 04/08/2011
  */
-public class ReplicationOperationsTest implements LifeCycleListener {
+public class SlaveReplicationOperationsTest implements LifeCycleListener {
     
-    private static ReplicationConfig config;
-    private RequestDispatcher dispatcher;
-    private RPCNIOSocketClient client;
+    private static ReplicationConfig    config;
+    private static RPCNIOSocketClient   rpcClient;
+    private SlaveClient                 client;
+    private RequestDispatcher           dispatcher;
     
     // test data
     private final AtomicReference<LSN> lastOnView = new AtomicReference<LSN>(new LSN(1,1L));
@@ -66,6 +67,10 @@ public class ReplicationOperationsTest implements LifeCycleListener {
         TimeSync.initializeLocal(TIMESYNC_GLOBAL, TIMESYNC_LOCAL);
         
         config = new ReplicationConfig("config/replication_server0.test", conf0);
+        
+        rpcClient = new RPCNIOSocketClient(config.getSSLOptions(), RQ_TIMEOUT, CON_TIMEOUT);
+        rpcClient.start();
+        rpcClient.waitForStartup();
     }
 
     /**
@@ -73,6 +78,9 @@ public class ReplicationOperationsTest implements LifeCycleListener {
      */
     @AfterClass
     public static void tearDownAfterClass() throws Exception {
+        rpcClient.shutdown();
+        rpcClient.waitForShutdown();
+        
         TimeSync ts = TimeSync.getInstance();
         ts.shutdown();
         ts.waitForShutdown();
@@ -84,112 +92,82 @@ public class ReplicationOperationsTest implements LifeCycleListener {
     @Before
     public void setUp() throws Exception {
         
-        client = new RPCNIOSocketClient(config.getSSLOptions(), RQ_TIMEOUT, CON_TIMEOUT);
-        client.start();
-        client.waitForStartup();
+        client = new ReplicationClientAdapter(rpcClient, config.getInetSocketAddress());
         
         dispatcher = new RequestDispatcher(config);
         dispatcher.setLifeCycleListener(this);
         dispatcher.addHandler(
-                new ReplicationRequestHandler(new StatesManipulation() {
-                    
-                    @Override
-                    public void update(InetSocketAddress participant, LSN acknowledgedLSN, long receiveTime)
-                            throws UnknownParticipantException {
-                        // TODO Auto-generated method stub
-                        
-                    }
-                    
-                    @Override
-                    public void requestFinished(SlaveClient slave) {
-                        // TODO Auto-generated method stub
-                        
-                    }
-                    
-                    @Override
-                    public void markAsDead(SlaveClient slave) {
-                        // TODO Auto-generated method stub
-                        
-                    }
-                }, new ControlLayerInterface() {
+                new ReplicationRequestHandler(
+                        new StatesManipulationMock(config.getInetSocketAddress()), 
+                        new ControlLayerInterface() {
                     
                     @Override
                     public void updateLeaseHolder(InetSocketAddress leaseholder) throws Exception {
-                        // TODO Auto-generated method stub
-                        
+                        fail("Operation should not have been accessed by this test!");
                     }
                     
                     @Override
                     public void receive(FleaseMessage message) {
-                        // TODO Auto-generated method stub
+                        fail("Operation should not have been accessed by this test!");
                         
                     }
                     
                     @Override
                     public void driftDetected() {
-                        // TODO Auto-generated method stub
-                        
+                        fail("Operation should not have been accessed by this test!");
                     }
                     
                     @Override
                     public void unlockUser() {
-                        // TODO Auto-generated method stub
-                        
+                        fail("Operation should not have been accessed by this test!");
                     }
                     
                     @Override
                     public void unlockReplication() {
-                        // TODO Auto-generated method stub
-                        
+                        fail("Operation should not have been accessed by this test!");
                     }
                     
                     @Override
                     public void registerUserInterface(LockableService service) {
-                        // TODO Auto-generated method stub
-                        
+                        fail("Operation should not have been accessed by this test!");
                     }
                     
                     @Override
                     public void registerReplicationControl(LockableService service) {
-                        // TODO Auto-generated method stub
-                        
+                        fail("Operation should not have been accessed by this test!");
                     }
                     
                     @Override
                     public void registerProxyRequestControl(RequestControl control) {
-                        // TODO Auto-generated method stub
-                        
+                        fail("Operation should not have been accessed by this test!");
                     }
                     
                     @Override
                     public void notifyForSuccessfulFailover(InetSocketAddress master) {
-                        // TODO Auto-generated method stub
-                        
+                        fail("Operation should not have been accessed by this test!");
                     }
                     
                     @Override
                     public void lockAll() throws InterruptedException {
-                        // TODO Auto-generated method stub
-                        
+                        fail("Operation should not have been accessed by this test!");
                     }
                     
                     @Override
                     public boolean isItMe(InetSocketAddress address) {
-                        // TODO Auto-generated method stub
+                        fail("Operation should not have been accessed by this test!");
                         return false;
                     }
                     
                     @Override
                     public InetSocketAddress getLeaseHolder() {
-                        // TODO Auto-generated method stub
+                        fail("Operation should not have been accessed by this test!");
                         return null;
                     }
                 }, new BabuDBInterface(new BabuDBMock("BabuDBMock", conf0)), new RequestManagement() {
                     
                     @Override
                     public void finalizeRequest(StageRequest op) {
-                        // TODO Auto-generated method stub
-                        
+                        fail("Operation should not have been accessed by this test!");
                     }
                     
                     @Override
@@ -200,8 +178,7 @@ public class ReplicationOperationsTest implements LifeCycleListener {
                     
                     @Override
                     public void createStableState(LSN lastOnView, InetSocketAddress master) {
-                        // TODO Auto-generated method stub
-                        
+                        fail("Operation should not have been accessed by this test!");
                     }
                 }, lastOnView, config.getChunkSize(), new FileIO(config), MAX_Q));
     }
@@ -211,26 +188,16 @@ public class ReplicationOperationsTest implements LifeCycleListener {
      */
     @After
     public void tearDown() throws Exception {
-        client.shutdown();
-        client.waitForShutdown();
-        
         dispatcher.shutdown();
         dispatcher.waitForShutdown();
     }
 
-    /**
-     * Test method for {@link org.xtreemfs.babudb.replication.service.operations.LocalTimeOperation#processRequest(org.xtreemfs.babudb.replication.transmission.dispatcher.Request)}.
+    /** 
+     * @throws Exception
      */
     @Test
-    public void testProcessRequest() {
-        fail("Not yet implemented");
-    }
-
-    /**
-     * Test method for {@link org.xtreemfs.babudb.replication.transmission.dispatcher.Operation#parseRPCMessage(org.xtreemfs.babudb.replication.transmission.dispatcher.Request)}.
-     */
-    @Test
-    public void testParseRPCMessage() {
+    public void testReplicateRequest() throws Exception {
+        // TODO
         fail("Not yet implemented");
     }
 
