@@ -23,10 +23,15 @@ import org.xtreemfs.babudb.replication.service.clients.ConditionClient;
 public interface ParticipantsOverview {
 
     /**
-     * @return a list of all available {@link ConditionClient}s 
-     *         descending sorted by the last acknowledged LSN of their servers.
+     * @return a list of all {@link ConditionClient}s descending sorted by the last acknowledged 
+     *         LSN of their services.
      */
     public List<ConditionClient> getConditionClients();
+    
+    /**
+     * @return a list of all available {@link ConditionClient}s marked as alive.
+     */
+    public List<ConditionClient> getSafeConditionClients();
 
     /**
      * @param address

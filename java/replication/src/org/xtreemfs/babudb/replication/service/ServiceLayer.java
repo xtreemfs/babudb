@@ -378,8 +378,8 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         lastOnView.set(normalized);
                 
         try {
-            heartbeatThread.start(latest);
             replicationStage.start(topLayer);
+            heartbeatThread.start(latest);
             heartbeatThread.waitForStartup();
             replicationStage.waitForStartup();
         } catch (Exception e) {

@@ -129,7 +129,7 @@ public class BabuDBMock implements BabuDBInternal {
     @Override
     public PersistenceManagerInternal getPersistenceManager() {
 
-        Logging.logMessage(Logging.LEVEL_ERROR, this,
+        Logging.logMessage(Logging.LEVEL_INFO, this,
                 "Mock '%s' tried to access PerMan.", name);
         return perMan;
     }

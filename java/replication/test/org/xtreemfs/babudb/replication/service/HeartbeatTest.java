@@ -28,7 +28,6 @@ import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage;
 import org.xtreemfs.babudb.replication.proxy.ProxyAccessClient;
-import org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates;
 import org.xtreemfs.babudb.replication.transmission.client.ClientFactory;
 import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter;
@@ -147,7 +146,7 @@ public class HeartbeatTest implements LifeCycleListener {
             participants.add(new InetSocketAddress(BASIC_PORT + numOfParticipants));
         }
         participants.add(config.getInetSocketAddress());
-        ParticipantsOverview states = new ParticipantsStates(0, participants, new ClientFactory() {
+        ParticipantsStates states = new ParticipantsStates(0, participants, new ClientFactory() {
             
             @Override
             public ProxyAccessClient getProxyClient() {

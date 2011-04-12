@@ -11,6 +11,7 @@ import java.net.InetSocketAddress;
 
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates.UnknownParticipantException;
+import org.xtreemfs.babudb.replication.service.clients.ClientInterface;
 import org.xtreemfs.babudb.replication.service.clients.SlaveClient;
 
 /**
@@ -48,7 +49,7 @@ public interface StatesManipulation {
      * 
      * @param slave
      */
-    public void markAsDead(SlaveClient slave);
+    public void markAsDead(ClientInterface slave);
 
     /**
      * <p>Decrements the open requests for the slave.</p>

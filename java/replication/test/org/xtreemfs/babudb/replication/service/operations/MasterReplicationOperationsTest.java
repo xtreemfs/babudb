@@ -10,7 +10,11 @@ package org.xtreemfs.babudb.replication.service.operations;
 import static org.junit.Assert.*;
 import static org.xtreemfs.babudb.replication.TestParameters.*;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.net.InetSocketAddress;
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.After;
@@ -35,9 +39,14 @@ import org.xtreemfs.babudb.replication.transmission.FileIO;
 import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestControl;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestDispatcher;
+import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestHandler;
 import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.TimeSync;
+import org.xtreemfs.foundation.buffer.ASCIIString;
+import org.xtreemfs.foundation.buffer.BufferPool;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.flease.comm.FleaseMessage;
+import org.xtreemfs.foundation.flease.comm.FleaseMessage.MsgType;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.logging.Logging.Category;
 import org.xtreemfs.foundation.pbrpc.client.RPCNIOSocketClient;
@@ -56,14 +65,19 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
     private RequestDispatcher           dispatcher;
     
     // test data
-    private final AtomicReference<LSN> lastOnView = new AtomicReference<LSN>(new LSN(1,1L));
+    private final static Random                random = new Random();
+    private final static AtomicReference<LSN>  lastOnView = new AtomicReference<LSN>(new LSN(1,1L));
+    private final static String                testFileName = "TestFile";
+    private final static long                  maxTestFileSize = 4 * 1024;
+    private final static FleaseMessage         testMessage = 
+        new FleaseMessage(MsgType.MSG_ACCEPT_ACK);
     
     /**
      * @throws java.lang.Exception
      */
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
-        Logging.start(Logging.LEVEL_ERROR, Category.all);
+        Logging.start(Logging.LEVEL_DEBUG, Category.all);
         TimeSync.initializeLocal(TIMESYNC_GLOBAL, TIMESYNC_LOCAL);
         
         config = new ReplicationConfig("config/replication_server0.test", conf0);
@@ -71,6 +85,22 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
         rpcClient = new RPCNIOSocketClient(config.getSSLOptions(), RQ_TIMEOUT, CON_TIMEOUT);
         rpcClient.start();
         rpcClient.waitForStartup();
+        
+        // create testFile
+        FileOutputStream sOut = new FileOutputStream(testFileName);
+        
+        long size = 0L;
+        while (size < maxTestFileSize) {
+            sOut.write(random.nextInt());
+            size++;
+        }
+        sOut.flush();
+        sOut.close();
+        
+        // setup flease message
+        testMessage.setCellId(new ASCIIString("testCellId"));
+        testMessage.setLeaseHolder(new ASCIIString("testLeaseholder"));
+        testMessage.setLeaseTimeout(4711L);
     }
 
     /**
@@ -84,6 +114,10 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
         TimeSync ts = TimeSync.getInstance();
         ts.shutdown();
         ts.waitForShutdown();
+        
+        // delete testFile
+        File f = new File(testFileName);
+        if (!f.delete()) f.deleteOnExit();
     }
 
     /**
@@ -94,104 +128,95 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
         
         client = new ReplicationClientAdapter(rpcClient, config.getInetSocketAddress());
         
+        RequestHandler rqHandler = new ReplicationRequestHandler(
+                new StatesManipulationMock(config.getInetSocketAddress()), 
+                new ControlLayerInterface() {
+            
+            @Override
+            public void updateLeaseHolder(InetSocketAddress leaseholder) throws Exception {
+                fail("Operation should not have been accessed by this test!");
+            }
+            
+            @Override
+            public void receive(FleaseMessage message) {
+                fail("Operation should not have been accessed by this test!");
+            }
+            
+            @Override
+            public void driftDetected() {
+                fail("Operation should not have been accessed by this test!");
+            }
+            
+            @Override
+            public void unlockUser() {
+                fail("Operation should not have been accessed by this test!");
+            }
+            
+            @Override
+            public void unlockReplication() {
+                fail("Operation should not have been accessed by this test!");
+            }
+            
+            @Override
+            public void registerUserInterface(LockableService service) {
+                fail("Operation should not have been accessed by this test!");
+            }
+            
+            @Override
+            public void registerReplicationControl(LockableService service) {
+                fail("Operation should not have been accessed by this test!");
+            }
+            
+            @Override
+            public void registerProxyRequestControl(RequestControl control) {
+                fail("Operation should not have been accessed by this test!");
+            }
+            
+            @Override
+            public void notifyForSuccessfulFailover(InetSocketAddress master) {
+                fail("Operation should not have been accessed by this test!");
+            }
+            
+            @Override
+            public void lockAll() throws InterruptedException {
+                fail("Operation should not have been accessed by this test!");
+            }
+            
+            @Override
+            public boolean isItMe(InetSocketAddress address) {
+                fail("Operation should not have been accessed by this test!");
+                return false;
+            }
+            
+            @Override
+            public InetSocketAddress getLeaseHolder() {
+                fail("Operation should not have been accessed by this test!");
+                return null;
+            }
+        }, new BabuDBInterface(new BabuDBMock("BabuDBMock", conf0)), new RequestManagement() {
+            
+            @Override
+            public void finalizeRequest(StageRequest op) {
+                fail("Operation should not have been accessed by this test!");
+            }
+            
+            @Override
+            public void enqueueOperation(Object[] args) throws BusyServerException, ServiceLockedException {
+                fail("Operation should not have been accessed by this test!");
+            }
+            
+            @Override
+            public void createStableState(LSN lastOnView, InetSocketAddress master) {
+                fail("Operation should not have been accessed by this test!");
+                
+            }
+        }, lastOnView, config.getChunkSize(), new FileIO(config), MAX_Q);
+        
         dispatcher = new RequestDispatcher(config);
         dispatcher.setLifeCycleListener(this);
-        dispatcher.addHandler(
-                new ReplicationRequestHandler(
-                        new StatesManipulationMock(config.getInetSocketAddress()), 
-                        new ControlLayerInterface() {
-                    
-                    @Override
-                    public void updateLeaseHolder(InetSocketAddress leaseholder) throws Exception {
-                        // TODO Auto-generated method stub
-                        
-                    }
-                    
-                    @Override
-                    public void receive(FleaseMessage message) {
-                        // TODO Auto-generated method stub
-                        
-                    }
-                    
-                    @Override
-                    public void driftDetected() {
-                        // TODO Auto-generated method stub
-                        
-                    }
-                    
-                    @Override
-                    public void unlockUser() {
-                        // TODO Auto-generated method stub
-                        
-                    }
-                    
-                    @Override
-                    public void unlockReplication() {
-                        // TODO Auto-generated method stub
-                        
-                    }
-                    
-                    @Override
-                    public void registerUserInterface(LockableService service) {
-                        // TODO Auto-generated method stub
-                        
-                    }
-                    
-                    @Override
-                    public void registerReplicationControl(LockableService service) {
-                        // TODO Auto-generated method stub
-                        
-                    }
-                    
-                    @Override
-                    public void registerProxyRequestControl(RequestControl control) {
-                        // TODO Auto-generated method stub
-                        
-                    }
-                    
-                    @Override
-                    public void notifyForSuccessfulFailover(InetSocketAddress master) {
-                        // TODO Auto-generated method stub
-                        
-                    }
-                    
-                    @Override
-                    public void lockAll() throws InterruptedException {
-                        // TODO Auto-generated method stub
-                        
-                    }
-                    
-                    @Override
-                    public boolean isItMe(InetSocketAddress address) {
-                        // TODO Auto-generated method stub
-                        return false;
-                    }
-                    
-                    @Override
-                    public InetSocketAddress getLeaseHolder() {
-                        // TODO Auto-generated method stub
-                        return null;
-                    }
-                }, new BabuDBInterface(new BabuDBMock("BabuDBMock", conf0)), new RequestManagement() {
-                    
-                    @Override
-                    public void finalizeRequest(StageRequest op) {
-                        // TODO Auto-generated method stub
-                        
-                    }
-                    
-                    @Override
-                    public void enqueueOperation(Object[] args) throws BusyServerException, ServiceLockedException {
-                        // TODO Auto-generated method stub
-                        
-                    }
-                    
-                    @Override
-                    public void createStableState(LSN lastOnView, InetSocketAddress master) {
-                        // TODO Auto-generated method stub
-                        
-                    }
-                }, lastOnView, config.getChunkSize(), new FileIO(config), MAX_Q));
+        dispatcher.addHandler(rqHandler);
+        dispatcher.start();
+        dispatcher.waitForStartup();
     }
 
     /**
@@ -202,13 +227,105 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
         dispatcher.shutdown();
         dispatcher.waitForShutdown();
     }
-
+    
     /** 
      * @throws Exception
      */
     @Test
-    public void testProcessRequest() throws Exception {
+    public void testChunkRequest() throws Exception {
+        
+        // test data
+        int minChunkSize = 512;
+        
+        int start = random.nextInt((int) (maxTestFileSize - minChunkSize));
+        int end = random.nextInt((int) (maxTestFileSize - minChunkSize - start)) 
+                        + minChunkSize + start;
+        ReusableBuffer result = client.chunk(testFileName, start, end).get();
+        assertEquals(end - start, result.remaining());
+        
+        byte[] testData = new byte[end - start];
+        FileInputStream sIn = new FileInputStream(testFileName);
+        sIn.skip(start);
+        sIn.read(testData, 0, end - start);
+        sIn.close();
+        
+        assertEquals(new String(testData), new String(result.array()));
+        
+        // clean up
+        BufferPool.free(result);
+    }
+    
+    /** 
+     * @throws Exception
+     */
+    @Test
+    public void testFleaseRequest() throws Exception {
+        
         // TODO
+        //client.flease(message);
+        fail("Not yet implemented");
+    }
+    
+    /** 
+     * @throws Exception
+     */
+    @Test
+    public void testHeartbeatRequest() throws Exception {
+//        client.heartbeat(lsn, localPort); TODO
+        fail("Not yet implemented");
+    }
+    
+    /** 
+     * @throws Exception
+     */
+    @Test
+    public void testLoadRequest() throws Exception {
+//        client.load(lsn); TODO
+        fail("Not yet implemented");
+    }
+    
+    /** 
+     * @throws Exception
+     */
+    @Test
+    public void testReplicaRequest() throws Exception {
+//        client.replica(start, end); TODO
+        fail("Not yet implemented");
+    }
+    
+    /** 
+     * @throws Exception
+     */
+    @Test
+    public void testStateRequest() throws Exception {
+//        client.state(); TODO
+        fail("Not yet implemented");
+    }
+    
+    /** 
+     * @throws Exception
+     */
+    @Test
+    public void testSynchronizeRequest() throws Exception {
+//        client.synchronize(lsn, localPort); TODO
+        fail("Not yet implemented");
+    }
+    
+    /** 
+     * @throws Exception
+     */
+    @Test
+    public void testTimeRequest() throws Exception {
+//        client.time(); TODO
+        fail("Not yet implemented");
+    }
+    
+    /** 
+     * @throws Exception
+     */
+    @Test
+    public void testVolatileStateRequest() throws Exception {
+//        client.volatileState().get(); TODO
         fail("Not yet implemented");
     }
 

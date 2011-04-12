@@ -12,6 +12,7 @@ import java.net.InetSocketAddress;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.service.accounting.StatesManipulation;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates.UnknownParticipantException;
+import org.xtreemfs.babudb.replication.service.clients.ClientInterface;
 import org.xtreemfs.babudb.replication.service.clients.SlaveClient;
 
 import static junit.framework.Assert.*;
@@ -44,10 +45,10 @@ public class StatesManipulationMock implements StatesManipulation {
 
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.service.accounting.StatesManipulation#
-     *          markAsDead(org.xtreemfs.babudb.replication.service.clients.SlaveClient)
+     *          markAsDead(org.xtreemfs.babudb.replication.service.clients.ClientInterface)
      */
     @Override
-    public void markAsDead(SlaveClient slave) {
+    public void markAsDead(ClientInterface slave) {
         assertEquals(participant, slave.getDefaultServerAddress());
     }
 

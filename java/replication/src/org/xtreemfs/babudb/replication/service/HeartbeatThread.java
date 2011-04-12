@@ -7,8 +7,10 @@
  */
 package org.xtreemfs.babudb.replication.service;
 
+import java.util.List;
+
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview;
+import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates;
 import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.ClientResponseAvailableListener;
 import org.xtreemfs.babudb.replication.service.clients.ConditionClient;
 import org.xtreemfs.foundation.LifeCycleThread;
@@ -27,7 +29,7 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
     public final static long            MAX_DELAY_BETWEEN_HEARTBEATS = 1000; 
     
     /** approach to get the master to send the heartbeat messages to */
-    private final ParticipantsOverview  pOverview;
+    private final ParticipantsStates    pOverview;
     
     /** holds the identifier of the last written LogEntry. */
     private LSN                         latestLSN;
@@ -47,7 +49,7 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
      * @param pOverview
      * @param localPort
      */
-    public HeartbeatThread(ParticipantsOverview pOverview, int localPort) {
+    public HeartbeatThread(ParticipantsStates pOverview, int localPort) {
         super("HeartbeatThread");
         this.pOverview = pOverview;
         this.localPort = localPort;
@@ -77,8 +79,9 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
      * Starts the heartbeat initialized with the given {@link LSN}.
      * @param initial
      */
-    public synchronized void start(LSN initial) {
+    public void start(LSN initial) {
         latestLSN = initial;
+        processHeartbeat(pOverview.getConditionClients());
         super.start();
     }
     
@@ -93,7 +96,7 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
         
         try {
             while (!quit) {
-                processHeartbeat();
+                processHeartbeat(pOverview.getSafeConditionClients());
                 
                 synchronized (this) {
                     wait(MAX_DELAY_BETWEEN_HEARTBEATS);
@@ -113,27 +116,28 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
     /**
      * Sends a heartbeat message to all available servers.
      */
-    private void processHeartbeat() {
-        for (final ConditionClient c : pOverview.getConditionClients()) {
-            if (c != null) {
-                c.heartbeat(latestLSN, localPort).registerListener(
-                        new ClientResponseAvailableListener<Object>() {
-                  
-                    @Override
-                    public void responseAvailable(Object r) { 
-                        Logging.logMessage(Logging.LEVEL_DEBUG, this, 
-                                "Heartbeat successfully send.");
-                    }
-    
-                    @Override
-                    public void requestFailed(Exception e) {
-                        Logging.logMessage(Logging.LEVEL_WARN, this, 
-                                "Heartbeat could not be send to %s, because %s", 
-                                c.toString(), e.getMessage());
-                        Logging.logError(Logging.LEVEL_DEBUG, this, e);
-                    }
-                });
-            }
+    private void processHeartbeat(List<ConditionClient> clients) {
+        for (final ConditionClient c : clients) {
+            c.heartbeat(latestLSN, localPort).registerListener(
+                    new ClientResponseAvailableListener<Object>() {
+              
+                @Override
+                public void responseAvailable(Object r) { 
+                    
+                    Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                            "Heartbeat successfully send.");
+                }
+
+                @Override
+                public void requestFailed(Exception e) {
+                    
+                    pOverview.markAsDead(c);
+                    Logging.logMessage(Logging.LEVEL_WARN, this, 
+                            "Heartbeat could not be send to %s, because %s", 
+                            c.toString(), e.getMessage());
+                    Logging.logError(Logging.LEVEL_DEBUG, this, e);
+                }
+            });
         }
     }
 
@@ -149,9 +153,7 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
      */
     @Override
     public void shutdown() {
-        if (!quit) {
-            quit = true;
-            interrupt();
-        }
+        quit = true;
+        interrupt();
     }
 }

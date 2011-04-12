@@ -134,9 +134,9 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
      * 
      * @param topLayer
      */
-    public synchronized void start(ControlLayerInterface topLayer) {
+    public void start(ControlLayerInterface topLayer) {
         this.topLayer = topLayer;
-        this.quit = false;
+        quit = false;
         super.start();
     }
     
@@ -144,25 +144,13 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
      * Shut the stage thread down.
      * Resets inner state.
      */
-    public synchronized void shutdown() {
-        if (!quit) {
-            quit = true;
-            interrupt();
-        }
+    public void shutdown() {
+        quit = true;
+        interrupt();
         missing = null;
         logicID = BASIC;
-        clearQueue();
     }
-    
-    /* (non-Javadoc)
-     * @see org.xtreemfs.foundation.LifeCycleThread#waitForShutdown()
-     */
-    @Override
-    public void waitForShutdown() throws Exception {
-        super.waitForShutdown();
-        clearQueue();
-    }
-    
+        
     /*
      * (non-Javadoc)
      * @see java.lang.Thread#run()
@@ -222,12 +210,15 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                 }
             } catch(InterruptedException ie) {
                 if (!quit){
+                    
+                    clearQueue();
                     notifyCrashed(ie);
                     return;
                 }
             }
         }
         
+        clearQueue();
         notifyStopped();
     }
     
