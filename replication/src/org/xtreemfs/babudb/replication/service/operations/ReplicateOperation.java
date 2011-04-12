@@ -106,6 +106,9 @@ public class ReplicateOperation extends Operation {
         LogEntry le = (LogEntry) rq.getAttachment();
         final LSN lsn = le.getLSN();
         try {
+            
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "ReplicateOperation:" +
+                    " received %s", le.toString());
             rqMan.enqueueOperation(new Object[]{ lsn, le });
             rq.sendSuccess(ErrorCodeResponse.getDefaultInstance());
         } catch (Exception e) {

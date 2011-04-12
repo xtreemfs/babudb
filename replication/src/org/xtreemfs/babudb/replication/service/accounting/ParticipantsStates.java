@@ -24,6 +24,7 @@ import java.util.concurrent.PriorityBlockingQueue;
 
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.service.HeartbeatThread;
+import org.xtreemfs.babudb.replication.service.clients.ClientInterface;
 import org.xtreemfs.babudb.replication.service.clients.ConditionClient;
 import org.xtreemfs.babudb.replication.service.clients.SlaveClient;
 import org.xtreemfs.babudb.replication.transmission.client.ClientFactory;
@@ -51,12 +52,13 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
      * @since 05/03/2009
      * @author flangner
      */
-    private static final class State implements Comparable<State>{
-        long lastUpdate;
-        boolean dead;
-        LSN lastAcknowledged;
-        int openRequests;
-        final ReplicationClientAdapter client;
+    private static final class State implements Comparable<State> {
+        
+        long                            lastUpdate;
+        boolean                         dead;
+        LSN                             lastAcknowledged;
+        int                             openRequests;
+        final ReplicationClientAdapter  client;
         
         /**
          * initial state
@@ -73,7 +75,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
          */
         void reset() {
             lastUpdate = TimeSync.getGlobalTime();
-            dead = false;
+            dead = true;
             lastAcknowledged = new LSN(0,0L);
             openRequests = 0;
         }
@@ -125,8 +127,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
      * this field to prevent it from killing the slave by a DoS.
      * </p>
      */
-    private final static int                    MAX_OPEN_REQUESTS_PRO_SERVER = 
-        20;
+    private final static int                    MAX_OPEN_REQUESTS_PRO_SERVER = 20;
     
     /**
      * Determines how long the master should wait for busy slaves to become
@@ -242,7 +243,8 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
                                     "%s will be marked as dead!\n%s",
                                     s.client.getDefaultServerAddress().toString(),
                                     toString());
-                            s.dead = true;
+                            
+                            s.reset();
                             availableSlaves--;
                         } else if ( s.openRequests < MAX_OPEN_REQUESTS_PRO_SERVER ) {
                             
@@ -277,7 +279,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
                 }
                 
                 throw new NotEnoughAvailableParticipantsException(        
-                    "With only '"+result.size()+"' are there not enough " +
+                    "With only '" + result.size() + "' are there not enough " +
                     "slaves to perform the request.");
             }
         }
@@ -378,12 +380,11 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.accounting.
-     *          StatesManipulation#markAsDead(
-     *               org.xtreemfs.babudb.replication.transmission.client.Client)
+     * @see org.xtreemfs.babudb.replication.service.accounting.StatesManipulation#
+     *          markAsDead(org.xtreemfs.babudb.replication.service.clients.ClientInterface)
      */
     @Override
-    public void markAsDead(SlaveClient slave) {
+    public void markAsDead(ClientInterface slave) {
         
         synchronized (stateTable) {
             State s;
@@ -395,7 +396,6 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
                 Logging.logError(Logging.LEVEL_ERROR, this, e);
                 return;
             }
-            s.openRequests = 0;
             
             // the slave has not been marked as dead jet
             if (!s.dead) {
@@ -405,7 +405,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
                         slave.getDefaultServerAddress().toString(), 
                         toString());
                 
-                s.dead = true;
+                s.reset();
                 deadSlaves++;
                 availableSlaves--;
                 stateTable.notify();
@@ -456,6 +456,21 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
         Collections.reverse(states);
         for (State s : states) {
             result.add(s.client);
+        }
+        return result;
+    }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview#getSafeConditionClients()
+     */
+    @Override
+    public List<ConditionClient> getSafeConditionClients() {
+        
+        List<ConditionClient> result = new ArrayList<ConditionClient>();
+        synchronized (stateTable) {
+            for (State s : stateTable.values()) {
+                if (!s.dead) result.add(s.client);
+            }
         }
         return result;
     }
