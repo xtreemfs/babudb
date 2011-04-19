@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2010 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                   Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * All rights reserved.
  */
@@ -47,18 +47,17 @@ public class ConfigBuilder {
     }
     
     /**
-     * Registers a path to a plugin for BabuDB, that has to be used with this configuration.
+     * Registers a plugin for BabuDB by its configuration.
+     * This configuration file has at least to specify where to find the plugin's library with
+     * the Main class can be found.
      * 
-     * @param pluginPath path to the plugin to register
-     * @param configPath - optional (may be null)
+     * @param configPath
      * @return a reference to this object
      */
-    public ConfigBuilder putPlugin(String pluginPath, String configPath) {
+    public ConfigBuilder addPlugin(String configPath) {
+        assert (configPath != null && configPath != "");
         
-        changes.put("babudb.pluginPath." + numOfRegisteredPlugins, pluginPath);
-        if (configPath != null && configPath.length() > 0) {
-            changes.put("babudb.pluginConfig." + numOfRegisteredPlugins, configPath);
-        }
+        changes.put("babudb.plugin." + numOfRegisteredPlugins, configPath);
         numOfRegisteredPlugins++;
         
         return this;

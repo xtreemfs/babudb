@@ -13,12 +13,12 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.plugin.PluginMain;
+import org.xtreemfs.babudb.config.PluginConfig;
 import org.xtreemfs.foundation.logging.Logging;
 
 import static org.xtreemfs.babudb.BabuDBFactory.*;
@@ -51,11 +51,11 @@ public final class PluginLoader extends ClassLoader {
         this.babuDB = dbs;
         
         // start all plugins registered
-        for (Entry<String, String> plugin : dbs.getConfig().getPlugins().entrySet()) {
+        for (String configPath : dbs.getConfig().getPlugins()) {
             
             String main = null;
-            String pluginPath = plugin.getKey();
-            String configPath = plugin.getValue();
+            PluginConfig c = new PluginConfig(configPath);
+            String pluginPath = c.getPluginLibraryPath();
             try {
                 // load all classes from the plugin JARs
                 main = loadJar(pluginPath, "Main");
@@ -107,7 +107,6 @@ public final class PluginLoader extends ClassLoader {
             IOException {
         
         JarInputStream jis = new JarInputStream(new FileInputStream(path)); 
-        
         JarEntry next = null;
         String main = null;
         while ((next = jis.getNextJarEntry()) != null) {
