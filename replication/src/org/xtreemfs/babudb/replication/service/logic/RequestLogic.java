@@ -72,7 +72,7 @@ public class RequestLogic extends Logic {
      * @see java.lang.Runnable#run()
      */
     @Override
-    public void run() throws InterruptedException, ConnectionLostException{
+    public void run() throws InterruptedException, ConnectionLostException, Exception {
         assert (stage.missing.start != null)  : "PROGRAMATICAL ERROR!";
         
         LSN lsnAtLeast = stage.missing.end;

@@ -64,6 +64,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
          * initial state
          * 
          * @param client
+         * @param timeStamp
          */
         State(ReplicationClientAdapter client) {
             this.client = client;
@@ -74,7 +75,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
          * resets this state to the initial state
          */
         void reset() {
-            lastUpdate = TimeSync.getGlobalTime();
+            lastUpdate = 0L;
             dead = true;
             lastAcknowledged = new LSN(0,0L);
             openRequests = 0;
@@ -168,10 +169,10 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
         
         assert(participants!=null);
         
-        this.latestCommon = new LSN(0,0L);
+        latestCommon = new LSN(0,0L);
         this.syncN = ((syncN > 0) ? syncN - 1 : syncN);
-        this.participantsCount = this.availableSlaves = participants.size();
-        this.deadSlaves = 0;
+        participantsCount = deadSlaves = participants.size();
+        availableSlaves = 0;
         
         /*
          * The initial set of participants accounted by the table is must
@@ -338,12 +339,13 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
                 old.lastUpdate = receiveTime;
                 if (old.dead) {
                     
-                    Logging.logMessage(Logging.LEVEL_DEBUG, this, 
-                            "%s will be marked as alive!\n%s", 
-                            participant.toString(), toString());
                     deadSlaves--;
                     availableSlaves++;
                     old.dead = false;
+                    
+                    Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                            "%s has been marked as alive!\n%s", 
+                            participant.toString(), toString());
                 }
                 
                 // count the number of LSN greater-than-or-equal than the acknowledged 
@@ -380,8 +382,8 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.accounting.StatesManipulation#
-     *          markAsDead(org.xtreemfs.babudb.replication.service.clients.ClientInterface)
+     * @see org.xtreemfs.babudb.replication.service.accounting.StatesManipulation#markAsDead(
+     *          org.xtreemfs.babudb.replication.service.clients.ClientInterface)
      */
     @Override
     public void markAsDead(ClientInterface slave) {

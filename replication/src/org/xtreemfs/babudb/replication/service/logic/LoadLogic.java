@@ -94,7 +94,7 @@ public class LoadLogic extends Logic {
         } catch (ErrorCodeException e) {
             // connection is lost
             throw new ConnectionLostException(e.getMessage(), e.getCode());
-        } catch (IOException e) {
+        } catch (Exception e) {
             // failure on transmission --> retry
             throw new ConnectionLostException(e.getMessage(), ErrorCode.UNKNOWN);
         }

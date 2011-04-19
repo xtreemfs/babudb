@@ -7,6 +7,9 @@
  */
 package org.xtreemfs.babudb.mock;
 
+import java.io.File;
+import java.util.ArrayList;
+
 import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
 import org.xtreemfs.babudb.api.database.ResultSet;
@@ -32,7 +35,17 @@ public class DatabaseMock implements DatabaseInternal {
                 ByteRangeComparator[] comparators) throws BabuDBException {
             super(databaseName, databaseId, "", numIndices, false, comparators, false, 0, 0, false, 
                     0);
-        }   
+        }  
+        
+        /* (non-Javadoc)
+         * @see org.xtreemfs.babudb.lsmdb.LSMDatabase#getLastestSnapshotFiles()
+         */
+        @Override
+        public ArrayList<DBFileMetaData> getLastestSnapshotFiles() {
+            ArrayList<DBFileMetaData> result = new ArrayList<LSMDatabase.DBFileMetaData>();
+            result.add(new DBFileMetaData(getDatabaseName(), new File(getDatabaseName()).length()));
+            return result;
+        }
     }
     
     private final LSMDatabase lsmDB;

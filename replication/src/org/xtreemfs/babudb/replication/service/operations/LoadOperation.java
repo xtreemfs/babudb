@@ -80,6 +80,7 @@ public class LoadOperation extends Operation {
                 .equals(this.lastOnView.get())) {
             
             rq.sendSuccess(DBFileMetaDatas.getDefaultInstance());
+            
         } else {
             DBFileMetaDatas.Builder result = DBFileMetaDatas.newBuilder();
             result.setMaxChunkSize(maxChunkSize);

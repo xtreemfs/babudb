@@ -25,7 +25,6 @@ import org.junit.Test;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.mock.BabuDBMock;
-import org.xtreemfs.babudb.mock.StatesManipulationMock;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.LockableService;
 import org.xtreemfs.babudb.replication.LockableService.ServiceLockedException;
@@ -34,9 +33,16 @@ import org.xtreemfs.babudb.replication.service.ReplicationRequestHandler;
 import org.xtreemfs.babudb.replication.service.RequestManagement;
 import org.xtreemfs.babudb.replication.service.StageRequest;
 import org.xtreemfs.babudb.replication.service.ReplicationStage.BusyServerException;
+import org.xtreemfs.babudb.replication.service.accounting.StatesManipulation;
+import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates.UnknownParticipantException;
+import org.xtreemfs.babudb.replication.service.clients.ClientInterface;
 import org.xtreemfs.babudb.replication.service.clients.MasterClient;
+import org.xtreemfs.babudb.replication.service.clients.SlaveClient;
+import org.xtreemfs.babudb.replication.service.logic.LoadLogic.DBFileMetaDataSet;
+import org.xtreemfs.babudb.replication.transmission.ErrorCode;
 import org.xtreemfs.babudb.replication.transmission.FileIO;
 import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter;
+import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter.ErrorCodeException;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestControl;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestDispatcher;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestHandler;
@@ -50,6 +56,7 @@ import org.xtreemfs.foundation.flease.comm.FleaseMessage.MsgType;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.logging.Logging.Category;
 import org.xtreemfs.foundation.pbrpc.client.RPCNIOSocketClient;
+import org.xtreemfs.foundation.util.FSUtils;
 
 /**
  * Test of the operation logic for master replication requests.
@@ -71,16 +78,24 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
     private final static long                  maxTestFileSize = 4 * 1024;
     private final static FleaseMessage         testMessage = 
         new FleaseMessage(MsgType.MSG_ACCEPT_ACK);
+    private final static LSN                   testLSN = new LSN(8, 15L);
+    private final static InetSocketAddress     testAddress = new InetSocketAddress("127.0.0.1", 4711);
+    private final static LSN                   rangeStart = new LSN (1, 0L);
+    private final static LSN                   rangeEnd = new LSN (1, 2L);
     
     /**
      * @throws java.lang.Exception
      */
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
-        Logging.start(Logging.LEVEL_DEBUG, Category.all);
+        Logging.start(Logging.LEVEL_ERROR, Category.all);
         TimeSync.initializeLocal(TIMESYNC_GLOBAL, TIMESYNC_LOCAL);
         
         config = new ReplicationConfig("config/replication_server0.test", conf0);
+        
+        FSUtils.delTree(new File(config.getBabuDBConfig().getBaseDir()));
+        FSUtils.delTree(new File(config.getBabuDBConfig().getDbLogDir()));
+        FSUtils.delTree(new File(config.getTempDir()));
         
         rpcClient = new RPCNIOSocketClient(config.getSSLOptions(), RQ_TIMEOUT, CON_TIMEOUT);
         rpcClient.start();
@@ -98,6 +113,7 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
         sOut.close();
         
         // setup flease message
+        testMessage.setSender(testAddress);
         testMessage.setCellId(new ASCIIString("testCellId"));
         testMessage.setLeaseHolder(new ASCIIString("testLeaseholder"));
         testMessage.setLeaseTimeout(4711L);
@@ -128,18 +144,39 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
         
         client = new ReplicationClientAdapter(rpcClient, config.getInetSocketAddress());
         
-        RequestHandler rqHandler = new ReplicationRequestHandler(
-                new StatesManipulationMock(config.getInetSocketAddress()), 
-                new ControlLayerInterface() {
+        RequestHandler rqHandler = new ReplicationRequestHandler(new StatesManipulation() {
             
             @Override
-            public void updateLeaseHolder(InetSocketAddress leaseholder) throws Exception {
+            public void update(InetSocketAddress participant, LSN acknowledgedLSN, long receiveTime)
+                    throws UnknownParticipantException {
+                
+                assertEquals(testLSN, acknowledgedLSN);
+                assertEquals(testAddress, participant);
+            }
+            
+            @Override
+            public void requestFinished(SlaveClient slave) {
+                fail("Operation should not have been accessed by this test!");
+            }
+            
+            @Override
+            public void markAsDead(ClientInterface slave) {
+                fail("Operation should not have been accessed by this test!");
+            }
+        }, new ControlLayerInterface() {
+            
+            @Override
+            public void updateLeaseHolder(InetSocketAddress leaseholder) {
                 fail("Operation should not have been accessed by this test!");
             }
             
             @Override
             public void receive(FleaseMessage message) {
-                fail("Operation should not have been accessed by this test!");
+                                
+                assertEquals(testMessage.getSender(), message.getSender());
+                assertEquals(testMessage.getCellId(), message.getCellId());
+                assertEquals(testMessage.getLeaseHolder(), message.getLeaseHolder());
+                assertEquals(testMessage.getLeaseTimeout(), message.getLeaseTimeout());
             }
             
             @Override
@@ -154,7 +191,7 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
             
             @Override
             public void unlockReplication() {
-                fail("Operation should not have been accessed by this test!");
+                Logging.logMessage(Logging.LEVEL_INFO, this, "Mock Replication unlocked.");
             }
             
             @Override
@@ -179,7 +216,7 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
             
             @Override
             public void lockAll() throws InterruptedException {
-                fail("Operation should not have been accessed by this test!");
+                Logging.logMessage(Logging.LEVEL_INFO, this, "Mock services locked.");
             }
             
             @Override
@@ -193,7 +230,7 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
                 fail("Operation should not have been accessed by this test!");
                 return null;
             }
-        }, new BabuDBInterface(new BabuDBMock("BabuDBMock", conf0)), new RequestManagement() {
+        }, new BabuDBInterface(new BabuDBMock("BabuDBMock", conf0, testLSN)), new RequestManagement() {
             
             @Override
             public void finalizeRequest(StageRequest op) {
@@ -207,8 +244,9 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
             
             @Override
             public void createStableState(LSN lastOnView, InetSocketAddress master) {
-                fail("Operation should not have been accessed by this test!");
                 
+                assertEquals(testLSN, lastOnView);
+                assertEquals(testAddress, master);
             }
         }, lastOnView, config.getChunkSize(), new FileIO(config), MAX_Q);
         
@@ -261,9 +299,7 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
     @Test
     public void testFleaseRequest() throws Exception {
         
-        // TODO
-        //client.flease(message);
-        fail("Not yet implemented");
+        client.flease(testMessage).get();
     }
     
     /** 
@@ -271,26 +307,8 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
      */
     @Test
     public void testHeartbeatRequest() throws Exception {
-//        client.heartbeat(lsn, localPort); TODO
-        fail("Not yet implemented");
-    }
-    
-    /** 
-     * @throws Exception
-     */
-    @Test
-    public void testLoadRequest() throws Exception {
-//        client.load(lsn); TODO
-        fail("Not yet implemented");
-    }
-    
-    /** 
-     * @throws Exception
-     */
-    @Test
-    public void testReplicaRequest() throws Exception {
-//        client.replica(start, end); TODO
-        fail("Not yet implemented");
+        
+        client.heartbeat(testLSN, testAddress.getPort()).get();
     }
     
     /** 
@@ -298,26 +316,9 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
      */
     @Test
     public void testStateRequest() throws Exception {
-//        client.state(); TODO
-        fail("Not yet implemented");
-    }
-    
-    /** 
-     * @throws Exception
-     */
-    @Test
-    public void testSynchronizeRequest() throws Exception {
-//        client.synchronize(lsn, localPort); TODO
-        fail("Not yet implemented");
-    }
-    
-    /** 
-     * @throws Exception
-     */
-    @Test
-    public void testTimeRequest() throws Exception {
-//        client.time(); TODO
-        fail("Not yet implemented");
+        
+        LSN result = client.state().get();
+        assertEquals(testLSN, result);
     }
     
     /** 
@@ -325,10 +326,60 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
      */
     @Test
     public void testVolatileStateRequest() throws Exception {
-//        client.volatileState().get(); TODO
-        fail("Not yet implemented");
+        
+        LSN result = client.volatileState().get();
+        assertEquals(testLSN, result);
     }
-
+    
+    /** 
+     * @throws Exception
+     */
+    @Test
+    public void testTimeRequest() throws Exception {
+        long start = TimeSync.getGlobalTime();
+        long result = client.time().get();
+        long end = TimeSync.getGlobalTime();
+        
+        assertTrue(result >= start);
+        assertTrue(result <= end);
+    }
+    
+    /** 
+     * @throws Exception
+     */
+    @Test
+    public void testLoadRequest() throws Exception {
+        DBFileMetaDataSet result = client.load(lastOnView.get()).get();
+        assertTrue(result.size() == 0);
+        
+        result = client.load(testLSN).get();
+        
+        assertEquals(1, result.size());
+        assertEquals(conf0.getBaseDir() + conf0.getDbCfgFile(), result.get(0).file);
+        assertEquals(0L, result.get(0).size);
+    }
+    
+    /** 
+     * @throws Exception
+     */
+    @Test
+    public void testReplicaRequest() throws Exception {
+        try {
+            client.replica(rangeStart, rangeEnd).get();
+            fail();
+        } catch (ErrorCodeException ee) {
+            assertEquals(ErrorCode.LOG_UNAVAILABLE, ee.getCode());
+        }
+    }
+    
+    /** 
+     * @throws Exception
+     */
+    @Test
+    public void testSynchronizeRequest() throws Exception {
+        client.synchronize(testLSN, testAddress.getPort()).get(); 
+    }
+        
     /* (non-Javadoc)
      * @see org.xtreemfs.foundation.LifeCycleListener#startupPerformed()
      */

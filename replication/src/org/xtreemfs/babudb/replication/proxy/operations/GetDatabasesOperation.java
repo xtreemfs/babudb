@@ -17,6 +17,7 @@ import org.xtreemfs.babudb.pbrpc.RemoteAccessServiceConstants;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
+import org.xtreemfs.foundation.logging.Logging;
 
 import com.google.protobuf.Message;
 
@@ -58,6 +59,9 @@ public class GetDatabasesOperation extends Operation {
      */
     @Override
     public void processRequest(Request rq) {
+        
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "GetDatabasesOperation.");
+        
         Databases.Builder rBuilder = Databases.newBuilder();
         Map<String, DatabaseInternal> databases = dbs.getDatabases();
         for (Entry<String, DatabaseInternal> e : databases.entrySet()) {

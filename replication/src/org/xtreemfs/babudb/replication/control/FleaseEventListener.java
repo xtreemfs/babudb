@@ -23,8 +23,6 @@ public interface FleaseEventListener {
      * Method to execute if a new leaseholder has to be announced.
      * 
      * @param leaseholder
-     * 
-     * @throws Exception if leaseholder update was not successful.
      */
-    public void updateLeaseHolder(InetSocketAddress leaseholder) throws Exception;
+    public void updateLeaseHolder(InetSocketAddress leaseholder);
 }

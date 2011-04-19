@@ -15,6 +15,7 @@ import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.transmission.ErrorCode;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
+import org.xtreemfs.foundation.logging.Logging;
 
 import com.google.protobuf.Message;
 
@@ -57,9 +58,13 @@ public class GetDatabaseByIdOperation extends Operation {
      */
     @Override
     public void processRequest(Request rq) {
+        
         int dbId = ((DatabaseId) rq.getRequestMessage()).getDatabaseId();
+        
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "GetDatabaseByIdOperation:" +
+                " dbId %d.", dbId);
+        
         try {
-            
             rq.sendSuccess(Database.newBuilder()
                     .setDatabaseName(dbs.getDatabase(dbId).getName())
                     .setDatabaseId(dbId)

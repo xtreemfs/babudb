@@ -108,9 +108,11 @@ public class ControlLayer extends TopLayer {
                                         config.getInetSocketAddress()), 
                 false, 
                 new FleaseViewChangeListenerInterface() {
-                    /* does not influence the replication */
+            
                     @Override
-                    public void viewIdChangeEvent(ASCIIString cellId, int viewId) { }
+                    public void viewIdChangeEvent(ASCIIString cellId, int viewId) { 
+                        throw new UnsupportedOperationException("Not supported yet.");
+                    }
                     
                 }, leaseHolder, null);
     }  
@@ -227,6 +229,9 @@ public class ControlLayer extends TopLayer {
      */
     @Override
     public void asyncShutdown() {
+        exitFlease();
+        
+        failoverTaskRunner.shutdown();
         timeDriftDetector.shutdown();
         fleaseStage.shutdown();
     }
@@ -283,7 +288,7 @@ public class ControlLayer extends TopLayer {
      *          java.net.InetSocketAddress)
      */
     @Override
-    public void updateLeaseHolder(InetSocketAddress newLeaseHolder) throws Exception {
+    public void updateLeaseHolder(InetSocketAddress newLeaseHolder) {
         failoverTaskRunner.queueFailoverRequest(newLeaseHolder);
     }
     
@@ -329,6 +334,10 @@ public class ControlLayer extends TopLayer {
          * @param address - of the new replication master candidate.
          */
         void queueFailoverRequest(InetSocketAddress address) {
+            Logging.logMessage(Logging.LEVEL_INFO, this, 
+                    "Server %s is initiating failover with new master candidate %s.", 
+                    thisAddress.toString(), address.toString());
+            
             synchronized (failoverRequest) {
                 if (failoverRequest.compareAndSet(null, address)) {
                     failoverRequest.notify();

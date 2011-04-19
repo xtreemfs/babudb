@@ -66,19 +66,20 @@ public class TransmissionLayer extends Layer implements ClientFactory,
      */
     public TransmissionLayer(ReplicationConfig config) 
             throws IOException {
-        this.fileIO = new FileIO(config);
+        
+        fileIO = new FileIO(config);
         
         // ---------------------------------
         // initialize the RPCNIOSocketClient
         // ---------------------------------
-        this.rpcClient = new RPCNIOSocketClient(config.getSSLOptions(), 
+        rpcClient = new RPCNIOSocketClient(config.getSSLOptions(), 
                 ReplicationConfig.REQUEST_TIMEOUT,
                 ReplicationConfig.CONNECTION_TIMEOUT);
         
         // ---------------------------------
         // initialize the RequestDispatcher
         // ---------------------------------
-        this.dispatcher = new RequestDispatcher(config);
+        dispatcher = new RequestDispatcher(config);
     }
     
 /*
@@ -129,13 +130,13 @@ public class TransmissionLayer extends Layer implements ClientFactory,
     @Override
     public void start() {
         try {
-            this.dispatcher.start();
-            this.dispatcher.waitForStartup();
+            dispatcher.start();
+            dispatcher.waitForStartup();
             
-            this.rpcClient.start();
-            this.rpcClient.waitForStartup();
+            rpcClient.start();
+            rpcClient.waitForStartup();
         } catch (Exception e) {
-            this.listener.crashPerformed(e);
+            listener.crashPerformed(e);
         }
     }
     
@@ -144,8 +145,8 @@ public class TransmissionLayer extends Layer implements ClientFactory,
      */
     @Override
     public void asyncShutdown() {
-        this.dispatcher.shutdown();
-        this.rpcClient.shutdown();
+        dispatcher.shutdown();
+        rpcClient.shutdown();
     }
 
     /* (non-Javadoc)
@@ -154,13 +155,13 @@ public class TransmissionLayer extends Layer implements ClientFactory,
     @Override
     public void shutdown() {
         try {    
-            this.dispatcher.shutdown();
-            this.dispatcher.waitForShutdown();
+            dispatcher.shutdown();
+            dispatcher.waitForShutdown();
             
-            this.rpcClient.shutdown();
-            this.rpcClient.waitForShutdown();  
+            rpcClient.shutdown();
+            rpcClient.waitForShutdown();  
         } catch (Exception e) {
-            this.listener.crashPerformed(e);
+            listener.crashPerformed(e);
         }
     }
 

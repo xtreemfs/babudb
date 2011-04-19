@@ -24,7 +24,6 @@ import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.mock.BabuDBMock;
-import org.xtreemfs.babudb.mock.StatesManipulationMock;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.LockableService;
 import org.xtreemfs.babudb.replication.LockableService.ServiceLockedException;
@@ -33,6 +32,9 @@ import org.xtreemfs.babudb.replication.service.ReplicationRequestHandler;
 import org.xtreemfs.babudb.replication.service.RequestManagement;
 import org.xtreemfs.babudb.replication.service.StageRequest;
 import org.xtreemfs.babudb.replication.service.ReplicationStage.BusyServerException;
+import org.xtreemfs.babudb.replication.service.accounting.StatesManipulation;
+import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates.UnknownParticipantException;
+import org.xtreemfs.babudb.replication.service.clients.ClientInterface;
 import org.xtreemfs.babudb.replication.service.clients.SlaveClient;
 import org.xtreemfs.babudb.replication.transmission.FileIO;
 import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter;
@@ -104,12 +106,28 @@ public class SlaveReplicationOperationsTest implements LifeCycleListener {
         
         client = new ReplicationClientAdapter(rpcClient, config.getInetSocketAddress());
         
-        RequestHandler rqHandler = new ReplicationRequestHandler(
-                new StatesManipulationMock(config.getInetSocketAddress()), 
+        RequestHandler rqHandler = new ReplicationRequestHandler(new StatesManipulation() {
+            
+            @Override
+            public void update(InetSocketAddress participant, LSN acknowledgedLSN, long receiveTime)
+                    throws UnknownParticipantException {
+                fail("Operation should not have been accessed by this test!");
+            }
+            
+            @Override
+            public void requestFinished(SlaveClient slave) {
+                fail("Operation should not have been accessed by this test!");
+            }
+            
+            @Override
+            public void markAsDead(ClientInterface slave) {
+                fail("Operation should not have been accessed by this test!");
+            }
+        }, 
                 new ControlLayerInterface() {
             
             @Override
-            public void updateLeaseHolder(InetSocketAddress leaseholder) throws Exception {
+            public void updateLeaseHolder(InetSocketAddress leaseholder) {
                 fail("Operation should not have been accessed by this test!");
             }
             
@@ -170,7 +188,7 @@ public class SlaveReplicationOperationsTest implements LifeCycleListener {
                 fail("Operation should not have been accessed by this test!");
                 return null;
             }
-        }, new BabuDBInterface(new BabuDBMock("BabuDBMock", conf0)), new RequestManagement() {
+        }, new BabuDBInterface(new BabuDBMock("BabuDBMock", conf0, testLSN)), new RequestManagement() {
             
             @Override
             public void finalizeRequest(StageRequest op) {

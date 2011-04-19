@@ -22,6 +22,7 @@ import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.logging.Logging;
 
 import com.google.protobuf.Message;
 
@@ -73,6 +74,10 @@ public class RangeLookupReverseOperation extends Operation {
         t.position(limit);
         byte[] to = t.getData();
        
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "RangeLookupReverseOperation:" +
+                "db %s, index %d, from %s, to %s.", req.getDatabaseName(), req.getIndexId(), 
+                new String(from), new String(to));
+        
         try {
             dbs.getDatabase(req.getDatabaseName()).reverseRangeLookup(req.getIndexId(), 
                             from, to, null).registerListener(

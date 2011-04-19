@@ -73,9 +73,9 @@ public class ReplicationManager implements LifeCycleListener {
         assert (babudbProxy != null);
         
         controlLayer.registerUserInterface(babudbProxy);
-        controlLayer.start();
         transmissionLayer.start();
         serviceLayer.start(controlLayer);
+        controlLayer.start();
     }
 
     /**

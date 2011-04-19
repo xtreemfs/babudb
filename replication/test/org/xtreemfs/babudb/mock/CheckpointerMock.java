@@ -47,7 +47,7 @@ public class CheckpointerMock implements CheckpointerInternal {
 
     @Override
     public void waitForCheckpoint() throws InterruptedException {
-        Logging.logMessage(Logging.LEVEL_ERROR, this,
+        Logging.logMessage(Logging.LEVEL_INFO, this,
             "Mock tried to wait for CP.");
     }
 

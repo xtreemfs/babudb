@@ -8,8 +8,10 @@
 package org.xtreemfs.babudb.replication.service.clients;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter.ErrorCodeException;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.pbrpc.client.RPCResponse;
 import org.xtreemfs.foundation.pbrpc.client.RPCResponseAvailableListener;
 
@@ -25,29 +27,86 @@ import com.google.protobuf.Message;
  * @since 01/04/2011
  */
 public abstract class ClientResponseFuture<T,M extends Message> {
-
-    private final RPCResponse<M> original; 
         
+    private ClientResponseAvailableListener<T>  listener = null;
+
+    private final AtomicBoolean                 finished = new AtomicBoolean(false);
+    
+    private T                                   result = null;
+    
+    private Exception                           error = null;
+    
+    
     /**
      * The constructor registers Google's original PBRPC response future.
      * 
      * @param rp - the PBRPC response future.
      */
     public ClientResponseFuture(RPCResponse<M> rp) {
-        this.original = rp;
+        
+        rp.registerListener(new RPCResponseAvailableListener<M>() {
+            
+            @Override
+            public void responseAvailable(RPCResponse<M> rp) {
+                
+                synchronized (finished) {
+                    
+                    // request can only be finished once
+                    if (finished.compareAndSet(false, true)) {
+                        try {
+                            result = resolve(rp.get(), rp.getData());
+                            if (listener != null) {
+                                listener.responseAvailable(result);
+                            }
+                        } catch (Exception e) {
+                            error = e;
+                            if (listener != null) {
+                                listener.requestFailed(error);
+                            }
+                        } finally {
+                            rp.freeBuffers();
+                        }
+                    }
+                    
+                    finished.notifyAll();
+                }
+            }
+        });
     }
     
     /**
-     * Waits synchronously for the response. May only be accessed once because
-     * the requests buffers will be freed afterwards.
+     * Waits synchronously for the response. 
      * 
      * @return the generic return value gathered with the request.
-     * @throws ErrorCodeException
-     * @throws IOException
-     * @throws InterruptedException
+     * @throws Exception
      */
-    public abstract T get() throws ErrorCodeException, IOException, 
-                                   InterruptedException;
+    public final T get() throws Exception {
+        
+        synchronized (finished) {
+            if (!finished.get()) {
+                finished.wait();
+            }
+            
+            if (error != null) {
+                throw error;
+            } else {
+                return result;
+            }
+        }
+    }
+    
+    /**
+     * Method to resolve and interpret the received response. 
+     * 
+     * @param response
+     * @param data
+     * 
+     * @return the generic return value gathered with the request.
+     * @throws ErrorCodeException if message contained an error number.
+     * @throws IOException if message could not have been decoded.
+     */
+    public abstract T resolve(M response, ReusableBuffer data) throws ErrorCodeException, 
+            IOException;
     
     /**
      * Method to register a response listener to wait asynchronously for the
@@ -55,28 +114,19 @@ public abstract class ClientResponseFuture<T,M extends Message> {
      * 
      * @param listener
      */
-    public void registerListener (
-            final ClientResponseAvailableListener<T> listener) {
+    public final void registerListener (final ClientResponseAvailableListener<T> listener) {
         
-        if (this.original == null) {
-            try {
-                listener.responseAvailable(get());
-            } catch (Exception e) {
-                listener.requestFailed(e);
+        synchronized (finished) {
+            if (finished.get()) {
+                if (error == null) {
+                    listener.responseAvailable(result);
+                } else {
+                    listener.requestFailed(error);
+                }
+            } else {
+                this.listener = listener;
             }
         }
-        
-        this.original.registerListener(new RPCResponseAvailableListener<M>() {
-
-            @Override
-            public void responseAvailable(RPCResponse<M> rp) {
-                try {
-                    listener.responseAvailable(get());
-                } catch (Exception e) {
-                    listener.requestFailed(e);
-                }
-            }
-        });
     }
     
     /**

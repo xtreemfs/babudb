@@ -33,10 +33,10 @@ public class BabuDBMock implements BabuDBInternal {
     private final DatabaseManagerInternal       dbMan;
     private final CheckpointerInternal          cp;
 
-    public BabuDBMock(String name, BabuDBConfig conf) throws BabuDBException {
+    public BabuDBMock(String name, BabuDBConfig conf, LSN onDisk) throws BabuDBException {
         this.name = name;
         this.conf = conf;
-        PersistenceManagerMock localPersMan = new PersistenceManagerMock(name);
+        PersistenceManagerMock localPersMan = new PersistenceManagerMock(name, onDisk);
         this.perMan = localPersMan;
         this.dbMan = new DatabaseManagerMock();
         this.cp = new CheckpointerMock(localPersMan);
@@ -50,7 +50,7 @@ public class BabuDBMock implements BabuDBInternal {
     @Override
     public CheckpointerInternal getCheckpointer() {
 
-        Logging.logMessage(Logging.LEVEL_ERROR, this,
+        Logging.logMessage(Logging.LEVEL_INFO, this,
                 "Mock '%s' tried to access CP.", name);
         return cp;
     }
@@ -63,7 +63,7 @@ public class BabuDBMock implements BabuDBInternal {
     @Override
     public DatabaseManagerInternal getDatabaseManager() {
 
-        Logging.logMessage(Logging.LEVEL_ERROR, this,
+        Logging.logMessage(Logging.LEVEL_INFO, this,
                 "Mock '%s' tried to access DBMan.", name);
         return dbMan;
     }
