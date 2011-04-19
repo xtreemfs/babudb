@@ -8,9 +8,8 @@ package org.xtreemfs.babudb.config;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
@@ -111,9 +110,9 @@ public class BabuDBConfig extends Config {
     protected int      mmapLimit;
     
     /**
-     * Paths to plugins and their corresponding configurations for optionally plugins used by BabuDB.
+     * Paths to plugins initialized on startup of BabuDB.
      */
-    protected Map<String, String> plugins = new HashMap<String, String>();
+    protected List<String> plugins = new ArrayList<String>();
     
     /**
      * Creates a new BabuDB configuration.
@@ -329,9 +328,9 @@ public class BabuDBConfig extends Config {
         this.mmapLimit = this.readOptionalInt("babudb.mmapLimit", -1);
         
         int count = 0;
-        String pluginPath = null;
-        while ((pluginPath = this.readOptionalString("babudb.pluginPath." + count, null)) != null) {
-            this.plugins.put(pluginPath, readOptionalString("babudb.pluginConfig." + count, null));
+        String pluginConfigPath = null;
+        while ((pluginConfigPath = readOptionalString("babudb.plugin." + count, null)) != null) {
+            plugins.add(pluginConfigPath);
             count++;
         }
         
@@ -404,7 +403,7 @@ public class BabuDBConfig extends Config {
         return this.mmapLimit;
     }
     
-    public Map<String, String> getPlugins() {
+    public List<String> getPlugins() {
         return plugins;
     }
  
@@ -426,10 +425,8 @@ public class BabuDBConfig extends Config {
         buf.append("#            mmap disabled: " + disableMMap + "\n");
         if (!disableMMap)
             buf.append("#               mmap limit: " + mmapLimit + "\n");
-        int i = 0;
-        for (Entry<String, String> e : plugins.entrySet()) {
-            buf.append("#               plugin " + (i++) + ": " + e.getKey() + "\n");
-            buf.append("#               plugin config: " + e.getValue() + "\n");    
+        for (int i = 0; i < plugins.size(); i++) {
+            buf.append("#               plugin-" + i + ": " + plugins.get(i) + "\n");
         }
         return buf.toString();
     }
