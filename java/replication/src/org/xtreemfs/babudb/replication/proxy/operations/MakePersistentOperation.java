@@ -17,6 +17,7 @@ import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.transmission.ErrorCode;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
+import org.xtreemfs.foundation.logging.Logging;
 
 import com.google.protobuf.Message;
 
@@ -27,11 +28,11 @@ import com.google.protobuf.Message;
  * @author flangner
  * @since 01/19/2011
  */
-public class MakePersistantOperation extends Operation {
+public class MakePersistentOperation extends Operation {
 
     private final BabuDBInterface dbs;
     
-    public MakePersistantOperation(BabuDBInterface dbs) {
+    public MakePersistentOperation(BabuDBInterface dbs) {
         this.dbs = dbs;
     }
     
@@ -58,6 +59,10 @@ public class MakePersistantOperation extends Operation {
     @Override
     public void processRequest(final Request rq) {
         Type type = (Type) rq.getRequestMessage();
+        
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "MakePersistentOperation:" +
+                " type %d.", type.getValue());
+        
         try {
             DatabaseRequestResult<Object> result = 
                 dbs.getPersistanceManager().makePersistent((byte) type.getValue(), 

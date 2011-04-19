@@ -80,20 +80,15 @@ public class RequestDispatcher implements RPCServerRequestListener {
      * Initializes the dispatcher services.
      */
     public void start() {       
-        try {  
-            if (handlers.size() == 0) {
-                throw new Exception("The dispatcher cannot be started, " +
-                                    "without any handler registered at!");
-            }
-            
-            rpcServer.start();
-            rpcServer.waitForStartup();
-        } catch (Exception ex) {
-            Logging.logMessage(Logging.LEVEL_ERROR, this, "startup failed");
-            Logging.logError(Logging.LEVEL_ERROR, this, ex);
+        if (handlers.size() == 0) {
+            Logging.logMessage(Logging.LEVEL_ERROR, this, 
+                    "The dispatcher cannot be started, without any handler registered at!");
+            Logging.logError(Logging.LEVEL_ERROR, this, new Exception());
             throw new RuntimeException("Fatal error while initializing the " +
-            		"replication plugin. Check log for details.");
+                    "replication plugin. Check log for details.");
         }
+        
+        rpcServer.start();
     }
     
     public void waitForStartup() throws Exception {

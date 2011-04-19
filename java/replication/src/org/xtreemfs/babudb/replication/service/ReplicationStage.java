@@ -215,6 +215,11 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                     notifyCrashed(ie);
                     return;
                 }
+            } catch(Exception e) {
+                
+                clearQueue();
+                notifyCrashed(e);
+                return;                
             }
         }
         

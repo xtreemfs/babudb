@@ -17,6 +17,7 @@ import org.xtreemfs.babudb.replication.transmission.ErrorCode;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.logging.Logging;
 
 import com.google.protobuf.Message;
 
@@ -58,12 +59,17 @@ public class LookupOperation extends Operation {
      */
     @Override
     public void processRequest(final Request rq) {
+        
         Lookup req = (Lookup) rq.getRequestMessage();
+        byte[] key = rq.getData().array();
+        
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "LookupOperation:" +
+                "db %s, index %d, key %s.", req.getDatabaseName(), req.getIndexId(), 
+                new String(key));
         
         try {
-            dbs.getDatabase(req.getDatabaseName()).lookup(req.getIndexId(), 
-                            rq.getData().array(), null).registerListener(
-                                        new DatabaseRequestListener<byte[]>() {
+            dbs.getDatabase(req.getDatabaseName()).lookup(req.getIndexId(), key, 
+                    null).registerListener(new DatabaseRequestListener<byte[]>() {
                 
                 @Override
                 public void finished(byte[] result, Object context) {

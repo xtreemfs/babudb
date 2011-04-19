@@ -20,7 +20,6 @@ import java.util.Set;
 import org.xtreemfs.babudb.replication.control.FleaseHolder;
 import org.xtreemfs.babudb.replication.policy.Policy;
 import org.xtreemfs.foundation.SSLOptions;
-import org.xtreemfs.babudb.config.Config;
 import org.xtreemfs.foundation.flease.FleaseConfig;
 
 /**
@@ -31,10 +30,9 @@ import org.xtreemfs.foundation.flease.FleaseConfig;
  * 
  */
 
-public class ReplicationConfig extends Config {
+public class ReplicationConfig extends PluginConfig {
     
-    private final static String POLICY_PACKAGE = 
-        "org.xtreemfs.babudb.replication.policy.";
+    private final static String POLICY_PACKAGE = "org.xtreemfs.babudb.replication.policy.";
     
     protected final BabuDBConfig     babuDBConfig;
     
@@ -59,7 +57,7 @@ public class ReplicationConfig extends Config {
     /** 
      * longest duration a message can live on the wire, before it becomes void (one-way)
      */
-    private static final int         MESSAGE_TIMEOUT        = 5 * 1000;
+    public static final int         MESSAGE_TIMEOUT        = 5 * 1000;
     
     /** 
      * longest duration a connection can be established without getting closed 
@@ -67,7 +65,7 @@ public class ReplicationConfig extends Config {
     public static final int          LEASE_TIMEOUT          = 60 * 1000;
         
     /** 
-     * longest duration before an RPC-Call is timed out (RTT) 
+     * longest duration before an RPC-Call is timed out for the client (RTT) 
      */
     public static final int          REQUEST_TIMEOUT        = 2 * MESSAGE_TIMEOUT;
     

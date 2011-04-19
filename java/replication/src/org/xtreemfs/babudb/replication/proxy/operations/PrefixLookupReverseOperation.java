@@ -22,6 +22,7 @@ import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.logging.Logging;
 
 import com.google.protobuf.Message;
 
@@ -63,12 +64,17 @@ public class PrefixLookupReverseOperation extends Operation {
      */
     @Override
     public void processRequest(final Request rq) {
-        Lookup req = (Lookup) rq.getRequestMessage();
         
-        try {
-            dbs.getDatabase(req.getDatabaseName()).reversePrefixLookup(
-                    req.getIndexId(), rq.getData().array(), null)
-                        .registerListener(
+        Lookup req = (Lookup) rq.getRequestMessage();
+        byte[] key = rq.getData().array();
+        
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "PrefixLookupReverseOperation:" +
+                "db %s, index %d, key %s.", req.getDatabaseName(), req.getIndexId(), 
+                new String(key));
+        
+        try {          
+            dbs.getDatabase(req.getDatabaseName()).reversePrefixLookup(req.getIndexId(), key, 
+                    null).registerListener(
                                 new DatabaseRequestListener<ResultSet<byte[], byte[]>>() {
                 
                 @Override

@@ -8,10 +8,7 @@
 package org.xtreemfs.babudb.replication.control;
 
 import java.net.InetSocketAddress;
-import java.util.concurrent.atomic.AtomicReference;
 
-import org.xtreemfs.babudb.config.ReplicationConfig;
-import org.xtreemfs.foundation.TimeSync;
 import org.xtreemfs.foundation.buffer.ASCIIString;
 import org.xtreemfs.foundation.flease.Flease;
 import org.xtreemfs.foundation.flease.FleaseStatusListener;
@@ -21,17 +18,20 @@ import org.xtreemfs.foundation.logging.Logging;
 /**
  * Holder of the currently valid {@link Flease}. Is also a listener for lease
  * changes and notifies other replication components.
+ * </br>
+ * </br>
+ * states: WAIT (null), MASTER (thisAddress), SLAVE (otherAddress), FAILED (Flease.EMPTY_LEASE)
  *
  * @author flangner 
  * @since 04/15/2010
  */
 public class FleaseHolder implements FleaseStatusListener {
     
-    /** the currently valid lease */
-    private final AtomicReference<Flease> flease = new AtomicReference<Flease>(Flease.EMPTY_LEASE);
-    
     /** listener to inform about certain lease changes */
-    private final FleaseEventListener     listener;
+    private final FleaseEventListener   listener;
+    
+    /** the currently valid lease */
+    private Flease                      lease = null;
 
     /**
      * @param cellId
@@ -47,32 +47,25 @@ public class FleaseHolder implements FleaseStatusListener {
      * 
      * @return the address of the currently valid leaseHolder.
      */
-    InetSocketAddress getLeaseHolderAddress() {
+    synchronized InetSocketAddress getLeaseHolderAddress() {
         
-        Flease lease = null;
-        synchronized (flease) {
-            try {
-                if (!flease.get().isValid()) {
-                    flease.wait(ReplicationConfig.DELAY_TO_WAIT_FOR_LEASE_MS);
-                }
-            } catch (InterruptedException e) {
-                /* I don't care */
+        try {
+            if (lease == null) {
+                wait();
             }
-            lease = flease.get();
+        } catch (InterruptedException e) {
+            /* I don't care */
         }
-
         
-        return (lease.isValid()) ? getAddress(lease.getLeaseHolder()) : null;
+        return (lease != null && lease.isValid()) ? getAddress(lease.getLeaseHolder()) : null;
     }
     
     /**
      * Resets the currently valid lease to ensure that the notifier will be executed on the receive
      * of the next valid {@link Flease} message.
      */
-    void reset() {
-        synchronized (flease) {
-            flease.set(Flease.EMPTY_LEASE);
-        }
+    synchronized void reset() {
+        lease = Flease.EMPTY_LEASE;
     }
        
 /*
@@ -80,13 +73,21 @@ public class FleaseHolder implements FleaseStatusListener {
  */
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.foundation.flease.FleaseStatusListener#leaseFailed(org.xtreemfs.foundation.buffer.ASCIIString, org.xtreemfs.foundation.flease.proposer.FleaseException)
+     * @see org.xtreemfs.foundation.flease.FleaseStatusListener#leaseFailed(
+     *          org.xtreemfs.foundation.buffer.ASCIIString, 
+     *          org.xtreemfs.foundation.flease.proposer.FleaseException)
      */
     @Override
     public void leaseFailed(ASCIIString cellId, FleaseException error) {
+        
         Logging.logMessage(Logging.LEVEL_WARN, this, "Flease was not" +
                 " able to become the current lease holder in %s because:" +
                 " %s ", cellId.toString(), error.getMessage());
+        
+        synchronized (this) {
+            lease = Flease.EMPTY_LEASE;
+            notifyAll();
+        }
     }
 
     /* (non-Javadoc)
@@ -94,29 +95,28 @@ public class FleaseHolder implements FleaseStatusListener {
      *          org.xtreemfs.foundation.buffer.ASCIIString, org.xtreemfs.foundation.flease.Flease)
      */
     @Override
-    public void statusChanged(ASCIIString cellId, Flease lease) {
-        Logging.logMessage(Logging.LEVEL_INFO, this, "received '%s' at" +
-                " time %d", lease.toString(), TimeSync.getGlobalTime());
+    public void statusChanged(ASCIIString cellId, Flease newLease) {
         
-        ASCIIString newLeaseHolder = lease.getLeaseHolder();
+        Logging.logMessage(Logging.LEVEL_INFO, this, "Received new Lease (%s).", 
+                newLease.toString());
         
-        // if the lease is outdated ,broken or the leaseholder has not changed, it will be ignored
-        if (lease.isValid()) {
+        ASCIIString newLeaseHolder = newLease.getLeaseHolder();
+        
+        // if the lease is outdated or broken, it will be ignored
+        if (newLease.isValid()) {
             
-            synchronized (flease) {
-                if (!newLeaseHolder.equals(flease.getAndSet(lease).getLeaseHolder())) {
-                    
-                    
-                    // notify listener about the change
-                    try {
-                        listener.updateLeaseHolder(getAddress(newLeaseHolder));
-                    } catch (Exception e) {
-                        Logging.logError(Logging.LEVEL_WARN, this, e);
-                        reset();
-                    }
-                }
+            // update the old lease. assume FLease will always announce lease changes in order.
+            Flease oldLease = null;
+            synchronized (this) {
+                oldLease = lease;
+                lease = newLease;
+                notifyAll();
+            }
+            
+            // notify listener if the leaseholder has changed
+            if (oldLease == null || !newLeaseHolder.equals(oldLease.getLeaseHolder())) {
                 
-                flease.notifyAll();
+                listener.updateLeaseHolder(getAddress(newLeaseHolder));
             }
         }
     }
@@ -129,7 +129,7 @@ public class FleaseHolder implements FleaseStatusListener {
      * @param address
      * @return the string representation of the given address.
      */
-    public static String getIdentity (InetSocketAddress address) {
+    public final static String getIdentity (InetSocketAddress address) {
         String host = address.getAddress().getHostAddress();
         assert (host != null) : "Address was not resolved before!";
         return host + ":" + address.getPort();
@@ -139,7 +139,7 @@ public class FleaseHolder implements FleaseStatusListener {
      * @param identity
      * @return the address used to create the given identity.
      */
-    public static InetSocketAddress getAddress (ASCIIString identity) {
+    public final static InetSocketAddress getAddress (ASCIIString identity) {
         String[] adr = identity.toString().split(":");
         assert(adr.length == 2);
         return new InetSocketAddress(adr[0], Integer.parseInt(adr[1]));

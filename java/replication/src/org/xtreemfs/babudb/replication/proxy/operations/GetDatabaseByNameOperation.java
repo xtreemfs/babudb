@@ -15,6 +15,7 @@ import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.transmission.ErrorCode;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
+import org.xtreemfs.foundation.logging.Logging;
 
 import com.google.protobuf.Message;
 
@@ -57,7 +58,12 @@ public class GetDatabaseByNameOperation extends Operation {
      */
     @Override
     public void processRequest(Request rq) {
+        
         String dbName = ((DatabaseName) rq.getRequestMessage()).getDatabaseName();
+        
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "GetDatabaseByNameOperation:" +
+                " dbId %s.", dbName);
+        
         try {
             
             rq.sendSuccess(Database.newBuilder()

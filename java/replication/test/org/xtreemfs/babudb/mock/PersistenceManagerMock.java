@@ -26,12 +26,13 @@ import org.xtreemfs.foundation.logging.Logging;
 
 public class PersistenceManagerMock extends PersistenceManagerInternal {
 
-    final AtomicReference<LSN> onDisk = new AtomicReference<LSN>(new LSN(1, 0L));
+    final AtomicReference<LSN> onDisk = new AtomicReference<LSN>(null);
     
     private final AtomicBoolean lock = new AtomicBoolean();
     private final String name;
 
-    public PersistenceManagerMock(String name) {
+    public PersistenceManagerMock(String name, LSN onDisk) {
+        this.onDisk.set(onDisk);
         this.name = name;
     }
 

@@ -55,31 +55,28 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
         assert (master != null);
         
         try {
-            final RPCResponse<ErrorCodeResponse> result = makePersistent(master, 
+            RPCResponse<ErrorCodeResponse> result = makePersistent(master, 
                     AUTHENTICATION, USER_CREDENTIALS, type, data);
             
             return new ClientResponseFuture<Object, ErrorCodeResponse>(result) {
                 
                 @Override
-                public Object get() throws IOException, InterruptedException, 
-                        ErrorCodeException {
-                    try {
-                        ErrorCodeResponse response = result.get();
-                        if (response.getErrorCode() != 0) {
-                            throw new ErrorCodeException(
-                                    response.getErrorCode());
-                        }
-                        return null;
-                    } finally {
-                        result.freeBuffers();
+                public Object resolve(ErrorCodeResponse response, ReusableBuffer data)
+                        throws ErrorCodeException, IOException {
+                    
+                    if (response.getErrorCode() != 0) {
+                        throw new ErrorCodeException(
+                                response.getErrorCode());
                     }
+                    return null;
                 }
             };
         } catch (final IOException e) {
             return new ClientResponseFuture<Object, ErrorCodeResponse>(null) {
                 
                 @Override
-                public Object get() throws IOException {
+                public Object resolve(ErrorCodeResponse response, ReusableBuffer data)
+                        throws ErrorCodeException, IOException {
                     throw e;
                 }
             };
@@ -91,29 +88,29 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
      *          java.net.InetSocketAddress)
      */
     @Override
-    public ClientResponseFuture<Integer,Database> getDatabase(String dbName, InetSocketAddress master) {
+    public ClientResponseFuture<Integer,Database> getDatabase(String dbName, 
+            InetSocketAddress master) {
  
         assert (master != null);
         
         try {
-            final RPCResponse<Database> result = getDatabaseByName(master, 
-                    AUTHENTICATION, 
+            RPCResponse<Database> result = getDatabaseByName(master, AUTHENTICATION, 
                     USER_CREDENTIALS, dbName);
             
-            return new ClientResponseFuture<Integer,Database>(result) {
-                
+            return new ClientResponseFuture<Integer,Database>(result) {              
+
                 @Override
-                public Integer get() throws ErrorCodeException, 
-                        IOException, InterruptedException {
-                    return result.get().getDatabaseId();
+                public Integer resolve(Database response, ReusableBuffer data) 
+                        throws ErrorCodeException, IOException {
+                    return response.getDatabaseId();
                 }
             };
         } catch (final IOException e) {
             return new ClientResponseFuture<Integer,Database>(null) {
                 
                 @Override
-                public Integer get() throws ErrorCodeException, 
-                        IOException, InterruptedException {
+                public Integer resolve(Database response, ReusableBuffer data) 
+                        throws ErrorCodeException, IOException {
                     throw e;
                 }
             };
@@ -131,18 +128,15 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
         assert (master != null);
         
         try {
-            final RPCResponse<Databases> result = getDatabases(master, 
-                    AUTHENTICATION, 
-                    USER_CREDENTIALS);
+            RPCResponse<Databases> result = getDatabases(master, AUTHENTICATION, USER_CREDENTIALS);
             
             return new ClientResponseFuture<Map<String, Integer>, Databases>(result) {
                 
                 @Override
-                public Map<String, Integer> get() throws ErrorCodeException, 
-                        IOException, InterruptedException {
+                public Map<String, Integer> resolve(Databases response, ReusableBuffer data)
+                        throws ErrorCodeException, IOException {
                     Map<String, Integer> r = new HashMap<String, Integer>();
-                    Databases dbs = result.get();
-                    for (Database db : dbs.getDatabaseList()) {
+                    for (Database db : response.getDatabaseList()) {
                         r.put(db.getDatabaseName(), db.getDatabaseId());
                     }
                     return r;
@@ -152,8 +146,8 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
             return new ClientResponseFuture<Map<String,Integer>, Databases>(null) {
                 
                 @Override
-                public Map<String, Integer> get() throws ErrorCodeException, 
-                        IOException, InterruptedException {
+                public Map<String, Integer> resolve(Databases response, ReusableBuffer data)
+                        throws ErrorCodeException, IOException {
                     throw e;
                 }
             };
@@ -172,20 +166,19 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
         assert (master != null);
         
         try {
-            final RPCResponse<ErrorCodeResponse> result = lookup(master, 
-                    AUTHENTICATION, 
-                    USER_CREDENTIALS, dbName, indexId, key);
+            RPCResponse<ErrorCodeResponse> result = lookup(master, AUTHENTICATION, USER_CREDENTIALS, 
+                    dbName, indexId, key);
             
             return new ClientResponseFuture<byte[], ErrorCodeResponse>(result) {
                 
                 @Override
-                public byte[] get() throws ErrorCodeException, 
-                        IOException, InterruptedException {
-                    int eCode = result.get().getErrorCode();
+                public byte[] resolve(ErrorCodeResponse response, ReusableBuffer data)
+                        throws ErrorCodeException, IOException {
+                    
+                    int eCode = response.getErrorCode();
                     if (eCode != 0) {
                         throw new ErrorCodeException(eCode);
                     }
-                    ReusableBuffer data = result.getData();
                     try {
                         return (data == null) ? null : data.array();
                     } finally {
@@ -197,8 +190,8 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
             return new ClientResponseFuture<byte[], ErrorCodeResponse>(null) {
                 
                 @Override
-                public byte[] get() throws ErrorCodeException, 
-                        IOException, InterruptedException {
+                public byte[] resolve(ErrorCodeResponse response, ReusableBuffer data)
+                        throws ErrorCodeException, IOException {
                     throw e;
                 }
             };
@@ -221,25 +214,19 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
         assert (master != null);
         
         try {
-            final RPCResponse<EntryMap> result = plookup(master, 
-                    AUTHENTICATION, 
-                    USER_CREDENTIALS, dbName, indexId, key);
+            RPCResponse<EntryMap> result = plookup(master, AUTHENTICATION, USER_CREDENTIALS, dbName, 
+                    indexId, key);
             
             return new ClientResponseFuture<ResultSet<byte[], byte[]>,EntryMap>(result) {
                 
                 @Override
-                public ResultSet<byte[], byte[]> get() 
-                        throws ErrorCodeException, IOException, 
-                        InterruptedException {
-                    
-                    EntryMap e = result.get();
-                    if (e.getErrorCode() != 0) {
-                        throw new ErrorCodeException(e.getErrorCode());
+                public ResultSet<byte[], byte[]> resolve(EntryMap response, ReusableBuffer data)
+                        throws ErrorCodeException, IOException {
+                    if (response.getErrorCode() != 0) {
+                        throw new ErrorCodeException(response.getErrorCode());
                     }
-                    ReusableBuffer data = result.getData();
-                    
                     try {
-                        int count = e.getLengthCount();
+                        int count = response.getLengthCount();
                         assert (count % 2 == 0);
                         
                         Map<byte[], byte[]> m = new HashMap<byte[], byte[]>();
@@ -247,10 +234,9 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                         int pos = 0;
                         ReusableBuffer k = null;
                         for (int i = 0; i < count; i++) {
-                            ReusableBuffer v = 
-                                result.getData().createViewBuffer();
+                            ReusableBuffer v = data.createViewBuffer();
                             v.position(pos);
-                            pos += e.getLength(i);
+                            pos += response.getLength(i);
                             v.limit(pos);
                             
                             if (i % 2 == 0) {
@@ -293,9 +279,8 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
             return new ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap>(null) {
                 
                 @Override
-                public ResultSet<byte[], byte[]> get() 
-                        throws ErrorCodeException, IOException, 
-                        InterruptedException {
+                public ResultSet<byte[], byte[]> resolve(EntryMap response, ReusableBuffer data)
+                        throws ErrorCodeException, IOException {
                     throw e;
                 }
             };
@@ -317,25 +302,21 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
         assert (master != null);
         
         try {
-            final RPCResponse<EntryMap> result = plookupReverse(master, 
-                    AUTHENTICATION, 
-                    USER_CREDENTIALS, dbName, indexId, key);
+            RPCResponse<EntryMap> result = plookupReverse(master, AUTHENTICATION, USER_CREDENTIALS, 
+                    dbName, indexId, key);
             
             return new ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap>(result) {
                 
                 @Override
-                public ResultSet<byte[], byte[]> get() 
-                        throws ErrorCodeException, IOException, 
-                        InterruptedException {
+                public ResultSet<byte[], byte[]> resolve(EntryMap response, ReusableBuffer data)
+                        throws ErrorCodeException, IOException {
                     
-                    EntryMap e = result.get();
-                    if (e.getErrorCode() != 0) {
-                        throw new ErrorCodeException(e.getErrorCode());
+                    if (response.getErrorCode() != 0) {
+                        throw new ErrorCodeException(response.getErrorCode());
                     }
-                    ReusableBuffer data = result.getData();
                     
                     try {
-                        int count = e.getLengthCount();
+                        int count = response.getLengthCount();
                         assert (count % 2 == 0);
                         
                         Map<byte[], byte[]> m = new HashMap<byte[], byte[]>();
@@ -343,10 +324,9 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                         int pos = 0;
                         ReusableBuffer k = null;
                         for (int i = 0; i < count; i++) {
-                            ReusableBuffer v = 
-                                result.getData().createViewBuffer();
+                            ReusableBuffer v = data.createViewBuffer();
                             v.position(pos);
-                            pos += e.getLength(i);
+                            pos += response.getLength(i);
                             v.limit(pos);
                             
                             if (i % 2 == 0) {
@@ -389,9 +369,8 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
             return new ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap>(null) {
                 
                 @Override
-                public ResultSet<byte[], byte[]> get() 
-                        throws ErrorCodeException, IOException, 
-                        InterruptedException {
+                public ResultSet<byte[], byte[]> resolve(EntryMap response, ReusableBuffer data)
+                        throws ErrorCodeException, IOException {
                     throw e;
                 }
             };
@@ -418,26 +397,21 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
         payload.put(to);
         
         try {
-            final RPCResponse<EntryMap> result = rlookup(master, 
-                    AUTHENTICATION, 
-                    USER_CREDENTIALS, dbName, indexId,  
-                    from.remaining(), payload);
+            RPCResponse<EntryMap> result = rlookup(master, AUTHENTICATION, USER_CREDENTIALS, dbName, 
+                    indexId, from.remaining(), payload);
             
             return new ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap>(result) {
                 
                 @Override
-                public ResultSet<byte[], byte[]> get() 
-                        throws ErrorCodeException, IOException, 
-                        InterruptedException {
+                public ResultSet<byte[], byte[]> resolve(EntryMap response, ReusableBuffer data)
+                        throws ErrorCodeException, IOException {
                     
-                    EntryMap e = result.get();
-                    if (e.getErrorCode() != 0) {
-                        throw new ErrorCodeException(e.getErrorCode());
+                    if (response.getErrorCode() != 0) {
+                        throw new ErrorCodeException(response.getErrorCode());
                     }
-                    ReusableBuffer data = result.getData();
                     
                     try {
-                        int count = e.getLengthCount();
+                        int count = response.getLengthCount();
                         assert (count % 2 == 0);
                         
                         Map<byte[], byte[]> m = new HashMap<byte[], byte[]>();
@@ -445,10 +419,9 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                         int pos = 0;
                         ReusableBuffer k = null;
                         for (int i = 0; i < count; i++) {
-                            ReusableBuffer v = 
-                                result.getData().createViewBuffer();
+                            ReusableBuffer v = data.createViewBuffer();
                             v.position(pos);
-                            pos += e.getLength(i);
+                            pos += response.getLength(i);
                             v.limit(pos);
                             
                             if (i % 2 == 0) {
@@ -491,9 +464,8 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
             return new ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap>(null) {
                 
                 @Override
-                public ResultSet<byte[], byte[]> get() 
-                        throws ErrorCodeException, IOException, 
-                        InterruptedException {
+                public ResultSet<byte[], byte[]> resolve(EntryMap response, ReusableBuffer data)
+                        throws ErrorCodeException, IOException {
                     throw e;
                 }
             };
@@ -522,26 +494,21 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
         payload.put(to);
         
         try {
-            final RPCResponse<EntryMap> result = rlookupReverse(master, 
-                    AUTHENTICATION, 
-                    USER_CREDENTIALS, dbName, indexId,  
-                    from.remaining(), payload);
+            RPCResponse<EntryMap> result = rlookupReverse(master, AUTHENTICATION, USER_CREDENTIALS, 
+                    dbName, indexId, from.remaining(), payload);
             
             return new ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap>(result) {
                 
                 @Override
-                public ResultSet<byte[], byte[]> get() 
-                        throws ErrorCodeException, IOException, 
-                        InterruptedException {
+                public ResultSet<byte[], byte[]> resolve(EntryMap response, ReusableBuffer data)
+                        throws ErrorCodeException, IOException {
                     
-                    EntryMap e = result.get();
-                    if (e.getErrorCode() != 0) {
-                        throw new ErrorCodeException(e.getErrorCode());
+                    if (response.getErrorCode() != 0) {
+                        throw new ErrorCodeException(response.getErrorCode());
                     }
-                    ReusableBuffer data = result.getData();
                     
                     try {
-                        int count = e.getLengthCount();
+                        int count = response.getLengthCount();
                         assert (count % 2 == 0);
                         
                         Map<byte[], byte[]> m = new HashMap<byte[], byte[]>();
@@ -549,10 +516,9 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                         int pos = 0;
                         ReusableBuffer k = null;
                         for (int i = 0; i < count; i++) {
-                            ReusableBuffer v = 
-                                result.getData().createViewBuffer();
+                            ReusableBuffer v = data.createViewBuffer();
                             v.position(pos);
-                            pos += e.getLength(i);
+                            pos += response.getLength(i);
                             v.limit(pos);
                             
                             if (i % 2 == 0) {
@@ -595,9 +561,8 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
             return new ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap>(null) {
                 
                 @Override
-                public ResultSet<byte[], byte[]> get() 
-                        throws ErrorCodeException, IOException, 
-                        InterruptedException {
+                public ResultSet<byte[], byte[]> resolve(EntryMap response, ReusableBuffer data)
+                        throws ErrorCodeException, IOException {
                     throw e;
                 }
             };
@@ -609,7 +574,8 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
     }
 
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.RemoteAccessClient#getDatabase(int, java.net.InetSocketAddress)
+     * @see org.xtreemfs.babudb.replication.RemoteAccessClient#
+     *          getDatabase(int, java.net.InetSocketAddress)
      */
     @Override
     public ClientResponseFuture<String, Database> getDatabase(int dbId, InetSocketAddress master) {
@@ -617,24 +583,23 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
         assert (master != null);
         
         try {
-            final RPCResponse<Database> result = getDatabaseById(master, 
-                    AUTHENTICATION, 
-                    USER_CREDENTIALS, dbId);
+            RPCResponse<Database> result = getDatabaseById(master, AUTHENTICATION, USER_CREDENTIALS, 
+                    dbId);
             
             return new ClientResponseFuture<String,Database>(result) {
                 
                 @Override
-                public String get() throws ErrorCodeException, 
-                        IOException, InterruptedException {
-                    return result.get().getDatabaseName();
+                public String resolve(Database response, ReusableBuffer data) 
+                        throws ErrorCodeException, IOException {
+                    return response.getDatabaseName();
                 }
             };
         } catch (final IOException e) {
             return new ClientResponseFuture<String,Database>(null) {
                 
                 @Override
-                public String get() throws ErrorCodeException, 
-                        IOException, InterruptedException {
+                public String resolve(Database response, ReusableBuffer data) 
+                        throws ErrorCodeException, IOException {
                     throw e;
                 }
             };

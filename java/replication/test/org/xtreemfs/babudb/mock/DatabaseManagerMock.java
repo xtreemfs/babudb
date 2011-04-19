@@ -142,8 +142,7 @@ public class DatabaseManagerMock implements DatabaseManagerInternal {
      */
     @Override
     public Collection<DatabaseInternal> getDatabaseList() {
-        // TODO Auto-generated method stub
-        return null;
+        return dbsByName.values();
     }
 
     /* (non-Javadoc)

@@ -49,6 +49,7 @@ public abstract class Logic {
      * 
      * @throws ConnectionLostException if the connection to the participant is lost.
      * @throws InterruptedException if the execution was interrupted.
+     * @throws Exception if an uncaught-able error occurred.
      */
-    public abstract void run() throws ConnectionLostException, InterruptedException;
+    public abstract void run() throws ConnectionLostException, InterruptedException, Exception;
 }

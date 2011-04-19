@@ -13,7 +13,7 @@ import org.xtreemfs.babudb.replication.proxy.operations.GetDatabaseByIdOperation
 import org.xtreemfs.babudb.replication.proxy.operations.GetDatabaseByNameOperation;
 import org.xtreemfs.babudb.replication.proxy.operations.GetDatabasesOperation;
 import org.xtreemfs.babudb.replication.proxy.operations.LookupOperation;
-import org.xtreemfs.babudb.replication.proxy.operations.MakePersistantOperation;
+import org.xtreemfs.babudb.replication.proxy.operations.MakePersistentOperation;
 import org.xtreemfs.babudb.replication.proxy.operations.PrefixLookupOperation;
 import org.xtreemfs.babudb.replication.proxy.operations.PrefixLookupReverseOperation;
 import org.xtreemfs.babudb.replication.proxy.operations.RangeLookupOperation;
@@ -36,7 +36,7 @@ public class ProxyRequestHandler extends RequestHandler {
     public ProxyRequestHandler(BabuDBInterface dbs, int maxQ) {
         super(maxQ);
         
-        Operation op = new MakePersistantOperation(dbs); 
+        Operation op = new MakePersistentOperation(dbs); 
         operations.put(op.getProcedureId(), op);
         
         op = new GetDatabaseByNameOperation(dbs);

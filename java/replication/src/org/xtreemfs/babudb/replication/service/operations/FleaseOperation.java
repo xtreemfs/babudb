@@ -101,9 +101,10 @@ public class FleaseOperation extends Operation {
     public void processRequest(Request rq) {
         FleaseMessage msg = (FleaseMessage) rq.getAttachment();
 
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "received rpc-flease (%s)", msg.toString());
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "FleaseOperation: received message %s", 
+                msg.toString());
         
-        this.receiver.receive(msg);
+        receiver.receive(msg);
         rq.sendSuccess(ErrorCodeResponse.getDefaultInstance()); 
     }
 }
