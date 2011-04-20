@@ -5,7 +5,7 @@
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-package org.xtreemfs.babudb;
+package org.xtreemfs.babudb.sandbox;
 
 import static org.junit.Assert.*;
 

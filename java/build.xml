@@ -1,23 +1,70 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <?eclipse.ant.import?>
 <project basedir="." default="build" name="BabuDB">
+
 	<property environment="env" />
 	<property name="debuglevel" value="source,lines,vars" />
 	<property name="target" value="1.6" />
 	<property name="source" value="1.6" />
+
+	<property name="distparentdir" value="dist" />
+	<property name="distdir" value="${distparentdir}/BabuDB" />
+	<property name="distdir-singlejar" value="${distparentdir}/BabuDB-singlejar" />
+	<property name="docdir" value="${distparentdir}/doc" />
+	<property name="doctarget" value="${distparentdir}/javadoc.zip" />
+
 	<path id="BabuDB.classpath">
 		<pathelement location="bin" />
 		<pathelement location="lib/Foundation.jar" />
 	</path>
+
 	<target name="init">
 		<mkdir dir="bin" />
 	</target>
+
 	<target name="clean">
 		<delete dir="bin" />
 	</target>
-	<target depends="clean" name="cleanall" />
-	<target depends="build-subprojects,build-project" name="build" />
-	<target name="build-subprojects"/>
+
+	<target name="distclean" depends="clean">
+		<delete dir="${distdir}" />
+		<delete dir="${distdir-singlejar}" />
+		<delete dir="${docdir}" />
+		<delete file="${doctarget}" />
+		<delete failonerror="false">
+			<fileset dir="${distparentdir}" includes="BabuDB-*" />
+		</delete>
+	</target>
+
+	<target name="getversion">
+
+		<!-- retrieve the BabuDB version number from the package -->
+		<loadfile srcfile="src/org/xtreemfs/babudb/BabuDBFactory.java" property="version">
+			<filterchain>
+				<linecontains>
+					<contains value="BABUDB_VERSION" />
+				</linecontains>
+				<headfilter lines="1" />
+				<replaceregex pattern="[^\d\.]+" replace="" />
+				<replaceregex pattern="[^\d\.]+" replace="" />
+				<deletecharacters chars="\r\n"/>
+			</filterchain>
+		</loadfile>
+		<echo>BabuDB version: ${version}</echo>
+
+	</target>
+
+	<target name="javadoc" depends="getversion">
+		<mkdir dir="${docdir}" />
+		<javadoc doctitle="BabuDB ${version}" sourcepath="src" excludepackagenames="org.xtreemfs.babudb.sandbox.*" destdir="${docdir}">
+			<classpath refid="BabuDB.classpath" />
+		</javadoc>
+	</target>
+
+	<target name="build" depends="build-subprojects,build-project" />
+
+	<target name="build-subprojects" />
+
 	<target depends="init" name="build-project">
 		<echo message="${ant.project.name}: ${ant.file}" />
 		<javac debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}">
@@ -25,13 +72,46 @@
 			<classpath refid="BabuDB.classpath" />
 		</javac>
 	</target>
+
 	<target name="jar" depends="build">
-		<mkdir dir="dist" />
+		<mkdir dir="${distdir}" />
 		<copy file="AUTHORS" todir="bin" />
 		<copy file="LICENSE" todir="bin" />
 		<copy todir="bin">
-			<fileset dir="src" excludes="**/*.java"/>
+			<fileset dir="src" excludes="**/*.java" />
 		</copy>
-		<jar destfile="dist/BabuDB.jar" basedir="bin" excludes="org/xtreemfs/babudb/sandbox/**" />
+		<jar destfile="${distdir}/BabuDB.jar" basedir="bin" excludes="org/xtreemfs/babudb/sandbox/**" />
 	</target>
+
+	<target name="singlejar" depends="jar">
+		<mkdir dir="${distdir-singlejar}" />
+		<mkdir dir="bin/tmp" />
+		<unjar src="${distdir}/BabuDB.jar" dest="bin/tmp" />
+		<unjar src="lib/Foundation.jar" dest="bin/tmp" />
+		<jar destfile="${distdir-singlejar}/BabuDB.jar" basedir="bin/tmp" excludes="org/xtreemfs/babudb/sandbox/**" />
+		<delete dir="bin/tmp" />
+	</target>
+
+	<target name="release" depends="jar,singlejar,javadoc">
+
+		<property name="releasetarget" value="${distparentdir}/BabuDB-${version}.zip" />
+		<property name="releasetarget-singlejar" value="${distparentdir}/BabuDB-${version}.jar" />
+
+		<!-- package BabuDB release w/ separate JARs -->
+		<mkdir dir="${distdir}/lib" />
+		<copy todir="${distdir}/lib">
+			<fileset dir="lib" />
+		</copy>
+		<copy todir="${distdir}" file="LICENSE" />
+		<zip destfile="${releasetarget}" basedir="${distdir}" />
+
+		<!-- copy single-jar BabuDB release -->
+		<copy todir="${distparentdir}" file="${distdir-singlejar}/BabuDB.jar" />
+		<move tofile="${releasetarget-singlejar}" file="${distparentdir}/BabuDB.jar"/>
+		
+		<!-- package documentation -->
+		<zip destfile="${doctarget}" basedir="${docdir}" />
+
+	</target>
+
 </project>
