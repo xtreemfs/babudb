@@ -65,8 +65,7 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                         throws ErrorCodeException, IOException {
                     
                     if (response.getErrorCode() != 0) {
-                        throw new ErrorCodeException(
-                                response.getErrorCode());
+                        throw new ErrorCodeException(response.getErrorCode());
                     }
                     return null;
                 }
@@ -102,6 +101,10 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                 @Override
                 public Integer resolve(Database response, ReusableBuffer data) 
                         throws ErrorCodeException, IOException {
+                    
+                    if (response.getErrorCode() != 0) {
+                        throw new ErrorCodeException(response.getErrorCode());
+                    }
                     return response.getDatabaseId();
                 }
             };
@@ -135,6 +138,7 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                 @Override
                 public Map<String, Integer> resolve(Databases response, ReusableBuffer data)
                         throws ErrorCodeException, IOException {
+                    
                     Map<String, Integer> r = new HashMap<String, Integer>();
                     for (Database db : response.getDatabaseList()) {
                         r.put(db.getDatabaseName(), db.getDatabaseId());
@@ -175,9 +179,8 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                 public byte[] resolve(ErrorCodeResponse response, ReusableBuffer data)
                         throws ErrorCodeException, IOException {
                     
-                    int eCode = response.getErrorCode();
-                    if (eCode != 0) {
-                        throw new ErrorCodeException(eCode);
+                    if (response.getErrorCode() != 0) {
+                        throw new ErrorCodeException(response.getErrorCode());
                     }
                     try {
                         return (data == null) ? null : data.array();
@@ -222,6 +225,7 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                 @Override
                 public ResultSet<byte[], byte[]> resolve(EntryMap response, ReusableBuffer data)
                         throws ErrorCodeException, IOException {
+                    
                     if (response.getErrorCode() != 0) {
                         throw new ErrorCodeException(response.getErrorCode());
                     }
@@ -314,7 +318,6 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                     if (response.getErrorCode() != 0) {
                         throw new ErrorCodeException(response.getErrorCode());
                     }
-                    
                     try {
                         int count = response.getLengthCount();
                         assert (count % 2 == 0);
@@ -391,8 +394,7 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
         
         assert (master != null);
         
-        ReusableBuffer payload = BufferPool.allocate(from.remaining() + 
-                                                     to.remaining());
+        ReusableBuffer payload = BufferPool.allocate(from.remaining() + to.remaining());
         payload.put(from);
         payload.put(to);
         
@@ -409,7 +411,6 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                     if (response.getErrorCode() != 0) {
                         throw new ErrorCodeException(response.getErrorCode());
                     }
-                    
                     try {
                         int count = response.getLengthCount();
                         assert (count % 2 == 0);
@@ -488,8 +489,7 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
         
         assert (master != null);
         
-        ReusableBuffer payload = BufferPool.allocate(from.remaining() + 
-                                                     to.remaining());
+        ReusableBuffer payload = BufferPool.allocate(from.remaining() + to.remaining());
         payload.put(from);
         payload.put(to);
         
@@ -506,7 +506,6 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                     if (response.getErrorCode() != 0) {
                         throw new ErrorCodeException(response.getErrorCode());
                     }
-                    
                     try {
                         int count = response.getLengthCount();
                         assert (count % 2 == 0);
@@ -591,6 +590,10 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                 @Override
                 public String resolve(Database response, ReusableBuffer data) 
                         throws ErrorCodeException, IOException {
+                    
+                    if (response.getErrorCode() != 0) {
+                        throw new ErrorCodeException(response.getErrorCode());
+                    }
                     return response.getDatabaseName();
                 }
             };

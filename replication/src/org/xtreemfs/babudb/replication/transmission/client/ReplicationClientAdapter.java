@@ -388,8 +388,7 @@ public class ReplicationClientAdapter extends ReplicationServiceClient
                     
                     if (response.getErrorCode() != 0) {
                         throw new ErrorCodeException(response.getErrorCode());
-                    }
-                                            
+                    }                     
                     return data.createViewBuffer();
                 }
             };
@@ -431,8 +430,7 @@ public class ReplicationClientAdapter extends ReplicationServiceClient
                         org.xtreemfs.babudb.pbrpc.GlobalTypes.DBFileMetaData 
                             md = response.getDbFileMetadatas(i);
                         
-                        c.add(new DBFileMetaData(md.getFileName(), 
-                                                 md.getFileSize()));
+                        c.add(new DBFileMetaData(md.getFileName(), md.getFileSize()));
                     }
                     
                     return new DBFileMetaDataSet(response.getMaxChunkSize(), c);
@@ -472,6 +470,7 @@ public class ReplicationClientAdapter extends ReplicationServiceClient
                 @Override
                 public Object resolve(ErrorCodeResponse response, ReusableBuffer data)
                         throws ErrorCodeException, IOException {
+                    
                     if (response.getErrorCode() != 0) {
                         throw new ErrorCodeException(response.getErrorCode());
                     }
