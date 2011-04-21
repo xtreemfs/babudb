@@ -9,11 +9,11 @@
 
 	<property name="distparentdir" value="../dist" />
 	<property name="distdir" value="${distparentdir}/replication" />
-	<property name="releasetarget" value="${distparentdir}/replication-plugin.zip" />
+	<property name="releasetarget" value="${distparentdir}/replication.zip" />
 
 	<path id="BabuDB-replication.classpath">
 		<pathelement location="bin" />
-		<pathelement location="../dist/BabuDB.jar" />
+		<pathelement location="../dist/BabuDB/BabuDB.jar" />
 		<pathelement location="../lib/Foundation.jar" />
 		<pathelement location="lib/Flease.jar" />
 		<pathelement location="extlib/protobuf-java-2.3.0.jar" />
@@ -65,8 +65,8 @@
 
 		<copy todir="${distdir}" file="LICENSE" />
 		<copy todir="${distdir}" file="README" />
-			
-		<zip destfile="${releasetarget}" basedir="${distdir}" />
+
+		<zip destfile="${releasetarget}" basedir="${distparentdir}" includes="replication/**" />
 
 	</target>
 
