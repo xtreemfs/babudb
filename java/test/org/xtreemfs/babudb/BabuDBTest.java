@@ -67,6 +67,46 @@ public class BabuDBTest extends TestCase {
     }
     
     @Test
+    public void testShutdownRestart() throws Exception {
+        
+        database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0,
+            SyncMode.ASYNC, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1,
+            LOG_LEVEL));
+        
+        Database db = database.getDatabaseManager().createDatabase("test", 3);
+        DatabaseInsertGroup ig = db.createInsertGroup();
+        ig.addInsert(0, "Yagga".getBytes(), "Brabbel".getBytes());
+        ig.addInsert(1, "Brabbel".getBytes(), "Blupp".getBytes());
+        ig.addInsert(2, "Blupp".getBytes(), "Blahh".getBytes());
+        db.insert(ig, null).get();
+
+        database.shutdown();
+        
+        database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0,
+            SyncMode.ASYNC, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1,
+            LOG_LEVEL));
+        db = database.getDatabaseManager().getDatabase("test");
+        byte[] result = db.lookup(0, "Yagga".getBytes(), null).get();
+        assertNotNull(result);
+        String value = new String(result);
+        assertEquals(value, "Brabbel");
+        
+        result = db.lookup(1, "Brabbel".getBytes(), null).get();
+        assertNotNull(result);
+        value = new String(result);
+        assertEquals(value, "Blupp");
+        
+        result = db.lookup(2, "Blupp".getBytes(), null).get();
+        assertNotNull(result);
+        value = new String(result);
+        assertEquals(value, "Blahh");
+        
+        System.out.println("shutting down database...");
+        
+        database.shutdown();
+    }
+    
+    @Test
     public void testReplayAfterCrash() throws Exception {
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
             SyncMode.SYNC_WRITE, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1,
