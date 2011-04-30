@@ -261,7 +261,7 @@ public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
                     for (LSMDBWorker w : worker)
                         w.waitForShutdown();
                 
-            } catch (InterruptedException ex) {
+            } catch (Exception ex) {
                 Logging.logMessage(Logging.LEVEL_ERROR, this, "BabuDB could"
                     + " not be stopped, because '%s'.", ex.getMessage());
             }
@@ -380,8 +380,6 @@ public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
                         e.getMessage(), e.getCause()); 
             } 
         }
-    
-         
 
         try {
             
@@ -404,7 +402,7 @@ public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
                     "%d worker " + "threads shut down successfully", worker.length);
             }
             
-        } catch (InterruptedException ex) {
+        } catch (Exception ex) {
             /* ignored */
         }
         Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB shutdown complete.");
@@ -416,7 +414,6 @@ public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
     @SuppressWarnings("deprecation")
     public void __test_killDB_dangerous() {
         try {
-            logger.stop();
             logger.destroy();
             if (worker != null)
                 for (LSMDBWorker w : worker)
@@ -551,6 +548,7 @@ public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
                         // execute the in-memory logic
                         try {
                             processingLogic.before(arguments);
+                            processingLogic.meanwhile(arguments);
                             processingLogic.after(arguments);
                         } catch (BabuDBException be) {
                         	

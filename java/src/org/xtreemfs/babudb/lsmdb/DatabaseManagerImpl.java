@@ -574,7 +574,7 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                     (BabuDBRequestResultImpl<Object>) args[2];
                 
                 // in case of asynchronous inserts, complete the request immediately
-                if (dbs.getConfig().getSyncMode() == SyncMode.ASYNC) {
+                if (dbs.getConfig().getSyncMode().equals(SyncMode.ASYNC)) {
                     
                     // insert into the in-memory-tree
                     for (InsertRecord ir : irg.getInserts()) {
@@ -607,7 +607,7 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                 
                 // in case of synchronous inserts, wait until the disk logger 
                 // returns
-                if (dbs.getConfig().getSyncMode() != SyncMode.ASYNC) {
+                if (!dbs.getConfig().getSyncMode().equals(SyncMode.ASYNC)) {
                 
                     // insert into the in-memory-tree
                     for (InsertRecord ir : irg.getInserts()) {

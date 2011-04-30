@@ -39,7 +39,7 @@ public class BabuDBTest extends TestCase {
     
     public static final String  baseDir          = "/tmp/lsmdb-test/";
     
-    public static final int     LOG_LEVEL        = Logging.LEVEL_DEBUG;
+    public static final int     LOG_LEVEL        = Logging.LEVEL_ERROR;
     
     public static final boolean MMAP             = false;
     
@@ -79,7 +79,7 @@ public class BabuDBTest extends TestCase {
         ig.addInsert(1, "Brabbel".getBytes(), "Blupp".getBytes());
         ig.addInsert(2, "Blupp".getBytes(), "Blahh".getBytes());
         db.insert(ig, null).get();
-
+        
         database.shutdown();
         
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0,

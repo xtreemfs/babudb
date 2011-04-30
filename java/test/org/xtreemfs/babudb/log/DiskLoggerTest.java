@@ -63,11 +63,6 @@ public class DiskLoggerTest extends TestCase {
     public void tearDown() throws Exception {
         l.shutdown();
         l.waitForShutdown();
-        try {
-            l.finalize();
-        } catch(Throwable th) {
-            throw new Exception(th);
-        }
     }
     
     @Test

@@ -357,19 +357,31 @@ public class DiskLogger extends LifeCycleThread {
                 
                 Logging.logError(Logging.LEVEL_ERROR, this, ex);
                 
+       
                 for (LogEntry le : tmpE) {
                     le.getListener().failed(le, ex);
                 }
                 tmpE.clear();
             } catch (InterruptedException ex) {
                 if (!quit) {
+                    try {
+                        close();
+                    } catch (IOException e) {
+                        Logging.logError(Logging.LEVEL_ERROR, this, e);
+                    }
                     notifyCrashed(ex);
                     return;
                 }
             }
         }
-        Logging.logMessage(Logging.LEVEL_INFO, this, "disk logger shut down successfully");
-        notifyStopped();
+        
+        try {
+            close();
+            Logging.logMessage(Logging.LEVEL_INFO, this, "disk logger shut down successfully");
+            notifyStopped();
+        } catch (IOException e) {
+            notifyCrashed(e);
+        }
     }
 
     /**
@@ -380,42 +392,45 @@ public class DiskLogger extends LifeCycleThread {
         interrupt();
     }
     
-    public void waitForShutdown() throws InterruptedException {
-        try {
-            super.waitForShutdown();
-        } catch (Exception e) {
-            throw new InterruptedException(e.getMessage());
-        } finally {
-            destroy();
-        }
-    }
-
     /**
-     * shut down files.
+     * Closes the log-file. And frees remaining entries.
+     * 
+     * @throws IOException
      */
-    protected void finalize() throws Throwable {
-        destroy();
-        super.finalize();
-    }
-    
-    public void destroy() {       
+    public void close() throws IOException {    
+        
         try {
             fdes.sync();
-        } catch (IOException ex) {
-            /* I don't care */
         } finally {
             try {
                 fos.close();
-            } catch (IOException e) {
-                /* I don't care */
-            }
+            } finally {
             
-            // clear pending requests, if available
-            for (LogEntry le : entries) {
-                le.getListener().failed(le, new BabuDBException(ErrorCode.INTERRUPTED, 
-                    "DiskLogger was shut down, before the entry could be written to the log-file"));
-                le.free();
+                // clear pending requests, if available
+                for (LogEntry le : entries) {
+                    le.getListener().failed(le, new BabuDBException(ErrorCode.INTERRUPTED, 
+                        "DiskLogger was shut down, before the entry could be written to " +
+                        "the log-file"));
+                    le.free();
+                }
             }
+        }
+    }
+    
+    /**
+     * NEVER USE THIS EXCEPT FOR UNIT TESTS! Kills the logger.
+     */
+    @Deprecated
+    public void destroy() {
+        stop();
+        try {
+            try {
+                fdes.sync();
+            } finally {
+                fos.close();
+            }
+        } catch (IOException e) {
+            
         }
     }
     
@@ -425,6 +440,6 @@ public class DiskLogger extends LifeCycleThread {
      * @return the LSN of the latest inserted {@link LogEntry}.
      */
     public LSN getLatestLSN(){
-        return new LSN(this.currentViewId.get(),this.nextLogSequenceNo.get()-1L);
+        return new LSN(currentViewId.get(), nextLogSequenceNo.get() - 1L);
     }
 }

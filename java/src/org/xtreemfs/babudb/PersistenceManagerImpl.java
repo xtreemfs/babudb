@@ -69,8 +69,7 @@ class PersistenceManagerImpl extends PersistenceManagerInternal {
         LogEntry entry = new LogEntry(payload, null, type);
         
         // setup the result
-        final BabuDBRequestResultImpl<T> result =
-            new BabuDBRequestResultImpl<T>(entry);
+        final BabuDBRequestResultImpl<T> result = new BabuDBRequestResultImpl<T>(entry);
         
         // define the listener
         entry.setListener(new SyncListener() {

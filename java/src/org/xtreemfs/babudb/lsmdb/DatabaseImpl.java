@@ -33,9 +33,9 @@ public class DatabaseImpl implements DatabaseInternal {
     
     private LSMDatabase         lsmDB;
     
-    /*
-     * constructors/destructors
-     */
+/*
+ * constructors/destructors
+ */
 
     /**
      * Creates a new Database.
@@ -102,8 +102,7 @@ public class DatabaseImpl implements DatabaseInternal {
     @Override
     public DatabaseRequestResult<Object> insert(BabuDBInsertGroup irg, Object context) {
         
-        final BabuDBRequestResultImpl<Object> result = 
-            new BabuDBRequestResultImpl<Object>(context);
+        final BabuDBRequestResultImpl<Object> result = new BabuDBRequestResultImpl<Object>(context);
         
         InsertRecordGroup ins = irg.getRecord();
         int dbId = ins.getDatabaseId();
