@@ -215,8 +215,15 @@ public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
         // is replayed
         this.dbCheckptr.init(logger, configuration.getCheckInterval(), configuration.getMaxLogfileSize());
         
-        if (staticInit != null) {
+        final LSN firstLSN = new LSN(1, 1L);
+        if (staticInit != null && nextLSN.equals(firstLSN)) {
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "Running initialization script...");
             staticInit.initialize(databaseManager, snapshotManager);
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                    "... initialization script finished successfully.");
+        } else if (staticInit != null) {
+            Logging.logMessage(Logging.LEVEL_INFO, this, "Static initialization was ignored, " +
+            		"because database is not empty.");
         }
         
         this.stopped.set(false);
