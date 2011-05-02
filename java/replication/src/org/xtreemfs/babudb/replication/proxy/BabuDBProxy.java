@@ -47,7 +47,6 @@ public class BabuDBProxy implements BabuDBInternal {
         this.replMan = replMan;
         this.persManProxy = new PersistenceManagerProxy(replMan, 
                 localDB.getPersistenceManager(), replicationPolicy, client);
-        this.localBabuDB.replacePersistenceManager(persManProxy);
         this.dbManProxy = new DatabaseManagerProxy(localDB.getDatabaseManager(), 
                 replicationPolicy, replMan, client, persManProxy);
     }
@@ -105,6 +104,7 @@ public class BabuDBProxy implements BabuDBInternal {
     @Override
     public void init(StaticInitialization staticInit) throws BabuDBException {
         localBabuDB.init(staticInit);
+        localBabuDB.replacePersistenceManager(persManProxy);
         replMan.initialize(persManProxy);
     }
     
