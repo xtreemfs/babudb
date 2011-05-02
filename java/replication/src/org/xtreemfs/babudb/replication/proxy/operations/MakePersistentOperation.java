@@ -77,11 +77,15 @@ public class MakePersistentOperation extends Operation {
                 
                 @Override
                 public void failed(BabuDBException error, Object context) {
+                    Logging.logError(Logging.LEVEL_WARN, this, error);
+                    
                     rq.sendSuccess(ErrorCodeResponse.newBuilder().setErrorCode(
                             ErrorCode.SERVICE_UNAVAILABLE).build());
                 }
             });
         } catch (BabuDBException be) {
+            Logging.logError(Logging.LEVEL_WARN, this, be);
+            
             rq.sendSuccess(ErrorCodeResponse.newBuilder().setErrorCode(
                     ErrorCode.SERVICE_UNAVAILABLE).build());
         } 

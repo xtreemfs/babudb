@@ -32,7 +32,7 @@ public final class BabuDBFactory {
     /**
      * Version (name)
      */
-    public static final String BABUDB_VERSION           = "0.5.0";
+    public static final String BABUDB_VERSION           = "0.5.1";
     
     /**
      * Version of the DB on-disk format (to detect incompatibilities).
@@ -96,7 +96,7 @@ public final class BabuDBFactory {
             if (e.getMessage() == null) Logging.logError(Logging.LEVEL_ERROR, babuDB, e);
             throw new BabuDBException(ErrorCode.BROKEN_PLUGIN, e.getMessage(), e.getCause());
         }
-        
+
         /*
          * initialize all services provided
          */
