@@ -66,17 +66,24 @@ public class RangeLookupOperation extends Operation {
     public void processRequest(final Request rq) {
         RangeLookup req = (RangeLookup) rq.getRequestMessage();
         
-        int limit = req.getFromLength();       
-        ReusableBuffer f = rq.getData().createViewBuffer();
-        f.limit(limit);
-        byte[] from = f.getData();
-        ReusableBuffer t = rq.getData().createViewBuffer();
-        t.position(limit);
-        byte[] to = t.getData();
+        int limit = req.getFromLength();  
+        ReusableBuffer data = rq.getData();
+        byte[] from = null;
+        byte[] to = null;
+        ReusableBuffer f = null;
+        ReusableBuffer t = null;
+        if (data != null) {
+            f = data.createViewBuffer();
+            f.limit(limit);
+            from = f.getData();
+            t = data.createViewBuffer();
+            t.position(limit);
+            to = t.getData();
+        }
         
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "RangeLookupOperation:" +
                 "db %s, index %d, from %s, to %s.", req.getDatabaseName(), req.getIndexId(), 
-                new String(from), new String(to));
+                (from == null) ? "null" : new String(from), (to == null) ? "null" : new String(to));
        
         try {
             dbs.getDatabase(req.getDatabaseName()).rangeLookup(req.getIndexId(), 
@@ -122,8 +129,8 @@ public class RangeLookupOperation extends Operation {
             rq.sendSuccess(ErrorCodeResponse.newBuilder().setErrorCode(
                     ErrorCode.DB_UNAVAILABLE).build());
         } finally {
-            BufferPool.free(f);
-            BufferPool.free(t);
+            if (f != null) BufferPool.free(f);
+            if (t != null) BufferPool.free(t);
         }
     }
 }
