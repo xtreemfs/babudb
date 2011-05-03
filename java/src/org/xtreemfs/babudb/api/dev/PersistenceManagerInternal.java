@@ -10,8 +10,8 @@ package org.xtreemfs.babudb.api.dev;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.BabuDB;
-import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
@@ -79,7 +79,7 @@ public abstract class PersistenceManagerInternal {
      * 
      * @return the result listener.
      */
-    public <T> DatabaseRequestResult<T> makePersistent(byte type, Object[] args) 
+    public <T> BabuDBRequestResultImpl<T> makePersistent(byte type, Object[] args) 
             throws BabuDBException {
         
         return makePersistent(type, args, inMemoryProcessing.get(type).serializeRequest(args));
@@ -97,7 +97,7 @@ public abstract class PersistenceManagerInternal {
      * 
      * @return the result listener.
      */
-    public <T> DatabaseRequestResult<T> makePersistent(byte type, ReusableBuffer serialized) 
+    public <T> BabuDBRequestResultImpl<T> makePersistent(byte type, ReusableBuffer serialized) 
             throws BabuDBException {
         
         return makePersistent(type, inMemoryProcessing.get(type).deserializeRequest(serialized), 
@@ -117,7 +117,7 @@ public abstract class PersistenceManagerInternal {
      * 
      * @return the result listener.
      */
-    public abstract <T> DatabaseRequestResult<T> makePersistent(byte type, Object[] args, 
+    public abstract <T> BabuDBRequestResultImpl<T> makePersistent(byte type, Object[] args, 
             ReusableBuffer serialized) throws BabuDBException;
     
     /**

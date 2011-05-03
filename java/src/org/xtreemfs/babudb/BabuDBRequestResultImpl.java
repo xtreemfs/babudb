@@ -28,13 +28,13 @@ public class BabuDBRequestResultImpl<T> implements DatabaseRequestResult<T> {
     
     private DatabaseRequestListener<T>  listener; 
 
-    private T                         result;
+    private T                           result;
     
-    private BabuDBException           error; 
+    private BabuDBException             error; 
     
-    private final AtomicBoolean       finished = new AtomicBoolean(false);
+    private final AtomicBoolean         finished = new AtomicBoolean(false);
     
-    private final Object              context;
+    protected Object                    context;
     
 /*
  * constructors
@@ -60,6 +60,15 @@ public class BabuDBRequestResultImpl<T> implements DatabaseRequestResult<T> {
 /*
  * state changing methods    
  */
+    
+    /**
+     * Change the context. This has to be done BEFORE a listener has been registered.
+     * 
+     * @param context
+     */
+    public void updateContext(Object context) {
+        this.context = context;
+    }
     
     /**
      * Internal operation to run if the request was finished without 

@@ -9,7 +9,6 @@ package org.xtreemfs.babudb;
 
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
 import org.xtreemfs.babudb.api.dev.InMemoryProcessing;
 import org.xtreemfs.babudb.api.dev.PersistenceManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
@@ -52,13 +51,12 @@ class PersistenceManagerImpl extends PersistenceManagerInternal {
         }
     }
       
-    /*
-     * (non-Javadoc)
-     * @see org.xtreemfs.babudb.api.PersistenceManager#makePersistent(byte, java.lang.Object[], 
-     *          org.xtreemfs.foundation.buffer.ReusableBuffer)
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.PersistenceManagerInternal#makePersistent(byte, 
+     *          java.lang.Object[], org.xtreemfs.foundation.buffer.ReusableBuffer)
      */
     @Override
-    public <T> DatabaseRequestResult<T> makePersistent(byte type, final Object[] args, 
+    public <T> BabuDBRequestResultImpl<T> makePersistent(byte type, final Object[] args, 
             ReusableBuffer payload) throws BabuDBException {
         
         final InMemoryProcessing processing = inMemoryProcessing.get(type);
