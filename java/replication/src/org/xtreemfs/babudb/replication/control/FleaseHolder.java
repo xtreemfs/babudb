@@ -97,7 +97,7 @@ public class FleaseHolder implements FleaseStatusListener {
     @Override
     public void statusChanged(ASCIIString cellId, Flease newLease) {
         
-        Logging.logMessage(Logging.LEVEL_INFO, this, "Received new Lease (%s).", 
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "Received new Lease (%s).", 
                 newLease.toString());
         
         ASCIIString newLeaseHolder = newLease.getLeaseHolder();

@@ -98,5 +98,5 @@ message RangeLookup {
 
 message EntryMap {
   optional fixed32 error_code = 1[default = 0];
-  repeated fixed64 length = 2;
+  repeated fixed32 length = 2;
 }

@@ -6379,15 +6379,15 @@ public final class GlobalTypes {
     public boolean hasErrorCode() { return hasErrorCode; }
     public int getErrorCode() { return errorCode_; }
     
-    // repeated fixed64 length = 2;
+    // repeated fixed32 length = 2;
     public static final int LENGTH_FIELD_NUMBER = 2;
-    private java.util.List<java.lang.Long> length_ =
+    private java.util.List<java.lang.Integer> length_ =
       java.util.Collections.emptyList();
-    public java.util.List<java.lang.Long> getLengthList() {
+    public java.util.List<java.lang.Integer> getLengthList() {
       return length_;
     }
     public int getLengthCount() { return length_.size(); }
-    public long getLength(int index) {
+    public int getLength(int index) {
       return length_.get(index);
     }
     
@@ -6403,8 +6403,8 @@ public final class GlobalTypes {
       if (hasErrorCode()) {
         output.writeFixed32(1, getErrorCode());
       }
-      for (long element : getLengthList()) {
-        output.writeFixed64(2, element);
+      for (int element : getLengthList()) {
+        output.writeFixed32(2, element);
       }
       getUnknownFields().writeTo(output);
     }
@@ -6421,7 +6421,7 @@ public final class GlobalTypes {
       }
       {
         int dataSize = 0;
-        dataSize = 8 * getLengthList().size();
+        dataSize = 4 * getLengthList().size();
         size += dataSize;
         size += 1 * getLengthList().size();
       }
@@ -6592,7 +6592,7 @@ public final class GlobalTypes {
         }
         if (!other.length_.isEmpty()) {
           if (result.length_.isEmpty()) {
-            result.length_ = new java.util.ArrayList<java.lang.Long>();
+            result.length_ = new java.util.ArrayList<java.lang.Integer>();
           }
           result.length_.addAll(other.length_);
         }
@@ -6625,15 +6625,15 @@ public final class GlobalTypes {
               setErrorCode(input.readFixed32());
               break;
             }
-            case 17: {
-              addLength(input.readFixed64());
+            case 21: {
+              addLength(input.readFixed32());
               break;
             }
             case 18: {
               int length = input.readRawVarint32();
               int limit = input.pushLimit(length);
               while (input.getBytesUntilLimit() > 0) {
-                addLength(input.readFixed64());
+                addLength(input.readFixed32());
               }
               input.popLimit(limit);
               break;
@@ -6661,31 +6661,31 @@ public final class GlobalTypes {
         return this;
       }
       
-      // repeated fixed64 length = 2;
-      public java.util.List<java.lang.Long> getLengthList() {
+      // repeated fixed32 length = 2;
+      public java.util.List<java.lang.Integer> getLengthList() {
         return java.util.Collections.unmodifiableList(result.length_);
       }
       public int getLengthCount() {
         return result.getLengthCount();
       }
-      public long getLength(int index) {
+      public int getLength(int index) {
         return result.getLength(index);
       }
-      public Builder setLength(int index, long value) {
+      public Builder setLength(int index, int value) {
         result.length_.set(index, value);
         return this;
       }
-      public Builder addLength(long value) {
+      public Builder addLength(int value) {
         if (result.length_.isEmpty()) {
-          result.length_ = new java.util.ArrayList<java.lang.Long>();
+          result.length_ = new java.util.ArrayList<java.lang.Integer>();
         }
         result.length_.add(value);
         return this;
       }
       public Builder addAllLength(
-          java.lang.Iterable<? extends java.lang.Long> values) {
+          java.lang.Iterable<? extends java.lang.Integer> values) {
         if (result.length_.isEmpty()) {
-          result.length_ = new java.util.ArrayList<java.lang.Long>();
+          result.length_ = new java.util.ArrayList<java.lang.Integer>();
         }
         super.addAll(values, result.length_);
         return this;
@@ -6848,7 +6848,7 @@ public final class GlobalTypes {
       "d\030\002 \002(\007\"K\n\013RangeLookup\022\025\n\rdatabase_name\030",
       "\001 \002(\t\022\020\n\010index_id\030\002 \002(\007\022\023\n\013from_length\030\003" +
       " \002(\007\"1\n\010EntryMap\022\025\n\nerror_code\030\001 \001(\007:\0010\022" +
-      "\016\n\006length\030\002 \003(\006B\033\n\031org.xtreemfs.babudb.p" +
+      "\016\n\006length\030\002 \003(\007B\033\n\031org.xtreemfs.babudb.p" +
       "brpc"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =

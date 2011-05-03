@@ -1,4 +1,4 @@
-//automatically generated from replication.proto at Thu Mar 31 13:44:14 CEST 2011
+//automatically generated from replication.proto at Tue May 03 16:44:29 CEST 2011
 //(c) 2011. See LICENSE file for details.
 
 package org.xtreemfs.babudb.pbrpc;

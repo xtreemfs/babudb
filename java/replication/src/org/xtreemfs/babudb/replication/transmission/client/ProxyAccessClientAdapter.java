@@ -234,21 +234,16 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                         assert (count % 2 == 0);
                         
                         Map<byte[], byte[]> m = new HashMap<byte[], byte[]>();
-                        
-                        int pos = 0;
-                        ReusableBuffer k = null;
+                        byte[] k = null, v = null;
                         for (int i = 0; i < count; i++) {
-                            ReusableBuffer v = data.createViewBuffer();
-                            v.position(pos);
-                            pos += response.getLength(i);
-                            v.limit(pos);
+                            int length = response.getLength(i);
+                            v = new byte[length];
+                            data.get(v, 0, length);
                             
                             if (i % 2 == 0) {
                                 k = v;
                             } else {
-                                m.put(k.getData(), v.getData());
-                                BufferPool.free(k);
-                                BufferPool.free(v);
+                                m.put(k, v);
                             }
                         }
                         
@@ -323,21 +318,16 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                         assert (count % 2 == 0);
                         
                         Map<byte[], byte[]> m = new HashMap<byte[], byte[]>();
-                        
-                        int pos = 0;
-                        ReusableBuffer k = null;
+                        byte[] k = null, v = null;
                         for (int i = 0; i < count; i++) {
-                            ReusableBuffer v = data.createViewBuffer();
-                            v.position(pos);
-                            pos += response.getLength(i);
-                            v.limit(pos);
+                            int length = response.getLength(i);
+                            v = new byte[length];
+                            data.get(v, 0, length);
                             
                             if (i % 2 == 0) {
                                 k = v;
                             } else {
-                                m.put(k.getData(), v.getData());
-                                BufferPool.free(k);
-                                BufferPool.free(v);
+                                m.put(k, v);
                             }
                         }
                         
@@ -416,21 +406,16 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                         assert (count % 2 == 0);
                         
                         Map<byte[], byte[]> m = new HashMap<byte[], byte[]>();
-                        
-                        int pos = 0;
-                        ReusableBuffer k = null;
+                        byte[] k = null, v = null;
                         for (int i = 0; i < count; i++) {
-                            ReusableBuffer v = data.createViewBuffer();
-                            v.position(pos);
-                            pos += response.getLength(i);
-                            v.limit(pos);
+                            int length = response.getLength(i);
+                            v = new byte[length];
+                            data.get(v, 0, length);
                             
                             if (i % 2 == 0) {
                                 k = v;
                             } else {
-                                m.put(k.getData(), v.getData());
-                                BufferPool.free(k);
-                                BufferPool.free(v);
+                                m.put(k, v);
                             }
                         }
                         
@@ -511,21 +496,16 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                         assert (count % 2 == 0);
                         
                         Map<byte[], byte[]> m = new HashMap<byte[], byte[]>();
-                        
-                        int pos = 0;
-                        ReusableBuffer k = null;
+                        byte[] k = null, v = null;
                         for (int i = 0; i < count; i++) {
-                            ReusableBuffer v = data.createViewBuffer();
-                            v.position(pos);
-                            pos += response.getLength(i);
-                            v.limit(pos);
+                            int length = response.getLength(i);
+                            v = new byte[length];
+                            data.get(v, 0, length);
                             
                             if (i % 2 == 0) {
                                 k = v;
                             } else {
-                                m.put(k.getData(), v.getData());
-                                BufferPool.free(k);
-                                BufferPool.free(v);
+                                m.put(k, v);
                             }
                         }
                         

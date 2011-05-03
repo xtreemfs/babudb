@@ -7,6 +7,8 @@
  */
 package org.xtreemfs.babudb.replication.proxy.operations;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
@@ -93,28 +95,30 @@ public class RangeLookupOperation extends Operation {
                 @Override
                 public void finished(ResultSet<byte[], byte[]> result, Object context) {
                     EntryMap.Builder r = EntryMap.newBuilder();
-                    ReusableBuffer data = BufferPool.allocate(0);
                     
+                    // estimate the result size
+                    int size = 0;
+                    Map<byte[], byte[]> tmp = new HashMap<byte[], byte[]>();
                     while (result.hasNext()) {
                         Entry<byte[], byte[]> entry = result.next();
-                        ReusableBuffer key = ReusableBuffer.wrap(entry.getKey());
-                        ReusableBuffer value = ReusableBuffer.wrap(entry.getValue());
-                        
-                        r.addLength(key.remaining());
-                        r.addLength(value.remaining());
-                        
-                        int newSize = data.remaining() + key.remaining() + 
-                                      value.remaining();
-                        if (!data.enlarge(newSize)) {
-                            ReusableBuffer tmp = BufferPool.allocate(newSize);
-                            
-                            tmp.put(data);
-                            BufferPool.free(data);
-                            data = tmp;
-                        }
-                        data.put(key);
-                        data.put(value);
+                        byte[] key = entry.getKey();
+                        byte[] value = entry.getValue();
+
+                        size += key.length + value.length;
+                        tmp.put(key, value);
                     }
+                    result.free();
+                    
+                    // prepare the response
+                    ReusableBuffer data = BufferPool.allocate(size);
+                    for (Entry<byte[], byte[]> entry : tmp.entrySet()) {
+                        r.addLength(entry.getKey().length);
+                        r.addLength(entry.getValue().length);
+                        
+                        data.put(entry.getKey());
+                        data.put(entry.getValue());
+                    }
+                    data.flip();
                     
                     rq.sendSuccess(r.build(), data);
                 }
