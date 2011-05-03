@@ -8,6 +8,11 @@
 package org.xtreemfs.babudb;
 
 import static org.xtreemfs.babudb.BabuDBFactory.BABUDB_VERSION;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_COPY;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_CREATE;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_DELETE;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_SNAP;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_SNAP_DELETE;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -35,7 +40,6 @@ import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
 import org.xtreemfs.babudb.lsmdb.DBConfig;
-import org.xtreemfs.babudb.lsmdb.DatabaseImpl;
 import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
 import org.xtreemfs.babudb.lsmdb.LSMDBWorker;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
@@ -45,8 +49,6 @@ import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.LifeCycleThread;
 import org.xtreemfs.foundation.VersionManagement;
 import org.xtreemfs.foundation.logging.Logging;
-
-import static org.xtreemfs.babudb.log.LogEntry.*;
 
 /**
  * BabuDB main class.

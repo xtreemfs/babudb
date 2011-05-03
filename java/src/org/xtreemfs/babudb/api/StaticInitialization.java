@@ -7,23 +7,27 @@
  */
 package org.xtreemfs.babudb.api;
 
-
 /**
  * <p>
- * Interface to provide a static database setup for all participants of a 
- * replication setup that will not be replicated on startup.
+ * Interface to provide static initialization code. The code will be executed
+ * prior to initializing any plug-ins.
  * </p>
+ * <p>
+ * Static initialization code can e.g. be used to ensure that all replicas of a
+ * replicated BabuDB installation have the same set of initial databases with
+ * the same content.
+ * </p>
+ * 
  * @author flangner
  * @since 03/03/2010
  */
-@Deprecated
 public interface StaticInitialization {
     
     /**
      * Method that provides an initial setup for {@link BabuDB}.
      * 
-     * @param dbMan
-     * @param sMan
+     * @param dbMan the database manager. It can e.g. be used to create and retrieve databases.
+     * @param sMan the snapshot manager. It can e.g. be used to create initial snapshots.
      */
     public void initialize(DatabaseManager dbMan, SnapshotManager sMan);
 }

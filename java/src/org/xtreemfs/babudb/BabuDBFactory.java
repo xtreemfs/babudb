@@ -46,8 +46,7 @@ public final class BabuDBFactory {
      *            the configuration
      * @throws BabuDBException
      */
-    public final static BabuDB createBabuDB(BabuDBConfig configuration) 
-            throws BabuDBException {
+    public final static BabuDB createBabuDB(BabuDBConfig configuration) throws BabuDBException {
         return createBabuDB(configuration, null);
     }
     
@@ -57,11 +56,14 @@ public final class BabuDBFactory {
      * @param configuration
      *            the configuration
      * @param staticInit
+     *            an implementation of the {@link StaticInitialization}
+     *            interface. Its <code>initialize</code> method will be executed
+     *            prior to setting up any plug-ins. If <code>staticInit</code>
+     *            is <code>null</code>, no such code will be executed.
      * @throws BabuDBException
      */
-    @Deprecated
-    public final static BabuDB createBabuDB(BabuDBConfig configuration, 
-            StaticInitialization staticInit) throws BabuDBException {
+    public final static BabuDB createBabuDB(BabuDBConfig configuration, StaticInitialization staticInit)
+        throws BabuDBException {
         
         /*
          * initialize the logger
@@ -93,10 +95,11 @@ public final class BabuDBFactory {
         try {
             babuDB = PluginLoader.init(babuDB);
         } catch (IOException e) {
-            if (e.getMessage() == null) Logging.logError(Logging.LEVEL_ERROR, babuDB, e);
+            if (e.getMessage() == null)
+                Logging.logError(Logging.LEVEL_ERROR, babuDB, e);
             throw new BabuDBException(ErrorCode.BROKEN_PLUGIN, e.getMessage(), e.getCause());
         }
-
+        
         /*
          * initialize all services provided
          */
