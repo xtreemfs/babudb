@@ -18,6 +18,7 @@ using namespace babudb;
 
 #include <algorithm>
 
+#include <yield/platform/yunit.h>
 #include "yield/platform/path.h"
 using namespace YIELD;
 

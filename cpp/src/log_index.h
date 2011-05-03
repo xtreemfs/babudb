@@ -4,8 +4,6 @@
 #ifndef LOGINDEX_H
 #define LOGINDEX_H
 
-#include <yield/platform/yunit.h>
-
 #include "babudb/key.h"
 #include "babudb/buffer.h"
 #include "babudb/log/sequential_file.h"

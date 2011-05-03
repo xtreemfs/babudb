@@ -10,6 +10,7 @@
 using namespace babudb;
 
 #include <yield/platform/memory_mapped_file.h>
+#include <yield/platform/yunit.h>
 
 IndexMerger::IndexMerger(const string& file_name, const KeyOrder& order) 
     : file_name(file_name), order(order), base(NULL), last_lsn(0), diff(order, 0) {}

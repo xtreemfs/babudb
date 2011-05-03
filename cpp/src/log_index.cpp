@@ -4,6 +4,8 @@
 #include "log_index.h"
 #include "babudb/log/log_section.h"
 
+#include <yield/platform/yunit.h>
+
 #include <utility>
 using std::pair;
 
