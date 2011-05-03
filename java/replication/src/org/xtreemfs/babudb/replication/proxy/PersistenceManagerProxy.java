@@ -201,6 +201,8 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
             @Override
             public void registerListener(final  DatabaseRequestListener<T> listener) {
                 
+                assert (listener != null);
+                
                 rp.registerListener(new ClientResponseAvailableListener<T>() {
         
                     @Override
