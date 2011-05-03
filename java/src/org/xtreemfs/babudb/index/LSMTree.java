@@ -201,7 +201,7 @@ public class LSMTree {
      */
     public ResultSet<byte[], byte[]> prefixLookup(byte[] prefix, boolean ascending) {
         
-        if (prefix.length == 0)
+        if (prefix != null && prefix.length == 0)
             prefix = null;
         
         List<Iterator<Entry<byte[], byte[]>>> list = new ArrayList<Iterator<Entry<byte[], byte[]>>>(2);
