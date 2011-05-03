@@ -46,6 +46,20 @@ public class IntegrationTest {
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
         Logging.start(Logging.LEVEL_ERROR, Category.all);
+        
+        FSUtils.delTree(new File(conf0.getBaseDir()));
+        FSUtils.delTree(new File(conf1.getBaseDir()));
+        FSUtils.delTree(new File(conf2.getBaseDir()));
+        FSUtils.delTree(new File(conf0.getDbLogDir()));
+        FSUtils.delTree(new File(conf1.getDbLogDir()));
+        FSUtils.delTree(new File(conf2.getDbLogDir()));
+        
+        FSUtils.delTree(new File(
+                new ReplicationConfig("config/replication_server0.test", conf0).getTempDir()));
+        FSUtils.delTree(new File(
+                new ReplicationConfig("config/replication_server1.test", conf1).getTempDir()));
+        FSUtils.delTree(new File(
+                new ReplicationConfig("config/replication_server2.test", conf2).getTempDir()));
     }
 
     /**
@@ -54,24 +68,9 @@ public class IntegrationTest {
     @Before
     public void setUp() throws Exception {
         
-        FSUtils.delTree(new File(conf0.getBaseDir()));
-        FSUtils.delTree(new File(conf1.getBaseDir()));
-        FSUtils.delTree(new File(conf2.getBaseDir()));
-        FSUtils.delTree(new File(conf0.getDbLogDir()));
-        FSUtils.delTree(new File(conf1.getDbLogDir()));
-        FSUtils.delTree(new File(conf2.getDbLogDir()));
-                
         // starting three local BabuDB services supporting replication; based on mock databases
-        FSUtils.delTree(new File(
-                new ReplicationConfig("config/replication_server0.test", conf0).getTempDir()));
         babu0 = BabuDBFactory.createBabuDB(conf0);
-        
-        FSUtils.delTree(new File(
-                new ReplicationConfig("config/replication_server1.test", conf1).getTempDir()));
         babu1 = BabuDBFactory.createBabuDB(conf1);
-        
-        FSUtils.delTree(new File(
-                new ReplicationConfig("config/replication_server2.test", conf2).getTempDir()));
         babu2 = BabuDBFactory.createBabuDB(conf2);
     }
 
@@ -206,5 +205,36 @@ public class IntegrationTest {
         assertEquals("blub00", new String(res));
         
         assertNull(test0.lookup(0, "bla20".getBytes(), test0).get());
+    }
+    
+    /**
+     * @throws Exception
+     */
+    @Test
+    public void testRestart() throws Exception {
+        
+        // retrieve the databases
+        Database test0 = babu1.getDatabaseManager().getDatabase("0");
+        Database test1 = babu2.getDatabaseManager().getDatabase("1");
+        Database test2 = babu0.getDatabaseManager().getDatabase("2");
+        
+        // make some lookups
+        byte[] res = test0.lookup(0, "bla00".getBytes(), test0).get();
+        assertNotNull(res);
+        assertEquals("blub00", new String(res));
+        
+        assertNull(test0.lookup(0, "bla20".getBytes(), test0).get());
+        
+        res = test1.lookup(0, "bla10".getBytes(), test1).get();
+        assertNotNull(res);
+        assertEquals("blub10", new String(res));
+        
+        assertNull(test1.lookup(0, "bla20".getBytes(), test1).get());
+        
+        res = test2.lookup(0, "bla20".getBytes(), test2).get();
+        assertNotNull(res);
+        assertEquals("blub20", new String(res));
+        
+        assertNull(test2.lookup(0, "bla10".getBytes(), test2).get());
     }
 }
