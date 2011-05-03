@@ -9,6 +9,7 @@ package org.xtreemfs.babudb.replication.proxy;
 
 import java.net.InetSocketAddress;
 
+import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
 import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
@@ -658,28 +659,20 @@ class DatabaseProxy implements DatabaseInternal {
      *          org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup, java.lang.Object)
      */
     @Override
-    public DatabaseRequestResult<Object> insert(BabuDBInsertGroup irg, final Object context) {
+    public DatabaseRequestResult<Object> insert(BabuDBInsertGroup irg, Object context) {
+        
+        BabuDBRequestResultImpl<Object> result = null;
         
         try {
-            
-            return dbMan.getPersistenceManager().makePersistent(LogEntry.PAYLOAD_TYPE_INSERT, 
-                                                                new Object[] { irg.getRecord(), 
-                                                                null, null });
-        } catch (final BabuDBException e) {
-            
-            return new DatabaseRequestResult<Object>() {
-                
-                @Override
-                public void registerListener(DatabaseRequestListener<Object> listener) {
-                    listener.failed(e, context);
-                }
-                
-                @Override
-                public Object get() throws BabuDBException {
-                    throw e;
-                }
-            };
+            result = dbMan.getPersistenceManager().makePersistent(LogEntry.PAYLOAD_TYPE_INSERT, 
+                            new Object[] { irg.getRecord(), null, null });
+            result.updateContext(context);
+        } catch (BabuDBException e) {
+            result = new BabuDBRequestResultImpl<Object>(context);
+            result.failed(e);
         }
+        
+        return result;
     }
 
     /**

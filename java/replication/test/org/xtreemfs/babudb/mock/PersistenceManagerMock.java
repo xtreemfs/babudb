@@ -10,7 +10,7 @@ package org.xtreemfs.babudb.mock;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
+import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.dev.PersistenceManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
@@ -55,7 +55,7 @@ public class PersistenceManagerMock extends PersistenceManagerInternal {
     }
 
     @Override
-	public <T> DatabaseRequestResult<T> makePersistent(byte type,
+	public <T> BabuDBRequestResultImpl<T> makePersistent(byte type,
 			Object[] args, ReusableBuffer serialized) throws BabuDBException {
 		
 		if (lock.get()) {

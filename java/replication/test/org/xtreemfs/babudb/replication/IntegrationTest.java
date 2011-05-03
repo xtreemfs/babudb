@@ -11,6 +11,7 @@ import static junit.framework.Assert.*;
 import static org.xtreemfs.babudb.replication.TestParameters.*;
 
 import java.io.File;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.After;
 import org.junit.Before;
@@ -20,6 +21,8 @@ import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.api.BabuDB;
 import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
+import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.logging.Logging.Category;
@@ -99,23 +102,98 @@ public class IntegrationTest {
         test2 = babu1.getDatabaseManager().getDatabase("2");
         
         // make some inserts
+        final AtomicInteger notReady = new AtomicInteger(3);
+        final Object context0 = new Object();
         DatabaseInsertGroup ig = test0.createInsertGroup();
         ig.addInsert(0, "bla00".getBytes(), "blub00".getBytes());
         ig.addInsert(1, "bla01".getBytes(), "blub01".getBytes());
         ig.addInsert(2, "bla02".getBytes(), "blub02".getBytes());
-        test0.insert(ig, test0).get();
+        test0.insert(ig, context0).registerListener(new DatabaseRequestListener<Object>() {
+            @Override
+            public void finished(Object result, Object context) {
+                
+                if (notReady.decrementAndGet() == 0) {
+                    synchronized (notReady) {
+                        notReady.notify();
+                    }
+                }
+                assertEquals(context0, context);
+            }
+            
+            @Override
+            public void failed(BabuDBException error, Object context) {
+                
+                if (notReady.decrementAndGet() == 0) {
+                    synchronized (notReady) {
+                        notReady.notify();
+                    }
+                }
+                fail("This should not happen.");
+            }
+        });
         
+        final Object context1 = new Object();
         ig = test1.createInsertGroup();
         ig.addInsert(0, "bla10".getBytes(), "blub10".getBytes());
         ig.addInsert(1, "bla11".getBytes(), "blub11".getBytes());
         ig.addInsert(2, "bla12".getBytes(), "blub12".getBytes());
-        test1.insert(ig, test1).get();
+        test1.insert(ig, context1).registerListener(new DatabaseRequestListener<Object>() {
+            @Override
+            public void finished(Object result, Object context) {
+                
+                if (notReady.decrementAndGet() == 0) {
+                    synchronized (notReady) {
+                        notReady.notify();
+                    }
+                }
+                assertEquals(context1, context);
+            }
+            
+            @Override
+            public void failed(BabuDBException error, Object context) {
+                
+                if (notReady.decrementAndGet() == 0) {
+                    synchronized (notReady) {
+                        notReady.notify();
+                    }
+                }
+                fail("This should not happen.");
+            }
+        });
         
+        final Object context2 = new Object();
         ig = test2.createInsertGroup();
         ig.addInsert(0, "bla20".getBytes(), "blub20".getBytes());
         ig.addInsert(1, "bla21".getBytes(), "blub21".getBytes());
         ig.addInsert(2, "bla22".getBytes(), "blub22".getBytes());
-        test2.insert(ig, test2).get();
+        test2.insert(ig, context2).registerListener(new DatabaseRequestListener<Object>() {
+            @Override
+            public void finished(Object result, Object context) {
+                if (notReady.decrementAndGet() == 0) {
+                    synchronized (notReady) {
+                        notReady.notify();
+                    }
+                }
+                assertEquals(context2, context);
+            }
+            
+            @Override
+            public void failed(BabuDBException error, Object context) {
+                if (notReady.decrementAndGet() == 0) {
+                    synchronized (notReady) {
+                        notReady.notify();
+                    }
+                }
+                fail("This should not happen.");
+            }
+        });
+        
+        // wait for the inserts to finish
+        synchronized (notReady) {
+            if (notReady.get() > 0) {
+                notReady.wait();
+            }
+        }
         
         // retrieve the databases
         test0 = babu1.getDatabaseManager().getDatabase("0");

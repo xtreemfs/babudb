@@ -11,8 +11,8 @@ import java.net.InetSocketAddress;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
-import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
 import org.xtreemfs.babudb.api.dev.InMemoryProcessing;
 import org.xtreemfs.babudb.api.dev.PersistenceManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
@@ -22,12 +22,10 @@ import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.replication.LockableService;
 import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.replication.policy.Policy;
 import org.xtreemfs.babudb.replication.service.accounting.ReplicateResponse;
-import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture;
 import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.ClientResponseAvailableListener;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
@@ -69,7 +67,7 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
      *          org.xtreemfs.foundation.buffer.ReusableBuffer)
      */
     @Override
-    public <T> DatabaseRequestResult<T> makePersistent(byte type, Object[] args, 
+    public <T> BabuDBRequestResultImpl<T> makePersistent(byte type, Object[] args, 
             ReusableBuffer serialized) throws BabuDBException {
         
         assert (serialized != null);
@@ -102,13 +100,13 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
      * @return the requests result future.
      * @throws BabuDBException
      */
-    private <T> DatabaseRequestResult<T> executeLocallyAndReplicate(final byte type, 
+    private <T> BabuDBRequestResultImpl<T> executeLocallyAndReplicate(final byte type, 
             final ReusableBuffer payload, Object[] args) throws BabuDBException {
         
         final ListenerWrapper<T> wrapper = new ListenerWrapper<T>();
                 
         localPersMan.makePersistent(type, args, payload.createViewBuffer()).registerListener(
-                (DatabaseRequestListener<Object>) new DatabaseRequestListener<Object>() {
+                new DatabaseRequestListener<Object>() {
         
             @Override
             public void finished(Object result, Object context) {
@@ -121,20 +119,7 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
                 }
                 
                 LSN assignedByDiskLogger = ((LogEntry) context).getLSN();
-                LogEntry le = new LogEntry(payload, new SyncListener() {
-                
-                    @Override
-                    public void synced(LogEntry entry) {
-                        wrapper.finished(null);
-                    }
-                    
-                    @Override
-                    public void failed(LogEntry entry, Exception ex) {
-                        wrapper.finished(new BabuDBException(
-                                ErrorCode.REPLICATION_FAILURE, 
-                                ex.getMessage()));
-                    }
-                }, type);
+                LogEntry le = new LogEntry(payload, wrapper, type);
                 le.assignId(assignedByDiskLogger.getViewId(), assignedByDiskLogger.getSequenceNo());
                 
                 ReplicateResponse rp = replMan.replicate(le);
@@ -155,29 +140,11 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
                     }
                 }
                 
-                wrapper.finished(error);
+                wrapper.failed(error);
             }
         });
-        
-        DatabaseRequestResult<T> result = 
-            (DatabaseRequestResult<T>) new DatabaseRequestResult<T>() {
-        
-            @Override
-            public void registerListener(
-                    DatabaseRequestListener<T> listener) {
-                
-                wrapper.registerListener(listener);
-            }
-            
-            @Override
-            public T get() throws BabuDBException {
-                
-                wrapper.waitForFinish();
-                return null;
-            }
-        };
     
-        return result;
+        return wrapper;
     }
     
     /**
@@ -190,45 +157,12 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
      * @param master
      * @return the request response future.
      */
-    private <T> DatabaseRequestResult<T> redirectToMaster(byte type, ReusableBuffer load, 
+    private <T> BabuDBRequestResultImpl<T> redirectToMaster(byte type, ReusableBuffer load, 
             InetSocketAddress master) {
         
-        final ClientResponseFuture<T, ErrorCodeResponse> rp = 
-            client.makePersistent(master, type, load);
-
-        DatabaseRequestResult<T> result = new DatabaseRequestResult<T>() {
-            
-            @Override
-            public void registerListener(final  DatabaseRequestListener<T> listener) {
-                
-                assert (listener != null);
-                
-                rp.registerListener(new ClientResponseAvailableListener<T>() {
-        
-                    @Override
-                    public void responseAvailable(T r) {
-                        listener.finished(r, null);
-                    }
-    
-                    @Override
-                    public void requestFailed(Exception e) {
-                        listener.failed(new BabuDBException(ErrorCode.IO_ERROR, e.getMessage()), 
-                                null);
-                    }
-                });
-            }
-            
-            @Override
-            public T get() throws BabuDBException {
-                
-                try {
-                    return rp.get();
-                } catch (Exception e) {
-                    throw new BabuDBException(ErrorCode.IO_ERROR, e.getMessage());
-                }
-            }
-        };
-        
+        ListenerWrapper<T> result = new ListenerWrapper<T>();       
+        client.makePersistent(master, type, load).registerListener(result);
+      
         return result;
     }
     
@@ -350,55 +284,43 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
      * @author flangner
      * @since 19.01.2011
      */
-    private final static class ListenerWrapper<T> {
+    private final static class ListenerWrapper<T> extends BabuDBRequestResultImpl<T> 
+            implements ClientResponseAvailableListener<Object>, SyncListener {
         
-        private boolean finished = false;
-        private BabuDBException exception = null;
-        private DatabaseRequestListener<T> listener = null;
-        
-        private synchronized void finished(BabuDBException e) {
-            
-            if (!finished) {
-                finished = true;
-                exception = e;
-                notifyListener();
-                notifyAll();
-            }
+        /* (non-Javadoc)
+         * @see org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.
+         *              ClientResponseAvailableListener#responseAvailable(java.lang.Object)
+         */
+        @SuppressWarnings("unchecked")
+        @Override
+        public void responseAvailable(Object r) {
+            finished((T) r);
         }
-        
-        private synchronized void waitForFinish() throws BabuDBException {
-            
-            try {
-                while (!finished) {
-                    wait();
-                }
-            } catch (InterruptedException e) {
-                throw new BabuDBException(
-                        ErrorCode.INTERRUPTED, e.getMessage());
-            }
-            
-            if (exception != null) {
-                throw exception;
-            } 
+
+        /* (non-Javadoc)
+         * @see org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.
+         *              ClientResponseAvailableListener#requestFailed(java.lang.Exception)
+         */
+        @Override
+        public void requestFailed(Exception e) {
+            failed(new BabuDBException(ErrorCode.IO_ERROR, e.getMessage()));
         }
-        
-        private synchronized void registerListener(DatabaseRequestListener<T> listener) {
-            
-            this.listener = listener;
-            
-            if (finished) {
-                notifyListener();
-            }
+
+        /* (non-Javadoc)
+         * @see org.xtreemfs.babudb.log.SyncListener#synced(org.xtreemfs.babudb.log.LogEntry)
+         */
+        @Override
+        public void synced(LogEntry entry) {
+            finished();
         }
-        
-        private void notifyListener() {
-            if (listener != null) {
-                if (exception != null) {
-                    listener.failed(exception, null);
-                } else {
-                    listener.finished(null, null);
-                }
-            }
+
+        /* (non-Javadoc)
+         * @see org.xtreemfs.babudb.log.SyncListener#failed(org.xtreemfs.babudb.log.LogEntry, 
+         *              java.lang.Exception)
+         */
+        @Override
+        public void failed(LogEntry entry, Exception ex) {
+            failed(new BabuDBException(ErrorCode.REPLICATION_FAILURE, ex.getMessage()));
         }
     }
 }
