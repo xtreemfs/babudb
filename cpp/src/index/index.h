@@ -22,10 +22,6 @@
 #include "babudb/key.h"
 #include "babudb/log/sequential_file.h"
 
-namespace YIELD {
-class Path;
-}
-
 namespace babudb {
 
 class LogIndex;
@@ -47,7 +43,7 @@ public:
 
   lsn_t GetLastLSN() { return latest_lsn; }
 
-  typedef std::vector<std::pair<YIELD::Path,lsn_t> > DiskIndices;
+  typedef std::vector<std::pair<std::string,lsn_t> > DiskIndices;
   static DiskIndices FindIndices(const std::string& name_prefix);
   static ImmutableIndex* LoadLatestIntactIndex(DiskIndices& on_disk, 
                                                const KeyOrder& order);

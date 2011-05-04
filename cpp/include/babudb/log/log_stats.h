@@ -11,9 +11,7 @@
 #ifndef LOG__LOG_STATS_H
 #define LOG__LOG_STATS_H
 
-#include "yield/platform/debug.h"
-#include "yield/platform/platform_types.h"
-using namespace YIELD;
+#include <cstdint>
 
 #include <string>
 using std::string;

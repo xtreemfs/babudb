@@ -16,7 +16,7 @@ using std::string;
 #include <memory>
 using std::auto_ptr;
 
-#include <yield/platform/platform_types.h>
+#include <cstdint>
 
 #include "babudb/log/record_frame.h"
 #include "babudb/log/record_iterator.h"
@@ -27,7 +27,7 @@ class RecordIterator;
 class LogStats;
 class LogStorage;
 
-#define INVALID_OFFSET			0xFFFFffffFFFFffffULL
+#define INVALID_OFFSET	0xFFFFffffFFFFffffULL
 typedef uint64_t				offset_t;
 
 /** An append-only file of records.

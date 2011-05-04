@@ -15,6 +15,7 @@
 #include "yield/platform/assert.h"
 #include "yield/platform/directory_walker.h"
 #include "yield/platform/disk_operations.h"
+#include "yield/platform/path.h"
 
 #include <sstream>
 #include <algorithm>
@@ -210,7 +211,7 @@ void ImmutableIndex::CleanupObsolete(const string& file_name, const string& to) 
 
   for (DiskIndices::iterator i = on_disk.begin(); i != on_disk.end(); ++i) {
     if (i->second < current_lsn) {  // not the latest intact index
-      pair<YIELD::Path,YIELD::Path> parts = i->first.split();
+      pair<YIELD::Path,YIELD::Path> parts = YIELD::Path(i->first).split();
       YIELD::DiskOperations::rename(i->first, to + parts.second.getHostCharsetPath());
     }
   }
