@@ -14,7 +14,17 @@ import java.util.Map;
 import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
+import org.xtreemfs.babudb.api.transaction.Transaction;
+import org.xtreemfs.babudb.api.transaction.TransactionListener;
+import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
 
+/**
+ * Interface to the database manager. The database manager provides methods for
+ * management operations, such as creating, deleting and retrieving databases.
+ * 
+ * @author stenjan
+ * 
+ */
 public interface DatabaseManager {
     
     /**
@@ -32,8 +42,6 @@ public interface DatabaseManager {
      * Returns a map containing all databases.
      * 
      * @return a map containing all databases
-     * @throws BabuDBException
-     *             if an error occurs
      */
     public Map<String, Database> getDatabases();
     
@@ -49,8 +57,7 @@ public interface DatabaseManager {
      *             if the database directory cannot be created or the config
      *             cannot be saved
      */
-    public Database createDatabase(String databaseName, int numIndices) 
-            throws BabuDBException;
+    public Database createDatabase(String databaseName, int numIndices) throws BabuDBException;
     
     /**
      * Creates a new database.
@@ -67,8 +74,8 @@ public interface DatabaseManager {
      *             if the database directory cannot be created or the config
      *             cannot be saved
      */
-    public Database createDatabase(String databaseName, int numIndices, 
-            ByteRangeComparator[] comparators) throws BabuDBException;
+    public Database createDatabase(String databaseName, int numIndices, ByteRangeComparator[] comparators)
+        throws BabuDBException;
     
     /**
      * Deletes a database.
@@ -90,31 +97,73 @@ public interface DatabaseManager {
      *            the new database's name
      * @throws BabuDBException
      */
-    public void copyDatabase(String sourceDB, String destDB) 
-            throws BabuDBException;
+    public void copyDatabase(String sourceDB, String destDB) throws BabuDBException;
     
     /**
-     * Creates a dump of all databases registered with this DatabaseManager. 
-     * The dump is stored in the given destination path and is suitable for 
-     * backup.
-     * Creating a dump does not influence the original database. The procedure 
-     * is as follows:
+     * Creates a dump (i.e. point-in-time copy) of all databases registered with
+     * this DatabaseManager. The dump is stored in the given destination path
+     * and is suitable for backup. Creating a dump does not influence the
+     * original database. The procedure is as follows:
      * 
      * <ul>
      * <li>Create snapshots of all databases within this BabuDB instance</li>
-     * <li> Write out a copy of the database config</li>
-     * <li> Materialize the snapshots in the backup directory</li>
+     * <li>Write out a copy of the database config</li>
+     * <li>Materialize the snapshots in the backup directory</li>
      * </ul>
      * 
-     * A backup can be recovered by creating a new BabuDB instance configured 
-     * to use the dump's destination path.
+     * A backup can be recovered by creating a new BabuDB instance configured to
+     * use the dump's destination path.
      * 
      * @param destPath
-     * 			  the destination path of the dumped data
+     *            the destination path of the dumped data
      * @throws BabuDBException
      * @throws IOException
      * @throws InterruptedException
      */
-    public void dumpAllDatabases(String destPath) throws BabuDBException, 
-            IOException, InterruptedException;    
+    public void dumpAllDatabases(String destPath) throws BabuDBException, IOException, InterruptedException;
+    
+    /**
+     * Creates a new, empty transaction.
+     * <p>
+     * Unlike {@link BabuDBInsertGroup}s that are limited to insertions and
+     * deletions of entries in a single database, transactions may span multiple
+     * databases and include creations and deletions of databases.
+     * </p>
+     * 
+     * @return an empty transcation
+     */
+    public Transaction createTransaction();
+    
+    /**
+     * Executes a database transaction.
+     * <p>
+     * Note that the execution is performed synchronously by the invoking thread
+     * rather than being enqueued. Thus, it should primarily be used for
+     * initialization purposes that take place before the database is accessed.
+     * </p>
+     * 
+     * @param txn
+     *            the transaction to execute
+     * @throws BabuDBException
+     *             if an error occurred while executing the transaction
+     */
+    public void executeTransaction(Transaction txn) throws BabuDBException;
+    
+    /**
+     * Adds a new transaction listener. The listener is notified with each
+     * database transaction that is successfully executed.
+     * 
+     * @param listener
+     *            the listener to add
+     */
+    public void addTransactionListener(TransactionListener listener);
+    
+    /**
+     * Removes a transaction listener.
+     * 
+     * @param listener
+     *            the listener to remove
+     */
+    public void removeTransactionListener(TransactionListener listener);
+    
 }

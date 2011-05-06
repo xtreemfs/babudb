@@ -11,9 +11,10 @@ package org.xtreemfs.babudb.api;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 
 /**
- * Interface for checkpointing support.
+ * Interface for checkpointing support. It allows users to enforce database
+ * checkpoints and to synchronously wait for a database checkpoint to complete.
  * 
- * @author stender, bjko
+ * @author stenjan, bjko
  */
 public interface Checkpointer {
     

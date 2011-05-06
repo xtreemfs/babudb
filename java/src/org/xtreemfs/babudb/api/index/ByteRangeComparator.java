@@ -8,17 +8,23 @@
 
 package org.xtreemfs.babudb.api.index;
 
+import java.io.Serializable;
 import java.util.Comparator;
 
 import org.xtreemfs.babudb.index.ByteRange;
 
 /**
  * A comparator for byte buffers and byte ranges.
+ * <p>
+ * Any implementation of this class should be serializable, so as to guarantee
+ * that instances of custom <code>ByteRangeComparator</code>s can be recorded in
+ * the database log.
+ * </p>
  * 
  * @author stender
  * 
  */
-public interface ByteRangeComparator extends Comparator<byte[]> {
+public interface ByteRangeComparator extends Comparator<byte[]>, Serializable {
     
     /**
      * Compares a range of bytes from a potentially large buffer to the entire
