@@ -25,7 +25,9 @@ lsn_t LogSection::getFirstLSN() const {
 void LogSection::Append(const Serializable& entry) {
 	void* write_location = getFreeSpace(RECORD_MAX_SIZE);
   entry.Serialize(Buffer(write_location, RECORD_MAX_SIZE));
-  frameData(write_location, (unsigned int)entry.GetSize(), entry.GetType());
+  unsigned int payload_size = entry.GetSize();
+  ASSERT_TRUE(payload_size <= RECORD_MAX_SIZE);  // be paranoid
+  frameData(write_location, payload_size, entry.GetType());
 }
 
 void LogSection::Commit() {
@@ -38,9 +40,9 @@ void LogSection::Erase(const iterator& it) {
 
 
 LogSectionIterator::LogSectionIterator(
-    std::vector<LogSection*>& sections,
-    std::vector<LogSection*>::iterator current)
-  : sections(sections), current_section(current) {}
+    const std::vector<LogSection*>& sections,
+    std::vector<LogSection*>::const_iterator current)
+  : sections(&sections), current_section(current) {}
 
 LogSectionIterator::LogSectionIterator(const LogSectionIterator& it)
   : sections(it.sections), current_section(it.current_section) {}
@@ -51,12 +53,12 @@ void LogSectionIterator::operator = (const LogSectionIterator& other) {
 }
 
 LogSectionIterator LogSectionIterator::First(
-    std::vector<LogSection*>& sections) {
+    const std::vector<LogSection*>& sections) {
   return LogSectionIterator(sections, sections.begin());
 }
 
 LogSectionIterator LogSectionIterator::Last(
-    std::vector<LogSection*>& sections) {
+    const std::vector<LogSection*>& sections) {
   if (sections.empty()) {
     return LogSectionIterator(sections, sections.end());
   } else {
@@ -65,11 +67,11 @@ LogSectionIterator LogSectionIterator::Last(
 }
   
 LogSection* LogSectionIterator::GetNext() {
-  if (current_section == sections.end()) {
+  if (current_section == sections->end()) {
     return NULL;
   }
   ++current_section;
-  if (current_section == sections.end()) {
+  if (current_section == sections->end()) {
     return NULL;
   } else {
     return *current_section;
@@ -77,7 +79,7 @@ LogSection* LogSectionIterator::GetNext() {
 }
 
 LogSection* LogSectionIterator::GetPrevious() {
-  if (current_section == sections.begin()) {
+  if (current_section == sections->begin()) {
     return NULL;
   } else {
     --current_section;
@@ -86,7 +88,7 @@ LogSection* LogSectionIterator::GetPrevious() {
 }
 
 bool LogSectionIterator::IsValid() const {
-  return sections.size() > 0 && current_section != sections.end();
+  return sections->size() > 0 && current_section != sections->end();
 }
 
 bool LogSectionIterator::operator != (const LogSectionIterator& other) const {
@@ -94,12 +96,12 @@ bool LogSectionIterator::operator != (const LogSectionIterator& other) const {
 }
 
 bool LogSectionIterator::operator == (const LogSectionIterator& other) const {
-  ASSERT_TRUE(sections.begin() == other.sections.begin());
+  ASSERT_TRUE(sections->begin() == other.sections->begin());
   return current_section == other.current_section;
 }
 
 LogSection* LogSectionIterator::operator * ()	const {
-  if (current_section == sections.end()) {
+  if (current_section == sections->end()) {
     return NULL;
   } else {
     return *current_section;

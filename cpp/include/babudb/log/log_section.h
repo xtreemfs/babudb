@@ -54,8 +54,8 @@ public:
   LogSectionIterator(const LogSectionIterator& it); 
   void operator = (const LogSectionIterator& other);
 
-  static LogSectionIterator First(std::vector<LogSection*>& sections);
-  static LogSectionIterator Last(std::vector<LogSection*>& sections);
+  static LogSectionIterator First(const std::vector<LogSection*>& sections);
+  static LogSectionIterator Last(const std::vector<LogSection*>& sections);
   
 	LogSection* GetNext();
 	LogSection* GetPrevious();
@@ -66,10 +66,10 @@ public:
 	LogSection* operator * ()	const;
 
 private:
-  LogSectionIterator(std::vector<LogSection*>& sections,
-                     std::vector<LogSection*>::iterator current);
-  std::vector<LogSection*>& sections;
-  std::vector<LogSection*>::iterator current_section;
+  LogSectionIterator(const std::vector<LogSection*>& sections,
+                     std::vector<LogSection*>::const_iterator current);
+  std::vector<LogSection*> const* sections;
+  std::vector<LogSection*>::const_iterator current_section;
 };
 
 }

@@ -18,7 +18,7 @@ TEST( FileConstructors, babudb )
 		}
 		
 		File* f = File::open( TEST_FILE_NAME );
-		ASSERT_NOTEQUAL( f, NULL );
+		ASSERT_NE( f, NULL );
 		delete f;
 
 		{

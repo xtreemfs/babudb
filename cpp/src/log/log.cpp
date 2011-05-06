@@ -144,10 +144,10 @@ void Log::advanceTail() {
   tail = NULL;
 }
 
-Log::iterator Log::First() {
+Log::iterator Log::First() const {
   return LogIterator::First(LogSectionIterator::First(sections));
 }
 
-Log::iterator Log::Last(){
+Log::iterator Log::Last() const {
   return LogIterator::Last(LogSectionIterator::Last(sections));
 }

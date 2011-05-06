@@ -39,6 +39,6 @@ namespace YIELD
 #define ASSERT_TRUE( stat ) { if ( !( ( stat ) == true ) ) throw YIELD::AssertionException( __FILE__, __LINE__, #stat" != true" ); }
 #define ASSERT_FALSE( stat ) { if ( !( ( stat ) == false ) ) throw YIELD::AssertionException( __FILE__, __LINE__, #stat" != false" ); }
 #define ASSERT_EQUAL( stat_a, stat_b ) { if ( !( ( stat_a ) == ( stat_b ) ) ) throw YIELD::AssertionException( __FILE__, __LINE__, #stat_a" != "#stat_b ); }
-#define ASSERT_NOTEQUAL( stat_a, stat_b ) { if ( !( ( stat_a ) != ( stat_b ) ) ) throw YIELD::AssertionException( __FILE__, __LINE__, #stat_a" == "#stat_b ); }
+#define ASSERT_NE( stat_a, stat_b ) { if ( !( ( stat_a ) != ( stat_b ) ) ) throw YIELD::AssertionException( __FILE__, __LINE__, #stat_a" == "#stat_b ); }
 
 #endif

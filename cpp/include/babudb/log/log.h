@@ -6,7 +6,8 @@
 //
 // Author: Felix Hupfeld (felix@storagebox.org)
 
-// The Log bundles a series of LogSections with contiguous LSNs
+// The Log bundles a series of LogSections with increasing LSNs.
+// LSNs don't need to be contiguous, but must increase between log commits.
 
 #ifndef LOG__LOG_H
 #define LOG__LOG_H
@@ -43,8 +44,8 @@ public:
 
   typedef LogIterator iterator;
 
-  iterator First();
-  iterator Last();
+  iterator First() const;
+  iterator Last() const;
 
   int NumberOfSections() const {
     return sections.size();
