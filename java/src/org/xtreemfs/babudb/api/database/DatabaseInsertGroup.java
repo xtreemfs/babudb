@@ -16,7 +16,8 @@ package org.xtreemfs.babudb.api.database;
 public interface DatabaseInsertGroup {
 
     /**
-     * Add a new insert operation to this group.
+     * Add a new insert operation to this group. Be aware of unpredictable behavior if a 
+     * key-value pair is manipulated twice within the same insert group.
      * 
      * @param indexId - the index in which the key-value pair is inserted.
      * @param key - the key.
@@ -25,7 +26,8 @@ public interface DatabaseInsertGroup {
     public void addInsert(int indexId, byte[] key, byte[] value);
 
     /**
-     * Add a new delete operation to this group.
+     * Add a new delete operation to this group. Be aware of unpredictable behavior if a 
+     * key-value pair is manipulated twice within the same insert group.
      * 
      * @param indexId - in which the key-value pair is located.
      * @param key - of the key-value pair to delete. 

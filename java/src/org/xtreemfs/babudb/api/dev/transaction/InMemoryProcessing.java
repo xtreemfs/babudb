@@ -1,11 +1,11 @@
 /*
- * Copyright (c) 2010 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-package org.xtreemfs.babudb.api.dev;
+package org.xtreemfs.babudb.api.dev.transaction;
 
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
@@ -16,23 +16,16 @@ import org.xtreemfs.foundation.buffer.ReusableBuffer;
  * may not be stateful. 
  * 
  * @author flangner
- * @since 25.01.2011
+ * @since 01/25/2011
  */
 public abstract class InMemoryProcessing {
     
     /**
-     * Method to serialize the request before storing it.
-     * 
-     * @param args - the operation's arguments.
-     * 
-     * @return serialized operation, ready to be stored to disk.
-     * 
-     * @throws BabuDBException if serialization fails.
-     */
-    public abstract ReusableBuffer serializeRequest(Object[] args) throws BabuDBException;
-    
-    /**
      * Method to deserialize the request.
+     * <p>
+     * ATTENTION: Operation request serialization/deserialization has been replaced by the unified 
+     * transaction serialization scheme.
+     * </p>
      * 
      * @param serialized - the serialized operation's arguments.
      * 
@@ -40,35 +33,46 @@ public abstract class InMemoryProcessing {
      * 
      * @throws BabuDBException if deserialization fails.
      */
+    @Deprecated
     public abstract Object[] deserializeRequest(ReusableBuffer serialized) throws BabuDBException;
     
     /**
+     * Converts the operation retrieved from an old log entry of obsolete log file into a 
+     * transaction operation.
+     * 
+     * @param args
+     * @return a transaction for the given arguments.
+     */
+    @Deprecated
+    public abstract OperationInternal convertToOperation(Object[] args);
+    
+    /**
      * Optional method to execute before making an Operation on-disk persistent.
-     * Depending on the implementation of PersistenceManagerInternal throwing an
+     * Depending on the implementation of TransactionManagerInternal throwing an
      * exception might influence the execution of makePersistent() and after().
      * 
-     * @param args - the operation's arguments.
+     * @param operation - operation to execute.
      * 
      * @throws BabuDBException if method fails. 
      */
-    public void before(Object[] args) throws BabuDBException {}
+    public void before(OperationInternal operation) throws BabuDBException {}
     
     /**
      * Optional method to execute while the request was already successfully queued to be made
      * persistent.
      * 
-     * @param args
+     * @param operation - operation to execute.
      */
-    public void meanwhile(Object[] args) {}
+    public void meanwhile(OperationInternal operation) {}
     
     /**
      * Optional method to execute after making an Operation successfully 
      * on-disk persistent. This behavior depends on the implementation of 
-     * the makePersistent() method in {@link PersistenceManagerInternal}.
+     * the makePersistent() method in {@link TransactionManagerInternal}.
      * 
-     * @param args - the operation's arguments.
+     * @param operation - operation to execute.
      * 
      * @throws BabuDBException if method fails due a software failure.
      */
-    public void after(Object[] args) throws BabuDBException {}
+    public void after(OperationInternal operation) throws BabuDBException {}
 }

@@ -7,11 +7,7 @@
  */
 package org.xtreemfs.babudb.lsmdb;
 
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_COPY;
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_CREATE;
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_DELETE;
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_INSERT;
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_TRANSACTION;
+import static org.xtreemfs.babudb.api.dev.transaction.TransactionInternal.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,7 +15,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 
@@ -28,7 +23,9 @@ import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
-import org.xtreemfs.babudb.api.dev.InMemoryProcessing;
+import org.xtreemfs.babudb.api.dev.transaction.InMemoryProcessing;
+import org.xtreemfs.babudb.api.dev.transaction.OperationInternal;
+import org.xtreemfs.babudb.api.dev.transaction.TransactionInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
@@ -39,7 +36,6 @@ import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
-import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.FSUtils;
@@ -73,11 +69,6 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
      */
     private final Object                           dbModificationLock;
     
-    /**
-     * list of database management listeners
-     */
-    private final Collection<TransactionListener>  listeners;
-    
     public DatabaseManagerImpl(BabuDBInternal dbs) throws BabuDBException {
         
         this.dbs = dbs;
@@ -90,15 +81,11 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
         
         this.nextDbId = 1;
         this.dbModificationLock = new Object();
-        
-        this.listeners = new LinkedList<TransactionListener>();
-        
-        initializePersistenceManager();
+                
+        initializeTransactionManager();
     }
     
-    /*
-     * (non-Javadoc)
-     * 
+    /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#reset()
      */
     @Override
@@ -111,9 +98,7 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
         dbs.getDBConfigFile().reset();
     }
     
-    /*
-     * (non-Javadoc)
-     * 
+    /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.DatabaseManager#getDatabases()
      */
     @Override
@@ -121,12 +106,8 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
         return new HashMap<String, Database>(getDatabasesInternal());
     }
     
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getDatabasesInternal
-     * ()
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getDatabasesInternal()
      */
     @Override
     public Map<String, DatabaseInternal> getDatabasesInternal() {
@@ -135,11 +116,8 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
         }
     }
     
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getDatabaseList()
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getDatabaseList()
      */
     @Override
     public Collection<DatabaseInternal> getDatabaseList() {
@@ -148,12 +126,8 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
         }
     }
     
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getDatabase(java.
-     * lang.String)
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getDatabase(java.lang.String)
      */
     @Override
     public DatabaseInternal getDatabase(String dbName) throws BabuDBException {
@@ -161,14 +135,13 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
         DatabaseInternal db = dbsByName.get(dbName);
         
         if (db == null) {
-            throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database does not exist");
+            throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database with name " + dbName + 
+                    " does not exist");
         }
         return db;
     }
     
-    /*
-     * (non-Javadoc)
-     * 
+    /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getDatabase(int)
      */
     @Override
@@ -181,63 +154,44 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
         return db;
     }
     
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * org.xtreemfs.babudb.api.DatabaseManager#createDatabase(java.lang.String,
-     * int)
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#createDatabase(java.lang.String, 
+     *          int)
      */
     @Override
     public DatabaseInternal createDatabase(String databaseName, int numIndices) throws BabuDBException {
         return createDatabase(databaseName, numIndices, null);
     }
     
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * org.xtreemfs.babudb.api.DatabaseManager#createDatabase(java.lang.String,
-     * int, org.xtreemfs.babudb.api.index.ByteRangeComparator[])
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#createDatabase(java.lang.String, 
+     *          int, org.xtreemfs.babudb.api.index.ByteRangeComparator[])
      */
     @Override
     public DatabaseInternal createDatabase(String databaseName, int numIndices,
         ByteRangeComparator[] comparators) throws BabuDBException {
         
-        dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_CREATE,
-            new Object[] { databaseName, numIndices, comparators }).get();
-        
+        executeTransaction(createTransaction().createDatabase(databaseName, numIndices, comparators));        
         return dbsByName.get(databaseName);
     }
     
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * org.xtreemfs.babudb.api.DatabaseManager#deleteDatabase(java.lang.String)
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.DatabaseManager#deleteDatabase(java.lang.String)
      */
     @Override
     public void deleteDatabase(String databaseName) throws BabuDBException {
-        dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_DELETE, new Object[] { databaseName }).get();
+        executeTransaction(createTransaction().deleteDatabase(databaseName));
     }
     
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * org.xtreemfs.babudb.api.DatabaseManager#copyDatabase(java.lang.String,
-     * java.lang.String)
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.DatabaseManager#copyDatabase(java.lang.String, java.lang.String)
      */
     @Override
     public void copyDatabase(String sourceDB, String destDB) throws BabuDBException {
-        
-        dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_COPY, new Object[] { sourceDB, destDB })
-                .get();
+        executeTransaction(createTransaction().copyDatabase(sourceDB, destDB));
     }
     
-    /*
-     * (non-Javadoc)
-     * 
+    /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#shutdown()
      */
     @Override
@@ -247,18 +201,18 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "DB manager shut down successfully");
     }
     
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getDBModificationLock
-     * ()
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getDBModificationLock()
      */
     @Override
     public Object getDBModificationLock() {
         return dbModificationLock;
     }
     
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.DatabaseManager#dumpAllDatabases(java.lang.String)
+     */
+    @Override
     public void dumpAllDatabases(String destPath) throws BabuDBException, InterruptedException, IOException {
         // create a snapshot of each database materialized with the destPath as
         // baseDir
@@ -277,47 +231,13 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
     }
     
     /**
-     * Feed the persistenceManager with the knowledge to handle
-     * database-modifying related requests.
+     * Feed the transactionManager with the knowledge to handle database-modifying related requests.
      */
-    private void initializePersistenceManager() {
+    private void initializeTransactionManager() {
         
-        dbs.getPersistenceManager().registerInMemoryProcessing(PAYLOAD_TYPE_CREATE, new InMemoryProcessing() {
-            
-            /*
-             * (non-Javadoc)
-             * 
-             * @see
-             * org.xtreemfs.babudb.api.dev.InMemoryProcessing#serializeRequest(
-             * java.lang.Object[])
-             */
-            @Override
-            public ReusableBuffer serializeRequest(Object[] args) throws BabuDBException {
-                
-                // parse args
-                String databaseName = (String) args[0];
-                int numIndices = (Integer) args[1];
-                // ByteRangeComparator[] com = (ByteRangeComparator[]) args[2];
-                
-                ReusableBuffer buf = ReusableBuffer.wrap(new byte[databaseName.getBytes().length
-                    + (Integer.SIZE * 3 / 8)]);
-                buf.putInt(-1); // TODO remove field (deprecated)
-                buf.putString(databaseName);
-                buf.putInt(numIndices);
-                // TODO add ByteRangeComparators to logEntry - if (com != null)
-                // buf.putObject(com);
-                buf.flip();
-                
-                return buf;
-            }
-            
-            /*
-             * (non-Javadoc)
-             * 
-             * @see
-             * org.xtreemfs.babudb.api.dev.InMemoryProcessing#deserializeRequest
-             * ( org.xtreemfs.foundation.buffer.ReusableBuffer)
-             */
+        dbs.getTransactionManager().registerInMemoryProcessing(TYPE_CREATE_DB, 
+                new InMemoryProcessing() {
+                        
             @Override
             public Object[] deserializeRequest(ReusableBuffer serialized) throws BabuDBException {
                 
@@ -331,21 +251,23 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                 return new Object[] { dbName, indices, null };
             }
             
-            /*
-             * (non-Javadoc)
-             * 
-             * @see
-             * org.xtreemfs.babudb.api.InMemoryProcessing#before(java.lang.Object
-             * [])
-             */
             @Override
-            public void before(Object[] args) throws BabuDBException {
+            public OperationInternal convertToOperation(Object[] args) {
+                return new BabuDBTransaction.BabuDBOperation(TYPE_CREATE_DB, (String) args[0], 
+                        new Object[] { args[1], args[2] });
+            }
+            
+            @Override
+            public void before(OperationInternal operation) throws BabuDBException {
                 
                 // parse args
-                String databaseName = (String) args[0];
-                int numIndices = (Integer) args[1];
-                ByteRangeComparator[] com = (ByteRangeComparator[]) args[2];
+                Object[] args = operation.getParams();
+                int numIndices = (Integer) args[0];
                 
+                ByteRangeComparator[] com = null;
+                if (args.length > 2) {
+                    com = (ByteRangeComparator[]) args[1];
+                }
                 if (com == null) {
                     ByteRangeComparator[] comps = new ByteRangeComparator[numIndices];
                     final ByteRangeComparator defaultComparator = compInstances
@@ -360,56 +282,28 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                 DatabaseImpl db = null;
                 synchronized (getDBModificationLock()) {
                     synchronized (dbs.getCheckpointer()) {
-                        if (dbsByName.containsKey(databaseName)) {
-                            throw new BabuDBException(ErrorCode.DB_EXISTS, "database '" + databaseName
-                                + "' already exists");
+                        if (dbsByName.containsKey(operation.getDatabaseName())) {
+                            throw new BabuDBException(ErrorCode.DB_EXISTS, "database '" + 
+                                    operation.getDatabaseName() + "' already exists");
                         }
                         final int dbId = nextDbId++;
-                        db = new DatabaseImpl(dbs, new LSMDatabase(databaseName, dbId, dbs.getConfig()
-                                .getBaseDir()
-                            + databaseName + File.separatorChar, numIndices, false, com, dbs.getConfig()
+                        db = new DatabaseImpl(dbs, new LSMDatabase(operation.getDatabaseName(), 
+                                dbId, dbs.getConfig().getBaseDir() + operation.getDatabaseName() + 
+                                File.separatorChar, numIndices, false, com, dbs.getConfig()
                                 .getCompression(), dbs.getConfig().getMaxNumRecordsPerBlock(), dbs
-                                .getConfig().getMaxBlockFileSize(), dbs.getConfig().getDisableMMap(), dbs
-                                .getConfig().getMMapLimit()));
+                                .getConfig().getMaxBlockFileSize(), 
+                                dbs.getConfig().getDisableMMap(), dbs.getConfig().getMMapLimit()));
                         dbsById.put(dbId, db);
-                        dbsByName.put(databaseName, db);
+                        dbsByName.put(operation.getDatabaseName(), db);
                         dbs.getDBConfigFile().save();
                     }
                 }
             }
         });
         
-        dbs.getPersistenceManager().registerInMemoryProcessing(PAYLOAD_TYPE_DELETE, new InMemoryProcessing() {
-            
-            /*
-             * (non-Javadoc)
-             * 
-             * @see
-             * org.xtreemfs.babudb.api.dev.InMemoryProcessing#serializeRequest(
-             * java.lang.Object[])
-             */
-            @Override
-            public ReusableBuffer serializeRequest(Object[] args) throws BabuDBException {
-                
-                // parse args
-                String databaseName = (String) args[0];
-                
-                ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE / 2)
-                    + databaseName.getBytes().length]);
-                buf.putInt(-1); // TODO remove field (deprecated)
-                buf.putString(databaseName);
-                buf.flip();
-                
-                return buf;
-            }
-            
-            /*
-             * (non-Javadoc)
-             * 
-             * @see
-             * org.xtreemfs.babudb.api.dev.InMemoryProcessing#deserializeRequest
-             * ( org.xtreemfs.foundation.buffer.ReusableBuffer)
-             */
+        dbs.getTransactionManager().registerInMemoryProcessing(TYPE_DELETE_DB, 
+                new InMemoryProcessing() {
+                        
             @Override
             public Object[] deserializeRequest(ReusableBuffer serialized) throws BabuDBException {
                 
@@ -421,76 +315,44 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                 return new Object[] { dbName };
             }
             
-            /*
-             * (non-Javadoc)
-             * 
-             * @see
-             * org.xtreemfs.babudb.api.InMemoryProcessing#before(java.lang.Object
-             * [])
-             */
             @Override
-            public void before(Object[] args) throws BabuDBException {
-                
-                // parse args
-                String databaseName = (String) args[0];
-                
-                int dbId = -1;
+            public OperationInternal convertToOperation(Object[] args) {
+                return new BabuDBTransaction.BabuDBOperation(TYPE_DELETE_DB, (String) args[0], 
+                        null);
+            }
+            
+            @Override
+            public void before(OperationInternal operation) throws BabuDBException {
+                                
+                int dbId = InsertRecordGroup.DB_ID_UNKNOWN;
                 synchronized (getDBModificationLock()) {
                     synchronized (dbs.getCheckpointer()) {
-                        if (!dbsByName.containsKey(databaseName)) {
-                            throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '" + databaseName
-                                + "' does not exists");
+                        if (!dbsByName.containsKey(operation.getDatabaseName())) {
+                            throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '" + 
+                                    operation.getDatabaseName() + "' does not exists");
                         }
-                        final LSMDatabase db = dbsByName.get(databaseName).getLSMDB();
+                        final LSMDatabase db = getDatabase(operation.getDatabaseName()).getLSMDB();
                         dbId = db.getDatabaseId();
-                        dbsByName.remove(databaseName);
+                        dbsByName.remove(operation.getDatabaseName());
                         dbsById.remove(dbId);
                         
-                        dbs.getSnapshotManager().deleteAllSnapshots(databaseName);
+                        dbs.getSnapshotManager().deleteAllSnapshots(operation.getDatabaseName());
                         
                         dbs.getDBConfigFile().save();
-                        File dbDir = new File(dbs.getConfig().getBaseDir(), databaseName);
-                        if (dbDir.exists())
+                        File dbDir = new File(dbs.getConfig().getBaseDir(), 
+                                operation.getDatabaseName());
+                        
+                        if (dbDir.exists()) {
                             FSUtils.delTree(dbDir);
+                        }
                     }
                 }
             }
         });
         
-        dbs.getPersistenceManager().registerInMemoryProcessing(PAYLOAD_TYPE_COPY, new InMemoryProcessing() {
-            
-            /*
-             * (non-Javadoc)
-             * 
-             * @see
-             * org.xtreemfs.babudb.api.dev.InMemoryProcessing#serializeRequest(
-             * java.lang.Object[])
-             */
-            @Override
-            public ReusableBuffer serializeRequest(Object[] args) throws BabuDBException {
-                
-                // parse args
-                String sourceDB = (String) args[0];
-                String destDB = (String) args[1];
-                
-                ReusableBuffer buf = ReusableBuffer.wrap(new byte[(Integer.SIZE / 2)
-                    + sourceDB.getBytes().length + destDB.getBytes().length]);
-                buf.putInt(-1); // TODO remove field (deprecated)
-                buf.putInt(-1); // TODO remove field (deprecated)
-                buf.putString(sourceDB);
-                buf.putString(destDB);
-                buf.flip();
-                
-                return buf;
-            }
-            
-            /*
-             * (non-Javadoc)
-             * 
-             * @see
-             * org.xtreemfs.babudb.api.dev.InMemoryProcessing#deserializeRequest
-             * ( org.xtreemfs.foundation.buffer.ReusableBuffer)
-             */
+        dbs.getTransactionManager().registerInMemoryProcessing(TYPE_COPY_DB, 
+                new InMemoryProcessing() {
+                        
             @Override
             public Object[] deserializeRequest(ReusableBuffer serialized) throws BabuDBException {
                 
@@ -505,25 +367,19 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                 return new Object[] { sourceDB, destDB };
             }
             
-            /*
-             * (non-Javadoc)
-             * 
-             * @see
-             * org.xtreemfs.babudb.api.InMemoryProcessing#before(java.lang.Object
-             * [])
-             */
             @Override
-            public void before(Object[] args) throws BabuDBException {
+            public OperationInternal convertToOperation(Object[] args) {
+                return new BabuDBTransaction.BabuDBOperation(TYPE_COPY_DB, (String) args[0], 
+                        new Object[] { args[1] });
+            }
+            
+            @Override
+            public void before(OperationInternal operation) throws BabuDBException {
                 
                 // parse args
-                String sourceDB = (String) args[0];
-                String destDB = (String) args[1];
+                String destDB = (String) operation.getParams()[0];
                 
-                DatabaseInternal sDB = dbsByName.get(sourceDB);
-                if (sDB == null) {
-                    throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database '" + sourceDB
-                        + "' does not exist");
-                }
+                DatabaseInternal sDB = getDatabase(operation.getDatabaseName());
                 
                 int dbId;
                 synchronized (getDBModificationLock()) {
@@ -544,17 +400,18 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                 try {
                     sDB.proceedSnapshot(destDB);
                 } catch (InterruptedException i) {
-                    throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "Snapshot creation was interrupted.",
-                        i);
+                    throw new BabuDBException(ErrorCode.INTERNAL_ERROR, 
+                            "Snapshot creation was interrupted.", i);
                 }
                 
                 // create new DB and load from snapshot
-                DatabaseInternal newDB = new DatabaseImpl(dbs, new LSMDatabase(destDB, dbId, dbs.getConfig()
-                        .getBaseDir()
-                    + destDB + File.separatorChar, sDB.getLSMDB().getIndexCount(), true,
-                    sDB.getComparators(), dbs.getConfig().getCompression(), dbs.getConfig()
-                            .getMaxNumRecordsPerBlock(), dbs.getConfig().getMaxBlockFileSize(), dbs
-                            .getConfig().getDisableMMap(), dbs.getConfig().getMMapLimit()));
+                DatabaseInternal newDB = new DatabaseImpl(dbs, new LSMDatabase(destDB, dbId, 
+                        dbs.getConfig().getBaseDir() + destDB + File.separatorChar, 
+                        sDB.getLSMDB().getIndexCount(), true, sDB.getComparators(), 
+                        dbs.getConfig().getCompression(), 
+                        dbs.getConfig().getMaxNumRecordsPerBlock(), 
+                        dbs.getConfig().getMaxBlockFileSize(), dbs.getConfig().getDisableMMap(), 
+                        dbs.getConfig().getMMapLimit()));
                 
                 // insert real database
                 synchronized (dbModificationLock) {
@@ -565,36 +422,9 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
             }
         });
         
-        dbs.getPersistenceManager().registerInMemoryProcessing(PAYLOAD_TYPE_INSERT, new InMemoryProcessing() {
-            
-            /*
-             * (non-Javadoc)
-             * 
-             * @see
-             * org.xtreemfs.babudb.api.dev.InMemoryProcessing#serializeRequest(
-             * java.lang.Object[])
-             */
-            @Override
-            public ReusableBuffer serializeRequest(Object[] args) throws BabuDBException {
-                
-                // parse args
-                InsertRecordGroup irg = (InsertRecordGroup) args[0];
-                
-                int size = irg.getSize();
-                ReusableBuffer buf = BufferPool.allocate(size);
-                irg.serialize(buf);
-                buf.flip();
-                
-                return buf;
-            }
-            
-            /*
-             * (non-Javadoc)
-             * 
-             * @see
-             * org.xtreemfs.babudb.api.dev.InMemoryProcessing#deserializeRequest
-             * ( org.xtreemfs.foundation.buffer.ReusableBuffer)
-             */
+        dbs.getTransactionManager().registerInMemoryProcessing(TYPE_GROUP_INSERT, 
+                new InMemoryProcessing() {
+                        
             @Override
             public Object[] deserializeRequest(ReusableBuffer serialized) throws BabuDBException {
                 
@@ -604,21 +434,37 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                 return new Object[] { irg, null, null };
             }
             
-            /*
-             * (non-Javadoc)
-             * 
-             * @see
-             * org.xtreemfs.babudb.api.InMemoryProcessing#before(java.lang.Object
-             * [])
-             */
             @Override
-            public void before(Object[] args) throws BabuDBException {
+            public OperationInternal convertToOperation(Object[] args) {
+                return new BabuDBTransaction.BabuDBOperation(TYPE_GROUP_INSERT, (String) null, 
+                        new Object[] { args[0] });
+            }
+            
+            @Override
+            public void before(OperationInternal operation) throws BabuDBException {
+                
+                Object[] args = operation.getParams();
                 
                 // parse args
                 InsertRecordGroup irg = (InsertRecordGroup) args[0];
-                LSMDatabase lsmDB = (LSMDatabase) args[1];
+                LSMDatabase lsmDB = null;
+                if (args.length > 1 && args[1] instanceof LSMDatabase) {
+                    lsmDB = (LSMDatabase) args[1];
+                }
+                    
+                // complete the arguments
                 if (lsmDB == null) {
-                    lsmDB = dbsById.get(irg.getDatabaseId()).getLSMDB();
+                    
+                    // set the DB ID, if unknown
+                    if (irg.getDatabaseId() == InsertRecordGroup.DB_ID_UNKNOWN) {
+                        irg.setDatabaseId(getDatabase(
+                                operation.getDatabaseName()).getLSMDB().getDatabaseId());
+                    }
+                    lsmDB = getDatabase(irg.getDatabaseId()).getLSMDB();
+                    operation.updateParams(new Object[] { irg, lsmDB });
+                }
+                if (operation.getDatabaseName() == null) {
+                    operation.updateDatabaseName(lsmDB.getDatabaseName());
                 }
                 
                 int numIndices = lsmDB.getIndexCount();
@@ -626,30 +472,30 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                 for (InsertRecord ir : irg.getInserts()) {
                     if ((ir.getIndexId() >= numIndices) || (ir.getIndexId() < 0)) {
                         
-                        throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + ir.getIndexId()
-                            + " does not exist");
+                        throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, "index " + 
+                                ir.getIndexId() + " does not exist");
                     }
                 }
             }
             
-            /*
-             * (non-Javadoc)
-             * 
-             * @see
-             * org.xtreemfs.babudb.api.dev.InMemoryProcessing#meanwhile(java
-             * .lang.Object[])
-             */
             @SuppressWarnings("unchecked")
             @Override
-            public void meanwhile(Object[] args) {
+            public void meanwhile(OperationInternal operation) {
+                
+                Object[] args = operation.getParams();
                 
                 // parse args
                 InsertRecordGroup irg = (InsertRecordGroup) args[0];
-                LSMDatabase lsmDB = (LSMDatabase) args[1];
-                if (lsmDB == null) {
-                    lsmDB = dbsById.get(irg.getDatabaseId()).getLSMDB();
+                LSMDatabase lsmDB = null;
+                BabuDBRequestResultImpl<Object> listener = null;
+                if (args.length > 1 && args[1] instanceof LSMDatabase) {
+                    lsmDB = (LSMDatabase) args[1];
+                } else if (args.length > 1 && args[1] instanceof BabuDBRequestResultImpl) {
+                    listener = (BabuDBRequestResultImpl<Object>) args[1];
                 }
-                BabuDBRequestResultImpl<Object> listener = (BabuDBRequestResultImpl<Object>) args[2];
+                if (args.length > 2 && args[2] instanceof BabuDBRequestResultImpl) {
+                    listener = (BabuDBRequestResultImpl<Object>) args[2];
+                }
                 
                 // in case of asynchronous inserts, complete the request
                 // immediately
@@ -664,29 +510,28 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                             index.delete(ir.getKey());
                         }
                     }
-                    if (listener != null)
-                        listener.finished();
+                    if (listener != null) listener.finished();
                 }
             }
             
-            /*
-             * (non-Javadoc)
-             * 
-             * @see
-             * org.xtreemfs.babudb.api.InMemoryProcessing#after(java.lang.Object
-             * [])
-             */
             @SuppressWarnings("unchecked")
             @Override
-            public void after(Object[] args) {
+            public void after(OperationInternal operation) {
+                
+                Object[] args = operation.getParams();
                 
                 // parse args
                 InsertRecordGroup irg = (InsertRecordGroup) args[0];
-                LSMDatabase lsmDB = (LSMDatabase) args[1];
-                if (lsmDB == null) {
-                    lsmDB = dbsById.get(irg.getDatabaseId()).getLSMDB();
+                LSMDatabase lsmDB = null;
+                BabuDBRequestResultImpl<Object> listener = null;                
+                if (args.length > 1 && args[1] instanceof LSMDatabase) {
+                    lsmDB = (LSMDatabase) args[1];
+                } else if (args.length > 1 && args[1] instanceof BabuDBRequestResultImpl) {
+                    listener = (BabuDBRequestResultImpl<Object>) args[1];
                 }
-                BabuDBRequestResultImpl<Object> listener = (BabuDBRequestResultImpl<Object>) args[2];
+                if (args.length > 2 && args[2] instanceof BabuDBRequestResultImpl) {
+                    listener = (BabuDBRequestResultImpl<Object>) args[2];
+                }
                 
                 // in case of synchronous inserts, wait until the disk logger
                 // returns
@@ -702,17 +547,13 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                             index.delete(ir.getKey());
                         }
                     }
-                    if (listener != null)
-                        listener.finished();
+                    if (listener != null) listener.finished();
                 }
             }
         });
-        
     }
     
-    /*
-     * (non-Javadoc)
-     * 
+    /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#setNextDBId(int)
      */
     @Override
@@ -720,24 +561,17 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
         this.nextDbId = id;
     }
     
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getComparatorInstances
-     * ()
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getComparatorInstances()
      */
     @Override
     public Map<String, ByteRangeComparator> getComparatorInstances() {
         return compInstances;
     }
     
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#putDB(org.xtreemfs
-     * .babudb.api.dev.DatabaseInternal)
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#putDatabase(
+     *          org.xtreemfs.babudb.api.dev.DatabaseInternal)
      */
     @Override
     public void putDatabase(DatabaseInternal database) {
@@ -745,32 +579,23 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
         dbsByName.put(database.getName(), database);
     }
     
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getAllDatabaseIds()
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getAllDatabaseIds()
      */
     @Override
     public Set<Integer> getAllDatabaseIds() {
         return new HashSet<Integer>(dbsById.keySet());
     }
     
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#removeDatabaseById
-     * (int)
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#removeDatabaseById(int)
      */
     @Override
     public void removeDatabaseById(int id) {
         dbsByName.remove(dbsById.remove(id).getName());
     }
     
-    /*
-     * (non-Javadoc)
-     * 
+    /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getNextDBId()
      */
     @Override
@@ -778,28 +603,47 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
         return nextDbId;
     }
     
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#createTransaction()
+     */
     @Override
-    public Transaction createTransaction() {
+    public TransactionInternal createTransaction() {
         return new BabuDBTransaction();
     }
     
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#executeTransaction(
+     *          org.xtreemfs.babudb.api.dev.TransactionInternal)
+     */
+    @Override
+    public void executeTransaction(TransactionInternal txn) throws BabuDBException {
+        dbs.getTransactionManager().makePersistent(txn).get();
+    }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.DatabaseManager#executeTransaction(
+     *          org.xtreemfs.babudb.api.transaction.Transaction)
+     */
     @Override
     public void executeTransaction(Transaction txn) throws BabuDBException {
-        dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_TRANSACTION, new Object[] { txn }).get();
-        for (TransactionListener l : listeners)
-            l.transactionPerformed(txn);
+        executeTransaction((TransactionInternal) txn);
     }
-    
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.DatabaseManager#addTransactionListener(
+     *          org.xtreemfs.babudb.api.transaction.TransactionListener)
+     */
     @Override
     public void addTransactionListener(TransactionListener listener) {
-        if (listener == null)
-            throw new NullPointerException();
-        listeners.add(listener);
+        dbs.getTransactionManager().addTransactionListener(listener);
     }
-    
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.DatabaseManager#removeTransactionListener(
+     *          org.xtreemfs.babudb.api.transaction.TransactionListener)
+     */
     @Override
     public void removeTransactionListener(TransactionListener listener) {
-        listeners.remove(listener);
-    }
-    
+        dbs.getTransactionManager().removeTransactionListener(listener);
+    } 
 }

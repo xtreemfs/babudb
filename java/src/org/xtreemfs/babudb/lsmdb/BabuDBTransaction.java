@@ -5,7 +5,6 @@
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-
 package org.xtreemfs.babudb.lsmdb;
 
 import java.io.ByteArrayInputStream;
@@ -20,57 +19,106 @@ import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
+import org.xtreemfs.babudb.BabuDBRequestResultImpl;
+import org.xtreemfs.babudb.api.dev.transaction.TransactionInternal;
+import org.xtreemfs.babudb.api.dev.transaction.OperationInternal;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.api.transaction.Operation;
-import org.xtreemfs.babudb.api.transaction.Transaction;
+import org.xtreemfs.babudb.snapshots.SnapshotConfig;
+import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
 /**
- * Standard implementation of a transaction.
+ * Standard implementation of a transaction. 
  * 
  * 
  * @author stenjan
+ * @author flangner
  */
-public class BabuDBTransaction implements Transaction {
+public class BabuDBTransaction extends TransactionInternal {
+    private static final long serialVersionUID = 3772453774367730087L;
     
-    private List<Operation> ops;
-    
-    public BabuDBTransaction() {
-        ops = new LinkedList<Operation>();
+    @Override
+    public TransactionInternal createSnapshot(String databaseName, SnapshotConfig config) {
+        return addOperation(new BabuDBOperation(TYPE_CREATE_SNAP, databaseName, 
+                new Object[] { InsertRecordGroup.DB_ID_UNKNOWN, config }));
     }
     
     @Override
-    public void deleteRecord(String databaseName, int indexId, byte[] key) {
-        ops.add(new BabuDBOperation(Operation.TYPE_DELETE_KEY, databaseName, indexId, key));
+    public TransactionInternal deleteSnapshot(String databaseName, String snapshotName) {
+        return addOperation(new BabuDBOperation(TYPE_DELETE_SNAP, databaseName, 
+                new Object[] { snapshotName }));
     }
     
     @Override
-    public void insertRecord(String databaseName, int indexId, byte[] key, byte[] value) {
-        ops.add(new BabuDBOperation(Operation.TYPE_INSERT_KEY, databaseName, indexId, key, value));
+    public TransactionInternal copyDatabase(String sourceName, String destinationName) {
+        return addOperation(new BabuDBOperation(TYPE_COPY_DB, sourceName, 
+                new Object[] { destinationName }));
     }
     
     @Override
-    public void createDatabase(String databaseName, int numIndices) {
-        ops.add(new BabuDBOperation(Operation.TYPE_CREATE_DB, databaseName, numIndices));
+    public TransactionInternal createDatabase(String databaseName, int numIndices) {
+        return createDatabase(databaseName, numIndices, null);
     }
     
     @Override
-    public void createDatabase(String databaseName, int numIndices, ByteRangeComparator[] comparators) {
-        ops.add(new BabuDBOperation(Operation.TYPE_CREATE_DB, databaseName, numIndices, comparators));
+    public TransactionInternal createDatabase(String databaseName, int numIndices, 
+            ByteRangeComparator[] comparators) {
+        
+        return addOperation(new BabuDBOperation(TYPE_CREATE_DB, databaseName, 
+                new Object[] {numIndices, comparators }));
     }
     
     @Override
-    public void deleteDatabase(String databaseName) {
-        ops.add(new BabuDBOperation(Operation.TYPE_DELETE_DB, databaseName));
+    public TransactionInternal deleteDatabase(String databaseName) {
+        return addOperation(new BabuDBOperation(TYPE_DELETE_DB, databaseName, null));
+    }
+    
+    @Override
+    public TransactionInternal deleteRecord(String databaseName, int indexId, byte[] key) {
+        InsertRecordGroup irg = new InsertRecordGroup(-1);
+        irg.addInsert(indexId, key, null);
+        return insertRecordGroup(databaseName, irg);
+    }
+    
+    @Override
+    public TransactionInternal insertRecord(String databaseName, int indexId, byte[] key, 
+            byte[] value) {
+        
+        InsertRecordGroup irg = new InsertRecordGroup(-1);
+        irg.addInsert(indexId, key, value);
+        return insertRecordGroup(databaseName, irg);
+    }
+    
+    @Override
+    public TransactionInternal insertRecordGroup(String databaseName, InsertRecordGroup irg) {
+        return insertRecordGroup(databaseName, irg, null);
+    }
+
+    @Override
+    public TransactionInternal insertRecordGroup(String databaseName, InsertRecordGroup irg, 
+            LSMDatabase db) {
+        
+        return insertRecordGroup(databaseName, irg, db, null);
+    }
+
+    @Override
+    public TransactionInternal insertRecordGroup(String databaseName, InsertRecordGroup irg, 
+            LSMDatabase db, BabuDBRequestResultImpl<?> listener) {
+        
+        return addOperation(new BabuDBOperation(TYPE_GROUP_INSERT, databaseName, 
+                new Object[] { irg, db, listener }));
     }
     
     @Override
     public List<Operation> getOperations() {
-        return ops;
+        return new LinkedList<Operation>(this);
     }
     
-    public void addOperation(BabuDBOperation op) {
-        ops.add(op);
+    @Override
+    public TransactionInternal addOperation(OperationInternal op) {
+        add(op);
+        return this;
     }
     
     public String toString() {
@@ -79,52 +127,43 @@ public class BabuDBTransaction implements Transaction {
         
         sb.append(getClass().getName() + "\n");
         sb.append("operations:\n");
-        for (Operation op : ops)
+        for (Operation op : this)
             sb.append(op + "\n");
         
         return sb.toString();
     }
     
+    @Override
     public int getSize() throws IOException {
         
-        // determine the list of datbase names
+        // determine the list of database names
         SortedSet<String> dbNames = new TreeSet<String>();
-        for (Operation op : ops)
+        for (Operation op : this) {
             dbNames.add(op.getDatabaseName());
+        }
         
         // #dbNames + #ops
         int size = 2 * Integer.SIZE / 8;
         
-        for (String dbName : dbNames)
+        for (String dbName : dbNames) {
             size += Integer.SIZE / 8 + dbName.getBytes().length;
+        }
         
-        for (Operation op : ops)
-            size += ((BabuDBOperation) op).getSize();
+        for (OperationInternal op : this) {
+            size += op.getSize();
+        }
         
         return size;
     }
     
-    /**
-     * Serializes the transaction to a buffer.
-     * <p>
-     * The following format is used:
-     * <ol>
-     * <li> length of the list of all database names (4 bytes)
-     * <li> all database names (4 bytes for the length + #chars)
-     * <li> length of the list of operations (4 bytes)
-     * <li> all operations (variable size)
-     * </ol>
-     * </p>
-     * 
-     * @param buffer the buffer
-     * @throws IOException
-     */
-    public void serialize(ReusableBuffer buffer) throws IOException {
+    @Override
+    public ReusableBuffer serialize(ReusableBuffer buffer) throws IOException {
         
-        // determine the list of datbase names
+        // determine the list of database names
         SortedSet<String> dbNames = new TreeSet<String>();
-        for (Operation op : ops)
+        for (Operation op : this) {
             dbNames.add(op.getDatabaseName());
+        }
         
         // serialize the list of database names
         buffer.putInt(dbNames.size());
@@ -134,50 +173,15 @@ public class BabuDBTransaction implements Transaction {
         }
         
         // serialize the list of parameters
-        buffer.putInt(ops.size());
-        for (Operation op : ops)
-            ((BabuDBOperation) op).serialize(dbNames, buffer);
-    }
-    
-    public static BabuDBTransaction deserialize(ReusableBuffer buffer) throws IOException {
-        
-        BabuDBTransaction txn = new BabuDBTransaction();
-        
-        // deserialize the list of database names
-        int length = buffer.getInt();
-        String[] dbNames = new String[length];
-        for (int i = 0; i < length; i++) {
-            byte[] bytes = new byte[buffer.getInt()];
-            buffer.get(bytes);
-            dbNames[i] = new String(bytes);
+        buffer.putInt(size());
+        for (OperationInternal op : this) {
+            op.serialize(dbNames, buffer);
         }
         
-        // deserialize the list of operations
-        length = buffer.getInt();
-        for (int i = 0; i < length; i++) {
-            BabuDBOperation op = BabuDBOperation.deserialize(dbNames, buffer);
-            txn.addOperation(op);
-        }
-        return txn;
+        return buffer;
     }
-    
-    public static class BabuDBOperation implements Operation {
         
-        private static final byte FIELD_TYPE_INTEGER    = 0;
-        
-        private static final byte FIELD_TYPE_SHORT      = 1;
-        
-        private static final byte FIELD_TYPE_LONG       = 2;
-        
-        private static final byte FIELD_TYPE_BOOLEAN    = 3;
-        
-        private static final byte FIELD_TYPE_BYTE       = 4;
-        
-        private static final byte FIELD_TYPE_BYTE_ARRAY = 5;
-        
-        private static final byte FIELD_TYPE_STRING     = 6;
-        
-        private static final byte FIELD_TYPE_OBJECT     = 7;
+    public static class BabuDBOperation extends OperationInternal {
         
         private byte              type;
         
@@ -185,7 +189,12 @@ public class BabuDBTransaction implements Transaction {
         
         private String            dbName;
         
-        public BabuDBOperation(byte type, String dbName, Object... params) {
+        /**
+         * @param type
+         * @param dbName
+         * @param params (may contain null values)
+         */
+        public BabuDBOperation(byte type, String dbName, Object[] params) {
             this.type = type;
             this.params = params;
             this.dbName = dbName;
@@ -194,6 +203,11 @@ public class BabuDBTransaction implements Transaction {
         @Override
         public Object[] getParams() {
             return params;
+        }
+        
+        @Override
+        public void updateParams(Object[] params) {
+            this.params = params;
         }
         
         @Override
@@ -206,88 +220,120 @@ public class BabuDBTransaction implements Transaction {
             return dbName;
         }
         
+        @Override
+        public void updateDatabaseName(String dbName) {
+            this.dbName = dbName;
+        }
+        
+        @Override
         public int getSize() throws IOException {
             
-            // initial size: type byte + number of parameters + db name index
-            // position
+            // initial size: type byte + number of parameters + db name index position
             int size = 1 + 2 * Integer.SIZE / 8;
             
             // add the size of all parameters
-            for (Object obj : params) {
-                
-                // perform a straight-forward serialization of primitive types
-                // and strings
-                if (obj instanceof String)
-                    size += 1 + Integer.SIZE / 8 + ((String) obj).getBytes().length;
-                else if (obj instanceof Integer)
-                    size += 1 + Integer.SIZE / 8;
-                else if (obj instanceof Long)
-                    size += 1 + Long.SIZE / 8;
-                else if (obj instanceof Short)
-                    size += 1 + Short.SIZE / 8;
-                else if (obj instanceof Byte)
-                    size += 1 + Byte.SIZE / 8;
-                else if (obj instanceof byte[])
-                    size += 1 + Integer.SIZE / 8 + ((byte[]) obj).length;
-                else if (obj instanceof Boolean)
-                    size += 1 + 1;
-                
-                // perform a Java serialization for any other types, e.g.
-                // ByteRangeComparators
-                else {
-                    ByteArrayOutputStream bout = new ByteArrayOutputStream();
-                    ObjectOutputStream out = new ObjectOutputStream(bout);
-                    out.writeObject(obj);
+            if (params != null) {
+                for (Object obj : params) {
                     
-                    // length + content
-                    size += 1 + Integer.SIZE / 8 + bout.toByteArray().length;
-                    out.close();
+                    // exclude unserializable parameters
+                    if (obj != null && 
+                      !(obj instanceof LSMDatabase) && 
+                      !(obj instanceof BabuDBRequestResultImpl<?>)) {
+                        
+                        // perform a straight-forward serialization of primitive types
+                        // and strings
+                        if (obj instanceof String)
+                            size += 1 + Integer.SIZE / 8 + ((String) obj).getBytes().length;
+                        else if (obj instanceof Integer)
+                            size += 1 + Integer.SIZE / 8;
+                        else if (obj instanceof Long)
+                            size += 1 + Long.SIZE / 8;
+                        else if (obj instanceof Short)
+                            size += 1 + Short.SIZE / 8;
+                        else if (obj instanceof Byte)
+                            size += 1 + Byte.SIZE / 8;
+                        else if (obj instanceof byte[])
+                            size += 1 + Integer.SIZE / 8 + ((byte[]) obj).length;
+                        else if (obj instanceof Boolean)
+                            size += 1 + 1;
+                        else if (obj instanceof InsertRecordGroup) 
+                            size += 1 + Integer.SIZE / 8 + ((InsertRecordGroup) obj).getSize();
+                        
+                        // perform a Java serialization for any other types, e.g.
+                        // ByteRangeComparators
+                        else {
+                            ByteArrayOutputStream bout = new ByteArrayOutputStream();
+                            ObjectOutputStream out = new ObjectOutputStream(bout);
+                            out.writeObject(obj);
+                            
+                            // length + content
+                            size += 1 + Integer.SIZE / 8 + bout.toByteArray().length;
+                            out.close();
+                        }
+                    }
                 }
             }
             
             return size;
         }
         
-        public void serialize(SortedSet<String> dbNameSet, ReusableBuffer buffer) throws IOException {
+        public ReusableBuffer serialize(SortedSet<String> dbNameSet, ReusableBuffer buffer) 
+                throws IOException {
+            
+            int size = 0, start = 0;
+            assert ((size = getSize()) > -1);
+            assert ((start = buffer.position()) > -1);
             
             buffer.put(type);
             
             // determine the index position in the database name set
-            int dbNameIndex = -1;
+            int dbNameIndex = InsertRecordGroup.DB_ID_UNKNOWN;
             Iterator<String> it = dbNameSet.iterator();
             for (int i = 0; it.hasNext(); i++) {
                 String curr = it.next();
-                if (curr.equals(dbName))
+                if (curr.equals(dbName)) {
                     dbNameIndex = i;
+                }
             }
             
             // serialize the database name index
             assert (dbNameIndex >= 0);
             buffer.putInt(dbNameIndex);
             
+            // count the serializable parameters
+            int count = 0;
+            if (params != null) {
+                for (Object obj : params) {
+                    
+                    // exclude unserializable parameters
+                    if (obj != null && 
+                      !(obj instanceof LSMDatabase) && 
+                      !(obj instanceof BabuDBRequestResultImpl<?>)) {
+                        count++;
+                    }
+                }
+            }
+            
+            buffer.putInt(count);
+            
             // serialize the list of parameters
-            buffer.putInt(params.length);
-            for (Object obj : params)
-                serializeParam(buffer, obj);
-        }
-        
-        public static BabuDBOperation deserialize(String[] dbNameList, ReusableBuffer buffer)
-            throws IOException {
+            if (params != null) {
+                for (Object obj : params) {
+                    
+                    // exclude unserializable parameters
+                    if (obj != null && 
+                      !(obj instanceof LSMDatabase) && 
+                      !(obj instanceof BabuDBRequestResultImpl<?>)) {
+                        
+                        serializeParam(buffer, obj);
+                    }
+                }
+            }
             
-            // deserialize type of the operation
-            byte type = buffer.get();
+            assert ((buffer.position() - start) == size) : 
+                "Operation " + type + " was not serialized successfully!";
             
-            // deserialize the database name
-            int dbNameIndex = buffer.getInt();
-            String dbName = dbNameList[dbNameIndex];
-            
-            // deserialize number of parameters
-            int length = buffer.getInt();
-            LinkedList<Object> params = new LinkedList<Object>();
-            for (int i = 0; i < length; i++)
-                params.add(deserializeParam(buffer));
-            
-            return new BabuDBOperation(type, dbName, params.toArray());
+            return buffer;
         }
         
         public String toString() {
@@ -353,11 +399,23 @@ public class BabuDBTransaction implements Transaction {
                 
                 buffer.put(FIELD_TYPE_BYTE);
                 buffer.put(byteObj);
-            }
-
+            } else if (obj instanceof InsertRecordGroup) {
+                
+                InsertRecordGroup irg = (InsertRecordGroup) obj;
+                
+                int size = irg.getSize();
+                ReusableBuffer buf = BufferPool.allocate(size);
+                irg.serialize(buf);
+                buf.flip();
+                
+                buffer.put(FIELD_TYPE_GROUP);
+                buffer.putInt(size);
+                buffer.put(buf);
+                BufferPool.free(buf);
+                
             // perform a Java serialization for any other types, e.g.
             // ByteRangeComparators
-            else {
+            } else {
                 
                 buffer.put(FIELD_TYPE_OBJECT);
                 
@@ -375,7 +433,7 @@ public class BabuDBTransaction implements Transaction {
             
         }
         
-        private static Object deserializeParam(ReusableBuffer buffer) throws IOException {
+        public static Object deserializeParam(ReusableBuffer buffer) throws IOException {
             
             byte fieldType = buffer.get();
             
@@ -422,12 +480,30 @@ public class BabuDBTransaction implements Transaction {
                 
                 return obj;
             }
+            case FIELD_TYPE_GROUP: {
+                
+                int length = buffer.getInt();
+                ReusableBuffer view = null;
+                try {
+                    int bufferPos = buffer.position();
+                    int pos = bufferPos + length;
+                    
+                    // prepare view buffer
+                    view = buffer.createViewBuffer();
+                    view.position(bufferPos);
+                    view.limit(pos);
+                    
+                    // reset buffer position
+                    buffer.position(pos);
+                    
+                    return InsertRecordGroup.deserialize(view);
+                } finally {
+                    if (view != null) BufferPool.free(view);
+                }
+            }
             default:
                 throw new IOException("invalid field type:" + fieldType);
             }
-            
         }
-        
     }
-    
 }

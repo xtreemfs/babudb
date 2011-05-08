@@ -8,11 +8,7 @@
 package org.xtreemfs.babudb;
 
 import static org.xtreemfs.babudb.BabuDBFactory.BABUDB_VERSION;
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_COPY;
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_CREATE;
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_DELETE;
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_SNAP;
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_SNAP_DELETE;
+import static org.xtreemfs.babudb.log.LogEntry.*;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -27,8 +23,9 @@ import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.dev.CheckpointerInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
-import org.xtreemfs.babudb.api.dev.InMemoryProcessing;
-import org.xtreemfs.babudb.api.dev.PersistenceManagerInternal;
+import org.xtreemfs.babudb.api.dev.transaction.InMemoryProcessing;
+import org.xtreemfs.babudb.api.dev.transaction.OperationInternal;
+import org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal;
 import org.xtreemfs.babudb.api.dev.SnapshotManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
@@ -71,7 +68,7 @@ public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
      * the disk logger is used to write InsertRecordGroups persistently to disk
      */
     private DiskLogger                          logger;
-    private PersistenceManagerInternal          permMan;
+    private TransactionManagerInternal          txnMan;
     
     /**
      * Checkpointer thread for automatic checkpointing
@@ -135,7 +132,7 @@ public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
     BabuDBImpl(BabuDBConfig configuration) throws BabuDBException {
         
         this.configuration = configuration;
-        this.permMan = new PersistenceManagerImpl();
+        this.txnMan = new TransactionManagerImpl();
         this.databaseManager = new DatabaseManagerImpl(this);
         this.dbConfigFile = new DBConfig(this);
         this.snapshotManager = new SnapshotManagerImpl(this);
@@ -193,8 +190,8 @@ public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
         } catch (Exception ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot start database operations logger", ex);
         }
-        this.permMan.init(new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo() - 1L));
-        this.permMan.setLogger(logger);
+        this.txnMan.init(new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo() - 1L));
+        this.txnMan.setLogger(logger);
         
         if (configuration.getNumThreads() > 0) {
             worker = new LSMDBWorker[configuration.getNumThreads()];
@@ -265,7 +262,7 @@ public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
             try {
                 this.dbCheckptr.suspendCheckpointing();
                 logger.waitForShutdown();
-                this.permMan.setLogger(null);
+                this.txnMan.setLogger(null);
                 if (worker != null)
                     for (LSMDBWorker w : worker)
                         w.waitForShutdown();
@@ -335,8 +332,8 @@ public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
                 throw new BabuDBException(ErrorCode.IO_ERROR,
                     "Cannot start " + "database operations logger!", ex);
             }
-            this.permMan.init(new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo() - 1L));
-            this.permMan.setLogger(logger);
+            this.txnMan.init(new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo() - 1L));
+            this.txnMan.setLogger(logger);
             
             if (configuration.getNumThreads() > 0) {
                 worker = new LSMDBWorker[configuration.getNumThreads()];
@@ -447,19 +444,20 @@ public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.BabuDBInternal#replacePersistenceManager(org.xtreemfs.babudb.api.PersistenceManager)
+     * @see org.xtreemfs.babudb.api.dev.BabuDBInternal#replaceTransactionManager(
+     *          org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal)
      */
     @Override
-    public void replacePersistenceManager(PersistenceManagerInternal perMan) {
-        this.permMan = perMan;
+    public void replaceTransactionManager(TransactionManagerInternal txnMan) {
+        this.txnMan = txnMan;
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.BabuDBInternal#getPersistenceManager()
+     * @see org.xtreemfs.babudb.api.dev.BabuDBInternal#getTransactionManager()
      */
     @Override
-    public PersistenceManagerInternal getPersistenceManager() {
-        return permMan;
+    public TransactionManagerInternal getTransactionManager() {
+        return txnMan;
     }
     
     /* (non-Javadoc)
@@ -543,31 +541,38 @@ public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
                     le = it.next();
                     byte type = le.getPayloadType();
                     
-                    // create, copy and delete are not replayed
-                    if (type != PAYLOAD_TYPE_CREATE &&
+                    // in normal there are only transactions to be replayed
+                    if (type == PAYLOAD_TYPE_TRANSACTION) {
+                        txnMan.replayTransaction(le);
+                    
+                    // create, copy and delete are not replayed (this block is for backward 
+                    // compatibility)
+                    } else if (
+                        type != PAYLOAD_TYPE_CREATE &&
                         type != PAYLOAD_TYPE_COPY &&
                         type != PAYLOAD_TYPE_DELETE) {
                     
                         // get the processing logic for the dedicated logEntry type
-                        InMemoryProcessing processingLogic = permMan.getProcessingLogic().get(type);
+                        InMemoryProcessing processingLogic = txnMan.getProcessingLogic().get(type);
                         
                         // deserialize the arguments retrieved from the logEntry
-                        Object[] arguments = processingLogic.deserializeRequest(le.getPayload());
+                        OperationInternal operation = processingLogic.convertToOperation(
+                                processingLogic.deserializeRequest(le.getPayload()));
                     
                         // execute the in-memory logic
                         try {
-                            processingLogic.before(arguments);
-                            processingLogic.meanwhile(arguments);
-                            processingLogic.after(arguments);
+                            processingLogic.before(operation);
+                            processingLogic.meanwhile(operation);
+                            processingLogic.after(operation);
                         } catch (BabuDBException be) {
                         	
-                            // ignore NO_SUCH_SNAPSHOT/SNAP_EXIST exception, if we replay snapshot 
-                            // operations
-                            if ((be.getErrorCode() != ErrorCode.SNAP_EXISTS || 
-                                    type != PAYLOAD_TYPE_SNAP) &&
-                                (be.getErrorCode() != ErrorCode.NO_SUCH_SNAPSHOT || 
-                                    type != PAYLOAD_TYPE_SNAP_DELETE)) {
-		
+                            // there might be false positives if a snapshot to delete has already 
+                            // been deleted or a snapshot to create has already been created
+                            if (!(type == PAYLOAD_TYPE_SNAP && 
+                                    be.getErrorCode() == ErrorCode.SNAP_EXISTS) &&
+                                !(type == PAYLOAD_TYPE_SNAP_DELETE && 
+                                    be.getErrorCode() == ErrorCode.NO_SUCH_SNAPSHOT)) {
+                                
                                 throw be;
                             }
                         }
@@ -596,6 +601,8 @@ public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot load "
                 + "database operations log, file might be corrupted", ex);
         } catch (Exception ex) {
+            
+            Logging.logError(Logging.LEVEL_ERROR, this, ex);
             
             if (ex.getCause() instanceof LogEntryException) {
                 throw new BabuDBException(ErrorCode.IO_ERROR, "corrupted/incomplete log entry in database "

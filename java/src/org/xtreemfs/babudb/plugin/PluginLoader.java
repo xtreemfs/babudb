@@ -17,7 +17,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
-import org.xtreemfs.babudb.api.plugin.PluginMain;
+import org.xtreemfs.babudb.api.dev.plugin.PluginMain;
 import org.xtreemfs.babudb.config.PluginConfig;
 import org.xtreemfs.foundation.logging.Logging;
 

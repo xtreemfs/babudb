@@ -25,8 +25,6 @@ import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.foundation.logging.Logging;
 
-import static org.xtreemfs.babudb.log.LogEntry.*;
-
 public class DatabaseImpl implements DatabaseInternal {
     
     private BabuDBInternal      dbs;
@@ -138,8 +136,9 @@ public class DatabaseImpl implements DatabaseInternal {
     private void directInsert(BabuDBInsertGroup irg, BabuDBRequestResultImpl<Object> listener) {
 
         try {
-            dbs.getPersistenceManager().makePersistent(PAYLOAD_TYPE_INSERT, 
-                           new Object[]{ irg.getRecord(), lsmDB, listener });             
+            dbs.getTransactionManager().makePersistent(
+                    dbs.getDatabaseManager().createTransaction().insertRecordGroup(
+                            getName(), irg.getRecord(), getLSMDB(), listener));             
         } catch (BabuDBException e) {
             
             // if an exception occurred while writing the log, respond with an
@@ -446,10 +445,10 @@ public class DatabaseImpl implements DatabaseInternal {
         int[] ids;
         try {
             // critical block...
-            dbs.getPersistenceManager().lockService();
+            dbs.getTransactionManager().lockService();
             ids = lsmDB.createSnapshot();
         } finally {
-            dbs.getPersistenceManager().unlockService();
+            dbs.getTransactionManager().unlockService();
         }
         
         File dbDir = new File(dbs.getConfig().getBaseDir() + destDB);

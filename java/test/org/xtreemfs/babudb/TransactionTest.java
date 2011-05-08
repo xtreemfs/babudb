@@ -8,6 +8,7 @@ package org.xtreemfs.babudb;
 import java.io.File;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import junit.framework.TestCase;
 import junit.textui.TestRunner;
@@ -18,6 +19,7 @@ import org.junit.Test;
 import org.xtreemfs.babudb.api.BabuDB;
 import org.xtreemfs.babudb.api.DatabaseManager;
 import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.dev.transaction.TransactionInternal;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.api.transaction.Operation;
 import org.xtreemfs.babudb.api.transaction.Transaction;
@@ -26,10 +28,13 @@ import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.BabuDBTransaction;
+import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.FSUtils;
+
+import static org.xtreemfs.babudb.api.dev.transaction.TransactionInternal.*;
 
 /**
  * 
@@ -86,27 +91,27 @@ public class TransactionTest extends TestCase {
         // check transaction
         assertEquals(6, txn.getOperations().size());
         
-        assertEquals(Operation.TYPE_CREATE_DB, txn.getOperations().get(0).getType());
+        assertEquals(TYPE_CREATE_DB, txn.getOperations().get(0).getType());
         assertEquals("db1", txn.getOperations().get(0).getDatabaseName());
-        assertEquals(1, txn.getOperations().get(0).getParams().length);
+        assertEquals(2, txn.getOperations().get(0).getParams().length);
         
-        assertEquals(Operation.TYPE_CREATE_DB, txn.getOperations().get(1).getType());
+        assertEquals(TYPE_CREATE_DB, txn.getOperations().get(1).getType());
         assertEquals("db1", txn.getOperations().get(1).getDatabaseName());
         assertEquals(2, txn.getOperations().get(1).getParams().length);
         
-        assertEquals(Operation.TYPE_INSERT_KEY, txn.getOperations().get(2).getType());
+        assertEquals(TYPE_GROUP_INSERT, txn.getOperations().get(2).getType());
         assertEquals("db1", txn.getOperations().get(2).getDatabaseName());
         assertEquals(3, txn.getOperations().get(2).getParams().length);
         
-        assertEquals(Operation.TYPE_DELETE_KEY, txn.getOperations().get(3).getType());
+        assertEquals(TYPE_GROUP_INSERT, txn.getOperations().get(3).getType());
         assertEquals("db2", txn.getOperations().get(3).getDatabaseName());
-        assertEquals(2, txn.getOperations().get(3).getParams().length);
+        assertEquals(3, txn.getOperations().get(3).getParams().length);
         
-        assertEquals(Operation.TYPE_DELETE_DB, txn.getOperations().get(4).getType());
+        assertEquals(TYPE_DELETE_DB, txn.getOperations().get(4).getType());
         assertEquals("db1", txn.getOperations().get(4).getDatabaseName());
-        assertEquals(0, txn.getOperations().get(4).getParams().length);
+        assertNull(txn.getOperations().get(4).getParams());
         
-        assertEquals(Operation.TYPE_INSERT_KEY, txn.getOperations().get(5).getType());
+        assertEquals(TYPE_GROUP_INSERT, txn.getOperations().get(5).getType());
         assertEquals("new-database", txn.getOperations().get(5).getDatabaseName());
         assertEquals(3, txn.getOperations().get(5).getParams().length);
         
@@ -118,7 +123,7 @@ public class TransactionTest extends TestCase {
         
         // deserialize transaction from buffer
         buf.position(0);
-        BabuDBTransaction txn2 = BabuDBTransaction.deserialize(buf);
+        TransactionInternal txn2 = TransactionInternal.deserialize(buf);
         assertEquals(buf.position(), size);
         
         // compare original transaction with deserialized transaction
@@ -129,32 +134,46 @@ public class TransactionTest extends TestCase {
             Operation op1 = txn.getOperations().get(i);
             Operation op2 = txn2.getOperations().get(i);
             
-            assertEquals(op1.getType(), op2.getType());
-            assertEquals(op1.getParams().length, op2.getParams().length);
-            
-            for (int j = 0; j < op1.getParams().length; j++) {
-                
-                Object p1 = op1.getParams()[j];
-                Object p2 = op2.getParams()[j];
-                
-                if (p1 instanceof Number || p1 instanceof String)
-                    assertEquals(p1, p2);
-                
-                else if (p1 instanceof byte[]) {
-                    
-                    byte[] b1 = (byte[]) p1;
-                    byte[] b2 = (byte[]) p2;
-                    
-                    assertEquals(b1.length, b2.length);
-                    for (int k = 0; k < b1.length; k++)
-                        assertEquals(b1[k], b2[k]);
-                    
+            // count legal parameters
+            int count = 0;
+            if (op1.getParams() != null) {
+                for (Object obj : op1.getParams()) {
+                    if (obj != null && 
+                            !(obj instanceof LSMDatabase) && 
+                            !(obj instanceof BabuDBRequestResultImpl<?>)) {
+                        count++;
+                    }
                 }
-                
             }
             
+            assertEquals(op1.getType(), op2.getType());
+            if (count > 0) {
+                assertEquals(count, op2.getParams().length);
+            } else {
+                assertNull(op2.getParams());
+            }
+            if (op2.getParams() != null) {
+                for (int j = 0; j < op2.getParams().length; j++) {
+                    
+                    Object p1 = op1.getParams()[j];
+                    Object p2 = op2.getParams()[j];
+                    
+                    if (p1 instanceof Number || p1 instanceof String)
+                        assertEquals(p1, p2);
+                    
+                    else if (p1 instanceof byte[]) {
+                        
+                        byte[] b1 = (byte[]) p1;
+                        byte[] b2 = (byte[]) p2;
+                        
+                        assertEquals(b1.length, b2.length);
+                        for (int k = 0; k < b1.length; k++)
+                            assertEquals(b1[k], b2[k]);
+                    }
+                    
+                }
+            }
         }
-        
     }
     
     @Test
@@ -225,9 +244,9 @@ public class TransactionTest extends TestCase {
         
         // create and execute a transaction
         Transaction txn = dbMan.createTransaction();
-        txn.createDatabase("test", 1);
+        txn.createDatabase("test", 2);
         txn.insertRecord("test", 0, "hello".getBytes(), "world".getBytes());
-        txn.insertRecord("test", 0, "key".getBytes(), "value".getBytes());
+        txn.insertRecord("test", 1, "key".getBytes(), "value".getBytes());
         dbMan.executeTransaction(txn);
         
         // shutdown and restart the database
@@ -239,7 +258,7 @@ public class TransactionTest extends TestCase {
         Database db = dbMan.getDatabase("test");
         assertNotNull(db);
         assertEquals("test", db.getName());
-        assertEquals(3, db.getComparators().length);
+        assertEquals(2, db.getComparators().length);
         
         // check if the records are there
         byte[] value = db.lookup(0, "hello".getBytes(), null).get();
@@ -260,7 +279,7 @@ public class TransactionTest extends TestCase {
         db = dbMan.getDatabase("test");
         assertNotNull(db);
         assertEquals("test", db.getName());
-        assertEquals(3, db.getComparators().length);
+        assertEquals(2, db.getComparators().length);
         
         // check if the records are there
         value = db.lookup(0, "hello".getBytes(), null).get();
@@ -274,9 +293,24 @@ public class TransactionTest extends TestCase {
     @Test
     public void testTransactionListeners() throws Exception {
         
+        // may not be used as lock - causes unpredictable behavior
         final List<Transaction> notifiedTransactions = new LinkedList<Transaction>();
+        final AtomicInteger lock = new AtomicInteger(0);
         
         DatabaseManager dbMan = database.getDatabaseManager();
+        
+        
+        // add a listener BEFORE executing the transaction
+        TransactionListener l0 = new TransactionListener() {
+            public void transactionPerformed(Transaction txn) {
+                synchronized (lock) {
+                    notifiedTransactions.add(txn);
+                    lock.incrementAndGet();
+                    lock.notify();
+                }
+            }
+        };
+        dbMan.addTransactionListener(l0);
         
         // create and execute a transaction
         Transaction txn = dbMan.createTransaction();
@@ -285,53 +319,55 @@ public class TransactionTest extends TestCase {
         txn.insertRecord("test", 0, "key".getBytes(), "value".getBytes());
         dbMan.executeTransaction(txn);
         
-        // add a listener after executing the transaction and wait for the
-        // notification
-        dbMan.addTransactionListener(new TransactionListener() {
-            public void transactionPerformed(Transaction txn) {
-                synchronized (notifiedTransactions) {
-                    notifiedTransactions.add(txn);
-                    notifiedTransactions.notify();
-                }
+        // wait for the notification
+        synchronized (lock) {
+            if (lock.get() != 1) {
+                lock.wait(5000);
             }
-        });
-        
-        synchronized (notifiedTransactions) {
-            if (notifiedTransactions.size() == 0)
-                notifiedTransactions.wait(5000);
         }
         
-        if (notifiedTransactions.size() == 0)
+        if (lock.get() == 0)
             fail("listener was not notified within 5 seconds");
-        assertEquals(1, notifiedTransactions.size());
+        assertEquals(1, lock.get());
         
         // reset list of notified transactions
-        notifiedTransactions.clear();
+        synchronized (lock) {
+            notifiedTransactions.clear();
+            lock.set(0);
+        }
         
         // create and execute another transaction (which is empty)
         txn = dbMan.createTransaction();
         
         // add a listener before executing the transaction and wait for the
         // notification
-        dbMan.addTransactionListener(new TransactionListener() {
+        TransactionListener l1 = new TransactionListener() {
             public void transactionPerformed(Transaction txn) {
-                synchronized (notifiedTransactions) {
+                synchronized (lock) {
                     notifiedTransactions.add(txn);
-                    notifiedTransactions.notify();
+                    lock.incrementAndGet();
+                    lock.notify();
                 }
             }
-        });
+        };
+        dbMan.addTransactionListener(l1);
         
         dbMan.executeTransaction(txn);
         
-        synchronized (notifiedTransactions) {
-            if (notifiedTransactions.size() == 0)
-                notifiedTransactions.wait(5000);
+        synchronized (lock) {
+            // wait for the first listener to recognize the transaction
+            if (lock.get() == 0) {
+                lock.wait(5000);
+            }
+            // wait for the second listener to recognize the txn
+            if (lock.get() == 1) {
+                lock.wait(5000);
+            }
         }
         
-        if (notifiedTransactions.size() == 0)
+        if (lock.get() == 0)
             fail("listener was not notified within 5 seconds");
-        assertEquals(1, notifiedTransactions.size());
+        assertEquals(2, lock.get());
         
     }
     

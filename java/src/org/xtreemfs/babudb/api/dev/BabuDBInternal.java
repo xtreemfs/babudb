@@ -9,6 +9,7 @@ package org.xtreemfs.babudb.api.dev;
 
 import org.xtreemfs.babudb.api.BabuDB;
 import org.xtreemfs.babudb.api.StaticInitialization;
+import org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.lsmdb.DBConfig;
@@ -65,19 +66,19 @@ public interface BabuDBInternal extends BabuDB {
      * May change during execution so always access the most common instance
      * by this method.
      * 
-     * @return the {@link PersistenceManagerInternal} used by this BabuDB instance to 
+     * @return the {@link TransactionManagerInternal} used by this BabuDB instance to 
      *         ensure on-disk persistence of database-modifying requests.
      */
-    public PersistenceManagerInternal getPersistenceManager();
+    public TransactionManagerInternal getTransactionManager();
     
     /**
-     * The registered {@link PersistenceManagerInternal} will be replaced by the given
+     * The registered {@link TransactionManagerInternal} will be replaced by the given
      * one. This method is not thread-safe so please ensure there are no race-
      * conditions accessing the manager while execution. 
      * 
-     * @param perMan
+     * @param txnMan
      */
-    public void replacePersistenceManager(PersistenceManagerInternal perMan);
+    public void replaceTransactionManager(TransactionManagerInternal txnMan);
     
     /**
      * @param dbId

@@ -1,11 +1,10 @@
 /*
- * Copyright (c) 2008, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2008 - 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-
 package org.xtreemfs.babudb.lsmdb;
 
 import java.util.Arrays;
@@ -20,12 +19,15 @@ import org.xtreemfs.foundation.buffer.ReusableBuffer;
  */
 public class InsertRecordGroup {
     
-    private List<InsertRecord> records;
+    public final static int DB_ID_UNKNOWN       = -1;
     
-    private int                databaseId;
+    private final List<InsertRecord> records    = new LinkedList<InsertRecord>();
+    
+    private int                      databaseId = DB_ID_UNKNOWN;
+    
+    public InsertRecordGroup() {}
     
     public InsertRecordGroup(int databaseId) {
-        records = new LinkedList();
         this.databaseId = databaseId;
     }
     
@@ -35,6 +37,10 @@ public class InsertRecordGroup {
     
     public List<InsertRecord> getInserts() {
         return records;
+    }
+    
+    public void setDatabaseId(int id) {
+        this.databaseId = id;
     }
     
     public int getDatabaseId() {

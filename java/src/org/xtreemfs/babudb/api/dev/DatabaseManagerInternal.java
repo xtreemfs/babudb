@@ -13,8 +13,10 @@ import java.util.Set;
 
 import org.xtreemfs.babudb.api.DatabaseManager;
 import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.dev.transaction.TransactionInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
+import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
 
 /**
  * Interface of {@link DatabaseManager} for internal usage. This should not be accessed
@@ -26,6 +28,33 @@ import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 
 public interface DatabaseManagerInternal extends DatabaseManager {
 
+    /**
+     * Creates a new, empty transaction.
+     * <p>
+     * Unlike {@link BabuDBInsertGroup}s that are limited to insertions and
+     * deletions of entries in a single database, transactions may span multiple
+     * databases and include creations and deletions of databases.
+     * </p>
+     * 
+     * @return an empty transaction
+     */
+    public TransactionInternal createTransaction();
+    
+    /**
+     * Executes a database transaction.
+     * <p>
+     * Note that the execution is performed synchronously by the invoking thread
+     * rather than being enqueued. Thus, it should primarily be used for
+     * initialization purposes that take place before the database is accessed.
+     * </p>
+     * 
+     * @param txn
+     *            the transaction to execute
+     * @throws BabuDBException
+     *             if an error occurred while executing the transaction
+     */
+    public void executeTransaction(TransactionInternal txn) throws BabuDBException;
+    
     /**
      * Creates a new database.
      * 

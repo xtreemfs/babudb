@@ -1,28 +1,19 @@
 /*
- * Copyright (c) 2009-2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
+ * Copyright (c) 2011, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist,
  *                     Felix Hupfeld, Felix Langner, Zuse Institute Berlin
  * 
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-
 package org.xtreemfs.babudb.api.transaction;
 
 /**
  * An individual operation of a transaction.
  * 
  * @author stenjan
- * 
+ * @author flangner
  */
 public interface Operation {
-    
-    public static final byte TYPE_INSERT_KEY = 0;
-    
-    public static final byte TYPE_DELETE_KEY = 1;
-    
-    public static final byte TYPE_CREATE_DB  = 2;
-    
-    public static final byte TYPE_DELETE_DB  = 3;
     
     /**
      * Returns the operation type.

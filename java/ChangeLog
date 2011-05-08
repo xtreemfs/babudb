@@ -45,3 +45,9 @@
   * added plugin mechanism that separates BabuDB core functionality from additional features such as replication
   * moved all replication-specific code into a separate plugin, which can be found in the replication subdirectory
   * iterators formerly returned upon prefix and range lookups have been replaced with result sets, which should be explicitly freed to minimize memory footprint
+
+2011-05-XX: release 0.5.1
+  * static initialization redefined
+
+2011-05-XX: release 0.6.0
+  * added rudimentary transactions

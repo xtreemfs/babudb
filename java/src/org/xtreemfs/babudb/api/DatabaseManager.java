@@ -130,7 +130,7 @@ public interface DatabaseManager {
      * databases and include creations and deletions of databases.
      * </p>
      * 
-     * @return an empty transcation
+     * @return an empty transaction
      */
     public Transaction createTransaction();
     

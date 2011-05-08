@@ -19,7 +19,6 @@ import org.xtreemfs.babudb.api.database.UserDefinedLookup;
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
-import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.foundation.logging.Logging;
 
 /**
@@ -147,8 +146,10 @@ public class LSMDBWorker extends Thread {
     private void doInsert(final LSMDBRequest<?> r) throws InterruptedException {
 
         try {
-            dbs.getPersistenceManager().makePersistent(LogEntry.PAYLOAD_TYPE_INSERT, 
-                    new Object[] { r.getInsertData(), r.getDatabase(), r.getListener() });
+            dbs.getTransactionManager().makePersistent(
+                    dbs.getDatabaseManager().createTransaction().insertRecordGroup(
+                            r.getDatabase().getDatabaseName(), r.getInsertData(), r.getDatabase(), 
+                            r.getListener()));
         } catch (BabuDBException e) {
             r.getListener().failed(e);
         }

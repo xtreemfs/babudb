@@ -5,27 +5,34 @@
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-package org.xtreemfs.babudb.api.dev;
+package org.xtreemfs.babudb.api.dev.transaction;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.BabuDB;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.transaction.TransactionListener;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
+
+import static org.xtreemfs.babudb.api.dev.transaction.TransactionInternal.deserialize;
 
 /**
  * Interface between API and the core {@link BabuDB}. This should not be accessed
  * by any user application, but may be accessed by plugins.
+ * Will only accept transactions.
  * 
  * @author flangner
  * @since 11/03/2010
  */
-public abstract class PersistenceManagerInternal {
+public abstract class TransactionManagerInternal {
     
     protected final Map<Byte, InMemoryProcessing> inMemoryProcessing = 
         new HashMap<Byte, InMemoryProcessing>();
@@ -50,18 +57,18 @@ public abstract class PersistenceManagerInternal {
     public abstract void setLogger (DiskLogger logger);
     
     /**
-     * Method to extend the PersistenceManagerInternal with the knowledge how to handle the requests of type
+     * Method to extend the TransactionManagerInternal with the knowledge how to handle the requests of type
      * 
      * 
      * @param type
      * @param processing
      */
     public void registerInMemoryProcessing(byte type, InMemoryProcessing processing) {
-        this.inMemoryProcessing.put(type, processing);
+        inMemoryProcessing.put(type, processing);
     }
     
     /**
-     * @return the registered handlers for the in-memory processing of the persistence manager.
+     * @return the registered handlers for the in-memory processing of the transaction manager.
      */
     public Map<Byte, InMemoryProcessing> getProcessingLogic() {
         return inMemoryProcessing;
@@ -72,17 +79,22 @@ public abstract class PersistenceManagerInternal {
      * on BabuDB has to pass this method first.
      * 
      * @param <T>
-     * @param type - of the operation.
-     * @param args - the arguments for the given type of operation. 
+     * @param transaction - the transaction-object. 
      * 
      * @throws BabuDBException if something went wrong.
      * 
      * @return the result listener.
      */
-    public <T> BabuDBRequestResultImpl<T> makePersistent(byte type, Object[] args) 
+    public <T> BabuDBRequestResultImpl<T> makePersistent(TransactionInternal transaction) 
             throws BabuDBException {
         
-        return makePersistent(type, args, inMemoryProcessing.get(type).serializeRequest(args));
+        try {
+            ReusableBuffer buffer = transaction.serialize(BufferPool.allocate(transaction.getSize()));
+            buffer.flip();
+            return makePersistent(transaction, buffer);
+        } catch (IOException e) {
+            throw new BabuDBException (ErrorCode.IO_ERROR, e.getMessage(), e);
+        }
     }
     
     /**
@@ -90,18 +102,20 @@ public abstract class PersistenceManagerInternal {
      * on BabuDB has to pass this method first.
      * 
      * @param <T>
-     * @param type - of the operation.
-     * @param serialized - the buffer of the serialized args, if previously calculated. 
+     * @param serialized - the buffer of the serialized transaction, if previously calculated. 
      * 
      * @throws BabuDBException if something went wrong.
      * 
      * @return the result listener.
      */
-    public <T> BabuDBRequestResultImpl<T> makePersistent(byte type, ReusableBuffer serialized) 
+    public <T> BabuDBRequestResultImpl<T> makePersistent(ReusableBuffer serialized) 
             throws BabuDBException {
-        
-        return makePersistent(type, inMemoryProcessing.get(type).deserializeRequest(serialized), 
-                serialized);
+                
+        try {
+            return makePersistent(deserialize(serialized), serialized);
+        } catch (IOException e) {
+            throw new BabuDBException(ErrorCode.IO_ERROR, e.getMessage(), e);
+        }
     }
     
     /**
@@ -109,16 +123,34 @@ public abstract class PersistenceManagerInternal {
      * on BabuDB has to pass this method first.
      * 
      * @param <T>
-     * @param type - of the operation.
-     * @param args - the arguments for the given type of operation.
-     * @param serialized - the buffer of the serialized args, if previously calculated. 
+     * @param transaction - the transaction-object.
+     * @param serialized - the buffer of the serialized transaction, if previously calculated. 
      * 
      * @throws BabuDBException if something went wrong.
      * 
      * @return the result listener.
      */
-    public abstract <T> BabuDBRequestResultImpl<T> makePersistent(byte type, Object[] args, 
+    public abstract <T> BabuDBRequestResultImpl<T> makePersistent(TransactionInternal transaction, 
             ReusableBuffer serialized) throws BabuDBException;
+    
+    /**
+     * Method to replay transactions at database restart for example.
+     * 
+     * @param txn
+     * @throws BabuDBException
+     */
+    public abstract void replayTransaction(TransactionInternal txn) throws BabuDBException;
+    
+    /**
+     * Method to replay serialized transaction log entries at database restart for example.
+     * 
+     * @param serializedTxn
+     * @throws IOException
+     * @throws BabuDBException
+     */
+    public void replayTransaction(LogEntry serializedTxn) throws IOException, BabuDBException {
+        replayTransaction(deserialize(serializedTxn.getPayload()));
+    }
     
     /**
      * This operation tries to lock-out other services from manipulating the
@@ -135,4 +167,19 @@ public abstract class PersistenceManagerInternal {
      * method does not effect the lock of another service.
      */
     public abstract void unlockService();
+    
+    /**
+     * Adds a new transaction listener. The listener is notified with each
+     * database transaction that is successfully executed.
+     * 
+     * @param listener - the listener to add.
+     */
+    public abstract void addTransactionListener(TransactionListener listener);
+    
+    /**
+     * Removes a transaction listener.
+     * 
+     * @param listener - the listener to remove.
+     */
+    public abstract void removeTransactionListener(TransactionListener listener);
 }

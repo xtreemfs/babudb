@@ -5,7 +5,7 @@
  * Licensed under the BSD License, see LICENSE file for details.
  * 
  */
-package org.xtreemfs.babudb.api.plugin;
+package org.xtreemfs.babudb.api.dev.plugin;
 
 import java.io.IOException;
 
