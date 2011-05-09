@@ -1,4 +1,4 @@
-//automatically generated from replication.proto at Tue May 03 16:44:28 CEST 2011
+//automatically generated from replication.proto at Mon May 09 20:12:22 CEST 2011
 //(c) 2011. See LICENSE file for details.
 
 package org.xtreemfs.babudb.pbrpc;
@@ -23,7 +23,7 @@ public class RemoteAccessServiceClient {
         this.defaultServer = defaultServer;
     }
 
-    public RPCResponse<GlobalTypes.ErrorCodeResponse> makePersistent(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, GlobalTypes.Type input, ReusableBuffer data) throws IOException {
+    public RPCResponse<GlobalTypes.ErrorCodeResponse> makePersistent(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, Common.emptyRequest input, ReusableBuffer data) throws IOException {
          if (server == null) server = defaultServer;
          if (server == null) throw new IllegalArgumentException("defaultServer must be set in constructor if you want to pass null as server in calls");
          RPCResponse<GlobalTypes.ErrorCodeResponse> response = new RPCResponse<GlobalTypes.ErrorCodeResponse>(GlobalTypes.ErrorCodeResponse.getDefaultInstance());
@@ -31,9 +31,9 @@ public class RemoteAccessServiceClient {
          return response;
     }
 
-    public RPCResponse<GlobalTypes.ErrorCodeResponse> makePersistent(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, int value, ReusableBuffer data) throws IOException {
-         final GlobalTypes.Type msg = GlobalTypes.Type.newBuilder().setValue(value).build();
-         return makePersistent(server, authHeader, userCreds,msg, data);
+    public RPCResponse<GlobalTypes.ErrorCodeResponse> makePersistent(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, ReusableBuffer data) throws IOException {
+         
+         return makePersistent(server, authHeader, userCreds,null, data);
     }
 
     public RPCResponse<GlobalTypes.Database> getDatabaseByName(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, GlobalTypes.DatabaseName input) throws IOException {

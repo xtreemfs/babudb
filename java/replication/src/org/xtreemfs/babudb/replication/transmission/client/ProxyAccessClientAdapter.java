@@ -45,18 +45,17 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
     }
 
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.RemoteAccessClient#makePersistent(
-     *  java.net.InetSocketAddress, int, 
-     *  org.xtreemfs.foundation.buffer.ReusableBuffer)
+     * @see org.xtreemfs.babudb.replication.proxy.ProxyAccessClient#makePersistent(
+     *          java.net.InetSocketAddress, org.xtreemfs.foundation.buffer.ReusableBuffer)
      */
     @Override
     public ClientResponseFuture<Object, ErrorCodeResponse> makePersistent(InetSocketAddress master, 
-            int type, ReusableBuffer data) {
+            ReusableBuffer data) {
         assert (master != null);
         
         try {
             RPCResponse<ErrorCodeResponse> result = makePersistent(master, 
-                    AUTHENTICATION, USER_CREDENTIALS, type, data);
+                    AUTHENTICATION, USER_CREDENTIALS, data);
             
             return new ClientResponseFuture<Object, ErrorCodeResponse>(result) {
                 

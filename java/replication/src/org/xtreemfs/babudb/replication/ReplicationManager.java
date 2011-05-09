@@ -32,7 +32,7 @@ import org.xtreemfs.foundation.logging.Logging;
  */
 public class ReplicationManager implements LifeCycleListener {
         
-    public final static String  VERSION = "1.0.0 (v1.0 RC1)";
+    public final static String  VERSION = "1.1";
     
     private final TopLayer          controlLayer;
     private final ServiceLayer      serviceLayer;

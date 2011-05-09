@@ -11,8 +11,8 @@ import org.xtreemfs.babudb.api.StaticInitialization;
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.dev.CheckpointerInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
-import org.xtreemfs.babudb.api.dev.PersistenceManagerInternal;
 import org.xtreemfs.babudb.api.dev.SnapshotManagerInternal;
+import org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.lsmdb.DBConfig;
@@ -29,14 +29,14 @@ public class BabuDBMock implements BabuDBInternal {
 
     private final String                        name;
     private final BabuDBConfig                  conf;
-    private final PersistenceManagerInternal    perMan;
+    private final TransactionManagerInternal    perMan;
     private final DatabaseManagerInternal       dbMan;
     private final CheckpointerInternal          cp;
 
     public BabuDBMock(String name, BabuDBConfig conf, LSN onDisk) throws BabuDBException {
         this.name = name;
         this.conf = conf;
-        PersistenceManagerMock localPersMan = new PersistenceManagerMock(name, onDisk);
+        TransactionManagerMock localPersMan = new TransactionManagerMock(name, onDisk);
         this.perMan = localPersMan;
         this.dbMan = new DatabaseManagerMock();
         this.cp = new CheckpointerMock(localPersMan);
@@ -121,28 +121,16 @@ public class BabuDBMock implements BabuDBInternal {
         return conf;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see org.xtreemfs.babudb.BabuDBInternal#getPersistenceManager()
-     */
     @Override
-    public PersistenceManagerInternal getPersistenceManager() {
+    public TransactionManagerInternal getTransactionManager() {
 
         Logging.logMessage(Logging.LEVEL_INFO, this,
                 "Mock '%s' tried to access PerMan.", name);
         return perMan;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * org.xtreemfs.babudb.BabuDBInternal#replacePersistenceManager(org.xtreemfs
-     * .babudb.api.PersistenceManager)
-     */
     @Override
-    public void replacePersistenceManager(PersistenceManagerInternal perMan) {
+    public void replaceTransactionManager(TransactionManagerInternal perMan) {
 
         Logging.logMessage(Logging.LEVEL_ERROR, this,
                 "Mock '%s' tried to replace PerMan.", name);
@@ -234,6 +222,33 @@ public class BabuDBMock implements BabuDBInternal {
                 "Mock '%s' tried to restart.", name);
         // TODO Auto-generated method stub
         return null;
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.foundation.LifeCycleListener#startupPerformed()
+     */
+    @Override
+    public void startupPerformed() {
+        // TODO Auto-generated method stub
+        
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.foundation.LifeCycleListener#shutdownPerformed()
+     */
+    @Override
+    public void shutdownPerformed() {
+        // TODO Auto-generated method stub
+        
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.foundation.LifeCycleListener#crashPerformed(java.lang.Throwable)
+     */
+    @Override
+    public void crashPerformed(Throwable cause) {
+        // TODO Auto-generated method stub
+        
     }
 
 }

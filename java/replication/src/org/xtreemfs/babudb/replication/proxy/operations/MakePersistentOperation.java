@@ -10,8 +10,8 @@ package org.xtreemfs.babudb.replication.proxy.operations;
 import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
+import org.xtreemfs.babudb.pbrpc.Common.emptyRequest;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
-import org.xtreemfs.babudb.pbrpc.GlobalTypes.Type;
 import org.xtreemfs.babudb.pbrpc.RemoteAccessServiceConstants;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.transmission.ErrorCode;
@@ -49,7 +49,7 @@ public class MakePersistentOperation extends Operation {
      */
     @Override
     public Message getDefaultRequest() {
-        return Type.getDefaultInstance();
+        return emptyRequest.getDefaultInstance();
     }
 
     /* (non-Javadoc)
@@ -58,15 +58,12 @@ public class MakePersistentOperation extends Operation {
      */
     @Override
     public void processRequest(final Request rq) {
-        Type type = (Type) rq.getRequestMessage();
         
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "MakePersistentOperation:" +
-                " type %d.", type.getValue());
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "MakePersistentOperation");
         
         try {
             DatabaseRequestResult<Object> result = 
-                dbs.getPersistanceManager().makePersistent((byte) type.getValue(), 
-                        rq.getData().createViewBuffer());
+                dbs.getTransactionManager().makePersistent(rq.getData().createViewBuffer());
             
             result.registerListener(new DatabaseRequestListener<Object>() {
                 

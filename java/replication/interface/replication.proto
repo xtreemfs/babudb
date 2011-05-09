@@ -7,7 +7,7 @@ import "share/foundation/include/PBRPC.proto";
 service RemoteAccessService {
   option(interface_id)=10001;
 
-  rpc makePersistent(Type) returns(ErrorCodeResponse) {
+  rpc makePersistent(emptyRequest) returns(ErrorCodeResponse) {
     option(proc_id)=1;
     option(data_in)=true;
   };

@@ -19,7 +19,6 @@ import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
-import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap;
@@ -664,8 +663,8 @@ class DatabaseProxy implements DatabaseInternal {
         BabuDBRequestResultImpl<Object> result = null;
         
         try {
-            result = dbMan.getPersistenceManager().makePersistent(LogEntry.PAYLOAD_TYPE_INSERT, 
-                            new Object[] { irg.getRecord(), null, null });
+            result = dbMan.getTransactionManager().makePersistent(
+                    dbMan.createTransaction().insertRecordGroup(getName(), irg.getRecord()));
             result.updateContext(context);
         } catch (BabuDBException e) {
             result = new BabuDBRequestResultImpl<Object>(context);

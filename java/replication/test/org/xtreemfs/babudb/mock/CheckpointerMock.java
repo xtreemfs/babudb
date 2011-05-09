@@ -20,12 +20,12 @@ import org.xtreemfs.foundation.logging.Logging;
  * @since 03/18/2011
  */
 
-public class CheckpointerMock implements CheckpointerInternal {
+public class CheckpointerMock extends CheckpointerInternal {
 
-    private final PersistenceManagerMock persMan;
+    private final TransactionManagerMock txnMan;
     
-    public CheckpointerMock(PersistenceManagerMock persMan) {
-        this.persMan = persMan;
+    public CheckpointerMock(TransactionManagerMock persMan) {
+        this.txnMan = persMan;
     }
     
     @Override
@@ -38,9 +38,9 @@ public class CheckpointerMock implements CheckpointerInternal {
         Logging.logMessage(Logging.LEVEL_ERROR, this,
             "Mock tried to create CP. With inc. viewID set %s.", incViewId);
         
-        LSN onDisk = persMan.getLatestOnDiskLSN();
+        LSN onDisk = txnMan.getLatestOnDiskLSN();
         if (incViewId) {
-            persMan.onDisk.set(new LSN(onDisk.getViewId() + 1, 0L));
+            txnMan.onDisk.set(new LSN(onDisk.getViewId() + 1, 0L));
         }
         return onDisk;
     }

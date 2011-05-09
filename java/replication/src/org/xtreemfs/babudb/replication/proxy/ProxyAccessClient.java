@@ -35,12 +35,11 @@ public interface ProxyAccessClient {
      * BabuDB instance with master privilege.
      * 
      * @param master
-     * @param type
      * @param data
      * @return the request's response future.
      */
     public <T> ClientResponseFuture<T, ErrorCodeResponse> makePersistent(InetSocketAddress master, 
-            int type, ReusableBuffer data);
+            ReusableBuffer data);
     
     /**
      * RPC for requesting the Id of a {@link Database} belonging to the given name.

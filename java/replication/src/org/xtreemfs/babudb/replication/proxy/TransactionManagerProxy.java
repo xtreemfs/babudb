@@ -13,10 +13,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
-import org.xtreemfs.babudb.api.dev.InMemoryProcessing;
-import org.xtreemfs.babudb.api.dev.PersistenceManagerInternal;
+import org.xtreemfs.babudb.api.dev.transaction.InMemoryProcessing;
+import org.xtreemfs.babudb.api.dev.transaction.TransactionInternal;
+import org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.transaction.TransactionListener;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
@@ -30,49 +32,51 @@ import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.Clie
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
 import static org.xtreemfs.babudb.log.LogEntry.*;
+import static org.xtreemfs.babudb.api.dev.transaction.TransactionInternal.*;
 
 /**
- * This implementation of {@link PersistenceManager} redirects makePersistent
+ * This implementation of {@link TransactionManager} redirects makePersistent
  * requests to the replication master, if it's currently not the local BabuDB.
  * 
  * @author flangner
  * @since 11/04/2010
  */
-class PersistenceManagerProxy extends PersistenceManagerInternal implements LockableService {
+class TransactionManagerProxy extends TransactionManagerInternal implements LockableService {
 
     private final ReplicationManager            replMan;
-    private final PersistenceManagerInternal    localPersMan;
+    private final TransactionManagerInternal    localTxnMan;
     private final Policy                        replicationPolicy;
-    private final ProxyAccessClient            client;
+    private final ProxyAccessClient             client;
     private final AtomicInteger                 accessCounter = new AtomicInteger(0);
     private boolean                             locked = true;
     
-    public PersistenceManagerProxy(ReplicationManager replMan, 
-            PersistenceManagerInternal localPersMan, Policy replicationPolicy, 
+    public TransactionManagerProxy(ReplicationManager replMan,
+            TransactionManagerInternal localTxnMan, Policy replicationPolicy, 
             ProxyAccessClient client) {
         
         this.client = client;
         this.replicationPolicy = replicationPolicy;
         this.replMan = replMan;
-        this.localPersMan = localPersMan;
+        this.localTxnMan = localTxnMan;
         
         // copy in memory processing logic from the local persistence manager
-        for (Entry<Byte, InMemoryProcessing> e : localPersMan.getProcessingLogic().entrySet()) {
+        for (Entry<Byte, InMemoryProcessing> e : localTxnMan.getProcessingLogic().entrySet()) {
             registerInMemoryProcessing(e.getKey(), e.getValue());
         }
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.api.PersistenceManager#makePersistent(byte, java.lang.Object[], 
+     * @see org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal#makePersistent(
+     *          org.xtreemfs.babudb.api.dev.transaction.TransactionInternal, 
      *          org.xtreemfs.foundation.buffer.ReusableBuffer)
      */
     @Override
-    public <T> BabuDBRequestResultImpl<T> makePersistent(byte type, Object[] args, 
+    public <T> BabuDBRequestResultImpl<T> makePersistent(TransactionInternal txn, 
             ReusableBuffer serialized) throws BabuDBException {
         
         assert (serialized != null);
         
-        InetSocketAddress master = getServerToPerformAt(type);
+        InetSocketAddress master = getServerToPerformAt(txn.aggregateOperationTypes());
         if (master == null) {
             
             // check if this service has been locked and increment the access counter
@@ -84,9 +88,9 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
                     accessCounter.incrementAndGet();
                 }   
             }
-            return executeLocallyAndReplicate(type, serialized, args);
+            return executeLocallyAndReplicate(txn, serialized);
         } else {      
-            return redirectToMaster(type, serialized, master);
+            return redirectToMaster(serialized, master);
         }
     }
     
@@ -95,17 +99,17 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
      * participating BabuDB instances.
      * 
      * @param <T>
-     * @param type
-     * @param load
+     * @param txn
+     * @param payload
      * @return the requests result future.
      * @throws BabuDBException
      */
-    private <T> BabuDBRequestResultImpl<T> executeLocallyAndReplicate(final byte type, 
-            final ReusableBuffer payload, Object[] args) throws BabuDBException {
+    private <T> BabuDBRequestResultImpl<T> executeLocallyAndReplicate(TransactionInternal txn, 
+            final ReusableBuffer payload) throws BabuDBException {
         
         final ListenerWrapper<T> wrapper = new ListenerWrapper<T>();
                 
-        localPersMan.makePersistent(type, args, payload.createViewBuffer()).registerListener(
+        localTxnMan.makePersistent(txn, payload.createViewBuffer()).registerListener(
                 new DatabaseRequestListener<Object>() {
         
             @Override
@@ -119,7 +123,7 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
                 }
                 
                 LSN assignedByDiskLogger = ((LogEntry) context).getLSN();
-                LogEntry le = new LogEntry(payload, wrapper, type);
+                LogEntry le = new LogEntry(payload, wrapper, PAYLOAD_TYPE_TRANSACTION);
                 le.assignId(assignedByDiskLogger.getViewId(), assignedByDiskLogger.getSequenceNo());
                 
                 ReplicateResponse rp = replMan.replicate(le);
@@ -152,16 +156,15 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
      * privilege.
      * 
      * @param <T>
-     * @param type
      * @param load
      * @param master
      * @return the request response future.
      */
-    private <T> BabuDBRequestResultImpl<T> redirectToMaster(byte type, ReusableBuffer load, 
+    private <T> BabuDBRequestResultImpl<T> redirectToMaster(ReusableBuffer load, 
             InetSocketAddress master) {
         
         ListenerWrapper<T> result = new ListenerWrapper<T>();       
-        client.makePersistent(master, type, load).registerListener(result);
+        client.makePersistent(master, load).registerListener(result);
       
         return result;
     }
@@ -180,13 +183,13 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
     }
     
     /**
-     * @param type - of the request.
+     * @param aggregatedType - of the request.
      * 
      * @return the host to perform the request at, or null, if it is permitted to perform the 
      *         request locally.
      * @throws BabuDBException if replication is currently not available.
      */
-    private InetSocketAddress getServerToPerformAt (byte type) throws BabuDBException {
+    private InetSocketAddress getServerToPerformAt (byte aggregatedType) throws BabuDBException {
         
         InetSocketAddress master = replMan.getMaster();
          
@@ -197,13 +200,16 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
                
         if ((replMan.isItMe(master)) ||
                 
-            (type == PAYLOAD_TYPE_INSERT && !replicationPolicy.insertIsMasterRestricted()) ||
+            (containsOperationType(aggregatedType, TYPE_GROUP_INSERT) && 
+                    !replicationPolicy.insertIsMasterRestricted()) ||
             
-            ((type == PAYLOAD_TYPE_SNAP || type == PAYLOAD_TYPE_SNAP_DELETE) && 
+            ((containsOperationType(aggregatedType, TYPE_CREATE_SNAP) ||
+              containsOperationType(aggregatedType, TYPE_DELETE_SNAP)) && 
                     !replicationPolicy.snapshotManipultationIsMasterRestricted()) ||
                     
-            ((type == PAYLOAD_TYPE_CREATE || type == PAYLOAD_TYPE_COPY || 
-                    type == PAYLOAD_TYPE_DELETE) && 
+            ((containsOperationType(aggregatedType, TYPE_CREATE_DB) ||
+              containsOperationType(aggregatedType, TYPE_COPY_DB) ||
+              containsOperationType(aggregatedType, TYPE_DELETE_DB)) && 
                     !replicationPolicy.dbModificationIsMasterRestricted())) {
             
             return null;
@@ -217,7 +223,7 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
      */
     @Override
     public void lockService() throws InterruptedException {
-        localPersMan.lockService();
+        localTxnMan.lockService();
     }
 
     /* (non-Javadoc)
@@ -225,7 +231,7 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
      */
     @Override
     public void unlockService() { 
-        localPersMan.unlockService();
+        localTxnMan.unlockService();
     }
     
     /* (non-Javadoc)
@@ -233,7 +239,7 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
      */
     @Override
     public void setLogger(DiskLogger logger) {
-        localPersMan.setLogger(logger);
+        localTxnMan.setLogger(logger);
     }
     
 
@@ -242,7 +248,7 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
      */
     @Override
     public LSN getLatestOnDiskLSN() {
-        return localPersMan.getLatestOnDiskLSN();
+        return localTxnMan.getLatestOnDiskLSN();
     }
 
     /* (non-Javadoc)
@@ -250,7 +256,7 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
      */
     @Override
     public void init(LSN initial) {
-        localPersMan.init(initial);
+        localTxnMan.init(initial);
     }
 
     /* (non-Javadoc)
@@ -322,5 +328,29 @@ class PersistenceManagerProxy extends PersistenceManagerInternal implements Lock
         public void failed(LogEntry entry, Exception ex) {
             failed(new BabuDBException(ErrorCode.REPLICATION_FAILURE, ex.getMessage()));
         }
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal#replayTransaction(org.xtreemfs.babudb.api.dev.transaction.TransactionInternal)
+     */
+    @Override
+    public void replayTransaction(TransactionInternal txn) throws BabuDBException {
+        this.localTxnMan.replayTransaction(txn);
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal#addTransactionListener(org.xtreemfs.babudb.api.transaction.TransactionListener)
+     */
+    @Override
+    public void addTransactionListener(TransactionListener listener) {
+        this.localTxnMan.addTransactionListener(listener);
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal#removeTransactionListener(org.xtreemfs.babudb.api.transaction.TransactionListener)
+     */
+    @Override
+    public void removeTransactionListener(TransactionListener listener) {
+        this.localTxnMan.removeTransactionListener(listener);
     }
 }

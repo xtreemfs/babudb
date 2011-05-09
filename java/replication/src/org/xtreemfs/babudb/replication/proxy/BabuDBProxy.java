@@ -12,8 +12,8 @@ import org.xtreemfs.babudb.api.StaticInitialization;
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.dev.CheckpointerInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
-import org.xtreemfs.babudb.api.dev.PersistenceManagerInternal;
 import org.xtreemfs.babudb.api.dev.SnapshotManagerInternal;
+import org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.config.BabuDBConfig;
@@ -34,7 +34,7 @@ import org.xtreemfs.foundation.LifeCycleThread;
 public class BabuDBProxy implements BabuDBInternal {
     
     private final BabuDBInternal          localBabuDB;
-    private final PersistenceManagerProxy persManProxy;
+    private final TransactionManagerProxy txnManProxy;
     private final DatabaseManagerInternal dbManProxy;
     private final ReplicationManager      replMan;
     
@@ -45,10 +45,10 @@ public class BabuDBProxy implements BabuDBInternal {
         
         this.localBabuDB = localDB;
         this.replMan = replMan;
-        this.persManProxy = new PersistenceManagerProxy(replMan, 
-                localDB.getPersistenceManager(), replicationPolicy, client);
+        this.txnManProxy = new TransactionManagerProxy(replMan, 
+                localDB.getTransactionManager(), replicationPolicy, client);
         this.dbManProxy = new DatabaseManagerProxy(localDB.getDatabaseManager(), 
-                replicationPolicy, replMan, client, persManProxy);
+                replicationPolicy, replMan, client, txnManProxy);
     }
     
     /* (non-Javadoc)
@@ -90,11 +90,11 @@ public class BabuDBProxy implements BabuDBInternal {
     }
 
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.BabuDBInternal#getPersistenceManager()
+     * @see org.xtreemfs.babudb.api.dev.BabuDBInternal#getTransactionManager()
      */
     @Override
-    public PersistenceManagerInternal getPersistenceManager() {
-        return persManProxy;
+    public TransactionManagerInternal getTransactionManager() {
+        return txnManProxy;
     }
     
     /* (non-Javadoc)
@@ -104,8 +104,8 @@ public class BabuDBProxy implements BabuDBInternal {
     @Override
     public void init(StaticInitialization staticInit) throws BabuDBException {
         localBabuDB.init(staticInit);
-        localBabuDB.replacePersistenceManager(persManProxy);
-        replMan.initialize(persManProxy);
+        localBabuDB.replaceTransactionManager(txnManProxy);
+        replMan.initialize(txnManProxy);
     }
     
     /* (non-Javadoc)
@@ -173,13 +173,37 @@ public class BabuDBProxy implements BabuDBInternal {
     }
 
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.BabuDBInternal#replacePersistenceManager(
-     *          org.xtreemfs.babudb.api.PersistenceManager)
+     * @see org.xtreemfs.babudb.api.dev.BabuDBInternal#replaceTransactionManager(
+     *          org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal)
      */
     @Override
-    public void replacePersistenceManager(PersistenceManagerInternal perMan) {
+    public void replaceTransactionManager(TransactionManagerInternal txnMan) {
         throw new UnsupportedOperationException("Manually changing the " +
         		"persistence manager of the local BabuDB instance" +
         		" is forbidden by the replication plugin.");
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.foundation.LifeCycleListener#startupPerformed()
+     */
+    @Override
+    public void startupPerformed() {
+        localBabuDB.startupPerformed();
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.foundation.LifeCycleListener#shutdownPerformed()
+     */
+    @Override
+    public void shutdownPerformed() {
+        localBabuDB.shutdownPerformed();
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.foundation.LifeCycleListener#crashPerformed(java.lang.Throwable)
+     */
+    @Override
+    public void crashPerformed(Throwable cause) {
+        localBabuDB.crashPerformed(cause);
     }
 }

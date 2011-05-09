@@ -1,4 +1,4 @@
-//automatically generated from replication.proto at Tue May 03 16:44:29 CEST 2011
+//automatically generated from replication.proto at Mon May 09 20:12:22 CEST 2011
 //(c) 2011. See LICENSE file for details.
 
 package org.xtreemfs.babudb.pbrpc;
@@ -20,7 +20,7 @@ public class RemoteAccessServiceConstants {
 
     public static Message getRequestMessage(int procId) {
         switch (procId) {
-           case 1: return GlobalTypes.Type.getDefaultInstance();
+           case 1: return null;
            case 2: return GlobalTypes.DatabaseName.getDefaultInstance();
            case 3: return GlobalTypes.DatabaseId.getDefaultInstance();
            case 4: return null;

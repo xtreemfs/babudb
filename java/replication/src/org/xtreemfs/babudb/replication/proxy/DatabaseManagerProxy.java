@@ -18,10 +18,13 @@ import java.util.Set;
 import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
-import org.xtreemfs.babudb.api.dev.PersistenceManagerInternal;
+import org.xtreemfs.babudb.api.dev.transaction.TransactionInternal;
+import org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
+import org.xtreemfs.babudb.api.transaction.Transaction;
+import org.xtreemfs.babudb.api.transaction.TransactionListener;
 import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.replication.policy.Policy;
 import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter.ErrorCodeException;
@@ -40,16 +43,16 @@ class DatabaseManagerProxy implements DatabaseManagerInternal {
     private final    DatabaseManagerInternal    localDBMan;
     private final    Policy                     replicationPolicy;
     private final    ReplicationManager         replicationManager;
-    private final    ProxyAccessClient         client;
-    private final    PersistenceManagerInternal persManProxy;
+    private final    ProxyAccessClient          client;
+    private final    TransactionManagerInternal txnManProxy;
 
     public DatabaseManagerProxy(DatabaseManagerInternal localDBMan, Policy policy, 
             ReplicationManager replMan, ProxyAccessClient client, 
-            PersistenceManagerInternal persMan) {
+            TransactionManagerInternal persMan) {
         
         assert (localDBMan != null);
         
-        this.persManProxy = persMan;
+        this.txnManProxy = persMan;
         this.localDBMan = localDBMan;
         this.replicationPolicy = policy;
         this.replicationManager = replMan;
@@ -207,8 +210,8 @@ class DatabaseManagerProxy implements DatabaseManagerInternal {
         return client;
     }
     
-    PersistenceManagerInternal getPersistenceManager() {
-        return persManProxy;
+    TransactionManagerInternal getTransactionManager() {
+        return txnManProxy;
     }
     
     ReplicationManager getReplicationManager() {
@@ -373,5 +376,45 @@ class DatabaseManagerProxy implements DatabaseManagerInternal {
         }
         throw new UnsupportedOperationException("Manually influencing the DatabaseMangager of a " 
                 + "'not master' server is not supported by the replication plugin.");
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.DatabaseManager#executeTransaction(org.xtreemfs.babudb.api.transaction.Transaction)
+     */
+    @Override
+    public void executeTransaction(Transaction txn) throws BabuDBException {
+        localDBMan.executeTransaction(txn);
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.DatabaseManager#addTransactionListener(org.xtreemfs.babudb.api.transaction.TransactionListener)
+     */
+    @Override
+    public void addTransactionListener(TransactionListener listener) {
+        localDBMan.addTransactionListener(listener);
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.DatabaseManager#removeTransactionListener(org.xtreemfs.babudb.api.transaction.TransactionListener)
+     */
+    @Override
+    public void removeTransactionListener(TransactionListener listener) {
+        localDBMan.removeTransactionListener(listener);
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#createTransaction()
+     */
+    @Override
+    public TransactionInternal createTransaction() {
+        return localDBMan.createTransaction();
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#executeTransaction(org.xtreemfs.babudb.api.dev.transaction.TransactionInternal)
+     */
+    @Override
+    public void executeTransaction(TransactionInternal txn) throws BabuDBException {
+        localDBMan.executeTransaction(txn);
     }
 }

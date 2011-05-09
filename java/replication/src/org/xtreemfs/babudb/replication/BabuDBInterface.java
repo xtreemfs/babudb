@@ -25,7 +25,7 @@ import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.dev.CheckpointerInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
-import org.xtreemfs.babudb.api.dev.PersistenceManagerInternal;
+import org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase.DBFileMetaData;
 import org.xtreemfs.babudb.lsmdb.LSN;
 
@@ -41,7 +41,7 @@ public class BabuDBInterface {
     private final BabuDBInternal                dbs;
     
     /** the persistence manager using the local DiskLogger: NOT THE PROXY */
-    private final PersistenceManagerInternal    localPersMan;
+    private final TransactionManagerInternal    localTxnMan;
         
     /**
      * Registers the reference of local {@link BabuDB}.
@@ -49,7 +49,7 @@ public class BabuDBInterface {
      * @param babuDB - {@link BabuDB}.
      */
     public BabuDBInterface(BabuDBInternal babuDB) {
-        localPersMan = babuDB.getPersistenceManager();
+        localTxnMan = babuDB.getTransactionManager();
         dbs = babuDB;
     }
     
@@ -66,15 +66,14 @@ public class BabuDBInterface {
             DatabaseRequestListener<Object> listener) 
             throws BabuDBException {
         
-        localPersMan.makePersistent(entry.getPayloadType(), 
-                                    entry.getPayload()).registerListener(listener);
+        localTxnMan.makePersistent(entry.getPayload()).registerListener(listener);
     }
     
     /**
      * @return the {@link LSN} of the last inserted {@link LogEntry}.
      */ 
     public LSN getState() {
-        return localPersMan.getLatestOnDiskLSN();
+        return localTxnMan.getLatestOnDiskLSN();
     }
     
     /**
@@ -189,9 +188,9 @@ public class BabuDBInterface {
     }
 
     /**
-     * @return the {@link PersistenceManagerInternal} of the local BabuDB instance.
+     * @return the {@link TransactionManagerInternal} of the local BabuDB instance.
      */
-    public PersistenceManagerInternal getPersistanceManager() {
-        return dbs.getPersistenceManager();
+    public TransactionManagerInternal getTransactionManager() {
+        return dbs.getTransactionManager();
     }
 }

@@ -16,9 +16,12 @@ import java.util.Set;
 import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
+import org.xtreemfs.babudb.api.dev.transaction.TransactionInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
+import org.xtreemfs.babudb.api.transaction.Transaction;
+import org.xtreemfs.babudb.api.transaction.TransactionListener;
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.foundation.logging.Logging;
 
@@ -221,6 +224,51 @@ public class DatabaseManagerMock implements DatabaseManagerInternal {
      */
     @Override
     public void removeDatabaseById(int id) {
+        // TODO Auto-generated method stub
+        
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.DatabaseManager#executeTransaction(org.xtreemfs.babudb.api.transaction.Transaction)
+     */
+    @Override
+    public void executeTransaction(Transaction txn) throws BabuDBException {
+        // TODO Auto-generated method stub
+        
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.DatabaseManager#addTransactionListener(org.xtreemfs.babudb.api.transaction.TransactionListener)
+     */
+    @Override
+    public void addTransactionListener(TransactionListener listener) {
+        // TODO Auto-generated method stub
+        
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.DatabaseManager#removeTransactionListener(org.xtreemfs.babudb.api.transaction.TransactionListener)
+     */
+    @Override
+    public void removeTransactionListener(TransactionListener listener) {
+        // TODO Auto-generated method stub
+        
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#createTransaction()
+     */
+    @Override
+    public TransactionInternal createTransaction() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#executeTransaction(org.xtreemfs.babudb.api.dev.transaction.TransactionInternal)
+     */
+    @Override
+    public void executeTransaction(TransactionInternal txn) throws BabuDBException {
         // TODO Auto-generated method stub
         
     }
