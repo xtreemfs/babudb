@@ -15,6 +15,7 @@ import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.lsmdb.DBConfig;
 import org.xtreemfs.babudb.lsmdb.LSMDBWorker;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.LifeCycleThread;
 
 /**
@@ -24,7 +25,7 @@ import org.xtreemfs.foundation.LifeCycleThread;
  * @author flangner
  * @date 11/02/2010
  */
-public interface BabuDBInternal extends BabuDB {
+public interface BabuDBInternal extends BabuDB, LifeCycleListener {
 
     /**
      * Returns a reference to the BabuDB checkpointer. The checkpointer can be

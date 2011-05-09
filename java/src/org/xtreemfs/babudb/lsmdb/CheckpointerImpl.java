@@ -37,7 +37,7 @@ import org.xtreemfs.foundation.util.OutputUtils;
  * 
  * @author bjko
  */
-public class CheckpointerImpl extends Thread implements CheckpointerInternal {
+public class CheckpointerImpl extends CheckpointerInternal {
     
     private final static class MaterializationRequest {
         
@@ -58,12 +58,8 @@ public class CheckpointerImpl extends Thread implements CheckpointerInternal {
     }
     
     private volatile boolean                   quit;
-    
-    private final AtomicBoolean                down = 
-        new AtomicBoolean(true);
-    
-    private final AtomicBoolean                suspended = 
-        new AtomicBoolean(true);
+        
+    private final AtomicBoolean                suspended = new AtomicBoolean(true);
     
     private DiskLogger                         logger;
     
@@ -78,9 +74,9 @@ public class CheckpointerImpl extends Thread implements CheckpointerInternal {
     
     /**
      * a queue containing all snapshot materialization requests that should be
-     * exectued before the next checkpoint is made
+     * executed before the next checkpoint is made
      */
-    private final List<MaterializationRequest> requests;
+    private final List<MaterializationRequest> requests = new LinkedList<MaterializationRequest>();
     
     /**
      * indicates whether the next checkpoint has been triggered manually or
@@ -91,8 +87,7 @@ public class CheckpointerImpl extends Thread implements CheckpointerInternal {
     /**
      * indicates when the current checkpoint is complete and is also a lock
      */
-    private AtomicBoolean                      checkpointComplete = 
-        new AtomicBoolean(true);
+    private AtomicBoolean                      checkpointComplete = new AtomicBoolean(true);
     
     /**
      * Flag to notify the disk-logger about a viewId incrementation.
@@ -107,33 +102,30 @@ public class CheckpointerImpl extends Thread implements CheckpointerInternal {
      *            the database
      */
     public CheckpointerImpl(BabuDBInternal master) {
-        super("ChkptrThr");
+        setLifeCycleListener(master);
         this.dbs = master;
-        this.requests = new LinkedList<MaterializationRequest>();
     }
     
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.api.dev.CheckpointerInternal#init(
-     *          org.xtreemfs.babudb.log.DiskLogger, int, long)
-     */
     @Override
-    public void init(DiskLogger logger, int checkInterval, long maxLogLength) {
+    public void init(DiskLogger logger, int checkInterval, long maxLogLength) 
+            throws BabuDBException {
+        
         this.logger = logger;
-        this.checkInterval = 1000l * checkInterval;
+        this.checkInterval = 1000L * checkInterval;
         this.maxLogLength = maxLogLength;
 
         synchronized (this) {
             
-            synchronized (down) {
-                if (down.getAndSet(false)) {
-                    quit = false;  
-                    start();
-                }
+            super.start();
+            try {
+                waitForStartup();
+            } catch (Exception e) {
+                throw new BabuDBException(ErrorCode.INTERNAL_ERROR, e.getMessage(), e);
             }
             
             synchronized (suspended) {
-                this.suspended.set(false);
-                this.suspended.notify();
+                suspended.set(false);
+                suspended.notify();
             }
         }
     }
@@ -145,9 +137,9 @@ public class CheckpointerImpl extends Thread implements CheckpointerInternal {
     public synchronized void suspendCheckpointing() throws InterruptedException {
         
         synchronized (suspended) {
-            if (!this.suspended.getAndSet(true)) {
-                this.notify();
-                this.suspended.wait();
+            if (!suspended.getAndSet(true)) {
+                notify();
+                suspended.wait();
             }
         }
     }
@@ -339,30 +331,17 @@ public class CheckpointerImpl extends Thread implements CheckpointerInternal {
         }
     }
     
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.api.dev.CheckpointerInternal#shutdown()
-     */
     @Override
     public synchronized void shutdown() {
         quit = true;
-        this.interrupt();
-    }
-    
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.api.dev.CheckpointerInternal#waitForShutdown()
-     */
-    @Override
-    public void waitForShutdown() throws InterruptedException {
-        synchronized (down) {
-            if (!down.get())
-                down.wait();
-        }
+        interrupt();
     }
     
     public void run() {
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "operational");
         
         boolean manualCheckpoint = false;
+        notifyStarted();
         while (!quit) {
             synchronized (this) {
                 
@@ -395,13 +374,14 @@ public class CheckpointerImpl extends Thread implements CheckpointerInternal {
                 final long lfsize = logger.getLogFileSize();
                 if (manualCheckpoint || lfsize > maxLogLength) {
                     
-                    if (!manualCheckpoint)
+                    if (!manualCheckpoint) {
                         Logging.logMessage(Logging.LEVEL_INFO, this,
                             "database operation log has exceeded threshold " +
                             "size of " + maxLogLength + " ("  + lfsize + ")");
-                    else
+                    } else {
                         Logging.logMessage(Logging.LEVEL_INFO, this, 
                                 "triggered manual checkpoint");
+                    }
                     
                     synchronized (dbs.getDatabaseManager().getDBModificationLock()) {
                         synchronized (this) {
@@ -412,7 +392,8 @@ public class CheckpointerImpl extends Thread implements CheckpointerInternal {
                     }                    
                 }
             } catch (InterruptedException ex) {
-                Logging.logMessage(Logging.LEVEL_DEBUG, this, "CHECKPOINT WAS ABORTED!");
+                if (quit) break;
+                else Logging.logMessage(Logging.LEVEL_DEBUG, this, "CHECKPOINT WAS ABORTED!");
             } catch (Throwable ex) {
                 if (ex instanceof BabuDBException && ((BabuDBException) ex).getCause() instanceof ClosedByInterruptException) {
                     Logging.logMessage(Logging.LEVEL_DEBUG, this, "CHECKPOINT WAS ABORTED!");
@@ -430,10 +411,7 @@ public class CheckpointerImpl extends Thread implements CheckpointerInternal {
         
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "checkpointer shut down "
         		+ "successfully");
-        synchronized (down) {
-            down.set(true);
-            down.notifyAll();
-        }
+        notifyStopped();
     }
     
     /* (non-Javadoc)
@@ -442,8 +420,9 @@ public class CheckpointerImpl extends Thread implements CheckpointerInternal {
     @Override
     public void waitForCheckpoint() throws InterruptedException {
         synchronized (checkpointComplete) {
-            while (!checkpointComplete.get())
+            while (!checkpointComplete.get()) {
                 checkpointComplete.wait();
+            }
         }
     }
 }

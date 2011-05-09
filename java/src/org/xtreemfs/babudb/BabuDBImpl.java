@@ -60,7 +60,7 @@ import org.xtreemfs.foundation.logging.Logging;
  * @author stenjan
  * 
  */
-public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
+public class BabuDBImpl implements BabuDBInternal{
     
     private LSMDBWorker[]                       worker;
     
@@ -260,9 +260,9 @@ public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
             
             logger.shutdown();
             try {
-                this.dbCheckptr.suspendCheckpointing();
+                dbCheckptr.suspendCheckpointing();
                 logger.waitForShutdown();
-                this.txnMan.setLogger(null);
+                txnMan.setLogger(null);
                 if (worker != null)
                     for (LSMDBWorker w : worker)
                         w.waitForShutdown();
@@ -271,7 +271,7 @@ public class BabuDBImpl implements BabuDB, BabuDBInternal, LifeCycleListener {
                 Logging.logMessage(Logging.LEVEL_ERROR, this, "BabuDB could"
                     + " not be stopped, because '%s'.", ex.getMessage());
             }
-            this.stopped.set(true);
+            stopped.set(true);
             Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB has been " + "stopped.");
             
         }

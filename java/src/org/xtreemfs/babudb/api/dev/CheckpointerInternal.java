@@ -13,6 +13,7 @@ import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
+import org.xtreemfs.foundation.LifeCycleThread;
 
 /**
  * Interface of {@link Checkpointer} for internal usage. This should not be accessed
@@ -21,17 +22,26 @@ import org.xtreemfs.babudb.snapshots.SnapshotConfig;
  * @author flangner
  * @since 03/18/2011
  */
-public interface CheckpointerInternal extends Checkpointer {
+public abstract class CheckpointerInternal extends LifeCycleThread implements Checkpointer {
 
     /**
-     * @param logger
-     *            the disklogger
-     * @param checkInterval
-     *            interval in seconds between two checks
-     * @param maxLogLength
-     *            maximum log file length
+     * Default constructor to preinitialize a Checkpointer object.
      */
-    public void init(DiskLogger logger, int checkInterval, long maxLogLength);
+    public CheckpointerInternal() {
+        super("ChkptrThr");
+    }
+
+    /**
+     * Starts the checkpointer synchronously.
+     * 
+     * @param logger - the disk logger
+     * @param checkInterval - interval in seconds between two checks
+     * @param maxLogLength - maximum log file length
+     *            
+     * @throws BabuDBException if initialization failed.
+     */
+    public abstract void init(DiskLogger logger, int checkInterval, long maxLogLength) 
+            throws BabuDBException;
     
     /**
      * Triggers the creation of a new checkpoint. This causes the checkpointer
@@ -48,14 +58,14 @@ public interface CheckpointerInternal extends Checkpointer {
      * @return {@link LSN} of the last {@link LogEntry} written to the {@link DiskLogger} before the 
      *         checkpoint.
      */
-    public LSN checkpoint(boolean incViewId) throws BabuDBException;
+    public abstract LSN checkpoint(boolean incViewId) throws BabuDBException;
     
     /**
      * This method suspends the Checkpointer from taking checkpoints.
      * 
      * @throws InterruptedException
      */
-    public void suspendCheckpointing() throws InterruptedException;
+    public abstract void suspendCheckpointing() throws InterruptedException;
     
     /**
      * Method to manually force a checkpoint of the designated database.
@@ -64,7 +74,7 @@ public interface CheckpointerInternal extends Checkpointer {
      * @param snapIds
      * @param snap
      */
-    public void addSnapshotMaterializationRequest(String dbName, int[] snapIds, 
+    public abstract void addSnapshotMaterializationRequest(String dbName, int[] snapIds, 
                                                   SnapshotConfig snap);
     
     /**
@@ -74,19 +84,5 @@ public interface CheckpointerInternal extends Checkpointer {
      * @param dbName
      * @param snapshotName
      */
-    public void removeSnapshotMaterializationRequest(String dbName, String snapshotName);
-    
-    /**
-     * Terminates the {@link Checkpointer}.
-     */
-    public void shutdown();
-    
-    /**
-     * Synchronously waits for a notification indicating that the shutdown
-     * procedure has been completed.
-     * 
-     * @throws InterruptedException
-     *             if an error occurred during the shutdown procedure
-     */
-    public void waitForShutdown() throws InterruptedException;
+    public abstract void removeSnapshotMaterializationRequest(String dbName, String snapshotName);
 }
