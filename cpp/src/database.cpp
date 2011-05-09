@@ -10,10 +10,12 @@
 #include "babudb/lookup_iterator.h"
 #include "babudb/log/log_iterator.h"
 
-#include "babudb/log/log.h"
 #include "log_index.h" 
 #include "merged_index.h"
 #include "index/merger.h"
+#include "index/index_writer.h"
+
+#include "babudb/log/log.h"
 #include "babudb/test.h"
 using namespace babudb;
 

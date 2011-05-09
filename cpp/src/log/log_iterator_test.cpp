@@ -22,22 +22,22 @@ TEST_TMPDIR(LogIteratorEmptyLog,babudb)
   {
     Log log(testPath("testlog"));
 
-    Log::iterator i = log.First();	// try an empty log first
-    EXPECT_FALSE(i.IsValid());
-    EXPECT_FALSE((bool)i.GetNext());
-    EXPECT_FALSE((bool)i.GetNext());
-    EXPECT_FALSE(i.IsValid());
-    EXPECT_FALSE((bool)i.GetPrevious());
-    EXPECT_FALSE((bool)i.GetPrevious());
-    EXPECT_FALSE(i.IsValid());
-    i = log.Last();
-    EXPECT_FALSE(i.IsValid());
-    EXPECT_FALSE((bool)i.GetNext());
-    EXPECT_FALSE((bool)i.GetNext());
-    EXPECT_FALSE(i.IsValid());
-    EXPECT_FALSE((bool)i.GetPrevious());
-    EXPECT_FALSE((bool)i.GetPrevious());
-    EXPECT_FALSE(i.IsValid());
+    std::auto_ptr<Log::iterator> i(log.First());	// try an empty log first
+    EXPECT_FALSE(i->IsValid());
+    EXPECT_FALSE((bool)i->GetNext());
+    EXPECT_FALSE((bool)i->GetNext());
+    EXPECT_FALSE(i->IsValid());
+    EXPECT_FALSE((bool)i->GetPrevious());
+    EXPECT_FALSE((bool)i->GetPrevious());
+    EXPECT_FALSE(i->IsValid());
+    i.reset(log.Last());
+    EXPECT_FALSE(i->IsValid());
+    EXPECT_FALSE((bool)i->GetNext());
+    EXPECT_FALSE((bool)i->GetNext());
+    EXPECT_FALSE(i->IsValid());
+    EXPECT_FALSE((bool)i->GetPrevious());
+    EXPECT_FALSE((bool)i->GetPrevious());
+    EXPECT_FALSE(i->IsValid());
   }
 }
 
@@ -45,120 +45,110 @@ TEST_TMPDIR(LogIterator,babudb)
 {
   {
     Log log(testPath("testlog"));
-    LogSection* tail = log.getTail(1);
+    LogSection* tail = log.GetTail(1);
 
     tail->Append(DummyOperation('A')); tail->Commit();
     tail->Append(DummyOperation('B')); tail->Commit();
 
-    log.advanceTail();
-    tail = log.getTail(3);
+    log.AdvanceTail();
+    tail = log.GetTail(3);
 
     tail->Append(DummyOperation('C')); tail->Commit();
     tail->Append(DummyOperation('D')); tail->Commit();
 
-    log.close();
+    log.Close();
   }
   {
     Log log(testPath("testlog"));
 
-    log.loadRequiredLogSections(0);
+    log.Open(0);
 
     EXPECT_TRUE(log.NumberOfSections() == 2);
     DummyOperation op(0);
     
-    Log::iterator i = log.First();
-    EXPECT_FALSE(i.IsValid());
-    EXPECT_TRUE(i.GetNext());
-    EXPECT_TRUE(i.IsValid());
-    EXPECT_EQUAL(i.GetType(), DUMMY_OPERATION_TYPE);
-    EXPECT_TRUE(op.Deserialize(*i).value == 'A');
+    std::auto_ptr<Log::iterator> i(log.First());
+    EXPECT_FALSE(i->IsValid());
+    EXPECT_TRUE(i->GetNext());
+    EXPECT_TRUE(i->IsValid());
+    EXPECT_TRUE(op.Deserialize(i->AsData()).value == 'A');
     
-    EXPECT_TRUE(i.GetNext());
-    EXPECT_TRUE(i.IsValid());
-    EXPECT_EQUAL(i.GetType(), DUMMY_OPERATION_TYPE);
-    EXPECT_TRUE(op.Deserialize(*i).value == 'B');
+    EXPECT_TRUE(i->GetNext());
+    EXPECT_TRUE(i->IsValid());
+    EXPECT_TRUE(op.Deserialize(i->AsData()).value == 'B');
     
-    EXPECT_TRUE(i.GetNext());
-    EXPECT_TRUE(i.IsValid());
-    EXPECT_EQUAL(i.GetType(), DUMMY_OPERATION_TYPE);
-    EXPECT_TRUE(op.Deserialize(*i).value == 'C');
+    EXPECT_TRUE(i->GetNext());
+    EXPECT_TRUE(i->IsValid());
+    EXPECT_TRUE(op.Deserialize(i->AsData()).value == 'C');
     
-    EXPECT_TRUE(i.GetNext());
-    EXPECT_TRUE(i.IsValid());
-    EXPECT_EQUAL(i.GetType(), DUMMY_OPERATION_TYPE);
-    EXPECT_TRUE(op.Deserialize(*i).value == 'D');
+    EXPECT_TRUE(i->GetNext());
+    EXPECT_TRUE(i->IsValid());
+    EXPECT_TRUE(op.Deserialize(i->AsData()).value == 'D');
     
-    EXPECT_FALSE((bool)i.GetNext());
-    EXPECT_FALSE(i.IsValid());
-    EXPECT_FALSE((bool)i.GetNext());  // idempotent
-    EXPECT_FALSE(i.IsValid());
+    EXPECT_FALSE((bool)i->GetNext());
+    EXPECT_FALSE(i->IsValid());
+    EXPECT_FALSE((bool)i->GetNext());  // idempotent
+    EXPECT_FALSE(i->IsValid());
     
-    EXPECT_TRUE(i.GetPrevious());
-    EXPECT_TRUE(i.IsValid());
-    EXPECT_EQUAL(i.GetType(), DUMMY_OPERATION_TYPE);
-    EXPECT_TRUE(op.Deserialize(*i).value == 'D');
+    EXPECT_TRUE(i->GetPrevious());
+    EXPECT_TRUE(i->IsValid());
+    EXPECT_TRUE(op.Deserialize(i->AsData()).value == 'D');
 
     // now reverse
-    i = log.Last();
-    EXPECT_FALSE(i.IsValid());
-    EXPECT_TRUE(i.GetPrevious());
-    EXPECT_TRUE(i.IsValid());
-    EXPECT_TRUE(i.GetType() != 0);
-    EXPECT_TRUE(op.Deserialize(*i).value == 'D');
+    i.reset(log.Last());
+    EXPECT_FALSE(i->IsValid());
+    EXPECT_TRUE(i->GetPrevious());
+    EXPECT_TRUE(i->IsValid());
+    EXPECT_TRUE(op.Deserialize(i->AsData()).value == 'D');
     
-    EXPECT_TRUE(i.GetPrevious());
-    EXPECT_TRUE(i.IsValid());
-    EXPECT_TRUE(i.GetType() != 0);
-    EXPECT_TRUE(op.Deserialize(*i).value == 'C');
+    EXPECT_TRUE(i->GetPrevious());
+    EXPECT_TRUE(i->IsValid());
+    EXPECT_TRUE(op.Deserialize(i->AsData()).value == 'C');
     
-    EXPECT_TRUE(i.GetPrevious());
-    EXPECT_TRUE(i.IsValid());
-    EXPECT_TRUE(i.GetType() != 0);
-    EXPECT_TRUE(op.Deserialize(*i).value == 'B');
+    EXPECT_TRUE(i->GetPrevious());
+    EXPECT_TRUE(i->IsValid());
+    EXPECT_TRUE(op.Deserialize(i->AsData()).value == 'B');
     
-    EXPECT_TRUE(i.GetPrevious());
-    EXPECT_TRUE(i.IsValid());
-    EXPECT_TRUE(i.GetType() != 0);
-    EXPECT_TRUE(op.Deserialize(*i).value == 'A');
+    EXPECT_TRUE(i->GetPrevious());
+    EXPECT_TRUE(i->IsValid());
+    EXPECT_TRUE(op.Deserialize(i->AsData()).value == 'A');
     
-    EXPECT_FALSE((bool)i.GetPrevious());
-    EXPECT_FALSE(i.IsValid());
-    EXPECT_FALSE((bool)i.GetPrevious());  // idempotent
-    EXPECT_FALSE(i.IsValid());
+    EXPECT_FALSE((bool)i->GetPrevious());
+    EXPECT_FALSE(i->IsValid());
+    EXPECT_FALSE((bool)i->GetPrevious());  // idempotent
+    EXPECT_FALSE(i->IsValid());
     
-    EXPECT_TRUE(i.GetNext());
-    EXPECT_TRUE(i.IsValid());
-    EXPECT_EQUAL(i.GetType(), DUMMY_OPERATION_TYPE);
-    EXPECT_TRUE(op.Deserialize(*i).value == 'A');
+    EXPECT_TRUE(i->GetNext());
+    EXPECT_TRUE(i->IsValid());
+    EXPECT_TRUE(op.Deserialize(i->AsData()).value == 'A');
 
-    log.close();
+    log.Close();
   }
 }
 
 TEST_TMPDIR(LogIteratorOneSectionAndErase,babudb)
 {
   Log log(testPath("testlog"));
-  LogSection* tail = log.getTail(1);
+  LogSection* tail = log.GetTail(1);
   
   tail->Append(DummyOperation('A')); tail->Commit();
   tail->Append(DummyOperation('B')); tail->Commit();
   tail->Append(DummyOperation('C')); tail->Commit();
   
-  DummyOperation op(0);
-  Log::iterator i = log.First();
-  EXPECT_FALSE(i.IsValid());
-  EXPECT_TRUE(i.GetNext());
-  EXPECT_TRUE(i.IsValid());
-  EXPECT_TRUE(i.GetNext());
-  EXPECT_TRUE(op.Deserialize(*i).value == 'B');
+  DummyOperation op(0);    
+  std::auto_ptr<Log::iterator> i(log.First());
+  EXPECT_FALSE(i->IsValid());
+  EXPECT_TRUE(i->GetNext());
+  EXPECT_TRUE(i->IsValid());
+  EXPECT_TRUE(i->GetNext());
+  EXPECT_TRUE(op.Deserialize(i->AsData()).value == 'B');
 
-  tail->Erase(i.GetRecordIterator());
+  tail->Erase(i->GetRecordIterator());
   
-  EXPECT_TRUE(i.GetNext());
-  EXPECT_TRUE(op.Deserialize(*i).value == 'C');
+  EXPECT_TRUE(i->GetNext());
+  EXPECT_TRUE(op.Deserialize(i->AsData()).value == 'C');
   
-  EXPECT_TRUE(i.GetPrevious());
-  EXPECT_TRUE(op.Deserialize(*i).value == 'A');
+  EXPECT_TRUE(i->GetPrevious());
+  EXPECT_TRUE(op.Deserialize(i->AsData()).value == 'A');
   
-  log.close();
+  log.Close();
 }

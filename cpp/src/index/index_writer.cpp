@@ -16,6 +16,7 @@
 #include "babudb/key.h"
 
 using namespace babudb;
+using std::vector;
 
 /** Persistent immutable index. Contains key-value data pairs.
 
@@ -24,6 +25,8 @@ using namespace babudb;
     for the following key records
   - Key: a key
   - Value: a value
+
+  Record types are stored in the first byte of the record.
 
   These records are arranged like:
 
@@ -34,7 +37,6 @@ using namespace babudb;
   TODO: lookup code might be simpler if we point to the last key
       instead of the first in the range.
 */
-
 
 void ImmutableIndexWriter::Add(Buffer key, Buffer value) {
   record_buffer.push_back(std::pair<Buffer,Buffer>(key,value));
@@ -76,10 +78,21 @@ void ImmutableIndexWriter::FlushBuffer() {
   data_in_buffer = 0;
 }
 
+char ImmutableIndexWriter::GetType(const SequentialFile::iterator& it) {
+  char* data = (char*)it.GetRecord()->getPayload();
+  return data[0];
+}
+
+babudb::Buffer ImmutableIndexWriter::GetData(const SequentialFile::iterator& it) {
+  char* data = (char*)it.GetRecord()->getPayload();
+  return babudb::Buffer(&data[1], it.GetRecord()->getPayloadSize() - 1);
+}
+
 void* ImmutableIndexWriter::WriteData(Buffer data, char type) {
-  void* location = storage.getFreeSpace(data.size);
-  memcpy(location, data.data, data.size);
-  storage.frameData(location, data.size, type);
+  char* location = (char*)storage.getFreeSpace(data.size + 1);
+  location[0] = type;
+  memcpy(location + 1, data.data, data.size);
+  storage.frameData(location, data.size + 1);
   return location;
 }
 
@@ -121,41 +134,40 @@ void ImmutableIndexIterator::operator ++ () {
   ASSERT_TRUE(key.GetNext() != NULL);
   ++key_no;
 
-  if (key.IsType(RECORD_TYPE_INDEX_OFFSETS)) {
+  if (ImmutableIndexWriter::GetType(key) == RECORD_TYPE_INDEX_OFFSETS) {
     key = file.Last();
-  } else if (!key.IsType(RECORD_TYPE_KEY)) {
+  } else if (ImmutableIndexWriter::GetType(key) != RECORD_TYPE_KEY) {
     findNextOffsetTable(key);
   }
 }
 
 std::pair<Buffer,Buffer> ImmutableIndexIterator::operator * () {
   ASSERT_TRUE(offset_table != NULL);
-  ASSERT_TRUE(key.GetRecord()->getType() == RECORD_TYPE_KEY);
-  SequentialFile::Record* key_rec = key.GetRecord();
-  SequentialFile::Record* value_rec = file.at(offset_table[key_no]).GetRecord();
+  ASSERT_TRUE(ImmutableIndexWriter::GetType(key) == RECORD_TYPE_KEY);
+  SequentialFile::iterator value_it = file.at(offset_table[key_no]);
 
-  return std::pair<Buffer,Buffer>(
-    Buffer(key_rec->getPayload(), key_rec->getPayloadSize()),
-    Buffer(value_rec->getPayload(), value_rec->getPayloadSize()));
+  return std::make_pair(
+      ImmutableIndexWriter::GetData(key),
+      ImmutableIndexWriter::GetData(value_it));
 }
 
-bool ImmutableIndexIterator::operator != ( const ImmutableIndexIterator& other ) {
+bool ImmutableIndexIterator::operator != (const ImmutableIndexIterator& other) const {
   return key != other.key;
 }
 
-bool ImmutableIndexIterator::operator == ( const ImmutableIndexIterator& other ) {
+bool ImmutableIndexIterator::operator == (const ImmutableIndexIterator& other) const {
   return key == other.key;
 }
 
 void ImmutableIndexIterator::findNextOffsetTable(SequentialFile::iterator it) {
-  while (it.GetNext() && !it.IsType(RECORD_TYPE_OFFSETS))
-    ;
+  while (it.GetNext() && ImmutableIndexWriter::GetType(it) != RECORD_TYPE_OFFSETS) {
+  }
 
   if (it.IsValid()) {
-    ASSERT_TRUE(it.GetRecord()->getType() == RECORD_TYPE_OFFSETS);
-    offset_table = (offset_t*)it.GetRecord()->getPayload();
+    ASSERT_TRUE(ImmutableIndexWriter::GetType(it) == RECORD_TYPE_OFFSETS);
+    offset_table = (offset_t*)ImmutableIndexWriter::GetData(it).data;
     it.GetNext();
-    ASSERT_TRUE(it.GetRecord()->getType() == RECORD_TYPE_KEY);
+    ASSERT_TRUE(ImmutableIndexWriter::GetType(it) == RECORD_TYPE_KEY);
     key = it;
     key_no = 0;
   }

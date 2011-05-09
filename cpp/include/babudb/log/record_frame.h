@@ -8,27 +8,27 @@
 
 // A RecordFrame is the persistent data structure that frames a record in a SequentialFile
 
-#ifndef LOG__RECORDFRAME_H
-#define LOG__RECORDFRAME_H
+#ifndef BABUDB_LOG_RECORDFRAME_H
+#define BABUDB_LOG_RECORDFRAME_H
 
 #include <cstddef>
 
 namespace babudb {
 
-typedef unsigned char			record_type_t;
-#define RECORD_TYPE_BITS		4
-#define RECORD_MAX_TYPE			((1 << RECORD_TYPE_BITS) - 1)
+typedef unsigned short record_frame_t; // the length of the frame header/footer
+static const int RECORD_FRAME_SIZE_BITS	= sizeof(record_frame_t) * 8;
+static const int RECORD_FRAME_SIZE_BYTES = sizeof(record_frame_t);
 
-typedef unsigned short			record_frame_t; // the length of the frame header/footer
-#define RECORD_FRAME_SIZE_BITS	(sizeof(record_frame_t)*8)
-#define RECORD_FRAME_SIZE_BYTES	(sizeof(record_frame_t))
+static const int RECORD_MAX_SIZE_BITS = RECORD_FRAME_SIZE_BITS - 1;
+static const int RECORD_MAX_SIZE = 1 << RECORD_MAX_SIZE_BITS;
 
-#define RECORD_MAX_SIZE_BITS (RECORD_FRAME_SIZE_BITS - RECORD_TYPE_BITS - 1)
-#define RECORD_MAX_SIZE (1 << RECORD_MAX_SIZE_BITS)
-
-#define RECORD_FRAME_ALIGNMENT	2	// align on shorts
-inline unsigned long long ALIGN(unsigned long long n,int a)		{ return (((n + (a-1)) / a) * a); }
-inline bool ISALIGNED(void* n, int a)							{ return (unsigned long long)n == (((unsigned long long)n)/a)*a; }
+static const int RECORD_FRAME_ALIGNMENT	= 2;	// align on shorts
+inline unsigned long long ALIGN(unsigned long long n, int a) {
+  return (((n + (a-1)) / a) * a);
+}
+inline bool ISALIGNED(void* n, int a)	{ 
+  return (unsigned long long)n == (((unsigned long long)n)/a)*a; 
+}
 
 #if defined(__i386__) || defined(_M_IX86) || defined(TARGET_RT_LITTLE_ENDIAN) || defined(__x86_64__)  // little endian
 inline record_frame_t fixEndianess(record_frame_t header ) {
@@ -47,39 +47,54 @@ inline record_frame_t fixEndianess(record_frame_t header ) {
 class RecordFrame
 {
 public:
-	void* getPayload();
+	void* getPayload() const;
 	static RecordFrame* GetRecord( void* payload );
 
-	unsigned int getPayloadSize();
-	unsigned int GetRecordSize();
+	unsigned int getPayloadSize() const;
+	unsigned int GetRecordSize() const;
 
 	bool isValid();
 
-	record_type_t getType()						{ return getHeader().structured_header.type; }
-	void setType(record_type_t t);
-
-	bool isEndOfTransaction()					{ return getHeader().structured_header.eot == 1; }
-	void setEndOfTransaction( bool e )			{ record_header h = getHeader(); h.structured_header.eot = (e?1:0); setHeaderAndFooter(h); }
+	bool isEndOfTransaction()	const	{
+    return getHeader().structured_header.eot == 1;
+  }
+	void setEndOfTransaction( bool e ) {
+    record_header h = getHeader();
+    h.structured_header.eot = (e?1:0);
+    setHeaderAndFooter(h);
+  }
 
 	void* getEndOfRecord()						{ return (unsigned char*)this + GetRecordSize(); }
 	RecordFrame *getStartHeader()				{ return (RecordFrame*)((unsigned char*)this - ALIGN(_getLengthField(), RECORD_FRAME_ALIGNMENT) - RECORD_FRAME_SIZE_BYTES); }
 
-	bool mightBeHeaderOf(RecordFrame* other)	{ return header_data.plain_header == other->header_data.plain_header; }
-	bool mightBeHeader()						{ return header_data.plain_header != 0 && GetRecordSize() != 0; }
+	bool mightBeHeaderOf(RecordFrame* other) const {
+    return header_data.plain_header == other->header_data.plain_header;
+  }
 
-	RecordFrame( record_type_t type, size_t size_in_bytes );
+	bool mightBeHeader() const { 
+    return header_data.plain_header != 0 && GetRecordSize() != 0; 
+  }
+
+	RecordFrame(size_t size_in_bytes);
 
 private:
-	void setLength( size_t size_in_bytes )		{ record_header h = getHeader(); h.structured_header.size = (unsigned int)size_in_bytes; setHeaderAndFooter(h); }
-	unsigned int _getLengthField()				{ return getHeader().structured_header.size; }
+	void setLength( size_t size_in_bytes ) {
+    record_header h = getHeader();
+    h.structured_header.size = (unsigned int)size_in_bytes;
+    setHeaderAndFooter(h); 
+  }
 
-	RecordFrame *getFooter()					{ return (RecordFrame*)((unsigned char*)this + ALIGN(_getLengthField(), RECORD_FRAME_ALIGNMENT) + RECORD_FRAME_SIZE_BYTES); }
+	unsigned int _getLengthField() const { 
+    return getHeader().structured_header.size;
+  }
 
-	union record_header
-	{
+	RecordFrame *getFooter() const { 
+    return (RecordFrame*)((unsigned char*)this + ALIGN(_getLengthField(), RECORD_FRAME_ALIGNMENT) + RECORD_FRAME_SIZE_BYTES);
+  }
+
+	union record_header {
 		struct sheader
 		{
-			unsigned int type		: RECORD_TYPE_BITS;
 			unsigned int eot		: 1;												// transaction commit bit
 			unsigned int size		: RECORD_MAX_SIZE_BITS;	// true size of the record in bytes
 		} structured_header;
@@ -87,7 +102,7 @@ private:
 		record_frame_t plain_header;
 	} header_data;
 
-	record_header getHeader() {
+	record_header getHeader() const {
 		return header_data;
 	}
 

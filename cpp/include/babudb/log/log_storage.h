@@ -14,9 +14,7 @@
 
 #include <stddef.h>
 #include <memory>
-using std::auto_ptr;
 #include <string>
-using std::string;
 
 namespace yield {
 class MemoryMappedFile;
@@ -66,8 +64,8 @@ protected:
 
 class PersistentLogStorage : public LogStorage {
  public:
-  static PersistentLogStorage* Open(const string& name);
-  static PersistentLogStorage* OpenReadOnly(const string& name);
+  static PersistentLogStorage* Open(const std::string& name);
+  static PersistentLogStorage* OpenReadOnly(const std::string& name);
 
 	virtual void WriteBack();
 	virtual void WriteBack(void* ptr, size_t length);
@@ -77,7 +75,7 @@ class PersistentLogStorage : public LogStorage {
   virtual bool IsWritable();
 protected:
   PersistentLogStorage(yield::MemoryMappedFile*);
-	auto_ptr<yield::MemoryMappedFile> memory;
+	std::auto_ptr<yield::MemoryMappedFile> memory;
 };
 
 }  // namespace babudb

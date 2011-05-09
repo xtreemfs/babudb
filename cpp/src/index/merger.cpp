@@ -6,7 +6,8 @@
 //
 // Author: Felix Hupfeld (felix@storagebox.org)
 
-#include "merger.h"
+#include "index/merger.h"
+#include "index/index_writer.h"
 using namespace babudb;
 
 #include <yield/platform/memory_mapped_file.h>
@@ -17,6 +18,8 @@ IndexMerger::IndexMerger(const string& file_name, const KeyOrder& order)
 
 IndexMerger::IndexMerger(const string& file_name, const KeyOrder& order, ImmutableIndex* base)
     : file_name(file_name), order(order), base(base), last_lsn(0), diff(order, 0) {}
+
+IndexMerger::~IndexMerger() {}
 
 // Step 2: Fill with data up to a certain LSN
 void IndexMerger::Add(lsn_t lsn, const Buffer& key, const Buffer& value) {

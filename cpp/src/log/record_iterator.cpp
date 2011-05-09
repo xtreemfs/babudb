@@ -43,14 +43,6 @@ Buffer RecordIterator::AsData() const {
 	return Buffer(current->getPayload(), current->getPayloadSize());
 }
 
-unsigned char RecordIterator::GetType() const	{
-  return current->getType(); 
-}
-
-bool RecordIterator::IsType(unsigned char t) const { 
-  return current->getType() == t;
-}
-
 size_t RecordIterator::GetSize() const { 
   return current->getPayloadSize();
 }

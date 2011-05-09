@@ -10,21 +10,21 @@
 #define INDEXMERGER_H
 
 #include "index.h"
-#include "index_writer.h"
 #include "log_index.h"
 
 #include <memory>
 #include <string>
-using std::string;
 
 namespace babudb {
+class ImmutableIndexWriter;
 
 // Creates a persistent index from a LogIndex
 class IndexMerger {
 public:
   // Step 1: Create the merger
-  explicit IndexMerger(const string&, const KeyOrder&);
-  explicit IndexMerger(const string&, const KeyOrder&, ImmutableIndex* base);
+  explicit IndexMerger(const std::string&, const KeyOrder&);
+  explicit IndexMerger(const std::string&, const KeyOrder&, ImmutableIndex* base);
+  ~IndexMerger();
 
   // Step 2: Fill with data up to a certain LSN
   void Add(lsn_t lsn, const Buffer&, const Buffer&);

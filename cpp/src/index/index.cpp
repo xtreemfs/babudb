@@ -8,8 +8,9 @@
 
 #include "index.h"
 #include "util.h"
-
 #include "index_writer.h"
+#include "babudb/log/log_storage.h"
+
 #include "babudb/log/sequential_file.h"
 
 #include "yield/platform/assert.h"
@@ -82,8 +83,9 @@ ImmutableIndex::Tree::iterator ImmutableIndex::findChunk(const Buffer& key) {
 
 offset_t* ImmutableIndex::getOffsetTable(offset_t offset_rec_offset) {
   SequentialFile::Record* offsets_rec = storage.offset2record(offset_rec_offset);
-  ASSERT_TRUE(offsets_rec->getType() == RECORD_TYPE_OFFSETS);
-  offset_t* value_offsets = (offset_t*)offsets_rec->getPayload();
+  char* data = (char*)offsets_rec->getPayload();
+  ASSERT_TRUE(data[0] == RECORD_TYPE_OFFSETS);
+  offset_t* value_offsets = (offset_t*)&data[1];
   return value_offsets;
 }
 
@@ -110,10 +112,14 @@ ImmutableIndex::iterator ImmutableIndex::Find(Buffer search_key) {
 
   SequentialFile::iterator file_cursor = storage.at(cursor->second);
   int record_count = 0;
-  while (file_cursor.GetNext() && file_cursor.IsType(RECORD_TYPE_KEY)) {
-    Buffer key(file_cursor.GetRecord()->getPayload(), file_cursor.GetRecord()->getPayloadSize());
+  while (file_cursor.GetNext()) {
+    if (ImmutableIndexWriter::GetType(file_cursor) != RECORD_TYPE_KEY) {
+      break;
+    }
 
-    if(!order.less(key,search_key)) { 		// found key >= search_key
+    Buffer key(ImmutableIndexWriter::GetData(file_cursor));
+
+    if (!order.less(key, search_key)) { 		// found key >= search_key
       return ImmutableIndex::iterator(storage,value_offsets,file_cursor,record_count);
     }
     record_count++;
@@ -134,30 +140,30 @@ bool ImmutableIndex::LoadRoot() {
   SequentialFile::iterator cursor = storage.Last();
   ASSERT_TRUE(cursor.GetPrevious() != NULL);
 
-  if(cursor.GetRecord()->getType() != RECORD_TYPE_FILE_FOOTER)
+  if (ImmutableIndexWriter::GetType(cursor) != RECORD_TYPE_FILE_FOOTER)
     return false;
 
   while (cursor.GetPrevious()) {  // skip footer and seek to end of section 
-    if (cursor.GetRecord()->getType() == RECORD_TYPE_INDEX_OFFSETS) {
+    if (ImmutableIndexWriter::GetType(cursor) == RECORD_TYPE_INDEX_OFFSETS) {
       break;
     }
   }
 
   // If they index file is not empty...
-  if (cursor.GetRecord()->getPayloadSize() > 0) {
-    offset_t* offsets = (offset_t*)cursor.GetRecord()->getPayload();
-    size_t no_offsets = cursor.GetRecord()->getPayloadSize()/sizeof(offset_t);
+  babudb::Buffer index_raw = ImmutableIndexWriter::GetData(cursor);
+  if (index_raw.size > 0) {
+    offset_t* offsets = (offset_t*)index_raw.data;
+    ASSERT_TRUE(index_raw.size % sizeof(offset_t) == 0);
+    size_t no_offsets = index_raw.size/sizeof(offset_t);
 
     size_t record_count = 0;
     while (cursor.GetNext()) {	
-      if(cursor.GetRecord()->getType() != RECORD_TYPE_FILE_FOOTER) {
-        ASSERT_TRUE(cursor.GetRecord()->getType() == RECORD_TYPE_INDEX_KEY);
-        Buffer key(cursor.GetRecord()->getPayload(),
-             cursor.GetRecord()->getPayloadSize());
-
+      if (ImmutableIndexWriter::GetType(cursor)!= RECORD_TYPE_FILE_FOOTER) {
+        ASSERT_TRUE(ImmutableIndexWriter::GetType(cursor) == RECORD_TYPE_INDEX_KEY);
         ASSERT_TRUE(record_count < no_offsets);
 
-        index.insert(pair<Buffer,offset_t>(key, offsets[record_count]));
+        index.insert(std::make_pair(
+            ImmutableIndexWriter::GetData(cursor), offsets[record_count]));
         record_count++;
       }
     }
@@ -186,7 +192,7 @@ ImmutableIndex::DiskIndices ImmutableIndex::FindIndices(const string& name_prefi
 }
 
 static bool MoreRecent(const std::pair<YIELD::Path,lsn_t>& one,
-                       const std::pair<YIELD::Path,lsn_t> two) {
+                       const std::pair<YIELD::Path,lsn_t>& two) {
   return one.second > two.second;
 }
 
@@ -217,8 +223,10 @@ void ImmutableIndex::CleanupObsolete(const string& file_name, const string& to) 
   }
 }
 
+/*
 int ImmutableIndex::Read(int offset, char* buffer, int bytes) {
   int remaining_bytes = min(bytes, (int)storage.GetLogStorage()->Size() - offset);
   memcpy(buffer, storage.GetLogStorage()->Start(), remaining_bytes);
   return remaining_bytes;
 }
+*/

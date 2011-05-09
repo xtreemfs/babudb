@@ -20,7 +20,7 @@ using namespace babudb;
 
 TEST_TMPDIR(StringDB,babudb)
 {
-  vector<string> indices; indices.push_back("index");
+  std::vector<std::string> indices; indices.push_back("index");
 
   StringDB* db = StringDB::Open(testPath("test"), indices);
   db->Add("index", "key1", "value1");

@@ -8,23 +8,17 @@
 
 // The LogSection augments the records of a SequentialFile with LSNs.
 
-#ifndef LOG__LOG_SECTION_H
-#define LOG__LOG_SECTION_H
-
-#include <string>
-using std::string;
-#include <vector>
+#ifndef BABUDB_LOG_LOGSECTION_H
+#define BABUDB_LOG_LOGSECTION_H
 
 #include "babudb/log/sequential_file.h"
 #include "babudb/buffer.h"
-
-#define LSN_RECORD_TYPE 0
-#define USER_RECORD_TYPE 1
 
 namespace babudb {
 
 class LogStorage;
 
+// The interface to an application log record
 class Serializable {
 public:
   virtual size_t GetSize() const = 0;
@@ -49,29 +43,6 @@ private:
 	lsn_t first_lsn; // the first lsn in this file
 };
 
-class LogSectionIterator {
-public:
-  LogSectionIterator(const LogSectionIterator& it); 
-  void operator = (const LogSectionIterator& other);
-
-  static LogSectionIterator First(const std::vector<LogSection*>& sections);
-  static LogSectionIterator Last(const std::vector<LogSection*>& sections);
-  
-	LogSection* GetNext();
-	LogSection* GetPrevious();
-  bool IsValid() const;
-	bool operator != (const LogSectionIterator& other) const;
-	bool operator == (const LogSectionIterator& other) const;
-
-	LogSection* operator * ()	const;
-
-private:
-  LogSectionIterator(const std::vector<LogSection*>& sections,
-                     std::vector<LogSection*>::const_iterator current);
-  std::vector<LogSection*> const* sections;
-  std::vector<LogSection*>::const_iterator current_section;
-};
-
-}
+}  // namespace babudb
 
 #endif

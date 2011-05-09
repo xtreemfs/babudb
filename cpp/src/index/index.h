@@ -14,10 +14,8 @@
 #ifndef BABUB_IMMUTABLEINDEX_H
 #define BABUB_IMMUTABLEINDEX_H
 
-#include <map>
-#include <utility>
 #include <vector>
-#include <memory>
+#include <map>
 
 #include "babudb/key.h"
 #include "babudb/log/sequential_file.h"
@@ -49,9 +47,7 @@ public:
                                                const KeyOrder& order);
   static std::string GetIndexName(const std::string& name, lsn_t lsn);
   void CleanupObsolete(const std::string& file_name, 
-                       const std::string& obsolete_prefix); 
-
-  int Read(int offset, char* buffer, int bytes);
+                       const std::string& obsolete_prefix);
 
 private:
   ImmutableIndex(LogStorage* mm, const KeyOrder& order, lsn_t);

@@ -17,20 +17,20 @@ using namespace babudb;
 #include "babudb/test_helper.h"
 
 void WriteToLog(Log* log) {
-	LogSection* tail = log->getTail(1);
+	LogSection* tail = log->GetTail(1);
 
 	tail->Append(DummyOperation(1)); 
   tail->Commit();
 
- 	log->advanceTail();
-	tail = log->getTail(2);
+ 	log->AdvanceTail();
+	tail = log->GetTail(2);
 	tail->Append(DummyOperation(2)); 
   tail->Commit();
 	tail->Append(DummyOperation(3)); 
   tail->Commit();
 
-	log->advanceTail();
-	tail = log->getTail(4);
+	log->AdvanceTail();
+	tail = log->GetTail(4);
 	tail->Append(DummyOperation(4)); tail->Commit();
 	tail->Append(DummyOperation(5)); tail->Commit();
 	tail->Append(DummyOperation(6)); tail->Commit();
@@ -41,25 +41,25 @@ TEST_TMPDIR(Log,babudb)
   {
 	  Log log(testPath("testlog"));
     WriteToLog(&log);
-	  log.close();
+	  log.Close();
   }
   {
 	  Log log(testPath("testlog"));
-	  log.loadRequiredLogSections(0);
+	  log.Open(0);
 	  EXPECT_EQUAL(log.NumberOfSections(), 3);
-	  log.close();
+	  log.Close();
   }
   {
 	  Log log(testPath("testlog"));
-	  log.loadRequiredLogSections(1);
+	  log.Open(1);
 	  EXPECT_EQUAL(log.NumberOfSections(), 2);
-	  log.close();
+	  log.Close();
   }
   {
 	  Log log(testPath("testlog"));
-  	log.loadRequiredLogSections(2);
+  	log.Open(2);
   	EXPECT_EQUAL(log.NumberOfSections(), 2);
-  	log.close();
+  	log.Close();
   }
 }
 

@@ -13,25 +13,22 @@
 using namespace YIELD;
 using namespace babudb;
 
-void* RecordFrame::getPayload()					{ return (char*)this + RECORD_FRAME_SIZE_BYTES; }
+void* RecordFrame::getPayload()	const { 
+  return (char*)this + RECORD_FRAME_SIZE_BYTES; 
+}
 RecordFrame* RecordFrame::GetRecord( void* p )	{ return (RecordFrame*)((char*)p - RECORD_FRAME_SIZE_BYTES); }
 
-unsigned int RecordFrame::getPayloadSize()		{ return _getLengthField(); }
-unsigned int RecordFrame::GetRecordSize()		{ return (unsigned int)ALIGN(_getLengthField(), RECORD_FRAME_ALIGNMENT) +  2*RECORD_FRAME_SIZE_BYTES; }
+unsigned int RecordFrame::getPayloadSize() const { 
+  return _getLengthField();
+}
+unsigned int RecordFrame::GetRecordSize() const	{ 
+  return (unsigned int)ALIGN(_getLengthField(), RECORD_FRAME_ALIGNMENT) +  2*RECORD_FRAME_SIZE_BYTES;
+}
 
 bool RecordFrame::isValid()						{ return mightBeHeader() && mightBeHeaderOf(getFooter()); }
 
-
-void RecordFrame::setType(record_type_t t) { 
-	ASSERT_TRUE(t <= RECORD_MAX_TYPE); 
-	record_header h = getHeader(); 
-	h.structured_header.type = t; 
-	setHeaderAndFooter(h); 
-}
-
-RecordFrame::RecordFrame( record_type_t type, size_t size_in_bytes ) {
+RecordFrame::RecordFrame(size_t size_in_bytes ) {
 	ASSERT_TRUE(ISALIGNED((&header_data), RECORD_FRAME_ALIGNMENT));
 	ASSERT_TRUE(header_data.plain_header == 0);
 	setLength(size_in_bytes);						// ASSERT: memory was prev. filled with 0s
-	setType(type);
 }

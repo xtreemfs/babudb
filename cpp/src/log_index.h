@@ -9,9 +9,6 @@
 #include "babudb/log/sequential_file.h"
 
 #include <map>
-using std::map;
-#include <vector>
-using std::vector;
 #include <utility>
 
 namespace babudb {
@@ -32,7 +29,7 @@ public:
 
   lsn_t getFirstLSN()  { return first_lsn; }
 
-  typedef map<Buffer,Buffer,MapCompare> Tree;
+  typedef std::map<Buffer,Buffer,MapCompare> Tree;
   typedef Tree::const_iterator iterator;
 
   iterator begin() const { return latest_value.begin(); }

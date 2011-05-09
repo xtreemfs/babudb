@@ -9,7 +9,7 @@
 #define  _CRT_SECURE_NO_WARNINGS
 
 #include "babudb/log/sequential_file.h"
-#include "babudb/log/log_stats.h"
+#include "babudb/log/log_storage.h"
 using namespace babudb;
 
 #include <new>
@@ -26,23 +26,14 @@ using namespace YIELD;
 #define FIRST_RECORD_ADDRESS	(void*)((unsigned char*)memory->Start() + FIRST_RECORD_OFFSET)
 
 
-SequentialFile::SequentialFile(LogStorage* m, LogStats* stats ) : memory( m ), stats( stats )
+SequentialFile::SequentialFile(LogStorage* m) : memory( m )
 {
-	if(stats == NULL)
-		this->stats = new LogStats();
-
 	initialize();
 
 	database_version = *(unsigned int*)offset2record( 0 );
-
-	this->stats->log_file_length = (unsigned int)memory->Size();
-	this->stats->log_length = (unsigned int)next_write_offset;
-
-	if(next_write_offset == FIRST_RECORD_OFFSET) // new database
-		this->stats->gaps_length = this->stats->no_of_gaps = this->stats->no_of_records= 0;
-	else
-		this->stats->gaps_length = this->stats->no_of_gaps = this->stats->no_of_records = 0xfFFffFF;
 }
+
+SequentialFile::~SequentialFile() {}  // auto_ptr
 
 void SequentialFile::close() {
 	memory->Close();
@@ -50,7 +41,6 @@ void SequentialFile::close() {
 
 // Remove all empty space between records. Untested.
 void SequentialFile::compact() {
-	stats->no_of_records = 0;
 	offset_t to = FIRST_RECORD_OFFSET;
 
   iterator current = First();
@@ -67,14 +57,9 @@ void SequentialFile::compact() {
 
     previous = current;
     previous_size = previous.GetSize();
-		stats->no_of_records++;
 	}
 
 	next_write_offset = to;
-
-	stats->log_length = (unsigned int)next_write_offset;
-	stats->no_of_gaps = 0;
-	stats->gaps_length = 0;
 }
 
 offset_t SequentialFile::findNextAllocatedWord(offset_t offset)
@@ -188,11 +173,11 @@ bool SequentialFile::assertValidRecordChain( void* raw )
 
 
 
-void SequentialFile::frameData(void* payload, size_t size, record_type_t type) {
+void SequentialFile::frameData(void* payload, size_t size) {
 	ASSERT_TRUE(ISALIGNED(payload, RECORD_FRAME_ALIGNMENT));
 	Record* record = Record::GetRecord((char*)payload);
 
-	SequentialFile::Record* new_record = new (record)Record(type, size);
+	SequentialFile::Record* new_record = new (record)Record(size);
 	next_write_offset = record2offset( (SequentialFile::Record*)new_record->getEndOfRecord() );
 	ASSERT_TRUE(ISALIGNED((void*)next_write_offset, RECORD_FRAME_ALIGNMENT));
 }
@@ -208,9 +193,9 @@ void* SequentialFile::getFreeSpace(size_t size) {
 	return location;
 }
 
-void* SequentialFile::append(size_t size, record_type_t type) {
+void* SequentialFile::append(size_t size) {
 	void* location = getFreeSpace(size);
-	frameData(location, size, type);
+	frameData(location, size);
 	return location;
 }
 
@@ -306,10 +291,6 @@ void SequentialFile::erase( offset_t offset )
 			next_write_offset = record2offset((Record*)i.GetRecord()->getEndOfRecord());
     }
 	}
-
-	stats->no_of_gaps += 1;
-	stats->gaps_length += target->GetRecordSize();
-	stats->no_of_deletors--;
 }
 
 void SequentialFile::enlarge()
@@ -318,16 +299,12 @@ void SequentialFile::enlarge()
 	size_t new_size = (unsigned int)((float)(old_size < 500000 ? old_size * 6 : old_size * 2));
 
 	memory->Resize( new_size );
-
-	stats->log_file_length = (unsigned int)new_size;
 }
 
 void SequentialFile::truncate()
 {
 	size_t new_size = (unsigned int)next_write_offset;
 	memory->Resize( new_size );
-
-	stats->log_file_length = (unsigned int)new_size;
 }
 
 /** Create in iterator to advance from the given position

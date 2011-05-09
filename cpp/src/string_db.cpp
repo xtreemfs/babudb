@@ -43,11 +43,11 @@ StringDB* StringDB::Open(const string& name, const std::vector<string>& indices)
 
   // Now replay the log against the database to recreate the current state
   lsn_t min_persistent_lsn = db->db->GetMinimalPersistentLSN();
-  db->log->loadRequiredLogSections(min_persistent_lsn);
-  Log::iterator i = db->log->First();
-  while (i.GetNext()) {
+  db->log->Open(min_persistent_lsn);
+  std::auto_ptr<Log::iterator> i(db->log->First());
+  while (i->GetNext()) {
     StringSetOperation op;
-    op.Deserialize(i.AsData());
+    op.Deserialize(i->AsData());
     if (op.GetLSN() > min_persistent_lsn) {
       op.ApplyTo(*db->db, op.GetLSN());
     }
@@ -58,19 +58,19 @@ StringDB* StringDB::Open(const string& name, const std::vector<string>& indices)
 
 void StringDB::Add(const string& index_name, const string& key, const string& value) {
   lsn_t lsn = db->GetCurrentLSN() + 1;
-  log->getTail(lsn)->Append(StringSetOperation(lsn, index_name, key, value));
+  log->GetTail(lsn)->Append(StringSetOperation(lsn, index_name, key, value));
   db->Add(index_name, lsn, DataHolder(key), DataHolder(value));
 }
 
 void StringDB::Remove(const string& index_name, const string& key) {
   lsn_t lsn = db->GetCurrentLSN() + 1;
-  log->getTail(lsn)->Append(StringSetOperation(lsn, index_name, key));
+  log->GetTail(lsn)->Append(StringSetOperation(lsn, index_name, key));
   db->Add(index_name, lsn, DataHolder(key), Buffer::Deleted());
 }
 
 void StringDB::Commit() {
   lsn_t lsn = db->GetCurrentLSN();
-  log->getTail(lsn)->Commit();
+  log->GetTail(lsn)->Commit();
 }
 
 string StringDB::Lookup(const string& index, const string& key) {
@@ -93,7 +93,7 @@ void StringDB::Compact(const string& to) {
     db->CompactIndex(*name, db->GetCurrentLSN());
   }
 
-  log->cleanup(db->GetCurrentLSN(), to);
+  log->Cleanup(db->GetCurrentLSN(), to);
 
   // TODO: This won't clean up the last immutable index because the database 
   // does not know yet that there is a newer one. We would need to trigger a

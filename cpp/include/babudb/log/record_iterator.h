@@ -39,8 +39,6 @@ public:
   // returned by GetNext/GetPrevious
 	void* operator * ()	const;
 	size_t GetSize() const;
-	record_type_t GetType() const;
-	bool IsType(record_type_t t) const;
 	RecordFrame* GetRecord() const;
 	Buffer AsData() const;
   bool IsValid() const;

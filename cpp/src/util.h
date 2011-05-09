@@ -5,12 +5,13 @@
 #define TIL_H
 
 #include <string>
-using std::string;
 
 namespace yield { class Path; }
 
 namespace babudb {
-bool matchFilename(const yield::Path& fullpath, const string& desired_prefix, const string& desired_ext, unsigned int& no);
+bool matchFilename(
+    const yield::Path& fullpath, const std::string& desired_prefix,
+    const std::string& desired_ext, unsigned int& no);
 };
 
 #endif

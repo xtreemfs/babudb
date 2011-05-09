@@ -1,23 +1,20 @@
 // Copyright (c) 2008, Felix Hupfeld, Jan Stender, Bjoern Kolbeck, Mikael Hoegqvist, Zuse Institute Berlin.
 // Licensed under the BSD License, see LICENSE file for details.
 
-#ifndef BABUDB_LOGITERATOR_H
-#define BABUDB_LOGITERATOR_H
+#ifndef BABUDB_LOG_LOGITERATOR_H
+#define BABUDB_LOG_LOGITERATOR_H
+
+#include <memory>
 
 #include "babudb/buffer.h"
 #include "babudb/log/record_iterator.h"
-#include "babudb/log/log_section.h"
-
-#include <vector>
 
 namespace babudb {
-class LogSection;
+class LogSectionIterator;
 
 class LogIterator {
 public:
-  LogIterator(const LogIterator&);
-  static LogIterator First(const LogSectionIterator& first_section);
-  static LogIterator Last(const LogSectionIterator& last_section);
+  ~LogIterator();
 
   Buffer GetNext();
   Buffer GetPrevious();
@@ -33,13 +30,16 @@ public:
   RecordIterator GetRecordIterator() const {
     return record_iterator;
   }
-  record_type_t GetType() const;
   bool IsValid() const;
 
 private:
-  LogIterator(const LogSectionIterator& current_section);
+  LogIterator(LogSectionIterator* current_section);
 
-  LogSectionIterator current_section;
+  friend class Log;
+  static LogIterator* First(LogSectionIterator* first_section);
+  static LogIterator* Last(LogSectionIterator* last_section);
+  
+  std::auto_ptr<LogSectionIterator> current_section;
   RecordIterator record_iterator;
 };
 

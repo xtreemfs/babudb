@@ -14,12 +14,12 @@
 
 namespace babudb {
 
-#define RECORD_TYPE_KEY 1
-#define RECORD_TYPE_VALUE 2
-#define RECORD_TYPE_OFFSETS 3
-#define RECORD_TYPE_INDEX_KEY 4
-#define RECORD_TYPE_INDEX_OFFSETS 5
-#define RECORD_TYPE_FILE_FOOTER 6
+const int RECORD_TYPE_KEY = 1;
+const int RECORD_TYPE_VALUE = 2;
+const int RECORD_TYPE_OFFSETS = 3;
+const int RECORD_TYPE_INDEX_KEY = 4;
+const int RECORD_TYPE_INDEX_OFFSETS = 5;
+const int RECORD_TYPE_FILE_FOOTER = 6;
 
 class LogIndex;
 class ImmutableIndex;
@@ -33,6 +33,9 @@ public:
   void Add(Buffer key, Buffer value);
   void FlushBuffer();
   void Finalize();
+
+  static char GetType(const SequentialFile::iterator& it);
+  static babudb::Buffer GetData(const SequentialFile::iterator& it);
 
 private:
   void* WriteData(Buffer data, char type);
@@ -56,8 +59,8 @@ public:
 
   void operator ++ ();
   std::pair<Buffer,Buffer> operator * ();
-  bool operator != (const ImmutableIndexIterator& other );
-  bool operator == (const ImmutableIndexIterator& other );
+  bool operator != (const ImmutableIndexIterator& other) const;
+  bool operator == (const ImmutableIndexIterator& other) const;
 
 private:
   void findNextOffsetTable(SequentialFile::iterator it);

@@ -6,13 +6,16 @@
 //
 // Author: Felix Hupfeld (felix@storagebox.org)
 
-#include "babudb/log/log_iterator.h"
-
 #include "babudb/log/log.h"
+
+#include "babudb/log/log_iterator.h"
 #include "babudb/log/log_section.h"
 #include "babudb/log/log_storage.h"
-#include "../util.h"
 #include "babudb/test.h"
+
+#include "util.h"
+#include "log/log_section_iterator.h"
+
 using namespace babudb;
 
 #include <algorithm>
@@ -32,14 +35,15 @@ Log::Log(const string& name_prefix) : tail(NULL), name_prefix(name_prefix) {}
 
 Log::~Log() {
   if (tail != NULL) {
-    close();
+    Close();
   }
-  for(vector<LogSection*>::iterator i = sections.begin(); i != sections.end(); ++i)
+  for(vector<LogSection*>::iterator i = sections.begin(); i != sections.end(); ++i) {
     delete *i;
+  }
 }
 
-void Log::close() {
-  advanceTail();
+void Log::Close() {
+  AdvanceTail();
 }
 
 class LSNBefore {
@@ -69,7 +73,7 @@ static DiskSections scanAvailableLogSections(const string& name_prefix) {
 }
 
 // Rename log sections with LSNs smaller than to_lsn
-void Log::cleanup(lsn_t to_lsn, const string& obsolete_prefix) {
+void Log::Cleanup(lsn_t to_lsn, const string& obsolete_prefix) {
   DiskSections disk_sections = scanAvailableLogSections(name_prefix);  // sorted by LSN
 
   for (DiskSections::iterator i = disk_sections.begin(); i != disk_sections.end(); ++i) {
@@ -84,15 +88,7 @@ void Log::cleanup(lsn_t to_lsn, const string& obsolete_prefix) {
 
 // Loads all log sections with LSNs larger than min_lsn. Load them in order and check
 // for continuity.
-void Log::loadRequiredLogSections(lsn_t min_lsn) {
-  loadSections(min_lsn, false);
-}
-
-void Log::loadAllSections(bool read_write) {
-  loadSections(0, read_write);
-}
-
-void Log::loadSections(lsn_t min_lsn, bool read_write) {
+void Log::Open(lsn_t min_lsn) {
   ASSERT_TRUE(sections.size() == 0);  // otherwise somebody called startup() twice
   DiskSections disk_sections = scanAvailableLogSections(name_prefix);  // sorted by LSN
 
@@ -100,15 +96,10 @@ void Log::loadSections(lsn_t min_lsn, bool read_write) {
     DiskSections::iterator next = i; next++;
 
     if(next == disk_sections.end() || (min_lsn + 1) < next->second) {
-      LogStorage* file = NULL;
-      if (read_write) {
-        file = PersistentLogStorage::Open(i->first);
-      } else {
-        file = PersistentLogStorage::OpenReadOnly(i->first);
-      }
-      LogSection* section = new LogSection(file, i->second); // repairs if not graceful
+      LogStorage* file = PersistentLogStorage::OpenReadOnly(i->first);
+      LogSection* section = new LogSection(file, i->second);  // repairs if not graceful
 
-      if (!section->empty()) { // check if there is a LSN in this section
+      if (!section->empty()) {  // check if there is a LSN in this section
         sections.push_back(section);
       } else {
         delete section;
@@ -117,7 +108,7 @@ void Log::loadSections(lsn_t min_lsn, bool read_write) {
   }
 }
 
-LogSection* Log::getTail(babudb::lsn_t next_lsn) {
+LogSection* Log::GetTail(babudb::lsn_t next_lsn) {
   if(tail == NULL) {
     LogStorage* storage = NULL;
     // TODO: hack, refactor!
@@ -135,7 +126,7 @@ LogSection* Log::getTail(babudb::lsn_t next_lsn) {
   return tail;
 }
 
-void Log::advanceTail() {
+void Log::AdvanceTail() {
   if(tail) {
     if(tail->isWritable()) {
       tail->truncate();
@@ -144,10 +135,14 @@ void Log::advanceTail() {
   tail = NULL;
 }
 
-Log::iterator Log::First() const {
-  return LogIterator::First(LogSectionIterator::First(sections));
+int Log::NumberOfSections() const {
+  return sections.size();
 }
 
-Log::iterator Log::Last() const {
-  return LogIterator::Last(LogSectionIterator::Last(sections));
+Log::iterator* Log::First() const {
+  return LogIterator::First(LogSectionIterator::First(&sections));
+}
+
+Log::iterator* Log::Last() const {
+  return LogIterator::Last(LogSectionIterator::Last(&sections));
 }

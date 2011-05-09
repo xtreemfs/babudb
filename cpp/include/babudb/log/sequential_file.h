@@ -8,27 +8,22 @@
 
 // A SequentialFile is a sequentially written series of Records. Supports transactional appends.
 
-#ifndef LOG__SEQUENTIALFILE_H
-#define LOG__SEQUENTIALFILE_H
+#ifndef BABUDB_LOG_SEQUENTIALFILE_H
+#define BABUDB_LOG_SEQUENTIALFILE_H
 
-#include <string>
-using std::string;
 #include <memory>
-using std::auto_ptr;
-
 #include <cstdint>
 
 #include "babudb/log/record_frame.h"
 #include "babudb/log/record_iterator.h"
-#include "babudb/log/log_storage.h"
 
 namespace babudb {
 class RecordIterator;
 class LogStats;
 class LogStorage;
 
-#define INVALID_OFFSET	0xFFFFffffFFFFffffULL
-typedef uint64_t				offset_t;
+typedef uint64_t offset_t;
+static const offset_t INVALID_OFFSET = 0xFFFFffffFFFFffffULL;
 
 /** An append-only file of records.
 */
@@ -41,7 +36,8 @@ public:
 	typedef class RecordFrame Record;
 	typedef class RecordIterator iterator;
 
-	SequentialFile(LogStorage*, LogStats* = NULL);
+	explicit SequentialFile(LogStorage*);
+  ~SequentialFile();
 
 	void close();
 	unsigned short getVersion()				{ return database_version; }
@@ -61,8 +57,8 @@ public:
 	bool empty();
 	bool isWritable();
 
-	void frameData(void* location, size_t size, record_type_t type);
-	void* append(size_t size, record_type_t type);
+	void frameData(void* location, size_t size);
+	void* append(size_t size);
   void AppendRaw(void* data, size_t size);
 	void moveRecord( offset_t at, offset_t to );
 	void erase( offset_t );
@@ -80,10 +76,6 @@ public:
 	void setFlush(bool do_flush);
 	void compact();
 
-  LogStorage* GetLogStorage() { 
-    return memory.get();
-  }
-
 private:
 	int initialize();
 	offset_t findNextAllocatedWord(offset_t);
@@ -91,8 +83,7 @@ private:
 
 	void copyRecord( Record*, void* );
 
-	auto_ptr<LogStorage> memory;
-	LogStats* stats;
+	std::auto_ptr<LogStorage> memory;
 
 	offset_t next_write_offset;
 	unsigned short database_version;
