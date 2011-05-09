@@ -115,6 +115,15 @@ public class TransactionTest extends TestCase {
         assertEquals("new-database", txn.getOperations().get(5).getDatabaseName());
         assertEquals(3, txn.getOperations().get(5).getParams().length);
         
+        // test of the aggregate function
+        byte aggregate = txn.aggregateOperationTypes();
+        assertTrue(TransactionInternal.containsOperationType(aggregate, TYPE_CREATE_DB));
+        assertTrue(TransactionInternal.containsOperationType(aggregate, TYPE_CREATE_DB));
+        assertTrue(TransactionInternal.containsOperationType(aggregate, TYPE_GROUP_INSERT));
+        assertTrue(TransactionInternal.containsOperationType(aggregate, TYPE_DELETE_DB));
+        assertTrue(TransactionInternal.containsOperationType(aggregate, TYPE_DELETE_DB));
+        assertFalse(TransactionInternal.containsOperationType(aggregate, TYPE_CREATE_SNAP));
+        
         // serialize transaction to buffer
         int size = txn.getSize();
         ReusableBuffer buf = BufferPool.allocate(size);

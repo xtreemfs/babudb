@@ -81,7 +81,7 @@ public abstract class OperationInternal implements Operation {
      * @return the deserialized operation.
      * @throws IOException
      */
-    static OperationInternal deserialize(String[] dbNameList, ReusableBuffer buffer)
+    final static OperationInternal deserialize(String[] dbNameList, ReusableBuffer buffer)
             throws IOException {
     
         // deserialize type of the operation

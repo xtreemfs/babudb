@@ -13,6 +13,7 @@ import java.util.LinkedList;
 import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.dev.transaction.OperationInternal;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
+import org.xtreemfs.babudb.api.transaction.Operation;
 import org.xtreemfs.babudb.api.transaction.Transaction;
 import org.xtreemfs.babudb.lsmdb.BabuDBTransaction;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
@@ -100,6 +101,47 @@ public abstract class TransactionInternal extends LinkedList<OperationInternal>
     @Override
     public abstract TransactionInternal deleteRecord(String databaseName, int indexId, byte[] key);
     
+    /* (non-Javadoc)
+     * @see java.util.AbstractCollection#toString()
+     */
+    @Override
+    public abstract String toString();
+    
+    /**
+     * There are 3 kinds of database manipulating operations covered by transactions:
+     * <ol>
+     * <li>database create/copy/delete
+     * <li>snapshots
+     * <li>database key-value inserts/deletes
+     * </ol>
+     * These form different level of isolation that have to be respected by the replication for 
+     * example. This method aggregates all occurrences of operation to make it possible to 
+     * comprehend the level of restriction for this transaction. 
+     *
+     * @return an aggregation of all types of operation occurring in this transaction.
+     */
+    public final byte aggregateOperationTypes() {
+        
+        // initial value, if transaction contains no operation
+        byte result = 0;
+        for (Operation op : this) {
+            result |= 1 << op.getType();
+        }
+        return result;
+    }
+    
+    /**
+     * Counterpart to aggregateOperationTypes. Proves existence of given type.
+     * 
+     * @param aggregate
+     * @param type
+     * @return true if the transaction with the aggregate of operation types contains at least one
+     *         operation of <code>type</code>, false otherwise.
+     */
+    public final static boolean containsOperationType(byte aggregate, byte type) {
+        return ((aggregate >>> type) & 1) == 1; 
+    }
+    
     /**
      * Add a new group insert operation to this transaction.
      * 
@@ -177,7 +219,7 @@ public abstract class TransactionInternal extends LinkedList<OperationInternal>
      * @return the deserialized transaction.
      * @throws IOException
      */
-    public static TransactionInternal deserialize(ReusableBuffer buffer) throws IOException {
+    public final static TransactionInternal deserialize(ReusableBuffer buffer) throws IOException {
         
         BabuDBTransaction txn = new BabuDBTransaction();
         
