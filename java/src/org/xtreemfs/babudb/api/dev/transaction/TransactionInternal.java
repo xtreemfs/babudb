@@ -223,19 +223,25 @@ public abstract class TransactionInternal extends LinkedList<OperationInternal>
         
         BabuDBTransaction txn = new BabuDBTransaction();
         
-        // deserialize the list of database names
-        int length = buffer.getInt();
-        String[] dbNames = new String[length];
-        for (int i = 0; i < length; i++) {
-            byte[] bytes = new byte[buffer.getInt()];
-            buffer.get(bytes);
-            dbNames[i] = new String(bytes);
-        }
-        
-        // deserialize the list of operations
-        length = buffer.getInt();
-        for (int i = 0; i < length; i++) {
-            txn.addOperation(OperationInternal.deserialize(dbNames, buffer));
+        // check whether the transaction used to be empty
+        if (buffer.remaining() > 0 || buffer.limit() > 0) {
+            
+            assert(buffer.remaining() > 0);
+            
+            // deserialize the list of database names
+            int length = buffer.getInt();
+            String[] dbNames = new String[length];
+            for (int i = 0; i < length; i++) {
+                byte[] bytes = new byte[buffer.getInt()];
+                buffer.get(bytes);
+                dbNames[i] = new String(bytes);
+            }
+            
+            // deserialize the list of operations
+            length = buffer.getInt();
+            for (int i = 0; i < length; i++) {
+                txn.addOperation(OperationInternal.deserialize(dbNames, buffer));
+            }
         }
         return txn;
     }

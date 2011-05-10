@@ -57,7 +57,8 @@ public abstract class TransactionManagerInternal {
     public abstract void setLogger (DiskLogger logger);
     
     /**
-     * Method to extend the TransactionManagerInternal with the knowledge how to handle the requests of type
+     * Method to extend the TransactionManagerInternal with the knowledge how to handle the 
+     * requests of type.
      * 
      * 
      * @param type
@@ -89,7 +90,8 @@ public abstract class TransactionManagerInternal {
             throws BabuDBException {
         
         try {
-            ReusableBuffer buffer = transaction.serialize(BufferPool.allocate(transaction.getSize()));
+            ReusableBuffer buffer = 
+                transaction.serialize(BufferPool.allocate(transaction.getSize()));
             buffer.flip();
             return makePersistent(transaction, buffer);
         } catch (IOException e) {
