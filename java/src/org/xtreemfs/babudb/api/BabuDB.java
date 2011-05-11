@@ -17,7 +17,7 @@ import org.xtreemfs.babudb.api.exception.BabuDBException;
  * @date 11/02/2010
  */
 public interface BabuDB {
-
+    
     /**
      * Returns a reference to the BabuDB checkpointer. The checkpointer can be
      * used by applications to enforce the creation of a database checkpoint.
@@ -25,7 +25,7 @@ public interface BabuDB {
      * @return a reference to the checkpointer
      */
     public Checkpointer getCheckpointer();
-
+    
     /**
      * Returns a reference to the database manager. The database manager gives
      * applications access to single databases.
@@ -33,7 +33,7 @@ public interface BabuDB {
      * @return a reference to the database manager
      */
     public DatabaseManager getDatabaseManager();
-
+    
     /**
      * Returns a reference to the snapshot manager. The snapshot manager offers
      * applications the possibility to manage snapshots of single databases.
@@ -43,11 +43,30 @@ public interface BabuDB {
     public SnapshotManager getSnapshotManager();
     
     /**
-     * Terminates BabuDB. All threads will be terminated and all resources will
-     * be freed. Note that ongoing checkpoint operations may be interrupted, but
-     * the database will remain in a consistent state.
+     * Performs a graceful shutdown, which is equivalent to an invocation of
+     * <code>shutdown(true)</code>.
      * 
      * @throws BabuDBException
+     *             if an error occurred
      */
     public void shutdown() throws BabuDBException;
+    
+    /**
+     * Terminates BabuDB. All threads will be terminated and all resources will
+     * be freed.
+     * 
+     * <p>
+     * A shutdown may be either graceful or forceful. If the database was
+     * configured for asynchronous log writes, a graceful shutdown waits for all
+     * pending log entries to be persistently written to disk, so as to
+     * guarantee that no updates that were acknowledged will be lost.
+     * </p>
+     * 
+     * @param graceful
+     *            if <code>true</code>, the shutdown will be performed
+     *            gracefully; otherwise, it will be forceful
+     * @throws BabuDBException
+     *             if an error occurred
+     */
+    public void shutdown(boolean graceful) throws BabuDBException;
 }

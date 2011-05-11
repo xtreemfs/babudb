@@ -8,7 +8,12 @@
 package org.xtreemfs.babudb;
 
 import static org.xtreemfs.babudb.BabuDBFactory.BABUDB_VERSION;
-import static org.xtreemfs.babudb.log.LogEntry.*;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_COPY;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_CREATE;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_DELETE;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_SNAP;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_SNAP_DELETE;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_TRANSACTION;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -23,10 +28,10 @@ import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.dev.CheckpointerInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
+import org.xtreemfs.babudb.api.dev.SnapshotManagerInternal;
 import org.xtreemfs.babudb.api.dev.transaction.InMemoryProcessing;
 import org.xtreemfs.babudb.api.dev.transaction.OperationInternal;
 import org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal;
-import org.xtreemfs.babudb.api.dev.SnapshotManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.config.BabuDBConfig;
@@ -42,7 +47,6 @@ import org.xtreemfs.babudb.lsmdb.LSMDBWorker;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
-import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.LifeCycleThread;
 import org.xtreemfs.foundation.VersionManagement;
 import org.xtreemfs.foundation.logging.Logging;
@@ -60,51 +64,52 @@ import org.xtreemfs.foundation.logging.Logging;
  * @author stenjan
  * 
  */
-public class BabuDBImpl implements BabuDBInternal{
+public class BabuDBImpl implements BabuDBInternal {
     
-    private LSMDBWorker[]                       worker;
+    private LSMDBWorker[]                 worker;
     
     /**
      * the disk logger is used to write InsertRecordGroups persistently to disk
      */
-    private DiskLogger                          logger;
-    private TransactionManagerInternal          txnMan;
+    private DiskLogger                    logger;
+    
+    private TransactionManagerInternal    txnMan;
     
     /**
      * Checkpointer thread for automatic checkpointing
      */
-    private final CheckpointerInternal          dbCheckptr;
+    private final CheckpointerInternal    dbCheckptr;
     
     /**
      * the component that manages database snapshots
      */
-    private final SnapshotManagerInternal       snapshotManager;
+    private final SnapshotManagerInternal snapshotManager;
     
     /**
      * the component that manages databases
      */
-    private final DatabaseManagerInternal       databaseManager;
+    private final DatabaseManagerInternal databaseManager;
     
     /**
      * All necessary parameters to run the BabuDB.
      */
-    private final BabuDBConfig                  configuration;
+    private final BabuDBConfig            configuration;
     
     /**
      * File used to store meta-informations about DBs.
      */
-    private final DBConfig                      dbConfigFile;
+    private final DBConfig                dbConfigFile;
     
     /**
      * Flag that shows the replication if babuDB is running at the moment.
      */
-    private final AtomicBoolean                 stopped = new AtomicBoolean(true);
+    private final AtomicBoolean           stopped = new AtomicBoolean(true);
     
     /**
      * Threads used within the plugins. They will be stopped when BabuDB shuts
      * down.
      */
-    private final List<LifeCycleThread>         plugins = new Vector<LifeCycleThread>();
+    private final List<LifeCycleThread>   plugins = new Vector<LifeCycleThread>();
     
     static {
         
@@ -181,8 +186,8 @@ public class BabuDBImpl implements BabuDBInternal{
         
         // set up and start the disk logger
         try {
-            logger = new DiskLogger(configuration.getDbLogDir(), nextLSN.getViewId(), nextLSN
-                    .getSequenceNo(), configuration.getSyncMode(), configuration.getPseudoSyncWait(),
+            logger = new DiskLogger(configuration.getDbLogDir(), nextLSN.getViewId(),
+                nextLSN.getSequenceNo(), configuration.getSyncMode(), configuration.getPseudoSyncWait(),
                 configuration.getMaxQueueLength() * Math.max(1, configuration.getNumThreads()));
             logger.setLifeCycleListener(this);
             logger.start();
@@ -218,11 +223,10 @@ public class BabuDBImpl implements BabuDBInternal{
         if (staticInit != null && nextLSN.equals(firstLSN)) {
             Logging.logMessage(Logging.LEVEL_DEBUG, this, "Running initialization script...");
             staticInit.initialize(databaseManager, snapshotManager);
-            Logging.logMessage(Logging.LEVEL_DEBUG, this, 
-                    "... initialization script finished successfully.");
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "... initialization script finished successfully.");
         } else if (staticInit != null) {
-            Logging.logMessage(Logging.LEVEL_INFO, this, "Static initialization was ignored, " +
-            		"because database is not empty.");
+            Logging.logMessage(Logging.LEVEL_INFO, this, "Static initialization was ignored, "
+                + "because database is not empty.");
         }
         
         this.stopped.set(false);
@@ -360,13 +364,18 @@ public class BabuDBImpl implements BabuDBInternal{
         }
     }
     
+    @Override
+    public void shutdown() throws BabuDBException {
+        shutdown(true);
+    }
+    
     /*
      * (non-Javadoc)
      * 
-     * @see org.xtreemfs.babudb.api.BabuDB#shutdown()
+     * @see org.xtreemfs.babudb.api.BabuDB#shutdown(boolean graceful)
      */
     @Override
-    public void shutdown() throws BabuDBException {
+    public void shutdown(boolean graceful) throws BabuDBException {
         
         Logging.logMessage(Logging.LEVEL_INFO, this, "shutting down ...");
         
@@ -376,41 +385,59 @@ public class BabuDBImpl implements BabuDBInternal{
             }
         }
         
-        //stop the plugin threads
+        // stop the plugin threads
+        BabuDBException exc = null;
         for (LifeCycleThread p : plugins) {
             try {
-                p.shutdown(); 
-                p.waitForShutdown(); 
-            } catch (Exception e) { 
-                throw new BabuDBException(ErrorCode.BROKEN_PLUGIN, 
-                        e.getMessage(), e.getCause()); 
-            } 
+                p.shutdown();
+                p.waitForShutdown();
+            } catch (Exception e) {
+                if (exc == null)
+                    exc = new BabuDBException(ErrorCode.BROKEN_PLUGIN, e.getMessage(), e.getCause());
+            }
         }
-
+        
+        // shut down the logger; this keeps insertions from being completed
         try {
-            
-            // shut down the logger; this keeps insertions from being completed
-            this.logger.shutdown();
+            if(graceful)
+                this.logger.shutdown();
+            else
+                this.logger.forcefulShutdown();
             this.logger.waitForShutdown();
-            
-            // complete checkpoint before shutdown
+        } catch (Exception e) {
+            Logging.logError(Logging.LEVEL_DEBUG, this, e);
+        }
+        
+        // complete checkpoint before shutdown
+        try {
             this.dbCheckptr.shutdown();
             this.dbCheckptr.waitForShutdown();
-            
+        } catch (Exception e) {
+            Logging.logError(Logging.LEVEL_DEBUG, this, e);
+        }
+        
+        try {
             this.databaseManager.shutdown();
             this.snapshotManager.shutdown();
-            
-            if (worker != null) {
-                for (LSMDBWorker w : worker)
-                    w.waitForShutdown();
-                
-                Logging.logMessage(Logging.LEVEL_DEBUG, this,
-                    "%d worker " + "threads shut down successfully", worker.length);
-            }
-            
-        } catch (Exception ex) {
-            /* ignored */
+        } catch (Exception e) {
+            Logging.logError(Logging.LEVEL_DEBUG, this, e);
         }
+        
+        if (worker != null) {
+            for (LSMDBWorker w : worker)
+                try {
+                    w.waitForShutdown();
+                } catch (Exception e) {
+                    Logging.logError(Logging.LEVEL_DEBUG, this, e);
+                }
+            
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "%d worker " + "threads shut down successfully",
+                worker.length);
+        }
+        
+        if (exc != null)
+            throw exc;
+        
         Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB shutdown complete.");
     }
     
@@ -432,10 +459,12 @@ public class BabuDBImpl implements BabuDBInternal{
         } catch (Exception ex) {
             // we will probably get that when we kill a thread because we do
             // evil stuff here ;-)
-        } 
+        }
     }
     
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
+     * 
      * @see org.xtreemfs.babudb.api.BabuDB#getCheckpointer()
      */
     @Override
@@ -443,16 +472,21 @@ public class BabuDBImpl implements BabuDBInternal{
         return dbCheckptr;
     }
     
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.api.dev.BabuDBInternal#replaceTransactionManager(
-     *          org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal)
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * org.xtreemfs.babudb.api.dev.BabuDBInternal#replaceTransactionManager(
+     * org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal)
      */
     @Override
     public void replaceTransactionManager(TransactionManagerInternal txnMan) {
         this.txnMan = txnMan;
     }
     
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
+     * 
      * @see org.xtreemfs.babudb.api.dev.BabuDBInternal#getTransactionManager()
      */
     @Override
@@ -460,7 +494,9 @@ public class BabuDBImpl implements BabuDBInternal{
         return txnMan;
     }
     
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
+     * 
      * @see org.xtreemfs.babudb.api.BabuDB#getDatabaseManager()
      */
     @Override
@@ -468,7 +504,9 @@ public class BabuDBImpl implements BabuDBInternal{
         return databaseManager;
     }
     
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
+     * 
      * @see org.xtreemfs.babudb.BabuDBInternal#getConfig()
      */
     @Override
@@ -476,7 +514,9 @@ public class BabuDBImpl implements BabuDBInternal{
         return configuration;
     }
     
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
+     * 
      * @see org.xtreemfs.babudb.api.BabuDB#getSnapshotManager()
      */
     @Override
@@ -484,7 +524,9 @@ public class BabuDBImpl implements BabuDBInternal{
         return snapshotManager;
     }
     
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
+     * 
      * @see org.xtreemfs.babudb.BabuDBInternal#getDBConfigFile()
      */
     @Override
@@ -492,7 +534,9 @@ public class BabuDBImpl implements BabuDBInternal{
         return dbConfigFile;
     }
     
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
+     * 
      * @see org.xtreemfs.babudb.BabuDBInternal#getWorkerCount()
      */
     @Override
@@ -502,7 +546,9 @@ public class BabuDBImpl implements BabuDBInternal{
         return worker.length;
     }
     
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
+     * 
      * @see org.xtreemfs.babudb.BabuDBInternal#getWorker(int)
      */
     @Override
@@ -515,7 +561,8 @@ public class BabuDBImpl implements BabuDBInternal{
     /**
      * Replays the database operations log.
      * 
-     * @param from - LSN to replay the logs from.
+     * @param from
+     *            - LSN to replay the logs from.
      * 
      * @return the LSN to assign to the next operation
      * 
@@ -544,34 +591,34 @@ public class BabuDBImpl implements BabuDBInternal{
                     // in normal there are only transactions to be replayed
                     if (type == PAYLOAD_TYPE_TRANSACTION) {
                         txnMan.replayTransaction(le);
-                    
-                    // create, copy and delete are not replayed (this block is for backward 
-                    // compatibility)
-                    } else if (
-                        type != PAYLOAD_TYPE_CREATE &&
-                        type != PAYLOAD_TYPE_COPY &&
-                        type != PAYLOAD_TYPE_DELETE) {
-                    
-                        // get the processing logic for the dedicated logEntry type
+                        
+                        // create, copy and delete are not replayed (this block
+                        // is for backward
+                        // compatibility)
+                    } else if (type != PAYLOAD_TYPE_CREATE && type != PAYLOAD_TYPE_COPY
+                        && type != PAYLOAD_TYPE_DELETE) {
+                        
+                        // get the processing logic for the dedicated logEntry
+                        // type
                         InMemoryProcessing processingLogic = txnMan.getProcessingLogic().get(type);
                         
                         // deserialize the arguments retrieved from the logEntry
-                        OperationInternal operation = processingLogic.convertToOperation(
-                                processingLogic.deserializeRequest(le.getPayload()));
-                    
+                        OperationInternal operation = processingLogic.convertToOperation(processingLogic
+                                .deserializeRequest(le.getPayload()));
+                        
                         // execute the in-memory logic
                         try {
                             processingLogic.before(operation);
                             processingLogic.meanwhile(operation);
                             processingLogic.after(operation);
                         } catch (BabuDBException be) {
-                        	
-                            // there might be false positives if a snapshot to delete has already 
-                            // been deleted or a snapshot to create has already been created
-                            if (!(type == PAYLOAD_TYPE_SNAP && 
-                                    be.getErrorCode() == ErrorCode.SNAP_EXISTS) &&
-                                !(type == PAYLOAD_TYPE_SNAP_DELETE && 
-                                    be.getErrorCode() == ErrorCode.NO_SUCH_SNAPSHOT)) {
+                            
+                            // there might be false positives if a snapshot to
+                            // delete has already
+                            // been deleted or a snapshot to create has already
+                            // been created
+                            if (!(type == PAYLOAD_TYPE_SNAP && be.getErrorCode() == ErrorCode.SNAP_EXISTS)
+                                && !(type == PAYLOAD_TYPE_SNAP_DELETE && be.getErrorCode() == ErrorCode.NO_SUCH_SNAPSHOT)) {
                                 
                                 throw be;
                             }
@@ -627,16 +674,20 @@ public class BabuDBImpl implements BabuDBInternal{
     public void startupPerformed() { /* ignored */
     }
     
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
+     * 
      * @see org.xtreemfs.foundation.LifeCycleListener#shutdownPerformed()
      */
     @Override
     public void shutdownPerformed() { /* ignored */
     }
     
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
+     * 
      * @see org.xtreemfs.foundation.LifeCycleListener#crashPerformed(
-     *          java.lang.Throwable)
+     * java.lang.Throwable)
      */
     @Override
     public void crashPerformed(Throwable cause) {

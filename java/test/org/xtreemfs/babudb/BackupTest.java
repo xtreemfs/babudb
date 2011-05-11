@@ -115,7 +115,7 @@ public class BackupTest extends TestCase {
     }
 
     public static void main(String[] args) {
-        TestRunner.run(BabuDBTest.class);
+        TestRunner.run(BackupTest.class);
     }
     
 }
