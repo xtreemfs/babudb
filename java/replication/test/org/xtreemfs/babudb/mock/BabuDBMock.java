@@ -251,4 +251,13 @@ public class BabuDBMock implements BabuDBInternal {
         
     }
 
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.BabuDB#shutdown(boolean)
+     */
+    @Override
+    public void shutdown(boolean graceful) throws BabuDBException {
+        Logging.logMessage(Logging.LEVEL_ERROR, this,
+                "Mock '%s' tried to access shutdown (%s).", name, graceful);
+    }
+
 }

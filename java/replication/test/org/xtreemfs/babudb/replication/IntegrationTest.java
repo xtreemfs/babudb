@@ -45,7 +45,7 @@ public class IntegrationTest {
      */
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
-        Logging.start(Logging.LEVEL_ERROR, Category.all);
+        Logging.start(Logging.LEVEL_DEBUG, Category.all);
         
         FSUtils.delTree(new File(conf0.getBaseDir()));
         FSUtils.delTree(new File(conf1.getBaseDir()));

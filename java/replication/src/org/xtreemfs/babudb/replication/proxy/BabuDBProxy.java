@@ -80,12 +80,20 @@ public class BabuDBProxy implements BabuDBInternal {
      */
     @Override
     public void shutdown() throws BabuDBException {
+        shutdown(true);
+    }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.BabuDB#shutdown(boolean)
+     */
+    @Override
+    public void shutdown(boolean graceful) throws BabuDBException {
         try {
             replMan.shutdown();
         } catch (Exception e) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
         } finally {
-            localBabuDB.shutdown(); 
+            localBabuDB.shutdown(graceful); 
         }
     }
 
