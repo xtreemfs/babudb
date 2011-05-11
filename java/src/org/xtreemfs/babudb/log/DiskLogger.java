@@ -501,7 +501,7 @@ public class DiskLogger extends LifeCycleThread {
     
             if (pseudoSyncWait > 0) {
                 synchronized (pseudoSyncWait) {
-                    pseudoSyncWait.wait();
+                    pseudoSyncWait.wait(pseudoSyncWait);
                 }
             }
         } finally {
