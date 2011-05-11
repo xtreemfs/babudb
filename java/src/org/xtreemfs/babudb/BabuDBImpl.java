@@ -399,26 +399,22 @@ public class BabuDBImpl implements BabuDBInternal {
         
         // shut down the logger; this keeps insertions from being completed
         try {
-            if(graceful)
-                this.logger.shutdown();
-            else
-                this.logger.forcefulShutdown();
-            this.logger.waitForShutdown();
+            logger.shutdown(graceful);
         } catch (Exception e) {
             Logging.logError(Logging.LEVEL_DEBUG, this, e);
         }
         
         // complete checkpoint before shutdown
         try {
-            this.dbCheckptr.shutdown();
-            this.dbCheckptr.waitForShutdown();
+            dbCheckptr.shutdown();
+            dbCheckptr.waitForShutdown();
         } catch (Exception e) {
             Logging.logError(Logging.LEVEL_DEBUG, this, e);
         }
         
         try {
-            this.databaseManager.shutdown();
-            this.snapshotManager.shutdown();
+            databaseManager.shutdown();
+            snapshotManager.shutdown();
         } catch (Exception e) {
             Logging.logError(Logging.LEVEL_DEBUG, this, e);
         }
@@ -431,8 +427,8 @@ public class BabuDBImpl implements BabuDBInternal {
                     Logging.logError(Logging.LEVEL_DEBUG, this, e);
                 }
             
-            Logging.logMessage(Logging.LEVEL_DEBUG, this, "%d worker " + "threads shut down successfully",
-                worker.length);
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "%d worker threads shut down " +
+            		"successfully", worker.length);
         }
         
         if (exc != null)
@@ -603,8 +599,8 @@ public class BabuDBImpl implements BabuDBInternal {
                         InMemoryProcessing processingLogic = txnMan.getProcessingLogic().get(type);
                         
                         // deserialize the arguments retrieved from the logEntry
-                        OperationInternal operation = processingLogic.convertToOperation(processingLogic
-                                .deserializeRequest(le.getPayload()));
+                        OperationInternal operation = processingLogic.convertToOperation(
+                                processingLogic.deserializeRequest(le.getPayload()));
                         
                         // execute the in-memory logic
                         try {
@@ -617,8 +613,10 @@ public class BabuDBImpl implements BabuDBInternal {
                             // delete has already
                             // been deleted or a snapshot to create has already
                             // been created
-                            if (!(type == PAYLOAD_TYPE_SNAP && be.getErrorCode() == ErrorCode.SNAP_EXISTS)
-                                && !(type == PAYLOAD_TYPE_SNAP_DELETE && be.getErrorCode() == ErrorCode.NO_SUCH_SNAPSHOT)) {
+                            if (!(type == PAYLOAD_TYPE_SNAP && 
+                                     be.getErrorCode() == ErrorCode.SNAP_EXISTS)
+                             && !(type == PAYLOAD_TYPE_SNAP_DELETE && 
+                                     be.getErrorCode() == ErrorCode.NO_SUCH_SNAPSHOT)) {
                                 
                                 throw be;
                             }
