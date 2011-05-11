@@ -73,7 +73,7 @@ public class BabuDBTest extends TestCase {
     public void testShutdownRestart() throws Exception {
         
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1,
+            SyncMode.ASYNC, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1,
             LOG_LEVEL));
         
         Database db = database.getDatabaseManager().createDatabase("test", 3);
@@ -498,7 +498,7 @@ public class BabuDBTest extends TestCase {
     public void testInitScript() throws BabuDBException {
         
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0,
-                SyncMode.SYNC_WRITE, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1,
+                SyncMode.ASYNC, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1,
                 LOG_LEVEL), new StaticInitialization() {
                     
                     @Override

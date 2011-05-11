@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -86,6 +87,7 @@ public class DiskLogger extends LifeCycleThread {
      * If set to true the thread will shutdown.
      */
     private boolean quit;
+    private boolean forceful = false;
 
     /**
      * LogFile name
@@ -115,6 +117,8 @@ public class DiskLogger extends LifeCycleThread {
     private final SyncMode               syncMode;
 
     private final int 	                 pseudoSyncWait;
+    
+    private final CRC32                  csumAlgo = new CRC32();
         
     /**
      * Max number of LogEntries to write before sync.
@@ -284,11 +288,9 @@ public class DiskLogger extends LifeCycleThread {
      * Main loop.
      */
     public void run() {
-        ArrayList<LogEntry> tmpE = new ArrayList<LogEntry>(MAX_ENTRIES_PER_BLOCK);
+        List<LogEntry> tmpE = new ArrayList<LogEntry>(MAX_ENTRIES_PER_BLOCK);
                 
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "operational");
-
-        CRC32 csumAlgo = new CRC32();
 
         notifyStarted();
         
@@ -297,7 +299,7 @@ public class DiskLogger extends LifeCycleThread {
                 
                 // wait for an entry
                 tmpE.add(entries.take());
-                sync.lockInterruptibly();
+                lockLogger();
                 try {
                     if (entries.size() > 0) {
                         while (tmpE.size() < MAX_ENTRIES_PER_BLOCK - 1) {
@@ -308,49 +310,11 @@ public class DiskLogger extends LifeCycleThread {
                             tmpE.add(tmp);
                         }
                     }
-                    for (LogEntry le : tmpE) {
-                        assert (le != null) : "Entry must not be null";
-                        int viewID = this.currentViewId.get();
-                        long seqNo = this.nextLogSequenceNo.getAndIncrement();
-
-                        assert(le.getLSN() == null || 
-                                (le.getLSN().getSequenceNo() == seqNo && 
-                                        le.getLSN().getViewId() == viewID)) : 
-                            "LogEntry (" + le.getPayloadType() + ") had " +
-                            "unexpected LSN: " + le.getLSN() + "\n" + viewID +
-                            ":" + seqNo + " was expected instead.";
-                        
-                        le.assignId(viewID, seqNo);
-                        
-                        ReusableBuffer buffer = null;
-                        try {
-                            buffer = le.serialize(csumAlgo);
-                                               
-                            // write the LogEntry to the local disk
-                            channel.write(buffer.getBuffer());
-                        } finally {
-                            csumAlgo.reset();
-                            if (buffer != null) BufferPool.free(buffer);
-                        }
-                    }
                     
-                    if (this.syncMode == SyncMode.FSYNC)
-                        channel.force(true);
-                    else if (this.syncMode == SyncMode.FDATASYNC)
-                        channel.force(false);
-                                     
-                    for (LogEntry le : tmpE) { 
-                        le.getListener().synced(le); 
-                    }  
-                    tmpE.clear();
-
-                    if (pseudoSyncWait > 0) {
-                        synchronized (this) {
-                            wait(pseudoSyncWait);
-                        }
-                    }
+                    processLogEntries(tmpE);
+                    
                 } finally {
-                    sync.unlock();
+                    unlockLogger();
                 }
                 
             } catch (IOException ex) {
@@ -376,16 +340,32 @@ public class DiskLogger extends LifeCycleThread {
         }
         
         try {
+            
+            // process pending requests on shutdown if forceful flag has not been set
+            if (!forceful) {
+                
+                // clear the interrupt flag
+                interrupted();
+                
+                lockLogger();
+                try {
+                    entries.drainTo(tmpE);
+                    processLogEntries(tmpE);
+                } finally {
+                    unlockLogger();
+                }
+            }
+            
             close();
             Logging.logMessage(Logging.LEVEL_INFO, this, "disk logger shut down successfully");
             notifyStopped();
-        } catch (IOException e) {
+        } catch (Exception e) {
             notifyCrashed(e);
         }
     }
 
     /**
-     * stops this thread
+     * stops this thread gracefully
      */
     public synchronized void shutdown() {
         quit = true;
@@ -393,28 +373,12 @@ public class DiskLogger extends LifeCycleThread {
     }
     
     /**
-     * Closes the log-file. And frees remaining entries.
-     * 
-     * @throws IOException
+     * method to shutdown the logger without ensuring all pending log entries to be written to the 
+     * on disk log. may cause inconsistency. use shutdown by default.
      */
-    public void close() throws IOException {    
-        
-        try {
-            fdes.sync();
-        } finally {
-            try {
-                fos.close();
-            } finally {
-            
-                // clear pending requests, if available
-                for (LogEntry le : entries) {
-                    le.getListener().failed(le, new BabuDBException(ErrorCode.INTERRUPTED, 
-                        "DiskLogger was shut down, before the entry could be written to " +
-                        "the log-file"));
-                    le.free();
-                }
-            }
-        }
+    public synchronized void forcefulShutdown() {
+        forceful = true;
+        shutdown();
     }
     
     /**
@@ -430,7 +394,7 @@ public class DiskLogger extends LifeCycleThread {
                 fos.close();
             }
         } catch (IOException e) {
-            
+            /* ignored */
         }
     }
     
@@ -441,5 +405,85 @@ public class DiskLogger extends LifeCycleThread {
      */
     public LSN getLatestLSN(){
         return new LSN(currentViewId.get(), nextLogSequenceNo.get() - 1L);
+    }
+    
+    /**
+     * Closes the log-file. And frees remaining entries.
+     * 
+     * @throws IOException
+     */
+    private void close() throws IOException {    
+        
+        try {
+            fdes.sync();
+        } finally {
+            try {
+                fos.close();
+            } finally {
+            
+                assert (forceful || entries.size() == 0);
+                
+                // clear pending requests, if available
+                for (LogEntry le : entries) {
+                    le.getListener().failed(le, new BabuDBException(ErrorCode.INTERRUPTED, 
+                        "DiskLogger was shut down, before the entry could be written to " +
+                        "the log-file"));
+                    le.free();
+                }
+            }
+        }
+    }
+    
+    /**
+     * Writes a list of log entries to the disk log.
+     * 
+     * @param entries
+     * @throws IOException 
+     * @throws InterruptedException 
+     */
+    private final void processLogEntries(List<LogEntry> entries) throws IOException, 
+            InterruptedException {
+        
+        for (LogEntry le : entries) {
+            assert (le != null) : "Entry must not be null";
+            int viewID = this.currentViewId.get();
+            long seqNo = this.nextLogSequenceNo.getAndIncrement();
+
+            assert(le.getLSN() == null || 
+                    (le.getLSN().getSequenceNo() == seqNo && 
+                            le.getLSN().getViewId() == viewID)) : 
+                "LogEntry (" + le.getPayloadType() + ") had " +
+                "unexpected LSN: " + le.getLSN() + "\n" + viewID +
+                ":" + seqNo + " was expected instead.";
+            
+            le.assignId(viewID, seqNo);
+            
+            ReusableBuffer buffer = null;
+            try {
+                buffer = le.serialize(csumAlgo);
+                                   
+                // write the LogEntry to the local disk
+                channel.write(buffer.getBuffer());
+            } finally {
+                csumAlgo.reset();
+                if (buffer != null) BufferPool.free(buffer);
+            }
+        }
+        
+        if (this.syncMode == SyncMode.FSYNC)
+            channel.force(true);
+        else if (this.syncMode == SyncMode.FDATASYNC)
+            channel.force(false);
+                         
+        for (LogEntry le : entries) { 
+            le.getListener().synced(le); 
+        }  
+        entries.clear();
+
+        if (pseudoSyncWait > 0) {
+            synchronized (this) {
+                wait(pseudoSyncWait);
+            }
+        }
     }
 }
