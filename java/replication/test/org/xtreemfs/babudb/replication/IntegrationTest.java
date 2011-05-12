@@ -11,6 +11,9 @@ import static junit.framework.Assert.*;
 import static org.xtreemfs.babudb.replication.TestParameters.*;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.After;
@@ -22,6 +25,7 @@ import org.xtreemfs.babudb.api.BabuDB;
 import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
 import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
+import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.foundation.logging.Logging;
@@ -205,6 +209,147 @@ public class IntegrationTest {
         assertEquals("blub00", new String(res));
         
         assertNull(test0.lookup(0, "bla20".getBytes(), test0).get());
+    }
+    
+    @Test
+    public void testPrefixLookups() throws Exception {
+        
+        // create some DBs
+        babu0.getDatabaseManager().createDatabase("prefixLookup", 1);
+        Database test0 = babu2.getDatabaseManager().getDatabase("prefixLookup");
+        Database test1 = babu0.getDatabaseManager().getDatabase("prefixLookup");
+        Database test2 = babu1.getDatabaseManager().getDatabase("prefixLookup");
+        
+        // make some inserts on database 'test1'
+        final AtomicInteger notReady = new AtomicInteger(2);
+        final Object context0 = new Object();
+        DatabaseInsertGroup ig = test1.createInsertGroup();
+        ig.addInsert(0, "bla0".getBytes(), "blub0".getBytes());
+        ig.addInsert(0, "bla1".getBytes(), "blub1".getBytes());
+        ig.addInsert(0, "bla2".getBytes(), "blub2".getBytes());
+        test1.insert(ig, context0).registerListener(new DatabaseRequestListener<Object>() {
+            @Override
+            public void finished(Object result, Object context) {
+                
+                if (notReady.decrementAndGet() == 0) {
+                    synchronized (notReady) {
+                        notReady.notify();
+                    }
+                }
+                assertEquals(context0, context);
+            }
+            
+            @Override
+            public void failed(BabuDBException error, Object context) {
+                
+                if (notReady.decrementAndGet() == 0) {
+                    synchronized (notReady) {
+                        notReady.notify();
+                    }
+                }
+                fail("This should not happen.");
+            }
+        });
+        
+        final Object context1 = new Object();
+        ig = test1.createInsertGroup();
+        ig.addInsert(0, "yagga0".getBytes(), "yagga0".getBytes());
+        ig.addInsert(0, "yagga1".getBytes(), "yagga1".getBytes());
+        ig.addInsert(0, "yagga2".getBytes(), "yagga2".getBytes());
+        test1.insert(ig, context1).registerListener(new DatabaseRequestListener<Object>() {
+            @Override
+            public void finished(Object result, Object context) {
+                
+                if (notReady.decrementAndGet() == 0) {
+                    synchronized (notReady) {
+                        notReady.notify();
+                    }
+                }
+                assertEquals(context1, context);
+            }
+            
+            @Override
+            public void failed(BabuDBException error, Object context) {
+                
+                if (notReady.decrementAndGet() == 0) {
+                    synchronized (notReady) {
+                        notReady.notify();
+                    }
+                }
+                fail("This should not happen.");
+            }
+        });
+        
+        // wait for the inserts to finish
+        synchronized (notReady) {
+            if (notReady.get() > 0) {
+                notReady.wait();
+            }
+        }
+        
+        // perform a prefix lookup on database 'test0'
+        Map<String, String> tmp = new HashMap<String, String>();
+        
+        ResultSet<byte[], byte[]> result = test0.prefixLookup(0, "bla".getBytes(), null).get();
+        while(result.hasNext()) {
+            Entry<byte[], byte[]> next = result.next();
+            tmp.put(new String(next.getKey()), new String(next.getValue()));
+        }
+        result.free();
+        
+        assertEquals(3, tmp.size());
+        assertEquals("blub0", tmp.get("bla0"));
+        assertEquals("blub1", tmp.get("bla1"));
+        assertEquals("blub2", tmp.get("bla2"));
+        
+        // perform a prefix lookup on database 'test1'
+        tmp.clear();
+        
+        result = test1.prefixLookup(0, "bla".getBytes(), null).get();
+        while(result.hasNext()) {
+            Entry<byte[], byte[]> next = result.next();
+            tmp.put(new String(next.getKey()), new String(next.getValue()));
+        }
+        result.free();
+        
+        assertEquals(3, tmp.size());
+        assertEquals("blub0", tmp.get("bla0"));
+        assertEquals("blub1", tmp.get("bla1"));
+        assertEquals("blub2", tmp.get("bla2"));
+        
+        // perform a prefix lookup on database 'test2'
+        tmp.clear();
+        
+        result = test2.prefixLookup(0, "bla".getBytes(), null).get();
+        while(result.hasNext()) {
+            Entry<byte[], byte[]> next = result.next();
+            tmp.put(new String(next.getKey()), new String(next.getValue()));
+        }
+        result.free();
+        
+        assertEquals(3, tmp.size());
+        assertEquals("blub0", tmp.get("bla0"));
+        assertEquals("blub1", tmp.get("bla1"));
+        assertEquals("blub2", tmp.get("bla2"));
+        
+        // perform an empty prefix lookup on database 'test0'
+        tmp.clear();
+        
+        result = test0.prefixLookup(0, null, null).get();
+        while(result.hasNext()) {
+            Entry<byte[], byte[]> next = result.next();
+            tmp.put(new String(next.getKey()), new String(next.getValue()));
+        }
+        result.free();
+        
+        assertEquals(6, tmp.size());
+        assertEquals("blub0", tmp.get("bla0"));
+        assertEquals("blub1", tmp.get("bla1"));
+        assertEquals("blub2", tmp.get("bla2"));
+        assertEquals("yagga0", tmp.get("yagga0"));
+        assertEquals("yagga1", tmp.get("yagga1"));
+        assertEquals("yagga2", tmp.get("yagga2"));
+        
     }
     
     /**
