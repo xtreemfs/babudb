@@ -288,67 +288,77 @@ public class IntegrationTest {
         }
         
         // perform a prefix lookup on database 'test0'
-        Map<String, String> tmp = new HashMap<String, String>();
-        
         ResultSet<byte[], byte[]> result = test0.prefixLookup(0, "bla".getBytes(), null).get();
-        while(result.hasNext()) {
-            Entry<byte[], byte[]> next = result.next();
-            tmp.put(new String(next.getKey()), new String(next.getValue()));
-        }
-        result.free();
-        
-        assertEquals(3, tmp.size());
-        assertEquals("blub0", tmp.get("bla0"));
-        assertEquals("blub1", tmp.get("bla1"));
-        assertEquals("blub2", tmp.get("bla2"));
+        assertTrue(result.hasNext());
+        Entry<byte[], byte[]> next = result.next();
+        assertEquals("bla0", new String(next.getKey()));
+        assertEquals("blub0", new String(next.getValue()));
+        assertTrue(result.hasNext());
+        next = result.next();
+        assertEquals("bla1", new String(next.getKey()));
+        assertEquals("blub1", new String(next.getValue()));
+        assertTrue(result.hasNext());
+        next = result.next();
+        assertEquals("bla2", new String(next.getKey()));
+        assertEquals("blub2", new String(next.getValue()));
+        assertFalse(result.hasNext());
         
         // perform a prefix lookup on database 'test1'
-        tmp.clear();
-        
         result = test1.prefixLookup(0, "bla".getBytes(), null).get();
-        while(result.hasNext()) {
-            Entry<byte[], byte[]> next = result.next();
-            tmp.put(new String(next.getKey()), new String(next.getValue()));
-        }
-        result.free();
-        
-        assertEquals(3, tmp.size());
-        assertEquals("blub0", tmp.get("bla0"));
-        assertEquals("blub1", tmp.get("bla1"));
-        assertEquals("blub2", tmp.get("bla2"));
+        assertTrue(result.hasNext());
+        next = result.next();
+        assertEquals("bla0", new String(next.getKey()));
+        assertEquals("blub0", new String(next.getValue()));
+        assertTrue(result.hasNext());
+        next = result.next();
+        assertEquals("bla1", new String(next.getKey()));
+        assertEquals("blub1", new String(next.getValue()));
+        assertTrue(result.hasNext());
+        next = result.next();
+        assertEquals("bla2", new String(next.getKey()));
+        assertEquals("blub2", new String(next.getValue()));
+        assertFalse(result.hasNext());
         
         // perform a prefix lookup on database 'test2'
-        tmp.clear();
-        
         result = test2.prefixLookup(0, "bla".getBytes(), null).get();
-        while(result.hasNext()) {
-            Entry<byte[], byte[]> next = result.next();
-            tmp.put(new String(next.getKey()), new String(next.getValue()));
-        }
-        result.free();
-        
-        assertEquals(3, tmp.size());
-        assertEquals("blub0", tmp.get("bla0"));
-        assertEquals("blub1", tmp.get("bla1"));
-        assertEquals("blub2", tmp.get("bla2"));
+        assertTrue(result.hasNext());
+        next = result.next();
+        assertEquals("bla0", new String(next.getKey()));
+        assertEquals("blub0", new String(next.getValue()));
+        assertTrue(result.hasNext());
+        next = result.next();
+        assertEquals("bla1", new String(next.getKey()));
+        assertEquals("blub1", new String(next.getValue()));
+        assertTrue(result.hasNext());
+        next = result.next();
+        assertEquals("bla2", new String(next.getKey()));
+        assertEquals("blub2", new String(next.getValue()));
+        assertFalse(result.hasNext());
         
         // perform an empty prefix lookup on database 'test0'
-        tmp.clear();
-        
         result = test0.prefixLookup(0, null, null).get();
-        while(result.hasNext()) {
-            Entry<byte[], byte[]> next = result.next();
-            tmp.put(new String(next.getKey()), new String(next.getValue()));
-        }
-        result.free();
-        
-        assertEquals(6, tmp.size());
-        assertEquals("blub0", tmp.get("bla0"));
-        assertEquals("blub1", tmp.get("bla1"));
-        assertEquals("blub2", tmp.get("bla2"));
-        assertEquals("yagga0", tmp.get("yagga0"));
-        assertEquals("yagga1", tmp.get("yagga1"));
-        assertEquals("yagga2", tmp.get("yagga2"));
+        assertTrue(result.hasNext());
+        next = result.next();
+        assertEquals("bla0", new String(next.getKey()));
+        assertEquals("blub0", new String(next.getValue()));
+        assertTrue(result.hasNext());
+        next = result.next();
+        assertEquals("bla1", new String(next.getKey()));
+        assertEquals("blub1", new String(next.getValue()));
+        assertTrue(result.hasNext());
+        next = result.next();
+        assertEquals("bla2", new String(next.getKey()));
+        assertEquals("blub2", new String(next.getValue()));
+        next = result.next();
+        assertEquals("yagga0", new String(next.getKey()));
+        assertEquals("yagga0", new String(next.getValue()));
+        next = result.next();
+        assertEquals("yagga1", new String(next.getKey()));
+        assertEquals("yagga1", new String(next.getValue()));
+        next = result.next();
+        assertEquals("yagga2", new String(next.getKey()));
+        assertEquals("yagga2", new String(next.getValue()));
+        assertFalse(result.hasNext());
         
     }
     
