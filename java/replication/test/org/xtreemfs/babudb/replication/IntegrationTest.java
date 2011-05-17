@@ -11,8 +11,6 @@ import static junit.framework.Assert.*;
 import static org.xtreemfs.babudb.replication.TestParameters.*;
 
 import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -49,7 +47,7 @@ public class IntegrationTest {
      */
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
-        Logging.start(Logging.LEVEL_DEBUG, Category.all);
+        Logging.start(Logging.LEVEL_ERROR, Category.all);
         
         FSUtils.delTree(new File(conf0.getBaseDir()));
         FSUtils.delTree(new File(conf1.getBaseDir()));
@@ -287,6 +285,10 @@ public class IntegrationTest {
             }
         }
         
+    /*
+     * prefix
+     */
+        
         // perform a prefix lookup on database 'test0'
         ResultSet<byte[], byte[]> result = test0.prefixLookup(0, "bla".getBytes(), null).get();
         assertTrue(result.hasNext());
@@ -360,6 +362,82 @@ public class IntegrationTest {
         assertEquals("yagga2", new String(next.getValue()));
         assertFalse(result.hasNext());
         
+    /*
+     * prefix reverse
+     */
+        
+        // perform a prefix lookup on database 'test0'
+        result = test0.reversePrefixLookup(0, "bla".getBytes(), null).get();
+        assertTrue(result.hasNext());
+        next = result.next();
+        assertEquals("bla2", new String(next.getKey()));
+        assertEquals("blub2", new String(next.getValue()));
+        assertTrue(result.hasNext());
+        next = result.next();
+        assertEquals("bla1", new String(next.getKey()));
+        assertEquals("blub1", new String(next.getValue()));
+        assertTrue(result.hasNext());
+        next = result.next();
+        assertEquals("bla0", new String(next.getKey()));
+        assertEquals("blub0", new String(next.getValue()));
+        assertFalse(result.hasNext());
+        
+        // perform a prefix lookup on database 'test1'
+        result = test1.reversePrefixLookup(0, "bla".getBytes(), null).get();
+        assertTrue(result.hasNext());
+        next = result.next();
+        assertEquals("bla2", new String(next.getKey()));
+        assertEquals("blub2", new String(next.getValue()));
+        assertTrue(result.hasNext());
+        next = result.next();
+        assertEquals("bla1", new String(next.getKey()));
+        assertEquals("blub1", new String(next.getValue()));
+        assertTrue(result.hasNext());
+        next = result.next();
+        assertEquals("bla0", new String(next.getKey()));
+        assertEquals("blub0", new String(next.getValue()));
+        assertFalse(result.hasNext());
+        
+        // perform a prefix lookup on database 'test2'
+        result = test2.reversePrefixLookup(0, "bla".getBytes(), null).get();
+        assertTrue(result.hasNext());
+        next = result.next();
+        assertEquals("bla2", new String(next.getKey()));
+        assertEquals("blub2", new String(next.getValue()));
+        assertTrue(result.hasNext());
+        next = result.next();
+        assertEquals("bla1", new String(next.getKey()));
+        assertEquals("blub1", new String(next.getValue()));
+        assertTrue(result.hasNext());
+        next = result.next();
+        assertEquals("bla0", new String(next.getKey()));
+        assertEquals("blub0", new String(next.getValue()));
+        assertFalse(result.hasNext());
+        
+        // perform an empty prefix lookup on database 'test0'
+        result = test0.reversePrefixLookup(0, null, null).get();
+        assertTrue(result.hasNext());
+        next = result.next();
+        assertEquals("yagga2", new String(next.getKey()));
+        assertEquals("yagga2", new String(next.getValue()));
+        assertTrue(result.hasNext());
+        next = result.next();
+        assertEquals("yagga1", new String(next.getKey()));
+        assertEquals("yagga1", new String(next.getValue()));
+        assertTrue(result.hasNext());
+        next = result.next();
+        assertEquals("yagga0", new String(next.getKey()));
+        assertEquals("yagga0", new String(next.getValue()));
+        next = result.next();
+        assertEquals("bla2", new String(next.getKey()));
+        assertEquals("blub2", new String(next.getValue()));
+        next = result.next();
+        assertEquals("bla1", new String(next.getKey()));
+        assertEquals("blub1", new String(next.getValue()));
+        next = result.next();
+        assertEquals("bla0", new String(next.getKey()));
+        assertEquals("blub0", new String(next.getValue()));
+        assertFalse(result.hasNext());
     }
     
     /**

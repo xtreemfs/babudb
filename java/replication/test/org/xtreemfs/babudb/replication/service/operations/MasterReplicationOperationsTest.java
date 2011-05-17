@@ -226,7 +226,7 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
             }
             
             @Override
-            public InetSocketAddress getLeaseHolder() {
+            public InetSocketAddress getLeaseHolder(int timeout) {
                 fail("Operation should not have been accessed by this test!");
                 return null;
             }

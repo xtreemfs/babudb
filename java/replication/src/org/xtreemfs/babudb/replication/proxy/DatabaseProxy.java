@@ -125,14 +125,8 @@ class DatabaseProxy implements DatabaseInternal {
                                 ErrorCode.REPLICATION_FAILURE, e.getMessage());
                         
                         if (e instanceof ErrorCodeException) {
-                            switch (((ErrorCodeException) e).getCode()) {
-                            case DB_UNAVAILABLE : be = new BabuDBException(
-                                    ErrorCode.NO_SUCH_DB, e.getMessage());
-                                    break;
-                            case ENTRY_UNAVAILABLE : be = new BabuDBException(
-                                    ErrorCode.NO_SUCH_INDEX, e.getMessage());
-                                    break;
-                            }
+                            be = new BabuDBException(mapTransmissionError(
+                                    ((ErrorCodeException) e).getCode()),e.getMessage());
                         }
                             
                         listener.failed(be, context);
@@ -145,22 +139,9 @@ class DatabaseProxy implements DatabaseInternal {
                 try {
                     return r.get();
                 } catch (ErrorCodeException ece) {
-                    switch (ece.getCode()) {
-                    case DB_UNAVAILABLE : 
-                        throw new BabuDBException(ErrorCode.NO_SUCH_DB, 
-                                                  ece.getMessage());
-                        
-                    case ENTRY_UNAVAILABLE : 
-                        throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, 
-                                                  ece.getMessage());
-                        
-                    default : 
-                        throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
-                                ece.getMessage());
-                    }
+                    throw new BabuDBException(mapTransmissionError(ece.getCode()),ece.getMessage());
                 } catch (Exception e) {
-                    throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
-                            e.getMessage());
+                    throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
                 }
             }
         };
@@ -215,19 +196,13 @@ class DatabaseProxy implements DatabaseInternal {
                     }
 
                     @Override
-                    public void requestFailed(Exception e) {
+                    public void requestFailed(Exception e) {                        
                         BabuDBException be = new BabuDBException(
                                 ErrorCode.REPLICATION_FAILURE, e.getMessage());
                         
                         if (e instanceof ErrorCodeException) {
-                            switch (((ErrorCodeException) e).getCode()) {
-                            case DB_UNAVAILABLE : be = new BabuDBException(
-                                    ErrorCode.NO_SUCH_DB, e.getMessage());
-                                    break;
-                            case ENTRY_UNAVAILABLE : be = new BabuDBException(
-                                    ErrorCode.NO_SUCH_INDEX, e.getMessage());
-                                    break;
-                            }
+                            be = new BabuDBException(mapTransmissionError(
+                                    (((ErrorCodeException) e).getCode())),e.getMessage());
                         }
                             
                         listener.failed(be, context);
@@ -240,22 +215,9 @@ class DatabaseProxy implements DatabaseInternal {
                 try {
                     return r.get();
                 } catch (ErrorCodeException ece) {
-                    switch (ece.getCode()) {
-                    case DB_UNAVAILABLE : 
-                        throw new BabuDBException(ErrorCode.NO_SUCH_DB, 
-                                                  ece.getMessage());
-                        
-                    case ENTRY_UNAVAILABLE : 
-                        throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, 
-                                                  ece.getMessage());
-                        
-                    default : 
-                        throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
-                                ece.getMessage());
-                    }
+                    throw new BabuDBException(mapTransmissionError(ece.getCode()),ece.getMessage());
                 } catch (Exception e) {
-                    throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
-                            e.getMessage());
+                    throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
                 }
             }
         };
@@ -314,14 +276,8 @@ class DatabaseProxy implements DatabaseInternal {
                                 ErrorCode.REPLICATION_FAILURE, e.getMessage());
                         
                         if (e instanceof ErrorCodeException) {
-                            switch (((ErrorCodeException) e).getCode()) {
-                            case DB_UNAVAILABLE : be = new BabuDBException(
-                                    ErrorCode.NO_SUCH_DB, e.getMessage());
-                                    break;
-                            case ENTRY_UNAVAILABLE : be = new BabuDBException(
-                                    ErrorCode.NO_SUCH_INDEX, e.getMessage());
-                                    break;
-                            }
+                            be = new BabuDBException(mapTransmissionError(
+                                    ((ErrorCodeException) e).getCode()),e.getMessage());
                         }
                             
                         listener.failed(be, context);
@@ -334,22 +290,9 @@ class DatabaseProxy implements DatabaseInternal {
                 try {
                     return r.get();
                 } catch (ErrorCodeException ece) {
-                    switch (ece.getCode()) {
-                    case DB_UNAVAILABLE : 
-                        throw new BabuDBException(ErrorCode.NO_SUCH_DB, 
-                                                  ece.getMessage());
-                        
-                    case ENTRY_UNAVAILABLE : 
-                        throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, 
-                                                  ece.getMessage());
-                        
-                    default : 
-                        throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
-                                ece.getMessage());
-                    }
+                    throw new BabuDBException(mapTransmissionError(ece.getCode()),ece.getMessage());
                 } catch (Exception e) {
-                    throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
-                            e.getMessage());
+                    throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
                 }
             }
         };
@@ -409,14 +352,8 @@ class DatabaseProxy implements DatabaseInternal {
                                 ErrorCode.REPLICATION_FAILURE, e.getMessage());
                         
                         if (e instanceof ErrorCodeException) {
-                            switch (((ErrorCodeException) e).getCode()) {
-                            case DB_UNAVAILABLE : be = new BabuDBException(
-                                    ErrorCode.NO_SUCH_DB, e.getMessage());
-                                    break;
-                            case ENTRY_UNAVAILABLE : be = new BabuDBException(
-                                    ErrorCode.NO_SUCH_INDEX, e.getMessage());
-                                    break;
-                            }
+                            be = new BabuDBException(mapTransmissionError(
+                                    ((ErrorCodeException) e).getCode()),e.getMessage());
                         }
                             
                         listener.failed(be, context);
@@ -429,22 +366,9 @@ class DatabaseProxy implements DatabaseInternal {
                 try {
                     return r.get();
                 } catch (ErrorCodeException ece) {
-                    switch (ece.getCode()) {
-                    case DB_UNAVAILABLE : 
-                        throw new BabuDBException(ErrorCode.NO_SUCH_DB, 
-                                                  ece.getMessage());
-                        
-                    case ENTRY_UNAVAILABLE : 
-                        throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, 
-                                                  ece.getMessage());
-                        
-                    default : 
-                        throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
-                                ece.getMessage());
-                    }
+                    throw new BabuDBException(mapTransmissionError(ece.getCode()),ece.getMessage());
                 } catch (Exception e) {
-                    throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
-                            e.getMessage());
+                    throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
                 }
             }
         };
@@ -505,14 +429,8 @@ class DatabaseProxy implements DatabaseInternal {
                                 ErrorCode.REPLICATION_FAILURE, e.getMessage());
                         
                         if (e instanceof ErrorCodeException) {
-                            switch (((ErrorCodeException) e).getCode()) {
-                            case DB_UNAVAILABLE : be = new BabuDBException(
-                                    ErrorCode.NO_SUCH_DB, e.getMessage());
-                                    break;
-                            case ENTRY_UNAVAILABLE : be = new BabuDBException(
-                                    ErrorCode.NO_SUCH_INDEX, e.getMessage());
-                                    break;
-                            }
+                            be = new BabuDBException(mapTransmissionError(
+                                    ((ErrorCodeException) e).getCode()),e.getMessage());
                         }
                             
                         listener.failed(be, context);
@@ -525,22 +443,9 @@ class DatabaseProxy implements DatabaseInternal {
                 try {
                     return r.get();
                 } catch (ErrorCodeException ece) {
-                    switch (ece.getCode()) {
-                    case DB_UNAVAILABLE : 
-                        throw new BabuDBException(ErrorCode.NO_SUCH_DB, 
-                                                  ece.getMessage());
-                        
-                    case ENTRY_UNAVAILABLE : 
-                        throw new BabuDBException(ErrorCode.NO_SUCH_INDEX, 
-                                                  ece.getMessage());
-                        
-                    default : 
-                        throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
-                                ece.getMessage());
-                    }
+                    throw new BabuDBException(mapTransmissionError(ece.getCode()),ece.getMessage());
                 } catch (Exception e) {
-                    throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
-                            e.getMessage());
+                    throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
                 }
             }
         };
@@ -681,11 +586,12 @@ class DatabaseProxy implements DatabaseInternal {
      */
     private InetSocketAddress getServerToPerformAt() throws BabuDBException {
         
-        InetSocketAddress master = dbMan.getReplicationManager().getMaster();
-        
-        if (master == null) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
-                    "A majority of servers is currently not available.");
+        InetSocketAddress master;
+        try {
+            master = dbMan.getReplicationManager().getMaster();
+        } catch (InterruptedException e) {
+            throw new BabuDBException(ErrorCode.INTERRUPTED, 
+                "Waiting for a lease holder was interrupted.", e);
         }
         
         boolean isMaster = dbMan.getReplicationManager().isItMe(master);

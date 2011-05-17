@@ -42,19 +42,19 @@ public class FleaseHolder implements FleaseStatusListener {
     }
     
     /**
-     * May block for at most <code>DELAY_TO_WAIT_FOR_LEASE_MS</code> ms for a valid lease to become 
-     * available.
+     * May block for a valid lease to become available.
      * 
-     * @return the address of the currently valid leaseHolder.
+     * @param timeout - in ms to wait for a lease holder to become available. 
+     *                  May be 0 to wait forever.
+     * 
+     * @return the address of the currently valid leaseHolder. May be null if time runs out before a 
+     *         new lease holder has become available.
+     * @throws InterruptedException 
      */
-    synchronized InetSocketAddress getLeaseHolderAddress() {
+    synchronized InetSocketAddress getLeaseHolderAddress(int timeout) throws InterruptedException {
         
-        try {
-            if (lease == null) {
-                wait();
-            }
-        } catch (InterruptedException e) {
-            /* I don't care */
+        if (lease == null || !lease.isValid()) {
+            wait(timeout);
         }
         
         return (lease != null && lease.isValid()) ? getAddress(lease.getLeaseHolder()) : null;
@@ -86,7 +86,6 @@ public class FleaseHolder implements FleaseStatusListener {
         
         synchronized (this) {
             lease = Flease.EMPTY_LEASE;
-            notifyAll();
         }
     }
 

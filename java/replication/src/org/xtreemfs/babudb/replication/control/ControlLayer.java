@@ -163,8 +163,8 @@ public class ControlLayer extends TopLayer {
      * @see org.xtreemfs.babudb.replication.control.ControlLayerInterface#getLeaseHolder()
      */
     @Override
-    public InetSocketAddress getLeaseHolder() {
-        return leaseHolder.getLeaseHolderAddress();
+    public InetSocketAddress getLeaseHolder(int timeout) throws InterruptedException {
+        return leaseHolder.getLeaseHolderAddress(timeout);
     }
     
     /* (non-Javadoc)

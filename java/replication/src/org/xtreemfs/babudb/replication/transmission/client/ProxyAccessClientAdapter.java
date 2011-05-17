@@ -9,8 +9,10 @@ package org.xtreemfs.babudb.replication.transmission.client;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -232,7 +234,7 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                         int count = response.getLengthCount();
                         assert (count % 2 == 0);
                         
-                        Map<byte[], byte[]> m = new HashMap<byte[], byte[]>();
+                        List<Entry<byte[], byte[]>> m = new ArrayList<Entry<byte[],byte[]>>();
                         byte[] k = null, v = null;
                         for (int i = 0; i < count; i++) {
                             int length = response.getLength(i);
@@ -242,11 +244,11 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                             if (i % 2 == 0) {
                                 k = v;
                             } else {
-                                m.put(k, v);
+                                m.add(new SimpleEntry<byte[], byte[]>(k, v));
                             }
                         }
                         
-                        final Iterator<Entry<byte[],byte[]>> iter = m.entrySet().iterator();
+                        final Iterator<Entry<byte[],byte[]>> iter = m.iterator();
                         return new ResultSet<byte[],byte[]>() {
                             
                             @Override
@@ -316,7 +318,7 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                         int count = response.getLengthCount();
                         assert (count % 2 == 0);
                         
-                        Map<byte[], byte[]> m = new HashMap<byte[], byte[]>();
+                        List<Entry<byte[], byte[]>> m = new ArrayList<Entry<byte[],byte[]>>();
                         byte[] k = null, v = null;
                         for (int i = 0; i < count; i++) {
                             int length = response.getLength(i);
@@ -326,11 +328,11 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                             if (i % 2 == 0) {
                                 k = v;
                             } else {
-                                m.put(k, v);
+                                m.add(new SimpleEntry<byte[], byte[]>(k, v));
                             }
                         }
                         
-                        final Iterator<Entry<byte[],byte[]>> iter = m.entrySet().iterator();
+                        final Iterator<Entry<byte[],byte[]>> iter = m.iterator();
                         return new ResultSet<byte[],byte[]>() {
                             
                             @Override
@@ -404,7 +406,7 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                         int count = response.getLengthCount();
                         assert (count % 2 == 0);
                         
-                        Map<byte[], byte[]> m = new HashMap<byte[], byte[]>();
+                        List<Entry<byte[], byte[]>> m = new ArrayList<Entry<byte[],byte[]>>();
                         byte[] k = null, v = null;
                         for (int i = 0; i < count; i++) {
                             int length = response.getLength(i);
@@ -414,11 +416,11 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                             if (i % 2 == 0) {
                                 k = v;
                             } else {
-                                m.put(k, v);
+                                m.add(new SimpleEntry<byte[], byte[]>(k, v));
                             }
                         }
                         
-                        final Iterator<Entry<byte[],byte[]>> iter = m.entrySet().iterator();
+                        final Iterator<Entry<byte[],byte[]>> iter = m.iterator();
                         return new ResultSet<byte[],byte[]>() {
                             
                             @Override
@@ -494,7 +496,7 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                         int count = response.getLengthCount();
                         assert (count % 2 == 0);
                         
-                        Map<byte[], byte[]> m = new HashMap<byte[], byte[]>();
+                        List<Entry<byte[], byte[]>> m = new ArrayList<Entry<byte[],byte[]>>();
                         byte[] k = null, v = null;
                         for (int i = 0; i < count; i++) {
                             int length = response.getLength(i);
@@ -504,11 +506,11 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                             if (i % 2 == 0) {
                                 k = v;
                             } else {
-                                m.put(k, v);
+                                m.add(new SimpleEntry<byte[], byte[]>(k, v));
                             }
                         }
                         
-                        final Iterator<Entry<byte[],byte[]>> iter = m.entrySet().iterator();
+                        final Iterator<Entry<byte[],byte[]>> iter = m.iterator();
                         return new ResultSet<byte[],byte[]>() {
                             
                             @Override
@@ -585,6 +587,40 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                     throw e;
                 }
             };
+        }
+    }
+    
+    /**
+     * Simple {@link Entry} implementation.
+     * 
+     * @author flangner
+     * @since 05/17/2011
+     * @param <K>
+     * @param <V>
+     */
+    private static class SimpleEntry<K, V> implements Entry<K, V> {
+
+        private final K key;
+        private final V value;
+        
+        private SimpleEntry(K key, V value) {
+            this.key = key;
+            this.value = value;
+        }
+        
+        @Override
+        public K getKey() {
+            return key;
+        }
+
+        @Override
+        public V getValue() {
+            return value;
+        }
+
+        @Override
+        public V setValue(V value) {
+            throw new UnsupportedOperationException();
         }
     }
 }

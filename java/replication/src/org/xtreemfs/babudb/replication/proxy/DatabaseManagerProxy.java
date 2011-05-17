@@ -7,6 +7,8 @@
  */
 package org.xtreemfs.babudb.replication.proxy;
 
+import static org.xtreemfs.babudb.replication.transmission.ErrorCode.mapTransmissionError;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Collection;
@@ -76,14 +78,8 @@ class DatabaseManagerProxy implements DatabaseManagerInternal {
             int dbId = client.getDatabase(dbName, master).get();
             return new DatabaseProxy(dbName, dbId, replicationPolicy, this);
             
-        } catch (ErrorCodeException e) {
-            
-            if (org.xtreemfs.babudb.replication.transmission.ErrorCode.DB_UNAVAILABLE == 
-                    e.getCode()) {
-                throw new BabuDBException(ErrorCode.NO_SUCH_DB, e.getMessage());
-            }
-            
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
+        } catch (ErrorCodeException ece) {
+            throw new BabuDBException(mapTransmissionError(ece.getCode()),ece.getMessage());
         } catch (Exception e) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
         }
@@ -187,11 +183,12 @@ class DatabaseManagerProxy implements DatabaseManagerInternal {
      * @throws BabuDBException if replication is currently not available.
      */
     private InetSocketAddress getServerToPerformAt() throws BabuDBException {
-        InetSocketAddress master = replicationManager.getMaster();
-        
-        if (master == null) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
-                    "A majority of servers is currently not available.");
+        InetSocketAddress master;
+        try {
+            master = replicationManager.getMaster();
+        } catch (InterruptedException e) {
+            throw new BabuDBException(ErrorCode.INTERRUPTED, 
+                "Waiting for a lease holder was interrupted.", e);
         }
         
         if (replicationManager.isItMe(master) || 
@@ -259,28 +256,20 @@ class DatabaseManagerProxy implements DatabaseManagerInternal {
         if (master == null) {
             return new DatabaseProxy(localDBMan.getDatabase(dbId), replicationPolicy, this);
         }
-        
+
         try {
-            
             String dbName = client.getDatabase(dbId, master).get();
             return new DatabaseProxy(dbName, dbId, replicationPolicy, this);
-            
-        } catch (ErrorCodeException e) {
-            
-            if (org.xtreemfs.babudb.replication.transmission.ErrorCode.DB_UNAVAILABLE == 
-                    e.getCode()) {
-                throw new BabuDBException(ErrorCode.NO_SUCH_DB, e.getMessage());
-            }
-            
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
+        } catch (ErrorCodeException ece) {
+            throw new BabuDBException(mapTransmissionError(ece.getCode()),ece.getMessage());
         } catch (Exception e) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
         }
     }
     
-    /*
-     * TODO is it really necessary to not support the internal mechanisms of the DatabaseManager?
-     */
+/*
+ * TODO is it really necessary to not support the internal mechanisms of the DatabaseManager?
+ */
 
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getNextDBId()

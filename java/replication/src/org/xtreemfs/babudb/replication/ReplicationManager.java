@@ -81,9 +81,10 @@ public class ReplicationManager implements LifeCycleListener {
     /**
      * @return the currently designated master, or null, if BabuDB is 
      *         suspended at the moment.
+     * @throws InterruptedException 
      */
-    public InetSocketAddress getMaster() {
-        return controlLayer.getLeaseHolder();
+    public InetSocketAddress getMaster() throws InterruptedException {
+        return controlLayer.getLeaseHolder(0);
     }
     
     /**

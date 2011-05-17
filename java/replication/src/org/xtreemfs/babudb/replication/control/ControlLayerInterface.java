@@ -27,10 +27,13 @@ public interface ControlLayerInterface extends TimeDriftListener, FleaseMessageR
         FleaseEventListener{
 
     /**
-     * @return the address of the current lease holder, or null if the lease is 
-     *         not available at the moment.
+     * Waits until a lease holder becomes available if necessary.
+     * @param timeout - in ms to wait for a lease holder to become available. 
+     *                  May be 0 to wait forever.
+     * 
+     * @return the address of the current lease holder.
      */
-    public InetSocketAddress getLeaseHolder();
+    public InetSocketAddress getLeaseHolder(int timeout) throws InterruptedException;
     
     /**
      * @param address - the address to compare with.

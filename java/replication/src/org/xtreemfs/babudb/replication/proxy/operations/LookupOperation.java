@@ -80,12 +80,12 @@ public class LookupOperation extends Operation {
                 @Override
                 public void failed(BabuDBException error, Object context) {
                     rq.sendSuccess(ErrorCodeResponse.newBuilder().setErrorCode(
-                            ErrorCode.ENTRY_UNAVAILABLE).build());
+                            ErrorCode.mapUserError(error.getErrorCode())).build());
                 }
             });
         } catch (BabuDBException e) {
             rq.sendSuccess(ErrorCodeResponse.newBuilder().setErrorCode(
-                    ErrorCode.DB_UNAVAILABLE).build());
+                    ErrorCode.mapUserError(e.getErrorCode())).build());
         }
     }
 }

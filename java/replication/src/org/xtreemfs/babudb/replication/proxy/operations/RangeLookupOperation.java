@@ -7,8 +7,8 @@
  */
 package org.xtreemfs.babudb.replication.proxy.operations;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map.Entry;
 
 import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
@@ -98,20 +98,17 @@ public class RangeLookupOperation extends Operation {
                     
                     // estimate the result size
                     int size = 0;
-                    Map<byte[], byte[]> tmp = new HashMap<byte[], byte[]>();
+                    List<Entry<byte[], byte[]>> tmp = new ArrayList<Entry<byte[], byte[]>>();
                     while (result.hasNext()) {
                         Entry<byte[], byte[]> entry = result.next();
-                        byte[] key = entry.getKey();
-                        byte[] value = entry.getValue();
-
-                        size += key.length + value.length;
-                        tmp.put(key, value);
+                        size += entry.getKey().length + entry.getValue().length;
+                        tmp.add(entry);
                     }
                     result.free();
                     
                     // prepare the response
                     ReusableBuffer data = BufferPool.allocate(size);
-                    for (Entry<byte[], byte[]> entry : tmp.entrySet()) {
+                    for (Entry<byte[], byte[]> entry : tmp) {
                         r.addLength(entry.getKey().length);
                         r.addLength(entry.getValue().length);
                         
@@ -126,12 +123,12 @@ public class RangeLookupOperation extends Operation {
                 @Override
                 public void failed(BabuDBException error, Object context) {
                     rq.sendSuccess(ErrorCodeResponse.newBuilder().setErrorCode(
-                            ErrorCode.ENTRY_UNAVAILABLE).build());
+                            ErrorCode.mapUserError(error.getErrorCode())).build());
                 }
             });
         } catch (BabuDBException e) {
             rq.sendSuccess(ErrorCodeResponse.newBuilder().setErrorCode(
-                    ErrorCode.DB_UNAVAILABLE).build());
+                    ErrorCode.mapUserError(e.getErrorCode())).build());
         } finally {
             if (f != null) BufferPool.free(f);
             if (t != null) BufferPool.free(t);

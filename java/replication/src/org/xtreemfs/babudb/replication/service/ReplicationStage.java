@@ -375,8 +375,12 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                     
                     // manual load failed. retry if master has not changed meanwhile
                     // ignore the failure otherwise
-                    if (master.equals(topLayer.getLeaseHolder())) {
-                        createStableState(lastLSNOnView, master);
+                    try {
+                        if (master.equals(topLayer.getLeaseHolder(1))) {
+                            createStableState(lastLSNOnView, master);
+                        }
+                    } catch (InterruptedException e) {
+                        /* ignored */
                     } 
                 }
             });

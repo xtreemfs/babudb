@@ -81,12 +81,15 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
             
             // check if this service has been locked and increment the access counter
             synchronized (accessCounter) {
-                if (isLocked()) {
-                    throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
-                            "This service has currently been locked by the replication plugin.");                   
-                } else {
-                    accessCounter.incrementAndGet();
-                }   
+                try {
+                    while (isLocked()) {
+                        accessCounter.wait();
+                    }
+                } catch (InterruptedException e) {
+                    throw new BabuDBException(ErrorCode.INTERRUPTED, 
+                            "Waiting for a lease holder was interrupted.", e);    
+                }
+                accessCounter.incrementAndGet();
             }
             return executeLocallyAndReplicate(txn, serialized);
         } else {      
@@ -191,11 +194,12 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
      */
     private InetSocketAddress getServerToPerformAt (byte aggregatedType) throws BabuDBException {
         
-        InetSocketAddress master = replMan.getMaster();
-         
-        if (master == null) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
-                    "A majority of servers is currently not available.");
+        InetSocketAddress master;
+        try {
+            master = replMan.getMaster();
+        } catch (InterruptedException e) {
+            throw new BabuDBException(ErrorCode.INTERRUPTED, 
+                    "Waiting for a lease holder was interrupted.", e);
         }
                
         if ((replMan.isItMe(master)) ||
