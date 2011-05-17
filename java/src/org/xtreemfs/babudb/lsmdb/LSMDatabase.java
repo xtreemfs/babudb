@@ -331,6 +331,13 @@ public class LSMDatabase {
                     + databaseName + ")...");
             
             File tmpDir = new File(databaseDir, ".currentSnapshot");
+            File targetDir = new File(databaseDir, getSnapshotFilename(index, viewId, sequenceNo));
+            
+            if (targetDir.exists()) {
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, "skipping index'" + index
+                    + ", as a valid checkpoint (" + targetDir + ") exists already");
+                continue;
+            }
             
             // clean up incomplete old checkpoints if necessary
             if (tmpDir.exists())
@@ -338,7 +345,6 @@ public class LSMDatabase {
             
             tree.materializeSnapshot(tmpDir.getAbsolutePath(), snapIds[index]);
             
-            File targetDir = new File(databaseDir, getSnapshotFilename(index, viewId, sequenceNo));
             if (!tmpDir.renameTo(targetDir))
                 throw new IOException("could not rename '" + tmpDir + "' to " + targetDir);
             
@@ -406,7 +412,7 @@ public class LSMDatabase {
             try {
                 tree.linkToSnapshot(databaseDir + File.separator
                     + getSnapshotFilename(index, viewId, sequenceNo));
-            } catch(ClosedByInterruptException exc) {
+            } catch (ClosedByInterruptException exc) {
                 Logging.logError(Logging.LEVEL_DEBUG, this, exc);
             } catch (IOException exc) {
                 Logging.logError(Logging.LEVEL_ERROR, this, exc);
@@ -537,16 +543,15 @@ public class LSMDatabase {
         return databaseId;
     }
     
-    
     /**
      * @author flangner
      * @since 01/04/2011
      */
     public final static class DBFileMetaData {
-
+        
         public final String file;
         
-        public final long size;
+        public final long   size;
         
         public DBFileMetaData(String file, long size) {
             this.file = file;

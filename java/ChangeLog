@@ -47,7 +47,6 @@
   * iterators formerly returned upon prefix and range lookups have been replaced with result sets, which should be explicitly freed to minimize memory footprint
 
 2011-05-XX: release 0.5.1
-  * static initialization redefined
-
-2011-05-XX: release 0.6.0
-  * added rudimentary transactions
+  * fixed bug that caused problems with the log replay in the event of asynchronous log appends
+  * BabuDB shutdowns are now performed gracefully by default, which means that pending log appends will be written to disk before terminating the database
+  * added experimental support for light-weight transactions, which can atomically execute groups of arbitrary operations 

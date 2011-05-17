@@ -72,9 +72,8 @@ public class BabuDBTest extends TestCase {
     @Test
     public void testShutdownRestart() throws Exception {
         
-        database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0,
-            SyncMode.ASYNC, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1,
-            LOG_LEVEL));
+        database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0, SyncMode.ASYNC, 0,
+            0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1, LOG_LEVEL));
         
         Database db = database.getDatabaseManager().createDatabase("test", 3);
         DatabaseInsertGroup ig = db.createInsertGroup();
@@ -85,9 +84,8 @@ public class BabuDBTest extends TestCase {
         
         database.shutdown();
         
-        database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0,
-            SyncMode.ASYNC, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1,
-            LOG_LEVEL));
+        database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0, SyncMode.ASYNC, 0,
+            0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1, LOG_LEVEL));
         db = database.getDatabaseManager().getDatabase("test");
         byte[] result = db.lookup(0, "Yagga".getBytes(), null).get();
         assertNotNull(result);
@@ -112,8 +110,7 @@ public class BabuDBTest extends TestCase {
     @Test
     public void testReplayAfterCrash() throws Exception {
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1,
-            LOG_LEVEL));
+            SyncMode.SYNC_WRITE, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1, LOG_LEVEL));
         Database db = database.getDatabaseManager().createDatabase("test", 2);
         db.singleInsert(0, "Yagga".getBytes(), "Brabbel".getBytes(), null).get();
         database.getCheckpointer().checkpoint();
@@ -135,8 +132,7 @@ public class BabuDBTest extends TestCase {
         Thread.sleep(500);
         
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 2, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1,
-            LOG_LEVEL));
+            SyncMode.SYNC_WRITE, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1, LOG_LEVEL));
         db = database.getDatabaseManager().getDatabase("test");
         result = db.lookup(0, "Yagga".getBytes(), null).get();
         assertNotNull(result);
@@ -161,8 +157,7 @@ public class BabuDBTest extends TestCase {
     @Test
     public void testShutdownAfterCheckpoint() throws Exception {
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1,
-            LOG_LEVEL));
+            SyncMode.SYNC_WRITE, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1, LOG_LEVEL));
         Database db = database.getDatabaseManager().createDatabase("test", 2);
         db.singleInsert(0, "Yagga".getBytes(), "Brabbel".getBytes(), null).get();
         
@@ -184,8 +179,7 @@ public class BabuDBTest extends TestCase {
         database.shutdown();
         
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 2, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1,
-            LOG_LEVEL));
+            SyncMode.SYNC_WRITE, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1, LOG_LEVEL));
         db = database.getDatabaseManager().getDatabase("test");
         result = db.lookup(0, "Yagga".getBytes(), null).get();
         assertNotNull(result);
@@ -210,8 +204,7 @@ public class BabuDBTest extends TestCase {
     @Test
     public void testMultipleIndices() throws Exception {
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1,
-            LOG_LEVEL));
+            SyncMode.SYNC_WRITE, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1, LOG_LEVEL));
         Database db = database.getDatabaseManager().createDatabase("test", 3);
         
         DatabaseInsertGroup ir = db.createInsertGroup();
@@ -224,8 +217,7 @@ public class BabuDBTest extends TestCase {
         database.shutdown();
         
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 2, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1,
-            LOG_LEVEL));
+            SyncMode.SYNC_WRITE, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1, LOG_LEVEL));
         db = database.getDatabaseManager().getDatabase("test");
         
         byte[] result = db.lookup(0, "Key1".getBytes(), null).get();
@@ -251,8 +243,7 @@ public class BabuDBTest extends TestCase {
     @Test
     public void testMultipleIndicesAndCheckpoint() throws Exception {
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1,
-            LOG_LEVEL));
+            SyncMode.SYNC_WRITE, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1, LOG_LEVEL));
         Database db = database.getDatabaseManager().createDatabase("test", 4);
         
         DatabaseInsertGroup ir = db.createInsertGroup();
@@ -300,8 +291,7 @@ public class BabuDBTest extends TestCase {
     public void testUserDefinedLookup() throws Exception {
         
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
-            SyncMode.SYNC_WRITE, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1,
-            LOG_LEVEL));
+            SyncMode.SYNC_WRITE, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1, LOG_LEVEL));
         Database db = database.getDatabaseManager().createDatabase("test", 3);
         
         DatabaseInsertGroup ir = db.createInsertGroup();
@@ -336,9 +326,8 @@ public class BabuDBTest extends TestCase {
         
         Logging.logMessage(Logging.LEVEL_DEBUG, Category.test, this, BufferPool.getStatus());
         
-        database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0,
-            SyncMode.ASYNC, 0, 50, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1,
-            LOG_LEVEL));
+        database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0, SyncMode.ASYNC, 0,
+            50, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1, LOG_LEVEL));
         Database db = database.getDatabaseManager().createDatabase("test", 2);
         
         for (int i = 0; i < 100000; i++) {
@@ -497,25 +486,24 @@ public class BabuDBTest extends TestCase {
     
     public void testInitScript() throws BabuDBException {
         
-        database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0,
-                SyncMode.ASYNC, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1,
-                LOG_LEVEL), new StaticInitialization() {
-                    
-                    @Override
-                    public void initialize(DatabaseManager dbMan, SnapshotManager sMan) {
-                        try {
-                        Database db = dbMan.createDatabase("test", 3);
-                        DatabaseInsertGroup ig = db.createInsertGroup();
-                        ig.addInsert(0, "Yagga".getBytes(), "Brabbel".getBytes());
-                        ig.addInsert(1, "Brabbel".getBytes(), "Blupp".getBytes());
-                        ig.addInsert(2, "Blupp".getBytes(), "Blahh".getBytes());
-                        db.insert(ig, null).get();
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            fail("No error should occur.");
-                        }
-                    }
-                });
+        database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0, SyncMode.ASYNC, 0,
+            0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1, LOG_LEVEL), new StaticInitialization() {
+            
+            @Override
+            public void initialize(DatabaseManager dbMan, SnapshotManager sMan) {
+                try {
+                    Database db = dbMan.createDatabase("test", 3);
+                    DatabaseInsertGroup ig = db.createInsertGroup();
+                    ig.addInsert(0, "Yagga".getBytes(), "Brabbel".getBytes());
+                    ig.addInsert(1, "Brabbel".getBytes(), "Blupp".getBytes());
+                    ig.addInsert(2, "Blupp".getBytes(), "Blahh".getBytes());
+                    db.insert(ig, null).get();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    fail("No error should occur.");
+                }
+            }
+        });
         
         Database db = database.getDatabaseManager().getDatabase("test");
         byte[] result = db.lookup(0, "Yagga".getBytes(), null).get();
@@ -535,15 +523,14 @@ public class BabuDBTest extends TestCase {
         
         database.shutdown();
         
-        database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0,
-                SyncMode.ASYNC, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1,
-                LOG_LEVEL), new StaticInitialization() {
-                    
-                    @Override
-                    public void initialize(DatabaseManager dbMan, SnapshotManager sMan) {
-                        fail("May not be executed if database is not empty.");
-                    }
-                });
+        database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0, SyncMode.ASYNC, 0,
+            0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1, LOG_LEVEL), new StaticInitialization() {
+            
+            @Override
+            public void initialize(DatabaseManager dbMan, SnapshotManager sMan) {
+                fail("May not be executed if database is not empty.");
+            }
+        });
         
         db = database.getDatabaseManager().getDatabase("test");
         result = db.lookup(0, "Yagga".getBytes(), null).get();
