@@ -29,9 +29,11 @@ import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.replication.policy.Policy;
 import org.xtreemfs.babudb.replication.service.accounting.ReplicateResponse;
 import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.ClientResponseAvailableListener;
+import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter.ErrorCodeException;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
 import static org.xtreemfs.babudb.log.LogEntry.*;
+import static org.xtreemfs.babudb.replication.transmission.ErrorCode.mapTransmissionError;
 import static org.xtreemfs.babudb.api.dev.transaction.TransactionInternal.*;
 
 /**
@@ -313,7 +315,15 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
          */
         @Override
         public void requestFailed(Exception e) {
-            failed(new BabuDBException(ErrorCode.IO_ERROR, e.getMessage()));
+            BabuDBException be = new BabuDBException(
+                    ErrorCode.REPLICATION_FAILURE, e.getMessage());
+            
+            if (e instanceof ErrorCodeException) {
+                be = new BabuDBException(mapTransmissionError(
+                        ((ErrorCodeException) e).getCode()),e.getMessage());
+            }
+            
+            failed(be);
         }
 
         /* (non-Javadoc)
