@@ -7,6 +7,7 @@
  */
 package org.xtreemfs.babudb;
 
+import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -22,6 +23,7 @@ import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
 import static org.xtreemfs.babudb.api.dev.transaction.TransactionInternal.*;
@@ -74,8 +76,34 @@ class TransactionManagerImpl extends TransactionManagerInternal {
             ReusableBuffer payload) throws BabuDBException {
               
         // before processing
-        for (OperationInternal operation : txn) {
-            inMemoryProcessing.get(operation.getType()).before(operation);
+        for (int i = 0; i < txn.size(); i++) {
+            try {
+                OperationInternal operation = txn.get(i);
+                inMemoryProcessing.get(operation.getType()).before(operation);
+                
+            } catch (BabuDBException be) {
+                
+                // have there already been some successful executions?
+                if (i > 0) {
+                
+                    // trim the transaction
+                    txn.cutOfAt(i, be);
+                    BufferPool.free(payload);
+                    payload = null;
+                    try {
+                        payload = BufferPool.allocate(txn.getSize());
+                        txn.serialize(payload);
+                    } catch (IOException ioe) {
+                        
+                        if (payload != null) BufferPool.free(payload);
+                        throw new BabuDBException(ErrorCode.IO_ERROR, ioe.getMessage(), ioe);
+                    }
+                } else {
+                    
+                    BufferPool.free(payload);
+                    throw be;
+                }
+            }
         }
         
         // build the entry
@@ -95,12 +123,17 @@ class TransactionManagerImpl extends TransactionManagerInternal {
                     for (OperationInternal operation : txn) {
                         inMemoryProcessing.get(operation.getType()).after(operation);
                     }
-                    result.finished();
+                    BabuDBException irregs = txn.getIrregularities();
+                    if (irregs == null) result.finished();
                     
                     // notify listeners
                     for (TransactionListener l : listeners) {
                         l.transactionPerformed(txn);
                     }
+                    
+                    if (irregs != null) throw new BabuDBException(irregs.getErrorCode(), 
+                            "Transaction failed at the execution of the " + (txn.size() + 1) + 
+                            "th operation, because: " + irregs.getMessage(), irregs);
                 } catch (BabuDBException error) {
                     result.failed(error);
                 } finally {

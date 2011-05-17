@@ -90,8 +90,8 @@ public abstract class TransactionManagerInternal {
             throws BabuDBException {
         
         try {
-            ReusableBuffer buffer = 
-                transaction.serialize(BufferPool.allocate(transaction.getSize()));
+            ReusableBuffer buffer = transaction.serialize(
+                    BufferPool.allocate(transaction.getSize()));
             buffer.flip();
             return makePersistent(transaction, buffer);
         } catch (IOException e) {

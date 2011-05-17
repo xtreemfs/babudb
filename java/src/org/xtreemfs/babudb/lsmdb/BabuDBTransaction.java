@@ -22,6 +22,7 @@ import java.util.TreeSet;
 import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.dev.transaction.TransactionInternal;
 import org.xtreemfs.babudb.api.dev.transaction.OperationInternal;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.api.transaction.Operation;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
@@ -37,6 +38,8 @@ import org.xtreemfs.foundation.buffer.ReusableBuffer;
  */
 public class BabuDBTransaction extends TransactionInternal {
     private static final long serialVersionUID = 3772453774367730087L;
+    
+    private BabuDBException error = null;
     
     @Override
     public TransactionInternal createSnapshot(String databaseName, SnapshotConfig config) {
@@ -179,6 +182,34 @@ public class BabuDBTransaction extends TransactionInternal {
         }
         
         return buffer;
+    }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.transaction.TransactionInternal#cutOfAt(int, 
+     *          org.xtreemfs.babudb.api.exception.BabuDBException)
+     */
+    @Override
+    public void cutOfAt(int position, BabuDBException reason) {
+        
+        assert (reason != null && error == null);
+        error = reason;
+        
+        // position = 3
+        // 0,1,2,3,4,5 (6)
+        // 0,1,2,3,4   (5)
+        // 0,1,2,3     (4)
+        // 0,1,2       (3)
+        while (size() > position) {
+            removeLast();
+        }
+    }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.transaction.TransactionInternal#getIrregularities()
+     */
+    @Override
+    public BabuDBException getIrregularities() {
+        return error;
     }
         
     public static class BabuDBOperation extends OperationInternal {

@@ -12,6 +12,7 @@ import java.util.LinkedList;
 
 import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.dev.transaction.OperationInternal;
+import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.api.transaction.Operation;
 import org.xtreemfs.babudb.api.transaction.Transaction;
@@ -211,6 +212,19 @@ public abstract class TransactionInternal extends LinkedList<OperationInternal>
      * @return the buffer.
      */
     public abstract ReusableBuffer serialize(ReusableBuffer buffer) throws IOException;
+    
+    /**
+     * Drops operations from position on. reason for dropping the operations.
+     * 
+     * @param position
+     */
+    public abstract void cutOfAt(int position, BabuDBException reason);
+    
+    /**
+     * @return an exception describing irregularities that occurred during execution, or null, if 
+     *         this transaction was executed correctly.
+     */
+    public abstract BabuDBException getIrregularities();
     
     /**
      * Deserializes the transaction.
