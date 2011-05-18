@@ -584,6 +584,10 @@ public class BabuDBImpl implements BabuDBInternal {
                     le = it.next();
                     byte type = le.getPayloadType();
                     
+                    Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                            "Reading entry LSN(%s) of type (%d) with %d bytes payload from log.", 
+                            le.getLSN().toString(), (int) type, le.getPayload().remaining());
+                    
                     // in normal there are only transactions to be replayed
                     if (type == PAYLOAD_TYPE_TRANSACTION) {
                         txnMan.replayTransaction(le);

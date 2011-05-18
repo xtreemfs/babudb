@@ -237,6 +237,7 @@ public class LogEntry {
      */
     @Override
     public String toString() {
-        return "LSN(" + viewId + ":" + logSequenceNo + ")";
+        return "LSN(" + viewId + ":" + logSequenceNo + ") with " + payload.remaining() + 
+               " bytes of payload.";
     }
 }

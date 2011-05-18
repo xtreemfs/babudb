@@ -480,9 +480,16 @@ public class DiskLogger extends LifeCycleThread {
                 ReusableBuffer buffer = null;
                 try {
                     buffer = le.serialize(csumAlgo);
-                                       
+                        
+                    Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                            "Writing entry LSN(%d:%d) with %d bytes payload [%s] to log. " +
+                            "[serialized %d bytes]", viewID, seqNo, 
+                            le.getPayload().remaining(), new String(le.getPayload().array()), 
+                            buffer.remaining());
+                    
                     // write the LogEntry to the local disk
                     channel.write(buffer.getBuffer());
+                    
                 } finally {
                     csumAlgo.reset();
                     if (buffer != null) BufferPool.free(buffer);

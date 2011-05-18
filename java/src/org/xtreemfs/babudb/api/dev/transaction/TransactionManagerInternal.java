@@ -114,7 +114,9 @@ public abstract class TransactionManagerInternal {
             throws BabuDBException {
                 
         try {
-            return makePersistent(deserialize(serialized), serialized);
+            TransactionInternal txn = deserialize(serialized);
+            serialized.flip();
+            return makePersistent(txn, serialized);
         } catch (IOException e) {
             throw new BabuDBException(ErrorCode.IO_ERROR, e.getMessage(), e);
         }

@@ -25,6 +25,7 @@ import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.logging.Logging;
 
 import static org.xtreemfs.babudb.api.dev.transaction.TransactionInternal.*;
 
@@ -75,6 +76,9 @@ class TransactionManagerImpl extends TransactionManagerInternal {
     public <T> BabuDBRequestResultImpl<T> makePersistent(final TransactionInternal txn, 
             ReusableBuffer payload) throws BabuDBException {
               
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "Trying to perform transaction %s ...", 
+                txn.toString());
+        
         // before processing
         for (int i = 0; i < txn.size(); i++) {
             try {
@@ -130,6 +134,9 @@ class TransactionManagerImpl extends TransactionManagerInternal {
                     for (TransactionListener l : listeners) {
                         l.transactionPerformed(txn);
                     }
+                    
+                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "... transaction %s finished.", 
+                            txn.toString());
                     
                     if (irregs != null) throw new BabuDBException(irregs.getErrorCode(), 
                             "Transaction failed at the execution of the " + (txn.size() + 1) + 
