@@ -19,6 +19,7 @@ import org.junit.Test;
 import org.xtreemfs.babudb.api.BabuDB;
 import org.xtreemfs.babudb.api.DatabaseManager;
 import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
 import org.xtreemfs.babudb.api.dev.transaction.TransactionInternal;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.api.transaction.Operation;
@@ -55,7 +56,7 @@ public class TransactionTest extends TestCase {
     private BabuDB              database;
     
     public TransactionTest() {
-        Logging.start(Logging.LEVEL_DEBUG);
+        Logging.start(LOG_LEVEL);
     }
     
     @Before
@@ -63,7 +64,7 @@ public class TransactionTest extends TestCase {
         
         FSUtils.delTree(new File(baseDir));
         
-        database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0, SyncMode.ASYNC, 0,
+        database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 3, 0, 0, SyncMode.ASYNC, 0,
             0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1, LOG_LEVEL));
         
         System.out.println("=== " + getName() + " ===");
@@ -257,8 +258,11 @@ public class TransactionTest extends TestCase {
         
         // shutdown and restart the database
         database.shutdown();
-        database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0, SyncMode.ASYNC, 0,
+        database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0, SyncMode.ASYNC, 0,
             0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1, LOG_LEVEL));
+        
+        // retrieve the dbMan of the restarted BabuDB
+        dbMan = database.getDatabaseManager();
         
         // check if the database is there
         Database db = dbMan.getDatabase("test");
@@ -281,6 +285,9 @@ public class TransactionTest extends TestCase {
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0, SyncMode.ASYNC, 0,
             0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1, LOG_LEVEL));
         
+        // retrieve the dbMan of the restarted BabuDB
+        dbMan = database.getDatabaseManager();
+        
         // check if the database is there
         db = dbMan.getDatabase("test");
         assertNotNull(db);
@@ -294,6 +301,49 @@ public class TransactionTest extends TestCase {
         value = db.lookup(1, "key".getBytes(), null).get();
         assertEquals("value", new String(value));
         
+    }
+    
+    @Test
+    public void testTransactionWorkerInteraction() throws Exception {
+                
+        Database db0 = database.getDatabaseManager().createDatabase("workerTest0", 1);
+        Database db1 = database.getDatabaseManager().createDatabase("workerTest1", 2);
+        Database db2 = database.getDatabaseManager().createDatabase("workerTest2", 3);
+        
+        // make some inserts to fill up the worker queue
+        for (int i = 0; i < 100; i++) {
+            DatabaseInsertGroup ir = db0.createInsertGroup();
+            ir.addInsert(0, (i + "").getBytes(), "bla".getBytes());
+            db0.insert(ir, null);
+            
+            ir = db1.createInsertGroup();
+            ir.addInsert(0, (i + "").getBytes(), "bla".getBytes());
+            ir.addInsert(1, (i + "").getBytes(), "blubb".getBytes());
+            db1.insert(ir, null);
+            
+            ir = db2.createInsertGroup();
+            ir.addInsert(0, (i + "").getBytes(), "bla".getBytes());
+            ir.addInsert(1, (i + "").getBytes(), "blubb".getBytes());
+            ir.addInsert(2, (i + "").getBytes(), "yagga".getBytes());
+            db2.insert(ir, null);
+        }
+        
+        // make a transaction to delete the last 3 keys of two of the databases 
+        // an update anomaly will be visible, if something went wrong
+        Transaction txn = database.getDatabaseManager().createTransaction();
+        txn.deleteRecord(db0.getName(), 0, "99".getBytes());
+        txn.deleteRecord(db0.getName(), 0, "98".getBytes());
+        txn.deleteRecord(db0.getName(), 0, "97".getBytes());
+        txn.deleteRecord(db2.getName(), 2, "99".getBytes());
+        txn.deleteRecord(db2.getName(), 2, "98".getBytes());
+        txn.deleteRecord(db2.getName(), 2, "97".getBytes());
+        database.getDatabaseManager().executeTransaction(txn);
+        assertNull(db0.lookup(0, "99".getBytes(), null).get());
+        assertNull(db0.lookup(0, "98".getBytes(), null).get());
+        assertNull(db0.lookup(0, "97".getBytes(), null).get());
+        assertNull(db2.lookup(2, "99".getBytes(), null).get());
+        assertNull(db2.lookup(2, "98".getBytes(), null).get());
+        assertNull(db2.lookup(2, "97".getBytes(), null).get());
     }
     
     @Test

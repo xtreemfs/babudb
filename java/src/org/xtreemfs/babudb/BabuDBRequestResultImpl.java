@@ -93,11 +93,10 @@ public class BabuDBRequestResultImpl<T> implements DatabaseRequestResult<T> {
      * Internal operation to run if the request failed.
      * Has to be invoked exactly one time!
      * 
-     * @param error 
-     *            has to be not null, if an error occurs.
+     * @param error - has to be not null, if an error occurs.
      */
     public void failed(BabuDBException error) {
-        finished(null,error);
+        finished(null, error);
     }
     
 /*
@@ -114,23 +113,24 @@ public class BabuDBRequestResultImpl<T> implements DatabaseRequestResult<T> {
      */
     private void finished(T result, BabuDBException error) {
         assert (result == null || error == null) : "Results are not permitted on error!";
-        assert (!finished.get()) : "The request was already finished!";
         this.error = error;
         this.result = result;
-        boolean check = finished.compareAndSet(false, true);
-        assert (check) : "The request was already finished!";
         
         // notify the synchronously waiting instances
         synchronized (finished) {
+            boolean check = finished.compareAndSet(false, true);
+            assert (check) : "The request was already finished!";
+            
             finished.notifyAll();
         }
         
         // notify the asynchronous-listener
         if (listener != null) {
-            if (error != null)
-                listener.failed(error,context);
-            else
-                listener.finished(result,context);
+            if (error != null) {
+                listener.failed(error, context);
+            } else {
+                listener.finished(result, context);
+            }
         }
     }
 
@@ -145,12 +145,14 @@ public class BabuDBRequestResultImpl<T> implements DatabaseRequestResult<T> {
         synchronized (finished) {
             assert (this.listener == null) : "There is already a listener registered!";
             if (finished.get()) {
-                if (error == null)
+                if (error == null) {
                     listener.finished(result,context);
-                else
+                } else {
                     listener.failed(error,context);
-            } else
+                }
+            } else {
                 this.listener = listener;
+            }
         }
     }
     
@@ -160,8 +162,9 @@ public class BabuDBRequestResultImpl<T> implements DatabaseRequestResult<T> {
     public T get() throws BabuDBException {
         try {
             synchronized (finished) {
-                if (!finished.get()) 
-                    finished.wait();            
+                if (!finished.get()) {
+                    finished.wait(); 
+                }
             }
         } catch (InterruptedException e) {
             throw new BabuDBException(ErrorCode.INTERRUPTED, 

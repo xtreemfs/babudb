@@ -40,7 +40,7 @@ public class DiskLoggerTest extends TestCase {
     private DiskLogger         l;
     
     public DiskLoggerTest() {
-        Logging.start(Logging.LEVEL_DEBUG);
+        Logging.start(Logging.LEVEL_ERROR);
     }
     
     @BeforeClass

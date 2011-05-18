@@ -67,14 +67,14 @@ class TransactionManagerImpl extends TransactionManagerInternal {
     }
       
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.api.dev.TransactionManagerInternal#makePersistent(
-     *          org.xtreemfs.babudb.api.dev.TransactionInternal, 
+     * @see org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal#makePersistent(
+     *          java.util.Map, org.xtreemfs.babudb.api.dev.transaction.TransactionInternal, 
      *          org.xtreemfs.foundation.buffer.ReusableBuffer)
      */
     @Override
     public <T> BabuDBRequestResultImpl<T> makePersistent(final TransactionInternal txn, 
             ReusableBuffer payload) throws BabuDBException {
-              
+        
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "Trying to perform transaction %s ...", 
                 txn.toString());
         
@@ -82,6 +82,7 @@ class TransactionManagerImpl extends TransactionManagerInternal {
         for (int i = 0; i < txn.size(); i++) {
             try {
                 OperationInternal operation = txn.get(i);
+                txn.lockResponsibleWorker(operation.getDatabaseName());
                 inMemoryProcessing.get(operation.getType()).before(operation);
                 
             } catch (BabuDBException be) {
@@ -144,6 +145,7 @@ class TransactionManagerImpl extends TransactionManagerInternal {
                     result.failed(error);
                 } finally {
                     if (entry != null) entry.free();
+                    txn.unlockWorkers();
                 }
             }
             
@@ -153,6 +155,7 @@ class TransactionManagerImpl extends TransactionManagerInternal {
                         (BabuDBException) ex : new BabuDBException(
                                 ErrorCode.INTERNAL_ERROR, ex.getMessage()));
                 if (entry != null) entry.free();
+                txn.unlockWorkers();
             }
         });
         

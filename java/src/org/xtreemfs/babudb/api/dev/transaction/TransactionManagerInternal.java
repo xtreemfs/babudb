@@ -64,14 +64,14 @@ public abstract class TransactionManagerInternal {
      * @param type
      * @param processing
      */
-    public void registerInMemoryProcessing(byte type, InMemoryProcessing processing) {
+    public final void registerInMemoryProcessing(byte type, InMemoryProcessing processing) {
         inMemoryProcessing.put(type, processing);
     }
     
     /**
      * @return the registered handlers for the in-memory processing of the transaction manager.
      */
-    public Map<Byte, InMemoryProcessing> getProcessingLogic() {
+    public final Map<Byte, InMemoryProcessing> getProcessingLogic() {
         return inMemoryProcessing;
     }
     
@@ -80,13 +80,13 @@ public abstract class TransactionManagerInternal {
      * on BabuDB has to pass this method first.
      * 
      * @param <T>
-     * @param transaction - the transaction-object. 
+     * @param transaction - the transaction-object.
      * 
      * @throws BabuDBException if something went wrong.
      * 
      * @return the result listener.
      */
-    public <T> BabuDBRequestResultImpl<T> makePersistent(TransactionInternal transaction) 
+    public final <T> BabuDBRequestResultImpl<T> makePersistent(TransactionInternal transaction) 
             throws BabuDBException {
         
         try {
@@ -98,7 +98,7 @@ public abstract class TransactionManagerInternal {
             throw new BabuDBException (ErrorCode.IO_ERROR, e.getMessage(), e);
         }
     }
-    
+        
     /**
      * Method let some operation become persistent. Every operation executed
      * on BabuDB has to pass this method first.
@@ -110,7 +110,7 @@ public abstract class TransactionManagerInternal {
      * 
      * @return the result listener.
      */
-    public <T> BabuDBRequestResultImpl<T> makePersistent(ReusableBuffer serialized) 
+    public final <T> BabuDBRequestResultImpl<T> makePersistent(ReusableBuffer serialized) 
             throws BabuDBException {
                 
         try {
@@ -152,7 +152,7 @@ public abstract class TransactionManagerInternal {
      * @throws IOException
      * @throws BabuDBException
      */
-    public void replayTransaction(LogEntry serializedTxn) throws IOException, BabuDBException {
+    public final void replayTransaction(LogEntry serializedTxn) throws IOException, BabuDBException {
         replayTransaction(deserialize(serializedTxn.getPayload()));
     }
     

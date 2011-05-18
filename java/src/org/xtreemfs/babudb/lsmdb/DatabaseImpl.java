@@ -58,7 +58,7 @@ public class DatabaseImpl implements DatabaseInternal {
             for (int index = 0; index < lsmDB.getIndexCount(); index++)
                 lsmDB.getIndex(index).destroy();
         } catch (IOException exc) {
-            throw new BabuDBException(ErrorCode.IO_ERROR, "", exc);
+            throw new BabuDBException(ErrorCode.IO_ERROR, exc.getMessage(), exc);
         }
     }
     
@@ -115,7 +115,7 @@ public class DatabaseImpl implements DatabaseInternal {
             try {
                 w.addRequest(new LSMDBRequest<Object>(lsmDB, result, ins));
             } catch (InterruptedException ex) {
-                result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, 
+                result.failed(new BabuDBException(ErrorCode.INTERRUPTED, 
                         "operation was interrupted", ex));
             }
         } else {
@@ -174,7 +174,7 @@ public class DatabaseImpl implements DatabaseInternal {
                 w.addRequest(new LSMDBRequest<byte[]>(lsmDB, indexId, result, 
                         key));
             } catch (InterruptedException ex) {
-                result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, 
+                result.failed(new BabuDBException(ErrorCode.INTERRUPTED, 
                         "operation was interrupted", ex));
             }
         } else
@@ -249,7 +249,7 @@ public class DatabaseImpl implements DatabaseInternal {
                 w.addRequest(new LSMDBRequest<ResultSet<byte[], byte[]>>(
                         lsmDB, indexId, result, key, ascending));
             } catch (InterruptedException ex) {
-                result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, 
+                result.failed(new BabuDBException(ErrorCode.INTERRUPTED, 
                         "operation was interrupted", ex));
             }
         }
@@ -321,7 +321,7 @@ public class DatabaseImpl implements DatabaseInternal {
                 w.addRequest(new LSMDBRequest<ResultSet<byte[], byte[]>>(
                         lsmDB, indexId, result, from, to, ascending));
             } catch (InterruptedException ex) {
-                result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, 
+                result.failed(new BabuDBException(ErrorCode.INTERRUPTED, 
                         "operation was interrupted", ex));
             }
         }
@@ -365,7 +365,7 @@ public class DatabaseImpl implements DatabaseInternal {
             try {
                 w.addRequest(new LSMDBRequest<Object>(lsmDB, result, udl));
             } catch (InterruptedException ex) {
-                result.failed(new BabuDBException(ErrorCode.INTERNAL_ERROR, 
+                result.failed(new BabuDBException(ErrorCode.INTERRUPTED, 
                         "operation was interrupted", ex));
             }
         } else

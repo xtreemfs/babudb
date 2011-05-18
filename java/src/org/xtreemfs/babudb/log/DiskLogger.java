@@ -87,7 +87,7 @@ public class DiskLogger extends LifeCycleThread {
      * If set to true the thread will shutdown.
      */
     private boolean                     quit = true;
-    private boolean                     graceful = true;
+    private boolean                     graceful;
 
     /**
      * LogFile name
@@ -343,7 +343,7 @@ public class DiskLogger extends LifeCycleThread {
             } catch (InterruptedException ex) {
                 if (!quit) {
                     try {
-                        close();
+                        cleanUp();
                     } catch (IOException e) {
                         Logging.logError(Logging.LEVEL_ERROR, this, e);
                     }
@@ -360,8 +360,8 @@ public class DiskLogger extends LifeCycleThread {
                 processLogEntries(entries);
             }
             
-            close();
-            Logging.logMessage(Logging.LEVEL_INFO, this, "disk logger shut down successfully");
+            cleanUp();
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "disk logger shut down successfully");
             notifyStopped();
         } catch (Exception e) {
             notifyCrashed(e);
@@ -371,7 +371,7 @@ public class DiskLogger extends LifeCycleThread {
     /**
      * stops this thread gracefully
      */
-    public synchronized void shutdown() {
+    public void shutdown() {
         shutdown(true);
     }
     
@@ -429,7 +429,7 @@ public class DiskLogger extends LifeCycleThread {
      * 
      * @throws IOException
      */
-    private void close() throws IOException {    
+    private void cleanUp() throws IOException {    
         
         try {
             fdes.sync();
@@ -438,14 +438,16 @@ public class DiskLogger extends LifeCycleThread {
                 fos.close();
             } finally {
             
-                assert (graceful || entries.size() == 0);
-                
-                // clear pending requests, if available
-                for (LogEntry le : entries) {
-                    le.getListener().failed(le, new BabuDBException(ErrorCode.INTERRUPTED, 
-                        "DiskLogger was shut down, before the entry could be written to " +
-                        "the log-file"));
-                    le.free();
+                synchronized (this) {
+                    assert (graceful || entries.size() == 0);
+                    
+                    // clear pending requests, if available
+                    for (LogEntry le : entries) {
+                        le.getListener().failed(le, new BabuDBException(ErrorCode.INTERRUPTED, 
+                            "DiskLogger was shut down, before the entry could be written to " +
+                            "the log-file"));
+                        le.free();
+                    }
                 }
             }
         }

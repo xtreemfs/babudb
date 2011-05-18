@@ -43,7 +43,7 @@ public class BackupTest extends TestCase {
     private static final int numIndices = 5;
         
     public BackupTest() {
-        Logging.start(Logging.LEVEL_DEBUG);
+        Logging.start(Logging.LEVEL_ERROR);
     }
     
     @Before

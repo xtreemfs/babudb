@@ -46,7 +46,7 @@ public class ConcurrencyTest extends TestCase {
     private BabuDB              database;
     
     public ConcurrencyTest() {
-        Logging.start(Logging.LEVEL_DEBUG);
+        Logging.start(Logging.LEVEL_ERROR);
     }
     
     @Before

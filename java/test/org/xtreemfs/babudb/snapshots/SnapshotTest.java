@@ -65,7 +65,7 @@ public class SnapshotTest extends TestCase {
     
     public void testSimpleSnapshot() throws Exception {
         
-        database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0,
+        database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 1, 0, 0,
             SyncMode.SYNC_WRITE, 0, 0, COMPRESSION, maxNumRecs, maxBlockFileSize, !MMAP, -1, DEBUG_LEVEL));
         Database db = database.getDatabaseManager().createDatabase("test", 3);
         

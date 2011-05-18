@@ -39,7 +39,7 @@ public class CopyDatabaseTest extends TestCase {
     private BabuDB             database;
     
     public CopyDatabaseTest() {
-        Logging.start(Logging.LEVEL_DEBUG);
+        Logging.start(Logging.LEVEL_ERROR);
     }
     
     @Before

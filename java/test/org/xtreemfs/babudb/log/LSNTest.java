@@ -8,36 +8,27 @@
 
 package org.xtreemfs.babudb.log;
 
+import junit.framework.TestCase;
+
 import org.junit.After;
-import org.junit.AfterClass;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.foundation.logging.Logging;
-
-import static org.junit.Assert.*;
 
 /**
  *
  * @author bjko
  */
-public class LSNTest {
+public class LSNTest extends TestCase {
 
     public LSNTest() {
-    }
-
-    @BeforeClass
-    public static void setUpClass() throws Exception {
-    }
-
-    @AfterClass
-    public static void tearDownClass() throws Exception {
+        Logging.start(Logging.LEVEL_ERROR);
     }
 
     @Before
     public void setUp() {
-        Logging.start(Logging.LEVEL_ERROR);
+        
     }
 
     @After

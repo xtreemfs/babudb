@@ -18,6 +18,7 @@ import java.util.Set;
 
 import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.database.Database;
+import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
@@ -170,7 +171,8 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
     public DatabaseInternal createDatabase(String databaseName, int numIndices,
         ByteRangeComparator[] comparators) throws BabuDBException {
         
-        executeTransaction(createTransaction().createDatabase(databaseName, numIndices, comparators));        
+        dbs.getTransactionManager().makePersistent(
+                createTransaction().createDatabase(databaseName, numIndices, comparators)).get();        
         return dbsByName.get(databaseName);
     }
     
@@ -179,7 +181,8 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
      */
     @Override
     public void deleteDatabase(String databaseName) throws BabuDBException {
-        executeTransaction(createTransaction().deleteDatabase(databaseName));
+        dbs.getTransactionManager().makePersistent(
+                createTransaction().deleteDatabase(databaseName)).get();
     }
     
     /* (non-Javadoc)
@@ -187,7 +190,8 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
      */
     @Override
     public void copyDatabase(String sourceDB, String destDB) throws BabuDBException {
-        executeTransaction(createTransaction().copyDatabase(sourceDB, destDB));
+        dbs.getTransactionManager().makePersistent(
+                createTransaction().copyDatabase(sourceDB, destDB)).get();
     }
     
     /* (non-Javadoc)
@@ -615,7 +619,52 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
      *          org.xtreemfs.babudb.api.dev.TransactionInternal)
      */
     @Override
-    public void executeTransaction(TransactionInternal txn) throws BabuDBException {
+    public synchronized void executeTransaction(TransactionInternal txn) throws BabuDBException {
+           
+        // acquire worker locks asynchronously if necessary
+        if (dbs.getWorkerCount() > 0) {
+            
+            // maps the lockFuture of the workers affected by this txn
+            Map<LSMDBWorker, BabuDBRequestResultImpl<Object>> workerLockFutureMap = 
+                new HashMap<LSMDBWorker, BabuDBRequestResultImpl<Object>>();
+            
+            // maps the lockFutures by the databases affected by this txn
+            Map<String, DatabaseRequestResult<Object>> databaseLockFutureMap = 
+                new HashMap<String, DatabaseRequestResult<Object>>();
+            
+            for (String dbName : txn.databasesAffected()) {
+                try {
+                    // setup the lock-request if necessary
+                    if (!databaseLockFutureMap.containsKey(dbName)) {
+                        
+                        LSMDBWorker worker = 
+                            dbs.getWorker(getDatabase(dbName).getLSMDB().getDatabaseId());
+                        
+                        // retrieve the lockFuture of the worker if already available
+                        BabuDBRequestResultImpl<Object> lockFuture = workerLockFutureMap.get(worker);
+                        
+                        // create a new lockFuture otherwise
+                        if (lockFuture == null) {
+                            lockFuture = new BabuDBRequestResultImpl<Object>(txn);
+                            worker.addRequest(new LSMDBRequest<Object>(lockFuture));
+                            workerLockFutureMap.put(worker, lockFuture);
+                        }
+                        
+                        databaseLockFutureMap.put(dbName, lockFuture);
+                    }
+                } catch (BabuDBException be) {
+                    assert (be.getErrorCode() == ErrorCode.NO_SUCH_DB);
+                    
+                    /* affected database does not exist yet; exception will be ignored */
+                } catch (InterruptedException ie) {
+                    throw new BabuDBException(ErrorCode.INTERRUPTED, ie.getMessage(), ie);
+                }
+            }
+            
+            txn.updateWorkerLocks(databaseLockFutureMap);
+        }
+            
+        // execute the transaction
         dbs.getTransactionManager().makePersistent(txn).get();
     }
     

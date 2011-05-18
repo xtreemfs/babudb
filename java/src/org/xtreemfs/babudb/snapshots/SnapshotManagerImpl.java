@@ -107,8 +107,8 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
         throws BabuDBException {
         
         // synchronously executing the request
-        dbs.getDatabaseManager().executeTransaction(
-                dbs.getDatabaseManager().createTransaction().createSnapshot(dbName, snap));
+        dbs.getTransactionManager().makePersistent(
+                dbs.getDatabaseManager().createTransaction().createSnapshot(dbName, snap)).get();
     }
     
     /* (non-Javadoc)
@@ -134,8 +134,9 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
     
     @Override
     public void deletePersistentSnapshot(String dbName, String snapshotName) throws BabuDBException {
-        dbs.getDatabaseManager().executeTransaction(
-                dbs.getDatabaseManager().createTransaction().deleteSnapshot(dbName, snapshotName));
+        dbs.getTransactionManager().makePersistent(
+                dbs.getDatabaseManager().createTransaction().deleteSnapshot(
+                        dbName, snapshotName)).get();
     }
     
     @Override

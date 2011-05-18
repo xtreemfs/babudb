@@ -19,7 +19,7 @@ import org.xtreemfs.babudb.lsmdb.LSMDBWorker.RequestOperation;
  */
 public class LSMDBRequest<T> {
     
-    private final BabuDBRequestResultImpl<T>        listener;
+    private final BabuDBRequestResultImpl<T>    listener;
     
     private final LSMDatabase                   database;
     
@@ -39,8 +39,13 @@ public class LSMDBRequest<T> {
     
     private final UserDefinedLookup             udLookup;
     
+    /**
+     * Lock worker request.
+     * 
+     * @param listener
+     */
     public LSMDBRequest(BabuDBRequestResultImpl<T> listener) {
-        this.operation = RequestOperation.INSERT;
+        this.operation = RequestOperation.LOCK;
         this.listener = listener;
         this.udLookup = null;
         this.lookupKey = null;

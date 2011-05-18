@@ -549,8 +549,9 @@ public class BabuDBImpl implements BabuDBInternal {
      */
     @Override
     public LSMDBWorker getWorker(int dbId) {
-        if (worker == null)
+        if (worker == null) {
             return null;
+        }
         return worker[dbId % worker.length];
     }
     
@@ -673,7 +674,8 @@ public class BabuDBImpl implements BabuDBInternal {
      * @see org.xtreemfs.foundation.LifeCycleListener#startupPerformed()
      */
     @Override
-    public void startupPerformed() { /* ignored */
+    public void startupPerformed() { 
+        Logging.logMessage(Logging.LEVEL_INFO, this, "has been successfully started.");
     }
     
     /*
@@ -682,7 +684,8 @@ public class BabuDBImpl implements BabuDBInternal {
      * @see org.xtreemfs.foundation.LifeCycleListener#shutdownPerformed()
      */
     @Override
-    public void shutdownPerformed() { /* ignored */
+    public void shutdownPerformed() { 
+        Logging.logMessage(Logging.LEVEL_INFO, this, "has been successfully stopped.");
     }
     
     /*

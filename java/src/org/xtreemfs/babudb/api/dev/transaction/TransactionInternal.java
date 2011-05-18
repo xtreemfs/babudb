@@ -8,9 +8,13 @@
 package org.xtreemfs.babudb.api.dev.transaction;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.Map;
+import java.util.Set;
 
 import org.xtreemfs.babudb.BabuDBRequestResultImpl;
+import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
 import org.xtreemfs.babudb.api.dev.transaction.OperationInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
@@ -21,8 +25,7 @@ import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
-
-import static org.xtreemfs.babudb.log.LogEntry.*;
+import org.xtreemfs.foundation.logging.Logging;
 
 /**
  * Internal interface for BabuDB's lightwight transactions.
@@ -33,6 +36,8 @@ import static org.xtreemfs.babudb.log.LogEntry.*;
 public abstract class TransactionInternal extends LinkedList<OperationInternal> 
         implements Transaction, Iterable<OperationInternal> {
     private static final long serialVersionUID = 1383031301195486005L;
+    
+    private Map<String, DatabaseRequestResult<Object>> databaseLockFutureMap = null;
     
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.transaction.Transaction#createSnapshot(java.lang.String, 
@@ -117,6 +122,70 @@ public abstract class TransactionInternal extends LinkedList<OperationInternal>
             result |= 1 << op.getType();
         }
         return result;
+    }
+    
+    /**
+     * @return a set of names of databases affected by this transaction. 
+     */
+    public final Set<String> databasesAffected() {
+        
+        Set<String> result = new HashSet<String>();
+        for (Operation op : this) {
+            result.add(op.getDatabaseName());
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Mapping of databases to lock futures for the worker threads being responsible for them.
+     * 
+     * @param databaseLockFutureMap - a map of lock futures for database workers affected by this 
+     *                           transaction.
+     */
+    public final synchronized void updateWorkerLocks(
+            Map<String, DatabaseRequestResult<Object>> databaseLockFutureMap) {
+        
+        this.databaseLockFutureMap = databaseLockFutureMap;
+    }
+    
+    /**
+     * Method to lock the worker responsible for database with databaseName.
+     * 
+     * @param databaseName
+     * @throws BabuDBException if the lock could not have been acquired.
+     */
+    public final synchronized void lockResponsibleWorker(String databaseName) 
+            throws BabuDBException {
+        
+        if (databaseLockFutureMap != null) {
+            DatabaseRequestResult<Object> lockFuture = databaseLockFutureMap.get(databaseName);
+            if (lockFuture != null) {
+                lockFuture.get();
+            }
+        }
+    }
+    
+    /**
+     * Method to unlock the worker threads that have been locked during this transaction.
+     */
+    public final synchronized void unlockWorkers() {
+        if (databaseLockFutureMap != null) {
+            Set<DatabaseRequestResult<Object>> lockFutures = 
+                new HashSet<DatabaseRequestResult<Object>>(databaseLockFutureMap.values());
+            for (DatabaseRequestResult<Object> lockFuture : lockFutures) {
+                
+                try {
+                    final Object workerLock = lockFuture.get();
+                    synchronized (workerLock) {
+                        workerLock.notify();
+                    }
+                } catch (BabuDBException be) {
+                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "The worker lock could not have" +
+                    		" been acquired for unlock.");
+                }
+            }
+        }
     }
     
     /**

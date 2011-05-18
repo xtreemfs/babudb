@@ -360,7 +360,7 @@ public class CheckpointerImpl extends CheckpointerInternal {
                 
                 if (!forceCheckpoint) {
                     try {
-                        this.wait(checkInterval);
+                        wait(checkInterval);
                     } catch (InterruptedException ex) {
                         if (quit) break;
                     }
