@@ -34,7 +34,8 @@ import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
 import static org.xtreemfs.babudb.log.LogEntry.*;
 import static org.xtreemfs.babudb.replication.transmission.ErrorCode.mapTransmissionError;
-import static org.xtreemfs.babudb.api.dev.transaction.TransactionInternal.*;
+import static org.xtreemfs.babudb.api.transaction.Operation.*;
+import static org.xtreemfs.babudb.api.dev.transaction.TransactionInternal.containsOperationType;
 
 /**
  * This implementation of {@link TransactionManager} redirects makePersistent
