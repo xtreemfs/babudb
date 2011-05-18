@@ -19,6 +19,7 @@ import org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.api.transaction.TransactionListener;
+import org.xtreemfs.babudb.api.transaction.Operation;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
@@ -26,8 +27,6 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
-
-import static org.xtreemfs.babudb.api.dev.transaction.TransactionInternal.*;
 
 /**
  * Default implementation of the {@link TransactionManagerInternal} interface using
@@ -193,9 +192,9 @@ class TransactionManagerImpl extends TransactionManagerInternal {
             
             byte type = operation.getType();
             // exclude database create/copy/delete calls from replay
-            if (type != TYPE_COPY_DB && 
-                type != TYPE_CREATE_DB && 
-                type != TYPE_DELETE_DB) {
+            if (type != Operation.TYPE_COPY_DB && 
+                type != Operation.TYPE_CREATE_DB && 
+                type != Operation.TYPE_DELETE_DB) {
                 
                 // get processing logic
                 InMemoryProcessing processing = inMemoryProcessing.get(type);
@@ -209,9 +208,9 @@ class TransactionManagerImpl extends TransactionManagerInternal {
                     
                     // there might be false positives if a snapshot to delete has already been 
                     // deleted or a snapshot to create has already been created
-                    if (!(type == TYPE_CREATE_SNAP && 
+                    if (!(type == Operation.TYPE_CREATE_SNAP && 
                             be.getErrorCode() == ErrorCode.SNAP_EXISTS) &&
-                        !(type == TYPE_DELETE_SNAP && 
+                        !(type == Operation.TYPE_DELETE_SNAP && 
                             be.getErrorCode() == ErrorCode.NO_SUCH_SNAPSHOT)) {
                         
                         throw be;

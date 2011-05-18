@@ -20,18 +20,17 @@ import java.util.Map.Entry;
 import org.xtreemfs.babudb.api.database.DatabaseRO;
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseInternal;
+import org.xtreemfs.babudb.api.dev.SnapshotManagerInternal;
 import org.xtreemfs.babudb.api.dev.transaction.InMemoryProcessing;
 import org.xtreemfs.babudb.api.dev.transaction.OperationInternal;
-import org.xtreemfs.babudb.api.dev.SnapshotManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.api.transaction.Operation;
 import org.xtreemfs.babudb.lsmdb.BabuDBTransaction;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.FSUtils;
-
-import static org.xtreemfs.babudb.api.dev.transaction.TransactionInternal.*;
 
 public class SnapshotManagerImpl implements SnapshotManagerInternal {
     
@@ -196,7 +195,7 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
      */
     private void initializeTransactionManager() {
         
-        dbs.getTransactionManager().registerInMemoryProcessing(TYPE_CREATE_SNAP, 
+        dbs.getTransactionManager().registerInMemoryProcessing(Operation.TYPE_CREATE_SNAP, 
                 new InMemoryProcessing() {
             
             @Override
@@ -210,7 +209,7 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
                     return new Object[] { dbId, snap };
                 } catch (Exception e) {
                     throw new BabuDBException(ErrorCode.IO_ERROR,
-                            "Could not deserialize operation of type " + TYPE_CREATE_SNAP + 
+                            "Could not deserialize operation of type " + Operation.TYPE_CREATE_SNAP + 
                                 ", because: "+e.getMessage(), e);
                 } finally {
                     try {
@@ -224,7 +223,7 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
             
             @Override
             public OperationInternal convertToOperation(Object[] args) {
-                return new BabuDBTransaction.BabuDBOperation(TYPE_CREATE_SNAP, (String) null, 
+                return new BabuDBTransaction.BabuDBOperation(Operation.TYPE_CREATE_SNAP, (String) null, 
                         new Object[] { args[0], args[1] });
             }
             
@@ -306,7 +305,7 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
             }
         });
 
-        dbs.getTransactionManager().registerInMemoryProcessing(TYPE_DELETE_SNAP, 
+        dbs.getTransactionManager().registerInMemoryProcessing(Operation.TYPE_DELETE_SNAP, 
                 new InMemoryProcessing() {
                         
             @Override
@@ -323,7 +322,7 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
             
             @Override
             public OperationInternal convertToOperation(Object[] args) {
-                return new BabuDBTransaction.BabuDBOperation(TYPE_DELETE_SNAP, (String) args[0], 
+                return new BabuDBTransaction.BabuDBOperation(Operation.TYPE_DELETE_SNAP, (String) args[0], 
                         new Object[] { args[1] });
             }
 

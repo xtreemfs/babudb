@@ -34,8 +34,6 @@ import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.FSUtils;
 
-import static org.xtreemfs.babudb.api.dev.transaction.TransactionInternal.*;
-
 /**
  * 
  * @author stenjan
@@ -91,38 +89,38 @@ public class TransactionTest extends TestCase {
         // check transaction
         assertEquals(6, txn.getOperations().size());
         
-        assertEquals(TYPE_CREATE_DB, txn.getOperations().get(0).getType());
+        assertEquals(Operation.TYPE_CREATE_DB, txn.getOperations().get(0).getType());
         assertEquals("db1", txn.getOperations().get(0).getDatabaseName());
         assertEquals(2, txn.getOperations().get(0).getParams().length);
         
-        assertEquals(TYPE_CREATE_DB, txn.getOperations().get(1).getType());
+        assertEquals(Operation.TYPE_CREATE_DB, txn.getOperations().get(1).getType());
         assertEquals("db1", txn.getOperations().get(1).getDatabaseName());
         assertEquals(2, txn.getOperations().get(1).getParams().length);
         
-        assertEquals(TYPE_GROUP_INSERT, txn.getOperations().get(2).getType());
+        assertEquals(Operation.TYPE_GROUP_INSERT, txn.getOperations().get(2).getType());
         assertEquals("db1", txn.getOperations().get(2).getDatabaseName());
         assertEquals(3, txn.getOperations().get(2).getParams().length);
         
-        assertEquals(TYPE_GROUP_INSERT, txn.getOperations().get(3).getType());
+        assertEquals(Operation.TYPE_GROUP_INSERT, txn.getOperations().get(3).getType());
         assertEquals("db2", txn.getOperations().get(3).getDatabaseName());
         assertEquals(3, txn.getOperations().get(3).getParams().length);
         
-        assertEquals(TYPE_DELETE_DB, txn.getOperations().get(4).getType());
+        assertEquals(Operation.TYPE_DELETE_DB, txn.getOperations().get(4).getType());
         assertEquals("db1", txn.getOperations().get(4).getDatabaseName());
         assertNull(txn.getOperations().get(4).getParams());
         
-        assertEquals(TYPE_GROUP_INSERT, txn.getOperations().get(5).getType());
+        assertEquals(Operation.TYPE_GROUP_INSERT, txn.getOperations().get(5).getType());
         assertEquals("new-database", txn.getOperations().get(5).getDatabaseName());
         assertEquals(3, txn.getOperations().get(5).getParams().length);
         
         // test of the aggregate function
         byte aggregate = txn.aggregateOperationTypes();
-        assertTrue(TransactionInternal.containsOperationType(aggregate, TYPE_CREATE_DB));
-        assertTrue(TransactionInternal.containsOperationType(aggregate, TYPE_CREATE_DB));
-        assertTrue(TransactionInternal.containsOperationType(aggregate, TYPE_GROUP_INSERT));
-        assertTrue(TransactionInternal.containsOperationType(aggregate, TYPE_DELETE_DB));
-        assertTrue(TransactionInternal.containsOperationType(aggregate, TYPE_DELETE_DB));
-        assertFalse(TransactionInternal.containsOperationType(aggregate, TYPE_CREATE_SNAP));
+        assertTrue(TransactionInternal.containsOperationType(aggregate, Operation.TYPE_CREATE_DB));
+        assertTrue(TransactionInternal.containsOperationType(aggregate, Operation.TYPE_CREATE_DB));
+        assertTrue(TransactionInternal.containsOperationType(aggregate, Operation.TYPE_GROUP_INSERT));
+        assertTrue(TransactionInternal.containsOperationType(aggregate, Operation.TYPE_DELETE_DB));
+        assertTrue(TransactionInternal.containsOperationType(aggregate, Operation.TYPE_DELETE_DB));
+        assertFalse(TransactionInternal.containsOperationType(aggregate, Operation.TYPE_CREATE_SNAP));
         
         // serialize transaction to buffer
         int size = txn.getSize();
@@ -147,9 +145,8 @@ public class TransactionTest extends TestCase {
             int count = 0;
             if (op1.getParams() != null) {
                 for (Object obj : op1.getParams()) {
-                    if (obj != null && 
-                            !(obj instanceof LSMDatabase) && 
-                            !(obj instanceof BabuDBRequestResultImpl<?>)) {
+                    if (obj != null && !(obj instanceof LSMDatabase)
+                        && !(obj instanceof BabuDBRequestResultImpl<?>)) {
                         count++;
                     }
                 }
@@ -307,7 +304,6 @@ public class TransactionTest extends TestCase {
         final AtomicInteger lock = new AtomicInteger(0);
         
         DatabaseManager dbMan = database.getDatabaseManager();
-        
         
         // add a listener BEFORE executing the transaction
         TransactionListener l0 = new TransactionListener() {

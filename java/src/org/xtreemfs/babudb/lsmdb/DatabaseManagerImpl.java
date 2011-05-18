@@ -7,8 +7,6 @@
  */
 package org.xtreemfs.babudb.lsmdb;
 
-import static org.xtreemfs.babudb.api.dev.transaction.TransactionInternal.*;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -29,6 +27,7 @@ import org.xtreemfs.babudb.api.dev.transaction.TransactionInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
+import org.xtreemfs.babudb.api.transaction.Operation;
 import org.xtreemfs.babudb.api.transaction.Transaction;
 import org.xtreemfs.babudb.api.transaction.TransactionListener;
 import org.xtreemfs.babudb.config.BabuDBConfig;
@@ -235,7 +234,7 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
      */
     private void initializeTransactionManager() {
         
-        dbs.getTransactionManager().registerInMemoryProcessing(TYPE_CREATE_DB, 
+        dbs.getTransactionManager().registerInMemoryProcessing(Operation.TYPE_CREATE_DB, 
                 new InMemoryProcessing() {
                         
             @Override
@@ -253,7 +252,7 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
             
             @Override
             public OperationInternal convertToOperation(Object[] args) {
-                return new BabuDBTransaction.BabuDBOperation(TYPE_CREATE_DB, (String) args[0], 
+                return new BabuDBTransaction.BabuDBOperation(Operation.TYPE_CREATE_DB, (String) args[0], 
                         new Object[] { args[1], args[2] });
             }
             
@@ -301,7 +300,7 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
             }
         });
         
-        dbs.getTransactionManager().registerInMemoryProcessing(TYPE_DELETE_DB, 
+        dbs.getTransactionManager().registerInMemoryProcessing(Operation.TYPE_DELETE_DB, 
                 new InMemoryProcessing() {
                         
             @Override
@@ -317,7 +316,7 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
             
             @Override
             public OperationInternal convertToOperation(Object[] args) {
-                return new BabuDBTransaction.BabuDBOperation(TYPE_DELETE_DB, (String) args[0], 
+                return new BabuDBTransaction.BabuDBOperation(Operation.TYPE_DELETE_DB, (String) args[0], 
                         null);
             }
             
@@ -350,7 +349,7 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
             }
         });
         
-        dbs.getTransactionManager().registerInMemoryProcessing(TYPE_COPY_DB, 
+        dbs.getTransactionManager().registerInMemoryProcessing(Operation.TYPE_COPY_DB, 
                 new InMemoryProcessing() {
                         
             @Override
@@ -369,7 +368,7 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
             
             @Override
             public OperationInternal convertToOperation(Object[] args) {
-                return new BabuDBTransaction.BabuDBOperation(TYPE_COPY_DB, (String) args[0], 
+                return new BabuDBTransaction.BabuDBOperation(Operation.TYPE_COPY_DB, (String) args[0], 
                         new Object[] { args[1] });
             }
             
@@ -422,7 +421,7 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
             }
         });
         
-        dbs.getTransactionManager().registerInMemoryProcessing(TYPE_GROUP_INSERT, 
+        dbs.getTransactionManager().registerInMemoryProcessing(Operation.TYPE_GROUP_INSERT, 
                 new InMemoryProcessing() {
                         
             @Override
@@ -436,7 +435,7 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
             
             @Override
             public OperationInternal convertToOperation(Object[] args) {
-                return new BabuDBTransaction.BabuDBOperation(TYPE_GROUP_INSERT, (String) null, 
+                return new BabuDBTransaction.BabuDBOperation(Operation.TYPE_GROUP_INSERT, (String) null, 
                         new Object[] { args[0] });
             }
             

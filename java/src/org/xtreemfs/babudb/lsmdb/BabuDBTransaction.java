@@ -43,19 +43,19 @@ public class BabuDBTransaction extends TransactionInternal {
     
     @Override
     public TransactionInternal createSnapshot(String databaseName, SnapshotConfig config) {
-        return addOperation(new BabuDBOperation(TYPE_CREATE_SNAP, databaseName, 
+        return addOperation(new BabuDBOperation(Operation.TYPE_CREATE_SNAP, databaseName, 
                 new Object[] { InsertRecordGroup.DB_ID_UNKNOWN, config }));
     }
     
     @Override
     public TransactionInternal deleteSnapshot(String databaseName, String snapshotName) {
-        return addOperation(new BabuDBOperation(TYPE_DELETE_SNAP, databaseName, 
+        return addOperation(new BabuDBOperation(Operation.TYPE_DELETE_SNAP, databaseName, 
                 new Object[] { snapshotName }));
     }
     
     @Override
     public TransactionInternal copyDatabase(String sourceName, String destinationName) {
-        return addOperation(new BabuDBOperation(TYPE_COPY_DB, sourceName, 
+        return addOperation(new BabuDBOperation(Operation.TYPE_COPY_DB, sourceName, 
                 new Object[] { destinationName }));
     }
     
@@ -68,13 +68,13 @@ public class BabuDBTransaction extends TransactionInternal {
     public TransactionInternal createDatabase(String databaseName, int numIndices, 
             ByteRangeComparator[] comparators) {
         
-        return addOperation(new BabuDBOperation(TYPE_CREATE_DB, databaseName, 
+        return addOperation(new BabuDBOperation(Operation.TYPE_CREATE_DB, databaseName, 
                 new Object[] {numIndices, comparators }));
     }
     
     @Override
     public TransactionInternal deleteDatabase(String databaseName) {
-        return addOperation(new BabuDBOperation(TYPE_DELETE_DB, databaseName, null));
+        return addOperation(new BabuDBOperation(Operation.TYPE_DELETE_DB, databaseName, null));
     }
     
     @Override
@@ -109,7 +109,7 @@ public class BabuDBTransaction extends TransactionInternal {
     public TransactionInternal insertRecordGroup(String databaseName, InsertRecordGroup irg, 
             LSMDatabase db, BabuDBRequestResultImpl<?> listener) {
         
-        return addOperation(new BabuDBOperation(TYPE_GROUP_INSERT, databaseName, 
+        return addOperation(new BabuDBOperation(Operation.TYPE_GROUP_INSERT, databaseName, 
                 new Object[] { irg, db, listener }));
     }
     

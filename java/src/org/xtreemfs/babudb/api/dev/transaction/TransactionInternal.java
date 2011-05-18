@@ -33,18 +33,6 @@ import static org.xtreemfs.babudb.log.LogEntry.*;
 public abstract class TransactionInternal extends LinkedList<OperationInternal> 
         implements Transaction, Iterable<OperationInternal> {
     private static final long serialVersionUID = 1383031301195486005L;
-
-    public static final byte TYPE_CREATE_DB    = PAYLOAD_TYPE_CREATE;
-    
-    public static final byte TYPE_COPY_DB      = PAYLOAD_TYPE_COPY;
-    
-    public static final byte TYPE_DELETE_DB    = PAYLOAD_TYPE_DELETE;
-    
-    public static final byte TYPE_CREATE_SNAP  = PAYLOAD_TYPE_SNAP;
-    
-    public static final byte TYPE_DELETE_SNAP  = PAYLOAD_TYPE_SNAP_DELETE;
-    
-    public static final byte TYPE_GROUP_INSERT = PAYLOAD_TYPE_INSERT;
     
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.transaction.Transaction#createSnapshot(java.lang.String, 

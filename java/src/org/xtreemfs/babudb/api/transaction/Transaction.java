@@ -7,6 +7,13 @@
  */
 package org.xtreemfs.babudb.api.transaction;
 
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_COPY;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_CREATE;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_DELETE;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_INSERT;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_SNAP;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_SNAP_DELETE;
+
 import java.util.List;
 
 import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
@@ -16,11 +23,25 @@ import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 /**
  * A lightweight BabuDB transaction.
  * <p>
- * A transaction is a sorted collection of atomically executed operations.
- * Unlike {@link DatabaseInsertGroup}s, transactions may contain insertions
- * across database boundaries, which may include creations and deletions of
- * databases and generation and removal of snapshots.
+ * A transaction is a sorted collection of modifications that is executed
+ * atomically. Transactions resemble {@link DatabaseInsertGroup}s, but they may
+ * contain modifications across multiple databases, creations and deletions of
+ * databases as well as snapshot operations.
  * </p>
+ * <p>
+ * BabuDB transactions are called lightweight, as their semantics differ from
+ * the ones typically provided by database systems. The most important
+ * differences are:
+ * </p>
+ * <ul>
+ * <li>BabuDB transactions may only contain modifications, no lookups.</li>
+ * <li>
+ * In the event of an error (which may e.g. be caused by an operation that
+ * attempts to create or delete non-existing database or to insert a record in a
+ * non-existing index), all operations are executed until the one that caused
+ * the error. This means that no roll-back will be performed for operations that
+ * have been executed before. However, all operations prior to the failed one
+ * will be executed in an atomic, non-interruptible fashion.</li>
  * 
  * @author stenjan
  * @author flangner
@@ -50,9 +71,11 @@ public interface Transaction {
     /**
      * Creates a new database.
      * 
-     * @param databaseName - the database name
-     * @param numIndices - the number of indices on the database
-     *            
+     * @param databaseName
+     *            - the database name
+     * @param numIndices
+     *            - the number of indices on the database
+     * 
      * @return the resulting Transaction.
      */
     public Transaction createDatabase(String databaseName, int numIndices);
@@ -60,10 +83,13 @@ public interface Transaction {
     /**
      * Creates a new database.
      * 
-     * @param databaseName - the database name
-     * @param numIndices - the number of indices on the database
-     * @param comparators - an array of comparators for the indices
-     *            
+     * @param databaseName
+     *            - the database name
+     * @param numIndices
+     *            - the number of indices on the database
+     * @param comparators
+     *            - an array of comparators for the indices
+     * 
      * @return the resulting Transaction.
      */
     public Transaction createDatabase(String databaseName, int numIndices, ByteRangeComparator[] comparators);
@@ -81,41 +107,51 @@ public interface Transaction {
     /**
      * Deletes an existing database.
      * 
-     * @param databaseName - the name of the database to delete
-     *            
+     * @param databaseName
+     *            - the name of the database to delete
+     * 
      * @return the resulting Transaction.
      */
     public Transaction deleteDatabase(String databaseName);
     
     /**
-     * Add a new insert operation to this transaction. Be aware of unpredictable behavior if a 
-     * key-value pair of the same database is manipulated twice within the same transaction.
+     * Add a new insert operation to this transaction. Be aware of unpredictable
+     * behavior if a key-value pair of the same database is manipulated twice
+     * within the same transaction.
      * 
-     * @param databaseName - the name of the database
-     * @param indexId - the index in which the key-value pair is inserted.
-     * @param key - the key.
-     * @param value - the value data.
-     *            
+     * @param databaseName
+     *            - the name of the database
+     * @param indexId
+     *            - the index in which the key-value pair is inserted.
+     * @param key
+     *            - the key.
+     * @param value
+     *            - the value data.
+     * 
      * @return the resulting Transaction.
      */
     public Transaction insertRecord(String databaseName, int indexId, byte[] key, byte[] value);
     
     /**
-     * Add a new delete operation to this transaction. Be aware of unpredictable behavior if a 
-     * key-value pair of the same database is manipulated twice within the same transaction.
+     * Add a new delete operation to this transaction. Be aware of unpredictable
+     * behavior if a key-value pair of the same database is manipulated twice
+     * within the same transaction.
      * 
-     * @param databaseName - the name of the database
-     * @param indexId - in which the key-value pair is located.
-     * @param key - of the key-value pair to delete.
-     *            
+     * @param databaseName
+     *            - the name of the database
+     * @param indexId
+     *            - in which the key-value pair is located.
+     * @param key
+     *            - of the key-value pair to delete.
+     * 
      * @return the resulting Transaction.
      */
     public Transaction deleteRecord(String databaseName, int indexId, byte[] key);
-        
+    
     /**
      * Returns the list of operations contained in the transaction.
      * 
      * @return the list of operations
      */
-    public List<Operation> getOperations();  
+    public List<Operation> getOperations();
 }

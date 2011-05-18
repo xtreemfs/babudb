@@ -135,7 +135,7 @@ public interface DatabaseManager {
     public Transaction createTransaction();
     
     /**
-     * Executes a database transaction.
+     * Executes a lightweight database transaction.
      * <p>
      * Note that the execution is performed synchronously by the invoking thread
      * rather than being enqueued. Thus, it should primarily be used for
