@@ -597,12 +597,23 @@ class DatabaseProxy implements DatabaseInternal {
         boolean isMaster = dbMan.getReplicationManager().isItMe(master);
         
         if (isMaster || !replicationPolicy.lookUpIsMasterRestricted()) {
-            
-            if (localDB == null && 
-                (isMaster || !replicationPolicy.dbModificationIsMasterRestricted())) {
+                
+            // this service is allowed to retrieve the local database for lookups
+            if (isMaster || !replicationPolicy.dbModificationIsMasterRestricted()) {
                 localDB = dbMan.getLocalDatabase(name);
-            } else if (localDB == null) {
-                return master;
+                
+            // existence of the database has to be verified at the master
+            } else {
+                try {
+                    dbMan.getClient().getDatabase(name, master).get();
+                    localDB = dbMan.getLocalDatabase(name);
+                } catch (BabuDBException e) {
+                    throw e;
+                } catch (ErrorCodeException e) {
+                    throw new BabuDBException(mapTransmissionError(e.getCode()), e.getMessage(), e);
+                } catch (Exception e) {
+                    throw new BabuDBException(ErrorCode.IO_ERROR, e.getMessage(), e);
+                }
             }
              
             return null;

@@ -28,6 +28,7 @@ import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
 import org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase.DBFileMetaData;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.foundation.logging.Logging;
 
 /**
  * Methods that may be executed on BabuDB from the replication mechanisms.
@@ -65,6 +66,9 @@ public class BabuDBInterface {
     public void appendToLocalPersistenceManager(LogEntry entry, 
             DatabaseRequestListener<Object> listener) 
             throws BabuDBException {
+        
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "Appending entry to logger: %s", 
+                new String(entry.getPayload().array()));
         
         localTxnMan.makePersistent(entry.getPayload()).registerListener(listener);
     }

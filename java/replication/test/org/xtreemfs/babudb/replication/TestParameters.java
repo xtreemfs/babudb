@@ -10,6 +10,7 @@ package org.xtreemfs.babudb.replication;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.config.ConfigBuilder;
 import org.xtreemfs.babudb.config.ReplicationConfig;
+import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 
 /**
  * Default parameters for the replication TestSuite.
@@ -30,16 +31,19 @@ public final class TestParameters {
     public final static int TIMESYNC_LOCAL      = 3 * 1000;
     
     public final static BabuDBConfig conf0 = new ConfigBuilder()
+            .setLogAppendSyncMode(SyncMode.SYNC_WRITE)
             .setDataPath("/tmp/babudb0/base", "/tmp/babudb0/log")
             .addPlugin("config/replication_server0.test")
             .build();
     
     public final static BabuDBConfig conf1 = new ConfigBuilder()
+            .setLogAppendSyncMode(SyncMode.SYNC_WRITE)
             .setDataPath("/tmp/babudb1/base", "/tmp/babudb1/log")
             .addPlugin("config/replication_server1.test")
             .build();
 
     public final static BabuDBConfig conf2 = new ConfigBuilder()
+            .setLogAppendSyncMode(SyncMode.SYNC_WRITE)
             .setDataPath("/tmp/babudb2/base", "/tmp/babudb2/log")
             .addPlugin("config/replication_server2.test")
             .build();

@@ -7,16 +7,16 @@
  */
 package org.xtreemfs.babudb.replication;
 
-import static junit.framework.Assert.*;
 import static org.xtreemfs.babudb.replication.TestParameters.*;
 
 import java.io.File;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import junit.framework.TestCase;
+
 import org.junit.After;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.xtreemfs.babudb.BabuDBFactory;
 import org.xtreemfs.babudb.api.BabuDB;
@@ -36,17 +36,13 @@ import org.xtreemfs.foundation.util.FSUtils;
  * @author flangner
  * @since 03/31/2011
  */
-public class IntegrationTest {
+public class IntegrationTest extends TestCase {
 
     private BabuDB babu0;
     private BabuDB babu1;
     private BabuDB babu2;
     
-    /**
-     * @throws java.lang.Exception
-     */
-    @BeforeClass
-    public static void setUpBeforeClass() throws Exception {
+    public IntegrationTest() throws Exception {
         Logging.start(Logging.LEVEL_ERROR, Category.all);
         
         FSUtils.delTree(new File(conf0.getBaseDir()));
@@ -63,12 +59,13 @@ public class IntegrationTest {
         FSUtils.delTree(new File(
                 new ReplicationConfig("config/replication_server2.test", conf2).getTempDir()));
     }
-
+    
     /**
      * @throws java.lang.Exception
      */
     @Before
     public void setUp() throws Exception {
+        System.out.println("=== " + getName() + " ===");
         
         // starting three local BabuDB services supporting replication; based on mock databases
         babu0 = BabuDBFactory.createBabuDB(conf0);
@@ -205,8 +202,22 @@ public class IntegrationTest {
         byte[] res = test0.lookup(0, "bla00".getBytes(), test0).get();
         assertNotNull(res);
         assertEquals("blub00", new String(res));
-        
         assertNull(test0.lookup(0, "bla20".getBytes(), test0).get());
+
+        res = test0.lookup(1, "bla01".getBytes(), test0).get();
+        assertNotNull(res);
+        assertEquals("blub01", new String(res));
+        assertNull(test0.lookup(1, "bla20".getBytes(), test0).get());
+        
+        res = test1.lookup(0, "bla10".getBytes(), test0).get();
+        assertNotNull(res);
+        assertEquals("blub10", new String(res));
+        assertNull(test0.lookup(0, "bla20".getBytes(), test0).get());
+        
+        res = test2.lookup(0, "bla20".getBytes(), test0).get();
+        assertNotNull(res);
+        assertEquals("blub20", new String(res));
+        assertNull(test0.lookup(0, "bla01".getBytes(), test0).get());
     }
     
     @Test
