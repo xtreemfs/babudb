@@ -381,7 +381,7 @@ public class BabuDBImpl implements BabuDBInternal {
         
         if (worker != null) {
             for (LSMDBWorker w : worker) {
-                w.shutdown();
+                w.shutdown(graceful);
             }
         }
         
