@@ -2,6 +2,7 @@
   * Initial release of the replication plug-in. The plug-in provides transparent replication service with automatic master failover and request redirection
 
 2011-05-19:
-  * bugfixes with state synchronization and fail-over in the event of a restart
-  * bugfix with prefix lookups
+  * bugfix: state synchronization and fail-over now work properly in the event of a restart
+  * bugfix: prefix lookups now return records in the correct order
+  * bugfix: context objects are no longer lost on replicated db inserts
   * reduced logging output
