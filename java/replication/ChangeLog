@@ -1,3 +1,7 @@
-(outstanding):plugin release 1.0.0 for >= BabuDB-0.5.0
-  * first stable release as plugin
-  * provides transparent replication service with automatic master failover and request redirection 
+2011-04-21:
+  * Initial release of the replication plug-in. The plug-in provides transparent replication service with automatic master failover and request redirection
+
+2011-05-19:
+  * bugfixes with state synchronization and fail-over in the event of a restart
+  * bugfix with prefix lookups
+  * reduced logging output

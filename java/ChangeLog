@@ -46,7 +46,7 @@
   * moved all replication-specific code into a separate plugin, which can be found in the replication subdirectory
   * iterators formerly returned upon prefix and range lookups have been replaced with result sets, which should be explicitly freed to minimize memory footprint
 
-2011-05-XX: release 0.5.1
+2011-05-19: release 0.5.1
   * fixed bug that caused problems with the log replay in the event of asynchronous log appends
   * BabuDB shutdowns are now performed gracefully by default, which means that pending log appends will be written to disk before terminating the database
-  * added experimental support for light-weight transactions, which can atomically execute groups of arbitrary operations 
+  * Added support for light-weight transactions. A light-weight transaction atomically executes a list of arbitrary modifications, including database creations and deletions, insertions and deletions of records, as well as snapshots. 
