@@ -127,13 +127,14 @@ class TransactionManagerImpl extends TransactionManagerInternal {
                     for (OperationInternal operation : txn) {
                         inMemoryProcessing.get(operation.getType()).after(operation);
                     }
-                    BabuDBException irregs = txn.getIrregularities();
-                    if (irregs == null) result.finished();
                     
                     // notify listeners
                     for (TransactionListener l : listeners) {
                         l.transactionPerformed(txn);
                     }
+                    
+                    BabuDBException irregs = txn.getIrregularities();
+                    if (irregs == null) result.finished();
                     
                     Logging.logMessage(Logging.LEVEL_DEBUG, this, "... transaction %s finished.", 
                             txn.toString());
