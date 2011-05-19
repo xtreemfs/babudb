@@ -17,7 +17,7 @@ package org.xtreemfs.babudb.api.transaction;
 public interface TransactionListener {
     
     /**
-     * The method is invoked with each transaction that was successfully executed.
+     * The method is invoked with each transaction that was executed.
      * 
      * @param txn the executed transaction
      */

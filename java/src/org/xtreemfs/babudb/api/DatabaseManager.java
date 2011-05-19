@@ -136,11 +136,6 @@ public interface DatabaseManager {
     
     /**
      * Executes a lightweight database transaction.
-     * <p>
-     * Note that the execution is performed synchronously by the invoking thread
-     * rather than being enqueued. Thus, it should primarily be used for
-     * initialization purposes that take place before the database is accessed.
-     * </p>
      * 
      * @param txn
      *            the transaction to execute
@@ -150,8 +145,8 @@ public interface DatabaseManager {
     public void executeTransaction(Transaction txn) throws BabuDBException;
     
     /**
-     * Adds a new transaction listener. The listener is notified with each
-     * database transaction that is successfully executed.
+     * Adds a new transaction listener. The listener is notified after the
+     * execution of a transaction.
      * 
      * @param listener
      *            the listener to add

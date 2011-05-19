@@ -23,10 +23,10 @@ import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_SNAP_DELETE;
  * </p>
  * 
  * <p>
- * There is no need for applications to explicitly instantiate operations. They
- * are implicitly created when the respective methods on a transaction are
- * invoked. However, the set of operations can be retrieved from a transaction
- * instance for analysis purposes, e.g. when a transaction listener is notified.
+ * There is no need for applications to instantiate operations. They are
+ * implicitly created when the respective methods on a transaction are invoked.
+ * However, the set of operations can be retrieved from a transaction instance
+ * for analysis purposes, e.g. when a transaction listener is notified.
  * </p>
  * 
  * @author stenjan

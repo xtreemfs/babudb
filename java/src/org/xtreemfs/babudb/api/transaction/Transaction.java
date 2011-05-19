@@ -7,13 +7,6 @@
  */
 package org.xtreemfs.babudb.api.transaction;
 
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_COPY;
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_CREATE;
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_DELETE;
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_INSERT;
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_SNAP;
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_SNAP_DELETE;
-
 import java.util.List;
 
 import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
@@ -49,22 +42,26 @@ import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 public interface Transaction {
     
     /**
-     * Creates a new snapshot for the database with databaseName using config.
+     * Creates a new snapshot.
      * 
      * @param databaseName
+     *            the database name
      * @param config
+     *            the snapshot configuration
      * 
-     * @return the resulting Transaction.
+     * @return a reference to the transaction
      */
     public Transaction createSnapshot(String databaseName, SnapshotConfig config);
     
     /**
-     * Deletes snapshot with snapshotName of database databaseName.
+     * Deletes a snapshot.
      * 
      * @param databaseName
+     *            the database name
      * @param snapshotName
+     *            the snapshot name
      * 
-     * @return the resulting Transaction.
+     * @return a reference to the transaction
      */
     public Transaction deleteSnapshot(String databaseName, String snapshotName);
     
@@ -72,11 +69,11 @@ public interface Transaction {
      * Creates a new database.
      * 
      * @param databaseName
-     *            - the database name
+     *            the database name
      * @param numIndices
-     *            - the number of indices on the database
+     *            the number of indices on the database
      * 
-     * @return the resulting Transaction.
+     * @return a reference to the transaction
      */
     public Transaction createDatabase(String databaseName, int numIndices);
     
@@ -84,23 +81,25 @@ public interface Transaction {
      * Creates a new database.
      * 
      * @param databaseName
-     *            - the database name
+     *            the database name
      * @param numIndices
-     *            - the number of indices on the database
+     *            the number of indices on the database
      * @param comparators
-     *            - an array of comparators for the indices
+     *            an array of comparators for the indices
      * 
-     * @return the resulting Transaction.
+     * @return a reference to the transaction
      */
     public Transaction createDatabase(String databaseName, int numIndices, ByteRangeComparator[] comparators);
     
     /**
-     * Copies database with sourceName to destinationName.
+     * Copies a database.
      * 
      * @param sourceName
+     *            the name of the source database
      * @param destinationName
+     *            the name of the destination database
      * 
-     * @return the resulting Transaction.
+     * @return a reference to the transaction
      */
     public Transaction copyDatabase(String sourceName, String destinationName);
     
@@ -108,43 +107,39 @@ public interface Transaction {
      * Deletes an existing database.
      * 
      * @param databaseName
-     *            - the name of the database to delete
+     *            the name of the database to delete
      * 
-     * @return the resulting Transaction.
+     * @return a reference to the transaction
      */
     public Transaction deleteDatabase(String databaseName);
     
     /**
-     * Add a new insert operation to this transaction. Be aware of unpredictable
-     * behavior if a key-value pair of the same database is manipulated twice
-     * within the same transaction.
+     * Inserts a key-value pair.
      * 
      * @param databaseName
-     *            - the name of the database
+     *            the name of the database
      * @param indexId
-     *            - the index in which the key-value pair is inserted.
+     *            the index in which the key-value pair is inserted
      * @param key
-     *            - the key.
+     *            the key
      * @param value
-     *            - the value data.
+     *            the value
      * 
-     * @return the resulting Transaction.
+     * @return a reference to the transaction
      */
     public Transaction insertRecord(String databaseName, int indexId, byte[] key, byte[] value);
     
     /**
-     * Add a new delete operation to this transaction. Be aware of unpredictable
-     * behavior if a key-value pair of the same database is manipulated twice
-     * within the same transaction.
+     * Deletes a key-value pair.
      * 
      * @param databaseName
-     *            - the name of the database
+     *            the name of the database
      * @param indexId
-     *            - in which the key-value pair is located.
+     *            in which the key-value pair is located
      * @param key
-     *            - of the key-value pair to delete.
+     *            the key of the record to delete
      * 
-     * @return the resulting Transaction.
+     * @return a reference to the transaction
      */
     public Transaction deleteRecord(String databaseName, int indexId, byte[] key);
     
