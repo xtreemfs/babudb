@@ -6,8 +6,10 @@
 package org.xtreemfs.babudb;
 
 import java.io.File;
+import java.text.DecimalFormat;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import junit.framework.TestCase;
@@ -20,6 +22,7 @@ import org.xtreemfs.babudb.api.BabuDB;
 import org.xtreemfs.babudb.api.DatabaseManager;
 import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
+import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.api.dev.transaction.TransactionInternal;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.api.transaction.Operation;
@@ -305,7 +308,7 @@ public class TransactionTest extends TestCase {
     
     @Test
     public void testTransactionWorkerInteraction() throws Exception {
-                
+        
         Database db0 = database.getDatabaseManager().createDatabase("workerTest0", 1);
         Database db1 = database.getDatabaseManager().createDatabase("workerTest1", 2);
         Database db2 = database.getDatabaseManager().createDatabase("workerTest2", 3);
@@ -328,7 +331,7 @@ public class TransactionTest extends TestCase {
             db2.insert(ir, null);
         }
         
-        // make a transaction to delete the last 3 keys of two of the databases 
+        // make a transaction to delete the last 3 keys of two of the databases
         // an update anomaly will be visible, if something went wrong
         Transaction txn = database.getDatabaseManager().createTransaction();
         txn.deleteRecord(db0.getName(), 0, "99".getBytes());
@@ -349,20 +352,14 @@ public class TransactionTest extends TestCase {
     @Test
     public void testTransactionListeners() throws Exception {
         
-        // may not be used as lock - causes unpredictable behavior
-        final List<Transaction> notifiedTransactions = new LinkedList<Transaction>();
-        final AtomicInteger lock = new AtomicInteger(0);
+        final AtomicInteger count = new AtomicInteger(0);
         
         DatabaseManager dbMan = database.getDatabaseManager();
         
-        // add a listener BEFORE executing the transaction
+        // add a transaction listener
         TransactionListener l0 = new TransactionListener() {
             public void transactionPerformed(Transaction txn) {
-                synchronized (lock) {
-                    notifiedTransactions.add(txn);
-                    lock.incrementAndGet();
-                    lock.notify();
-                }
+                count.incrementAndGet();
             }
         };
         dbMan.addTransactionListener(l0);
@@ -374,22 +371,7 @@ public class TransactionTest extends TestCase {
         txn.insertRecord("test", 0, "key".getBytes(), "value".getBytes());
         dbMan.executeTransaction(txn);
         
-        // wait for the notification
-        synchronized (lock) {
-            if (lock.get() != 1) {
-                lock.wait(5000);
-            }
-        }
-        
-        if (lock.get() == 0)
-            fail("listener was not notified within 5 seconds");
-        assertEquals(1, lock.get());
-        
-        // reset list of notified transactions
-        synchronized (lock) {
-            notifiedTransactions.clear();
-            lock.set(0);
-        }
+        assertEquals(1, count.get());
         
         // create and execute another transaction (which is empty)
         txn = dbMan.createTransaction();
@@ -398,32 +380,92 @@ public class TransactionTest extends TestCase {
         // notification
         TransactionListener l1 = new TransactionListener() {
             public void transactionPerformed(Transaction txn) {
-                synchronized (lock) {
-                    notifiedTransactions.add(txn);
-                    lock.incrementAndGet();
-                    lock.notify();
-                }
+                count.incrementAndGet();
             }
         };
         dbMan.addTransactionListener(l1);
-        
         dbMan.executeTransaction(txn);
         
-        synchronized (lock) {
-            // wait for the first listener to recognize the transaction
-            if (lock.get() == 0) {
-                lock.wait(5000);
+        assertEquals(3, count.get());
+        
+    }
+    
+    @Test
+    public void testTransactionListenerDBAccess() throws Throwable {
+        
+        final int numTxns = 10;
+        final int numKVPairs = 20;
+        final int numIndices = 5;
+        
+        final DatabaseManager dbMan = database.getDatabaseManager();
+        final List<Throwable> errors = new LinkedList<Throwable>();
+        
+        // add a transaction listener
+        TransactionListener l = new TransactionListener() {
+            public void transactionPerformed(Transaction txn) {
+                try {
+                    // check if the database has been properly created and
+                    // populated
+                    checkDBContent(dbMan, txn.getOperations().get(0).getDatabaseName(), numIndices,
+                        numKVPairs);
+                } catch (Throwable e) {
+                    errors.add(e);
+                }
             }
-            // wait for the second listener to recognize the txn
-            if (lock.get() == 1) {
-                lock.wait(5000);
+        };
+        dbMan.addTransactionListener(l);
+        
+        // create and execute multiple transactions: each creates a new database
+        // and populates multiple indices
+        for (int i = 0; i < numTxns; i++) {
+            
+            String dbName = i + "";
+            
+            Transaction txn = dbMan.createTransaction();
+            txn.createDatabase(dbName, numIndices);
+            for (int j = 0; j < numKVPairs; j++) {
+                String kv = intToString(j, ("" + numKVPairs).length());
+                txn.insertRecord(dbName, j % numIndices, kv.getBytes(), kv.getBytes());
             }
+            dbMan.executeTransaction(txn);
         }
         
-        if (lock.get() == 0)
-            fail("listener was not notified within 5 seconds");
-        assertEquals(2, lock.get());
+        if (errors.size() > 0)
+            throw errors.get(0);
         
+    }
+    
+    private void checkDBContent(DatabaseManager dbMan, String dbName, int numIndices, int numKVPairs)
+        throws Throwable {
+        
+        Database db = dbMan.getDatabase(dbName);
+        
+        for (int j = 0; j < numIndices; j++) {
+            
+            ResultSet<byte[], byte[]> resultSet = db.prefixLookup(j, new byte[0], null).get();
+            for (int i = j; i < numKVPairs; i += numIndices) {
+                
+                assertTrue(resultSet.hasNext());
+                String kv = intToString(i, ("" + numKVPairs).length());
+                
+                Entry<byte[], byte[]> next = resultSet.next();
+                assertEquals(kv, new String(next.getKey()));
+                assertEquals(kv, new String(next.getValue()));
+            }
+            assertFalse(resultSet.hasNext());
+            
+            resultSet.free();
+        }
+    }
+    
+    private static String intToString(int num, int numDigits) {
+        
+        String pattern = "";
+        for (int i = 0; i < numDigits; i++)
+            pattern += "0";
+        
+        DecimalFormat df = new DecimalFormat(pattern);
+        return df.format(num);
     }
     
     public static void main(String[] args) {
