@@ -7,10 +7,12 @@
  */
 package org.xtreemfs.babudb.replication.proxy.operations;
 
+import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
-import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
+import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.pbrpc.Common.emptyRequest;
+import org.xtreemfs.babudb.pbrpc.GlobalTypes.Database;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.pbrpc.RemoteAccessServiceConstants;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
@@ -62,14 +64,28 @@ public class MakePersistentOperation extends Operation {
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "MakePersistentOperation");
         
         try {
-            DatabaseRequestResult<Object> result = 
-                dbs.getTransactionManager().makePersistent(rq.getData().createViewBuffer());
-            
+            BabuDBRequestResultImpl<Object> result = new BabuDBRequestResultImpl<Object>();
+            dbs.getTransactionManager().makePersistent(rq.getData().createViewBuffer(), result);
             result.registerListener(new DatabaseRequestListener<Object>() {
                 
                 @Override
                 public void finished(Object result, Object context) {
-                    rq.sendSuccess(ErrorCodeResponse.getDefaultInstance());
+                    
+                    // TODO generalize logic to process transaction results
+                    int dbId = -1;
+                    String dbName = "\0";
+                    if (result instanceof Object[] && 
+                      ((Object[]) result).length > 0 && 
+                      ((Object[]) result)[0] != null && 
+                      ((Object[]) result)[0] instanceof DatabaseInternal) {
+                        
+                        DatabaseInternal dbInternal = (DatabaseInternal) ((Object[]) result)[0];
+                        dbId = dbInternal.getLSMDB().getDatabaseId();
+                        dbName = dbInternal.getName();
+                    }
+                    
+                    rq.sendSuccess(Database.newBuilder()
+                            .setDatabaseId(dbId).setDatabaseName(dbName).build());
                 }
                 
                 @Override

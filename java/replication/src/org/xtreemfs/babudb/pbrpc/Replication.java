@@ -16,7 +16,7 @@ public final class Replication {
       public abstract void makePersistent(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.Common.emptyRequest request,
-          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done);
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.Database> done);
       
       public abstract void getDatabaseByName(
           com.google.protobuf.RpcController controller,
@@ -67,7 +67,7 @@ public final class Replication {
         public  void makePersistent(
             com.google.protobuf.RpcController controller,
             org.xtreemfs.babudb.pbrpc.Common.emptyRequest request,
-            com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done) {
+            com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.Database> done) {
           impl.makePersistent(controller, request, done);
         }
         
@@ -222,7 +222,7 @@ public final class Replication {
           }
           switch(method.getIndex()) {
             case 0:
-              return org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance();
+              return org.xtreemfs.babudb.pbrpc.GlobalTypes.Database.getDefaultInstance();
             case 1:
               return org.xtreemfs.babudb.pbrpc.GlobalTypes.Database.getDefaultInstance();
             case 2:
@@ -250,7 +250,7 @@ public final class Replication {
     public abstract void makePersistent(
         com.google.protobuf.RpcController controller,
         org.xtreemfs.babudb.pbrpc.Common.emptyRequest request,
-        com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done);
+        com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.Database> done);
     
     public abstract void getDatabaseByName(
         com.google.protobuf.RpcController controller,
@@ -316,7 +316,7 @@ public final class Replication {
       switch(method.getIndex()) {
         case 0:
           this.makePersistent(controller, (org.xtreemfs.babudb.pbrpc.Common.emptyRequest)request,
-            com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse>specializeCallback(
+            com.google.protobuf.RpcUtil.<org.xtreemfs.babudb.pbrpc.GlobalTypes.Database>specializeCallback(
               done));
           return;
         case 1:
@@ -406,7 +406,7 @@ public final class Replication {
       }
       switch(method.getIndex()) {
         case 0:
-          return org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance();
+          return org.xtreemfs.babudb.pbrpc.GlobalTypes.Database.getDefaultInstance();
         case 1:
           return org.xtreemfs.babudb.pbrpc.GlobalTypes.Database.getDefaultInstance();
         case 2:
@@ -447,16 +447,16 @@ public final class Replication {
       public  void makePersistent(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.Common.emptyRequest request,
-          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse> done) {
+          com.google.protobuf.RpcCallback<org.xtreemfs.babudb.pbrpc.GlobalTypes.Database> done) {
         channel.callMethod(
           getDescriptor().getMethods().get(0),
           controller,
           request,
-          org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance(),
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.Database.getDefaultInstance(),
           com.google.protobuf.RpcUtil.generalizeCallback(
             done,
-            org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.class,
-            org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance()));
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.Database.class,
+            org.xtreemfs.babudb.pbrpc.GlobalTypes.Database.getDefaultInstance()));
       }
       
       public  void getDatabaseByName(
@@ -586,7 +586,7 @@ public final class Replication {
     }
     
     public interface BlockingInterface {
-      public org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse makePersistent(
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.Database makePersistent(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.Common.emptyRequest request)
           throws com.google.protobuf.ServiceException;
@@ -639,15 +639,15 @@ public final class Replication {
       
       private final com.google.protobuf.BlockingRpcChannel channel;
       
-      public org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse makePersistent(
+      public org.xtreemfs.babudb.pbrpc.GlobalTypes.Database makePersistent(
           com.google.protobuf.RpcController controller,
           org.xtreemfs.babudb.pbrpc.Common.emptyRequest request)
           throws com.google.protobuf.ServiceException {
-        return (org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse) channel.callBlockingMethod(
+        return (org.xtreemfs.babudb.pbrpc.GlobalTypes.Database) channel.callBlockingMethod(
           getDescriptor().getMethods().get(0),
           controller,
           request,
-          org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse.getDefaultInstance());
+          org.xtreemfs.babudb.pbrpc.GlobalTypes.Database.getDefaultInstance());
       }
       
       
@@ -1567,53 +1567,53 @@ public final class Replication {
       "\n\033interface/replication.proto\022\022org.xtree" +
       "mfs.pbrpc\032\033interface/GlobalTypes.proto\032%" +
       "share/foundation/include/Common.proto\032$s" +
-      "hare/foundation/include/PBRPC.proto2\346\006\n\023" +
-      "RemoteAccessService\022f\n\016makePersistent\022 ." +
-      "org.xtreemfs.pbrpc.emptyRequest\032%.org.xt" +
-      "reemfs.pbrpc.ErrorCodeResponse\"\013\215\265\030\001\000\000\000\240" +
-      "\265\030\001\022\\\n\021getDatabaseByName\022 .org.xtreemfs." +
-      "pbrpc.DatabaseName\032\034.org.xtreemfs.pbrpc." +
-      "Database\"\007\215\265\030\002\000\000\000\022X\n\017getDatabaseById\022\036.o",
-      "rg.xtreemfs.pbrpc.DatabaseId\032\034.org.xtree" +
-      "mfs.pbrpc.Database\"\007\215\265\030\003\000\000\000\022X\n\014getDataba" +
-      "ses\022 .org.xtreemfs.pbrpc.emptyRequest\032\035." +
-      "org.xtreemfs.pbrpc.Databases\"\007\215\265\030\004\000\000\000\022\\\n" +
-      "\006lookup\022\032.org.xtreemfs.pbrpc.Lookup\032%.or" +
-      "g.xtreemfs.pbrpc.ErrorCodeResponse\"\017\215\265\030\005" +
-      "\000\000\000\240\265\030\001\230\265\030\001\022T\n\007plookup\022\032.org.xtreemfs.pb" +
-      "rpc.Lookup\032\034.org.xtreemfs.pbrpc.EntryMap" +
-      "\"\017\215\265\030\006\000\000\000\240\265\030\001\230\265\030\001\022[\n\016plookupReverse\022\032.or" +
-      "g.xtreemfs.pbrpc.Lookup\032\034.org.xtreemfs.p",
-      "brpc.EntryMap\"\017\215\265\030\007\000\000\000\240\265\030\001\230\265\030\001\022Y\n\007rlooku" +
-      "p\022\037.org.xtreemfs.pbrpc.RangeLookup\032\034.org" +
-      ".xtreemfs.pbrpc.EntryMap\"\017\215\265\030\010\000\000\000\240\265\030\001\230\265\030" +
-      "\001\022`\n\016rlookupReverse\022\037.org.xtreemfs.pbrpc" +
-      ".RangeLookup\032\034.org.xtreemfs.pbrpc.EntryM" +
-      "ap\"\017\215\265\030\t\000\000\000\240\265\030\001\230\265\030\001\032\007\225\265\030\021\'\000\0002\217\007\n\022Replica" +
-      "tionService\022K\n\005state\022 .org.xtreemfs.pbrp" +
-      "c.emptyRequest\032\027.org.xtreemfs.pbrpc.LSN\"" +
-      "\007\215\265\030\001\000\000\000\022M\n\004load\022\027.org.xtreemfs.pbrpc.LS" +
-      "N\032#.org.xtreemfs.pbrpc.DBFileMetaDatas\"\007",
-      "\215\265\030\002\000\000\000\022V\n\005chunk\022\031.org.xtreemfs.pbrpc.Ch" +
-      "unk\032%.org.xtreemfs.pbrpc.ErrorCodeRespon" +
-      "se\"\013\215\265\030\003\000\000\000\230\265\030\001\022X\n\006flease\022\032.org.xtreemfs" +
-      ".pbrpc.FLease\032%.org.xtreemfs.pbrpc.Error" +
-      "CodeResponse\"\013\215\265\030\004\000\000\000\240\265\030\001\022U\n\tlocalTime\022 " +
-      ".org.xtreemfs.pbrpc.emptyRequest\032\035.org.x" +
-      "treemfs.pbrpc.Timestamp\"\007\215\265\030\005\000\000\000\022T\n\007repl" +
-      "ica\022\034.org.xtreemfs.pbrpc.LSNRange\032\036.org." +
-      "xtreemfs.pbrpc.LogEntries\"\013\215\265\030\006\000\000\000\230\265\030\001\022a" +
-      "\n\theartbeat\022$.org.xtreemfs.pbrpc.Heartbe",
-      "atMessage\032%.org.xtreemfs.pbrpc.ErrorCode" +
-      "Response\"\007\215\265\030\007\000\000\000\022X\n\treplicate\022\027.org.xtr" +
-      "eemfs.pbrpc.LSN\032%.org.xtreemfs.pbrpc.Err" +
-      "orCodeResponse\"\013\215\265\030\010\000\000\000\240\265\030\001\022c\n\013synchroni" +
-      "ze\022$.org.xtreemfs.pbrpc.HeartbeatMessage" +
+      "hare/foundation/include/PBRPC.proto2\335\006\n\023" +
+      "RemoteAccessService\022]\n\016makePersistent\022 ." +
+      "org.xtreemfs.pbrpc.emptyRequest\032\034.org.xt" +
+      "reemfs.pbrpc.Database\"\013\215\265\030\001\000\000\000\240\265\030\001\022\\\n\021ge" +
+      "tDatabaseByName\022 .org.xtreemfs.pbrpc.Dat" +
+      "abaseName\032\034.org.xtreemfs.pbrpc.Database\"" +
+      "\007\215\265\030\002\000\000\000\022X\n\017getDatabaseById\022\036.org.xtreem",
+      "fs.pbrpc.DatabaseId\032\034.org.xtreemfs.pbrpc" +
+      ".Database\"\007\215\265\030\003\000\000\000\022X\n\014getDatabases\022 .org" +
+      ".xtreemfs.pbrpc.emptyRequest\032\035.org.xtree" +
+      "mfs.pbrpc.Databases\"\007\215\265\030\004\000\000\000\022\\\n\006lookup\022\032" +
+      ".org.xtreemfs.pbrpc.Lookup\032%.org.xtreemf" +
+      "s.pbrpc.ErrorCodeResponse\"\017\215\265\030\005\000\000\000\240\265\030\001\230\265" +
+      "\030\001\022T\n\007plookup\022\032.org.xtreemfs.pbrpc.Looku" +
+      "p\032\034.org.xtreemfs.pbrpc.EntryMap\"\017\215\265\030\006\000\000\000" +
+      "\240\265\030\001\230\265\030\001\022[\n\016plookupReverse\022\032.org.xtreemf" +
+      "s.pbrpc.Lookup\032\034.org.xtreemfs.pbrpc.Entr",
+      "yMap\"\017\215\265\030\007\000\000\000\240\265\030\001\230\265\030\001\022Y\n\007rlookup\022\037.org.x" +
+      "treemfs.pbrpc.RangeLookup\032\034.org.xtreemfs" +
+      ".pbrpc.EntryMap\"\017\215\265\030\010\000\000\000\240\265\030\001\230\265\030\001\022`\n\016rloo" +
+      "kupReverse\022\037.org.xtreemfs.pbrpc.RangeLoo" +
+      "kup\032\034.org.xtreemfs.pbrpc.EntryMap\"\017\215\265\030\t\000" +
+      "\000\000\240\265\030\001\230\265\030\001\032\007\225\265\030\021\'\000\0002\217\007\n\022ReplicationServi" +
+      "ce\022K\n\005state\022 .org.xtreemfs.pbrpc.emptyRe" +
+      "quest\032\027.org.xtreemfs.pbrpc.LSN\"\007\215\265\030\001\000\000\000\022" +
+      "M\n\004load\022\027.org.xtreemfs.pbrpc.LSN\032#.org.x" +
+      "treemfs.pbrpc.DBFileMetaDatas\"\007\215\265\030\002\000\000\000\022V",
+      "\n\005chunk\022\031.org.xtreemfs.pbrpc.Chunk\032%.org" +
+      ".xtreemfs.pbrpc.ErrorCodeResponse\"\013\215\265\030\003\000" +
+      "\000\000\230\265\030\001\022X\n\006flease\022\032.org.xtreemfs.pbrpc.FL" +
+      "ease\032%.org.xtreemfs.pbrpc.ErrorCodeRespo" +
+      "nse\"\013\215\265\030\004\000\000\000\240\265\030\001\022U\n\tlocalTime\022 .org.xtre" +
+      "emfs.pbrpc.emptyRequest\032\035.org.xtreemfs.p" +
+      "brpc.Timestamp\"\007\215\265\030\005\000\000\000\022T\n\007replica\022\034.org" +
+      ".xtreemfs.pbrpc.LSNRange\032\036.org.xtreemfs." +
+      "pbrpc.LogEntries\"\013\215\265\030\006\000\000\000\230\265\030\001\022a\n\theartbe" +
+      "at\022$.org.xtreemfs.pbrpc.HeartbeatMessage",
       "\032%.org.xtreemfs.pbrpc.ErrorCodeResponse\"" +
-      "\007\215\265\030\t\000\000\000\022S\n\rvolatileState\022 .org.xtreemfs" +
-      ".pbrpc.emptyRequest\032\027.org.xtreemfs.pbrpc" +
-      ".LSN\"\007\215\265\030\n\000\000\000\032\007\225\265\030!N\000\000B\033\n\031org.xtreemfs.b" +
-      "abudb.pbrpc"
+      "\007\215\265\030\007\000\000\000\022X\n\treplicate\022\027.org.xtreemfs.pbr" +
+      "pc.LSN\032%.org.xtreemfs.pbrpc.ErrorCodeRes" +
+      "ponse\"\013\215\265\030\010\000\000\000\240\265\030\001\022c\n\013synchronize\022$.org." +
+      "xtreemfs.pbrpc.HeartbeatMessage\032%.org.xt" +
+      "reemfs.pbrpc.ErrorCodeResponse\"\007\215\265\030\t\000\000\000\022" +
+      "S\n\rvolatileState\022 .org.xtreemfs.pbrpc.em" +
+      "ptyRequest\032\027.org.xtreemfs.pbrpc.LSN\"\007\215\265\030" +
+      "\n\000\000\000\032\007\225\265\030!N\000\000B\033\n\031org.xtreemfs.babudb.pbr" +
+      "pc"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {

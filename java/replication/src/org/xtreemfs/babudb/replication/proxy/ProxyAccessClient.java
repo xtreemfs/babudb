@@ -38,7 +38,7 @@ public interface ProxyAccessClient {
      * @param data
      * @return the request's response future.
      */
-    public <T> ClientResponseFuture<T, ErrorCodeResponse> makePersistent(InetSocketAddress master, 
+    public ClientResponseFuture<Object, org.xtreemfs.babudb.pbrpc.GlobalTypes.Database> makePersistent(InetSocketAddress master, 
             ReusableBuffer data);
     
     /**

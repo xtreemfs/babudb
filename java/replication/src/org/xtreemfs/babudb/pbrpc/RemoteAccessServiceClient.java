@@ -1,4 +1,4 @@
-//automatically generated from replication.proto at Wed May 11 13:09:56 CEST 2011
+//automatically generated from replication.proto at Wed May 25 14:23:31 CEST 2011
 //(c) 2011. See LICENSE file for details.
 
 package org.xtreemfs.babudb.pbrpc;
@@ -23,15 +23,15 @@ public class RemoteAccessServiceClient {
         this.defaultServer = defaultServer;
     }
 
-    public RPCResponse<GlobalTypes.ErrorCodeResponse> makePersistent(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, Common.emptyRequest input, ReusableBuffer data) throws IOException {
+    public RPCResponse<GlobalTypes.Database> makePersistent(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, Common.emptyRequest input, ReusableBuffer data) throws IOException {
          if (server == null) server = defaultServer;
          if (server == null) throw new IllegalArgumentException("defaultServer must be set in constructor if you want to pass null as server in calls");
-         RPCResponse<GlobalTypes.ErrorCodeResponse> response = new RPCResponse<GlobalTypes.ErrorCodeResponse>(GlobalTypes.ErrorCodeResponse.getDefaultInstance());
+         RPCResponse<GlobalTypes.Database> response = new RPCResponse<GlobalTypes.Database>(GlobalTypes.Database.getDefaultInstance());
          client.sendRequest(server, authHeader, userCreds, 10001, 1, input, data, response, false);
          return response;
     }
 
-    public RPCResponse<GlobalTypes.ErrorCodeResponse> makePersistent(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, ReusableBuffer data) throws IOException {
+    public RPCResponse<GlobalTypes.Database> makePersistent(InetSocketAddress server, Auth authHeader, UserCredentials userCreds, ReusableBuffer data) throws IOException {
          
          return makePersistent(server, authHeader, userCreds,null, data);
     }

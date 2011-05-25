@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Vector;
 
+import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.BabuDB;
 import org.xtreemfs.babudb.api.Checkpointer;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
@@ -70,7 +71,9 @@ public class BabuDBInterface {
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "Appending entry to logger: %s", 
                 new String(entry.getPayload().array()));
         
-        localTxnMan.makePersistent(entry.getPayload()).registerListener(listener);
+        BabuDBRequestResultImpl<Object> future = new BabuDBRequestResultImpl<Object>();
+        localTxnMan.makePersistent(entry.getPayload(), future);
+        future.registerListener(listener);
     }
     
     /**

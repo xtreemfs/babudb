@@ -40,16 +40,16 @@ import org.xtreemfs.foundation.logging.Logging;
  * @author flangner
  * @since 01/19/2011
  */
-class DatabaseManagerProxy implements DatabaseManagerInternal {
+public class DatabaseManagerProxy implements DatabaseManagerInternal {
 
     private final    DatabaseManagerInternal    localDBMan;
     private final    Policy                     replicationPolicy;
     private final    ReplicationManager         replicationManager;
-    private final    ProxyAccessClient          client;
+    private final    BabuDBProxy                babuDBProxy;
     private final    TransactionManagerInternal txnManProxy;
 
     public DatabaseManagerProxy(DatabaseManagerInternal localDBMan, Policy policy, 
-            ReplicationManager replMan, ProxyAccessClient client, 
+            ReplicationManager replMan, BabuDBProxy babuDBProxy, 
             TransactionManagerInternal persMan) {
         
         assert (localDBMan != null);
@@ -58,7 +58,7 @@ class DatabaseManagerProxy implements DatabaseManagerInternal {
         this.localDBMan = localDBMan;
         this.replicationPolicy = policy;
         this.replicationManager = replMan;
-        this.client = client;
+        this.babuDBProxy = babuDBProxy;
     }
     
     /* (non-Javadoc)
@@ -70,13 +70,13 @@ class DatabaseManagerProxy implements DatabaseManagerInternal {
         
         InetSocketAddress master = getServerToPerformAt();
         if (master == null) {
-            return new DatabaseProxy(localDBMan.getDatabase(dbName), replicationPolicy, this);
+            return new DatabaseProxy(localDBMan.getDatabase(dbName), this);
         }
         
         try {
             
-            int dbId = client.getDatabase(dbName, master).get();
-            return new DatabaseProxy(dbName, dbId, replicationPolicy, this);
+            int dbId = babuDBProxy.getClient().getDatabase(dbName, master).get();
+            return new DatabaseProxy(dbName, dbId, this);
             
         } catch (ErrorCodeException ece) {
             throw new BabuDBException(mapTransmissionError(ece.getCode()),ece.getMessage());
@@ -100,14 +100,13 @@ class DatabaseManagerProxy implements DatabaseManagerInternal {
                 for (Entry<String, DatabaseInternal> e : 
                     localDBMan.getDatabasesInternal().entrySet()) {
                     
-                    r.put(e.getKey(), new DatabaseProxy(e.getValue(), replicationPolicy, this));
+                    r.put(e.getKey(), new DatabaseProxy(e.getValue(), this));
                 }
             } else {
                 for (Entry<String, Integer> e : 
-                    client.getDatabases(master).get().entrySet()) {
+                    babuDBProxy.getClient().getDatabases(master).get().entrySet()) {
                                     
-                    r.put(e.getKey(), new DatabaseProxy(e.getKey(), e.getValue(), replicationPolicy, 
-                            this));
+                    r.put(e.getKey(), new DatabaseProxy(e.getKey(), e.getValue(), this));
                 }
             }
             return r; 
@@ -144,7 +143,7 @@ class DatabaseManagerProxy implements DatabaseManagerInternal {
     public DatabaseInternal createDatabase(String databaseName, int numIndices, 
             ByteRangeComparator[] comparators) throws BabuDBException {
         return new DatabaseProxy(localDBMan.createDatabase(databaseName, numIndices, comparators), 
-                replicationPolicy, this);
+                this);
     }
 
     /* (non-Javadoc)
@@ -204,7 +203,7 @@ class DatabaseManagerProxy implements DatabaseManagerInternal {
     }
     
     ProxyAccessClient getClient() {
-        return client;
+        return babuDBProxy.getClient();
     }
     
     TransactionManagerInternal getTransactionManager() {
@@ -254,12 +253,12 @@ class DatabaseManagerProxy implements DatabaseManagerInternal {
     public DatabaseInternal getDatabase(int dbId) throws BabuDBException {
         InetSocketAddress master = getServerToPerformAt();
         if (master == null) {
-            return new DatabaseProxy(localDBMan.getDatabase(dbId), replicationPolicy, this);
+            return new DatabaseProxy(localDBMan.getDatabase(dbId), this);
         }
 
         try {
-            String dbName = client.getDatabase(dbId, master).get();
-            return new DatabaseProxy(dbName, dbId, replicationPolicy, this);
+            String dbName = babuDBProxy.getClient().getDatabase(dbId, master).get();
+            return new DatabaseProxy(dbName, dbId, this);
         } catch (ErrorCodeException ece) {
             throw new BabuDBException(mapTransmissionError(ece.getCode()),ece.getMessage());
         } catch (Exception e) {
@@ -405,5 +404,9 @@ class DatabaseManagerProxy implements DatabaseManagerInternal {
     @Override
     public void executeTransaction(TransactionInternal txn) throws BabuDBException {
         localDBMan.executeTransaction(txn);
+    }
+    
+    public Policy getReplicationPolicy() {
+        return replicationPolicy;
     }
 }

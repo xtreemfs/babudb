@@ -10,6 +10,7 @@ package org.xtreemfs.babudb.replication.transmission.client;
 import java.net.InetSocketAddress;
 
 import org.xtreemfs.babudb.pbrpc.ReplicationServiceClient;
+import org.xtreemfs.babudb.replication.proxy.DatabaseManagerProxy;
 import org.xtreemfs.babudb.replication.proxy.ProxyAccessClient;
 
 /**
@@ -28,9 +29,10 @@ public interface ClientFactory {
     public ReplicationClientAdapter getClient(InetSocketAddress receiver);
     
     /**
+     * @param dbManProxy
      * 
      * @return a generic proxy-client instance as abstraction from the 
      *         underlying RPC architecture.
      */
-    public ProxyAccessClient getProxyClient();
+    public ProxyAccessClient getProxyClient(DatabaseManagerProxy dbManProxy);
 }

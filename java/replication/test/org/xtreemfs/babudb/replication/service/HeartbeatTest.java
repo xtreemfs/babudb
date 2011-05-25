@@ -27,6 +27,7 @@ import org.xtreemfs.babudb.mock.RequestHandlerMock;
 import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage;
+import org.xtreemfs.babudb.replication.proxy.DatabaseManagerProxy;
 import org.xtreemfs.babudb.replication.proxy.ProxyAccessClient;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates;
 import org.xtreemfs.babudb.replication.transmission.client.ClientFactory;
@@ -149,7 +150,7 @@ public class HeartbeatTest implements LifeCycleListener {
         ParticipantsStates states = new ParticipantsStates(0, participants, new ClientFactory() {
             
             @Override
-            public ProxyAccessClient getProxyClient() {
+            public ProxyAccessClient getProxyClient(DatabaseManagerProxy dbManProxy) {
                 fail("Generation of RemoteAccessClients is not supported by this test.");
                 return null;
             }

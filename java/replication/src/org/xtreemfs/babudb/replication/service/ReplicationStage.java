@@ -281,7 +281,7 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
         
         if (start.equals(to)) {
             
-            listener.finished();
+            listener.finished(to);
         } else {
         
             this.listener = listener;

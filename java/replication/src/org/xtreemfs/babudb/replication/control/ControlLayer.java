@@ -15,8 +15,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.xtreemfs.babudb.config.ReplicationConfig;
-import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
+import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.LockableService;
 import org.xtreemfs.babudb.replication.TopLayer;
 import org.xtreemfs.babudb.replication.service.ServiceToControlInterface;
@@ -445,8 +445,7 @@ public class ControlLayer extends TopLayer {
             serviceInterface.synchronize(new SyncListener() {
                 
                 @Override
-                public void synced(LogEntry entry) {
-                    assert (entry == null);
+                public void synced(LSN lsn) {
                     
                     notifyForSuccessfulFailover(thisAddress);
                     unlockUser();
@@ -455,8 +454,7 @@ public class ControlLayer extends TopLayer {
                 }
                 
                 @Override
-                public void failed(LogEntry entry, Exception ex) {
-                    assert (entry == null);
+                public void failed(Exception ex) {
                     
                     Logging.logMessage(Logging.LEVEL_WARN, this, 
                             "Master failover did not succeed! Reseting the local lease and " +

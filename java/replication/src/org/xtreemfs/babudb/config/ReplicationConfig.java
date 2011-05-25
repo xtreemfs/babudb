@@ -17,6 +17,7 @@ import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
 
+import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.replication.control.FleaseHolder;
 import org.xtreemfs.babudb.replication.policy.Policy;
 import org.xtreemfs.foundation.SSLOptions;
@@ -354,6 +355,12 @@ public class ReplicationConfig extends PluginConfig {
         
         File base = new File(conf.getBaseDir());
         File log = new File(conf.getDbLogDir());
+        
+        if (conf.getSyncMode() == SyncMode.ASYNC) {
+            throw new IllegalArgumentException("Replication will not work properly if BabuDB " +
+            		"instances run in ASYNC mode. Please change the SyncMode of your BabuDB " +
+            		"setup.");
+        }
         
         if (log.equals(base)) {
             throw new IllegalArgumentException("It is not permitted by the replication plugin to" +

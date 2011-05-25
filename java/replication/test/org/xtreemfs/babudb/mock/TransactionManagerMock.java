@@ -57,24 +57,22 @@ public class TransactionManagerMock extends TransactionManagerInternal {
     }
 
     @Override
-	public <T> BabuDBRequestResultImpl<T> makePersistent(TransactionInternal txn, 
-	        ReusableBuffer serialized) throws BabuDBException {
+    public void makePersistent(TransactionInternal txn, ReusableBuffer serialized, 
+            BabuDBRequestResultImpl<Object> future) throws BabuDBException {
 		
-		if (lock.get()) {
-			throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "Serivce has been locked!");
-		} else {
-			synchronized (onDisk) {
-				LSN lsn = onDisk.get();
-				lsn = new LSN(lsn.getViewId(), lsn.getSequenceNo() + 1L);	
-				onDisk.set(lsn);
-				Logging.logMessage(Logging.LEVEL_ERROR, this, 
-				        "TxnMan of mock '%s' has retrieved a new transaction to " +
-				        "perform (%s) with LSN %s.", 
-				        name, txn.toString(), lsn.toString());
-			}
-		}
-		return null;
-	}
+        if (lock.get()) {
+            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, "Serivce has been locked!");
+        } else {
+            synchronized (onDisk) {
+                LSN lsn = onDisk.get();
+                lsn = new LSN(lsn.getViewId(), lsn.getSequenceNo() + 1L);
+                onDisk.set(lsn);
+                Logging.logMessage(Logging.LEVEL_ERROR, this, "TxnMan of mock '%s' has " +
+                		"retrieved a new transaction to perform (%s) with LSN %s.", name, 
+                		txn.toString(), lsn.toString());
+            }
+        }
+    }
 
     @Override
     public void setLogger(DiskLogger logger) {

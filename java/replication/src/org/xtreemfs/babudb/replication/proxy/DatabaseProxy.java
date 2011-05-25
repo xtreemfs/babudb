@@ -40,33 +40,28 @@ import static org.xtreemfs.babudb.replication.transmission.ErrorCode.*;
  * @author flangner
  * @since 01/19/2011
  */
-class DatabaseProxy implements DatabaseInternal {
+public class DatabaseProxy implements DatabaseInternal {
 
     private final DatabaseManagerProxy  dbMan;
-    private final Policy                replicationPolicy;
     private final String                name;
     private final int                   id;
     private DatabaseInternal            localDB;
     
-    public DatabaseProxy(DatabaseInternal  localDatabase, Policy replicationPolicy, 
-            DatabaseManagerProxy dbManProxy) {
+    public DatabaseProxy(DatabaseInternal  localDatabase, DatabaseManagerProxy dbManProxy) {
         
         assert (localDatabase != null);
         
         this.localDB = localDatabase;
         this.name = localDB.getName();
         this.id = localDB.getLSMDB().getDatabaseId();
-        this.replicationPolicy = replicationPolicy;
         this.dbMan = dbManProxy;
     }
     
-    public DatabaseProxy(String dbName, int dbId, Policy replicationPolicy, 
-            DatabaseManagerProxy dbManProxy) {
+    public DatabaseProxy(String dbName, int dbId, DatabaseManagerProxy dbManProxy) {
         
         this.name = dbName;
         this.id = dbId;
         this.localDB = null;
-        this.replicationPolicy = replicationPolicy;
         this.dbMan = dbManProxy;
     }
     
@@ -565,14 +560,12 @@ class DatabaseProxy implements DatabaseInternal {
     @Override
     public DatabaseRequestResult<Object> insert(BabuDBInsertGroup irg, Object context) {
         
-        BabuDBRequestResultImpl<Object> result = null;
+        BabuDBRequestResultImpl<Object> result = new BabuDBRequestResultImpl<Object>(context);
         
         try {
-            result = dbMan.getTransactionManager().makePersistent(
-                    dbMan.createTransaction().insertRecordGroup(getName(), irg.getRecord()));
-            result.updateContext(context);
+            dbMan.getTransactionManager().makePersistent(
+                    dbMan.createTransaction().insertRecordGroup(getName(), irg.getRecord()), result);
         } catch (BabuDBException e) {
-            result = new BabuDBRequestResultImpl<Object>(context);
             result.failed(e);
         }
         
@@ -596,10 +589,10 @@ class DatabaseProxy implements DatabaseInternal {
         
         boolean isMaster = dbMan.getReplicationManager().isItMe(master);
         
-        if (isMaster || !replicationPolicy.lookUpIsMasterRestricted()) {
+        if (isMaster || !dbMan.getReplicationPolicy().lookUpIsMasterRestricted()) {
                 
             // this service is allowed to retrieve the local database for lookups
-            if (isMaster || !replicationPolicy.dbModificationIsMasterRestricted()) {
+            if (isMaster || !dbMan.getReplicationPolicy().dbModificationIsMasterRestricted()) {
                 localDB = dbMan.getLocalDatabase(name);
                 
             // existence of the database has to be verified at the master

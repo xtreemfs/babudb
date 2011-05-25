@@ -22,6 +22,8 @@ import org.xtreemfs.babudb.pbrpc.GlobalTypes.Databases;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap;
 import org.xtreemfs.babudb.pbrpc.RemoteAccessServiceClient;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
+import org.xtreemfs.babudb.replication.proxy.DatabaseManagerProxy;
+import org.xtreemfs.babudb.replication.proxy.DatabaseProxy;
 import org.xtreemfs.babudb.replication.proxy.ProxyAccessClient;
 import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture;
 import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter.ErrorCodeException;
@@ -42,8 +44,11 @@ import static org.xtreemfs.babudb.replication.transmission.TransmissionLayer.*;
 public class ProxyAccessClientAdapter extends RemoteAccessServiceClient 
     implements ProxyAccessClient {
 
-    public ProxyAccessClientAdapter(RPCNIOSocketClient client) {
+    private final DatabaseManagerProxy dbMan;
+    
+    public ProxyAccessClientAdapter(RPCNIOSocketClient client, DatabaseManagerProxy dbMan) {
         super(client, null);
+        this.dbMan = dbMan;
     }
 
     /* (non-Javadoc)
@@ -51,31 +56,38 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
      *          java.net.InetSocketAddress, org.xtreemfs.foundation.buffer.ReusableBuffer)
      */
     @Override
-    public ClientResponseFuture<Object, ErrorCodeResponse> makePersistent(InetSocketAddress master, 
+    public ClientResponseFuture<Object, Database> makePersistent(InetSocketAddress master, 
             ReusableBuffer data) {
         assert (master != null);
         
         try {
-            RPCResponse<ErrorCodeResponse> result = makePersistent(master, 
+            RPCResponse<Database> result = makePersistent(master, 
                     AUTHENTICATION, USER_CREDENTIALS, data);
             
-            return new ClientResponseFuture<Object, ErrorCodeResponse>(result) {
+            return new ClientResponseFuture<Object, Database>(result) {
                 
                 @Override
-                public Object resolve(ErrorCodeResponse response, ReusableBuffer data)
+                public Object resolve(Database response, ReusableBuffer data)
                         throws ErrorCodeException, IOException {
                     
                     if (response.getErrorCode() != 0) {
                         throw new ErrorCodeException(response.getErrorCode());
                     }
-                    return null;
+                    
+                    if (response.getDatabaseId() > -1) {
+                        return new Object[] { 
+                                new DatabaseProxy(response.getDatabaseName(), 
+                                                  response.getDatabaseId(), dbMan) };
+                    } else {
+                        return new Object[]{};
+                    }
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<Object, ErrorCodeResponse>(null) {
+            return new ClientResponseFuture<Object, Database>(null) {
                 
                 @Override
-                public Object resolve(ErrorCodeResponse response, ReusableBuffer data)
+                public Object resolve(Database response, ReusableBuffer data)
                         throws ErrorCodeException, IOException {
                     throw e;
                 }
@@ -88,7 +100,7 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
      *          java.net.InetSocketAddress)
      */
     @Override
-    public ClientResponseFuture<Integer,Database> getDatabase(String dbName, 
+    public ClientResponseFuture<Integer, Database> getDatabase(String dbName, 
             InetSocketAddress master) {
  
         assert (master != null);
@@ -97,7 +109,7 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
             RPCResponse<Database> result = getDatabaseByName(master, AUTHENTICATION, 
                     USER_CREDENTIALS, dbName);
             
-            return new ClientResponseFuture<Integer,Database>(result) {              
+            return new ClientResponseFuture<Integer, Database>(result) {              
 
                 @Override
                 public Integer resolve(Database response, ReusableBuffer data) 
@@ -110,7 +122,7 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<Integer,Database>(null) {
+            return new ClientResponseFuture<Integer, Database>(null) {
                 
                 @Override
                 public Integer resolve(Database response, ReusableBuffer data) 
@@ -126,7 +138,7 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
      *          java.net.InetSocketAddress)
      */
     @Override
-    public ClientResponseFuture<Map<String,Integer>, Databases> getDatabases(
+    public ClientResponseFuture<Map<String, Integer>, Databases> getDatabases(
             InetSocketAddress master) {
         
         assert (master != null);
@@ -148,7 +160,7 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                 }
             };
         } catch (final IOException e) {
-            return new ClientResponseFuture<Map<String,Integer>, Databases>(null) {
+            return new ClientResponseFuture<Map<String, Integer>, Databases>(null) {
                 
                 @Override
                 public Map<String, Integer> resolve(Databases response, ReusableBuffer data)

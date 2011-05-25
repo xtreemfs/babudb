@@ -37,18 +37,21 @@ public class BabuDBProxy implements BabuDBInternal {
     private final TransactionManagerProxy txnManProxy;
     private final DatabaseManagerInternal dbManProxy;
     private final ReplicationManager      replMan;
+    private final ProxyAccessClient       client;
     
     public BabuDBProxy(BabuDBInternal localDB, ReplicationManager replMan, 
-            Policy replicationPolicy, ProxyAccessClient client) {    
+            Policy replicationPolicy) {    
         
         assert (localDB != null);
         
         this.localBabuDB = localDB;
         this.replMan = replMan;
         this.txnManProxy = new TransactionManagerProxy(replMan, 
-                localDB.getTransactionManager(), replicationPolicy, client);
-        this.dbManProxy = new DatabaseManagerProxy(localDB.getDatabaseManager(), 
-                replicationPolicy, replMan, client, txnManProxy);
+                localDB.getTransactionManager(), replicationPolicy, this);
+        DatabaseManagerProxy dbMan = new DatabaseManagerProxy(localDB.getDatabaseManager(), 
+                replicationPolicy, replMan, this, txnManProxy);
+        this.client = replMan.getProxyClient(dbMan);
+        this.dbManProxy = dbMan;
     }
     
     /* (non-Javadoc)
@@ -213,5 +216,12 @@ public class BabuDBProxy implements BabuDBInternal {
     @Override
     public void crashPerformed(Throwable cause) {
         localBabuDB.crashPerformed(cause);
+    }
+    
+    /**
+     * @return the client for proxy requests.
+     */
+    public ProxyAccessClient getClient() {
+        return client;
     }
 }

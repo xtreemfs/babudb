@@ -24,7 +24,6 @@ public final class ReplicateResponse extends LatestLSNUpdateListener {
 
     private boolean             finished = false;
     private int                 permittedFailures;
-    private final LogEntry      logEntry;
     private final SyncListener  listener;
     
     /**
@@ -38,9 +37,8 @@ public final class ReplicateResponse extends LatestLSNUpdateListener {
         
         this.finished = true;
         this.permittedFailures = -1;
-        this.logEntry = le;
         this.listener = le.getListener();
-        this.listener.failed(logEntry, error);
+        this.listener.failed(error);
     }
     
     /**
@@ -55,9 +53,8 @@ public final class ReplicateResponse extends LatestLSNUpdateListener {
         
         this.finished = true;
         this.permittedFailures = -1;
-        this.logEntry = null;
         this.listener = listener;
-        this.listener.failed(logEntry, error);
+        this.listener.failed(error);
     }
     
     /**
@@ -69,8 +66,7 @@ public final class ReplicateResponse extends LatestLSNUpdateListener {
      */
     public ReplicateResponse(LogEntry le, int slavesThatCanFail) {
         super(le.getLSN());
-        this.logEntry = le;
-        this.listener = logEntry.getListener();
+        this.listener = le.getListener();
         this.permittedFailures = slavesThatCanFail;
     }
     
@@ -84,7 +80,6 @@ public final class ReplicateResponse extends LatestLSNUpdateListener {
      */
     public ReplicateResponse(LSN lsn, SyncListener listener, int slavesThatCanFail) {
         super(lsn);
-        this.logEntry = null;
         this.listener = listener;
         this.permittedFailures = slavesThatCanFail;
     }
@@ -95,7 +90,7 @@ public final class ReplicateResponse extends LatestLSNUpdateListener {
     public synchronized void decrementPermittedFailures(){
         if (permittedFailures == 0 && !finished) {
             finished = true;
-            listener.failed(logEntry, new BabuDBException(ErrorCode.REPLICATION_FAILURE,
+            listener.failed(new BabuDBException(ErrorCode.REPLICATION_FAILURE,
                     "LogEntry could not be replicated!"));
         }
         permittedFailures--;
@@ -117,7 +112,7 @@ public final class ReplicateResponse extends LatestLSNUpdateListener {
     public synchronized void upToDate() {
         if (!finished) {
             finished = true;
-            listener.synced(logEntry);
+            listener.synced(lsn);
         }
     }
 
@@ -129,7 +124,7 @@ public final class ReplicateResponse extends LatestLSNUpdateListener {
     public synchronized void failed() {
         if (!finished) {
             finished = true;
-            listener.failed(logEntry, new Exception("Replication of LogEntry (" + lsn.toString() 
+            listener.failed(new Exception("Replication of LogEntry (" + lsn.toString() 
                     + ") failed!"));
         }
     }

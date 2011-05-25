@@ -64,8 +64,7 @@ public class Main extends PluginMain {
         } 
         
         // initialize the BabuDB proxy interface
-        return new BabuDBProxy(babuDB, replMan, configuration.getReplicationPolicy(), 
-                               replMan.getProxyClient());
+        return new BabuDBProxy(babuDB, replMan, configuration.getReplicationPolicy());
     }
 
     /* (non-Javadoc)

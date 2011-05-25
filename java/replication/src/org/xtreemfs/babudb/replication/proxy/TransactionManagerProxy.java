@@ -49,15 +49,15 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
     private final ReplicationManager            replMan;
     private final TransactionManagerInternal    localTxnMan;
     private final Policy                        replicationPolicy;
-    private final ProxyAccessClient             client;
+    private final BabuDBProxy                   babuDBProxy;
     private final AtomicInteger                 accessCounter = new AtomicInteger(0);
     private boolean                             locked = true;
     
     public TransactionManagerProxy(ReplicationManager replMan,
             TransactionManagerInternal localTxnMan, Policy replicationPolicy, 
-            ProxyAccessClient client) {
+            BabuDBProxy babuDBProxy) {
         
-        this.client = client;
+        this.babuDBProxy = babuDBProxy;
         this.replicationPolicy = replicationPolicy;
         this.replMan = replMan;
         this.localTxnMan = localTxnMan;
@@ -74,8 +74,9 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
      *          org.xtreemfs.foundation.buffer.ReusableBuffer)
      */
     @Override
-    public <T> BabuDBRequestResultImpl<T> makePersistent(TransactionInternal txn, 
-            ReusableBuffer serialized) throws BabuDBException {
+    public void makePersistent(TransactionInternal txn, 
+            ReusableBuffer serialized, BabuDBRequestResultImpl<Object> future) 
+            throws BabuDBException {
         
         assert (serialized != null);
         
@@ -94,9 +95,9 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
                 }
                 accessCounter.incrementAndGet();
             }
-            return executeLocallyAndReplicate(txn, serialized);
+            executeLocallyAndReplicate(txn, serialized, future);
         } else {      
-            return redirectToMaster(serialized, master);
+            redirectToMaster(serialized, master, future);
         }
     }
     
@@ -107,16 +108,17 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
      * @param <T>
      * @param txn
      * @param payload
+     * @param future
+     * 
      * @return the requests result future.
      * @throws BabuDBException
      */
-    private <T> BabuDBRequestResultImpl<T> executeLocallyAndReplicate(TransactionInternal txn, 
-            final ReusableBuffer payload) throws BabuDBException {
+    private void executeLocallyAndReplicate(TransactionInternal txn, final ReusableBuffer payload, 
+            final BabuDBRequestResultImpl<Object> future) throws BabuDBException {
         
-        final ListenerWrapper<T> wrapper = new ListenerWrapper<T>();
-                
-        localTxnMan.makePersistent(txn, payload.createViewBuffer()).registerListener(
-                new DatabaseRequestListener<Object>() {
+        final BabuDBRequestResultImpl<Object> localFuture = new BabuDBRequestResultImpl<Object>();
+        localTxnMan.makePersistent(txn, payload.createViewBuffer(), localFuture);
+        localFuture.registerListener(new DatabaseRequestListener<Object>() {
         
             @Override
             public void finished(Object result, Object context) {
@@ -128,8 +130,9 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
                     }
                 }
                 
-                LSN assignedByDiskLogger = ((LogEntry) context).getLSN();
-                LogEntry le = new LogEntry(payload, wrapper, PAYLOAD_TYPE_TRANSACTION);
+                LSN assignedByDiskLogger = localFuture.getAssignedLSN();
+                LogEntry le = new LogEntry(payload, new ListenerWrapper(future, result), 
+                                           PAYLOAD_TYPE_TRANSACTION);
                 le.assignId(assignedByDiskLogger.getViewId(), assignedByDiskLogger.getSequenceNo());
                 
                 ReplicateResponse rp = replMan.replicate(le);
@@ -150,11 +153,9 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
                     }
                 }
                 
-                wrapper.failed(error);
+                future.failed(error);
             }
         });
-    
-        return wrapper;
     }
     
     /**
@@ -164,15 +165,14 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
      * @param <T>
      * @param load
      * @param master
+     * @param future
      * @return the request response future.
      */
-    private <T> BabuDBRequestResultImpl<T> redirectToMaster(ReusableBuffer load, 
-            InetSocketAddress master) {
+    private void redirectToMaster(ReusableBuffer load, InetSocketAddress master, 
+            BabuDBRequestResultImpl<Object> future) {
         
-        ListenerWrapper<T> result = new ListenerWrapper<T>();       
-        client.makePersistent(master, load).registerListener(result);
-      
-        return result;
+        babuDBProxy.getClient().makePersistent(master, load).registerListener(
+                new ListenerWrapper(future));
     }
     
     private boolean isLocked() {
@@ -297,17 +297,29 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
      * @author flangner
      * @since 19.01.2011
      */
-    private final static class ListenerWrapper<T> extends BabuDBRequestResultImpl<T> 
-            implements ClientResponseAvailableListener<Object>, SyncListener {
+    private final static class ListenerWrapper implements ClientResponseAvailableListener<Object>, 
+            SyncListener {
+        
+        private final BabuDBRequestResultImpl<Object> requestFuture;
+        private final Object                          result;
+        
+        public ListenerWrapper(BabuDBRequestResultImpl<Object> requestFuture) {
+            this.requestFuture = requestFuture;
+            this.result = null;
+        }
+        
+        public ListenerWrapper(BabuDBRequestResultImpl<Object> requestFuture, Object result) {
+            this.requestFuture = requestFuture;
+            this.result = result;
+        }
         
         /* (non-Javadoc)
          * @see org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.
          *              ClientResponseAvailableListener#responseAvailable(java.lang.Object)
          */
-        @SuppressWarnings("unchecked")
         @Override
         public void responseAvailable(Object r) {
-            finished((T) r);
+            requestFuture.finished(r);
         }
 
         /* (non-Javadoc)
@@ -323,16 +335,15 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
                 be = new BabuDBException(mapTransmissionError(
                         ((ErrorCodeException) e).getCode()),e.getMessage());
             }
-            
-            failed(be);
+            requestFuture.failed(be);
         }
 
         /* (non-Javadoc)
          * @see org.xtreemfs.babudb.log.SyncListener#synced(org.xtreemfs.babudb.log.LogEntry)
          */
         @Override
-        public void synced(LogEntry entry) {
-            finished();
+        public void synced(LSN lsn) {
+            requestFuture.finished(result, lsn);
         }
 
         /* (non-Javadoc)
@@ -340,8 +351,9 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
          *              java.lang.Exception)
          */
         @Override
-        public void failed(LogEntry entry, Exception ex) {
-            failed(new BabuDBException(ErrorCode.REPLICATION_FAILURE, ex.getMessage()));
+        public void failed(Exception ex) {
+            requestFuture.failed(
+                    new BabuDBException(ErrorCode.REPLICATION_FAILURE, ex.getMessage()));
         }
     }
 

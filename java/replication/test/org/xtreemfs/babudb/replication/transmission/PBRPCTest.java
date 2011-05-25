@@ -217,7 +217,7 @@ public class PBRPCTest implements LifeCycleListener {
         dispatcher.waitForStartup();
         
         // setup the client
-        ProxyAccessClientAdapter testClient = new ProxyAccessClientAdapter(client);
+        ProxyAccessClientAdapter testClient = new ProxyAccessClientAdapter(client, null);
         
         // run some test operations
         int result = testClient.getDatabase(testDatabaseName, 

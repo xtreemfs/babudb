@@ -13,6 +13,7 @@ import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.replication.control.ControlLayer;
+import org.xtreemfs.babudb.replication.proxy.DatabaseManagerProxy;
 import org.xtreemfs.babudb.replication.proxy.ProxyAccessClient;
 import org.xtreemfs.babudb.replication.service.ServiceLayer;
 import org.xtreemfs.babudb.replication.service.accounting.ReplicateResponse;
@@ -135,10 +136,12 @@ public class ReplicationManager implements LifeCycleListener {
     }
 
     /**
+     * @param dbManProxy
+     * 
      * @return a client to remotely access the BabuDB with master-privilege.
      */
-    public ProxyAccessClient getProxyClient() {
-        return transmissionLayer.getProxyClient();
+    public ProxyAccessClient getProxyClient(DatabaseManagerProxy dbManProxy) {
+        return transmissionLayer.getProxyClient(dbManProxy);
     }
     
 /*

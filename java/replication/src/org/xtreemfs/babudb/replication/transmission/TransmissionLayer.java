@@ -16,6 +16,7 @@ import java.net.InetSocketAddress;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.replication.Layer;
 import org.xtreemfs.babudb.replication.ReplicationManager;
+import org.xtreemfs.babudb.replication.proxy.DatabaseManagerProxy;
 import org.xtreemfs.babudb.replication.proxy.ProxyAccessClient;
 import org.xtreemfs.babudb.replication.transmission.client.ClientFactory;
 import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter;
@@ -106,17 +107,17 @@ public class TransmissionLayer extends Layer implements ClientFactory,
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.transmission.ClientFactory#getProxyClient()
+     * @see org.xtreemfs.babudb.replication.transmission.client.ClientFactory#getProxyClient(
+     *          org.xtreemfs.babudb.replication.proxy.DatabaseManagerProxy)
      */
     @Override
-    public ProxyAccessClient getProxyClient() {
-        return new ProxyAccessClientAdapter(rpcClient);
+    public ProxyAccessClient getProxyClient(DatabaseManagerProxy dbManProxy) {
+        return new ProxyAccessClientAdapter(rpcClient, dbManProxy);
     }
     
-    /*
-     * (non-Javadoc)
+    /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.Layer#
-     * _setLifeCycleListener(org.xtreemfs.foundation.LifeCycleListener)
+     *          _setLifeCycleListener(org.xtreemfs.foundation.LifeCycleListener)
      */
     @Override
     public void _setLifeCycleListener(LifeCycleListener listener) {
