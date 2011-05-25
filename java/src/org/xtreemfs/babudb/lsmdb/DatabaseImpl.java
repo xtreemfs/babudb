@@ -100,8 +100,6 @@ public class DatabaseImpl implements DatabaseInternal {
     @Override
     public DatabaseRequestResult<Object> insert(BabuDBInsertGroup irg, Object context) {
         
-        final BabuDBRequestResultImpl<Object> result = new BabuDBRequestResultImpl<Object>(context);
-        
         InsertRecordGroup ins = irg.getRecord();
         int dbId = ins.getDatabaseId();
         
@@ -112,17 +110,18 @@ public class DatabaseImpl implements DatabaseInternal {
                         + " is sent to worker #" + dbId % dbs.getWorkerCount());
             }
             
+            BabuDBRequestResultImpl<Object> result = new BabuDBRequestResultImpl<Object>(context);
             try {
                 w.addRequest(new LSMDBRequest<Object>(lsmDB, result, ins));
             } catch (InterruptedException ex) {
                 result.failed(new BabuDBException(ErrorCode.INTERRUPTED, 
                         "operation was interrupted", ex));
             }
+            
+            return result;
         } else {
-            directInsert(irg, result);
+            return directInsert(irg, context);
         }
-        
-        return result;
     }
     
     /**
@@ -131,20 +130,26 @@ public class DatabaseImpl implements DatabaseInternal {
      * make the insert persistent is ignored, if {@link SyncMode} is ASYNC.
      * 
      * @param irg - the group of inserts.
-     * @param listener - to notify after insert.
+     * @param context - the context object for this request.
+     * 
+     * @return the request future.
      */
-    private void directInsert(BabuDBInsertGroup irg, BabuDBRequestResultImpl<Object> listener) {
+    private DatabaseRequestResult<Object> directInsert(BabuDBInsertGroup irg, Object context) {
 
+        BabuDBRequestResultImpl<Object> result = new BabuDBRequestResultImpl<Object>(context);
+        
         try {
             dbs.getTransactionManager().makePersistent(
                     dbs.getDatabaseManager().createTransaction().insertRecordGroup(
-                            getName(), irg.getRecord(), getLSMDB(), listener));             
+                            getName(), irg.getRecord(), getLSMDB()), result);
         } catch (BabuDBException e) {
             
             // if an exception occurred while writing the log, respond with an
             // error message
-            listener.failed(e);
+            result.failed(e);
         }
+        
+        return result;
     }
     
 /*

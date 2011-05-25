@@ -45,34 +45,17 @@ public abstract class InMemoryProcessing {
      */
     @Deprecated
     public abstract OperationInternal convertToOperation(Object[] args);
-    
+     
     /**
-     * Optional method to execute before making an Operation on-disk persistent.
-     * Depending on the implementation of TransactionManagerInternal throwing an
-     * exception might influence the execution of makePersistent() and after().
+     * The database changes made by the operation can be read after this method returns. Although 
+     * there are no persistence guarantees on a database crash e.g. there is no entry written to the 
+     * log.
      * 
-     * @param operation - operation to execute.
+     * @param operation
      * 
-     * @throws BabuDBException if method fails. 
+     * @return a possible return value for the in-memory processing of the operation, may be null.
+     * 
+     * @throws BabuDBException if the operation could not have been processed, due a user error.
      */
-    public void before(OperationInternal operation) throws BabuDBException {}
-    
-    /**
-     * Optional method to execute while the request was already successfully queued to be made
-     * persistent.
-     * 
-     * @param operation - operation to execute.
-     */
-    public void meanwhile(OperationInternal operation) {}
-    
-    /**
-     * Optional method to execute after making an Operation successfully 
-     * on-disk persistent. This behavior depends on the implementation of 
-     * the makePersistent() method in {@link TransactionManagerInternal}.
-     * 
-     * @param operation - operation to execute.
-     * 
-     * @throws BabuDBException if method fails due a software failure.
-     */
-    public void after(OperationInternal operation) throws BabuDBException {}
+    public abstract Object process(OperationInternal operation) throws BabuDBException;
 }

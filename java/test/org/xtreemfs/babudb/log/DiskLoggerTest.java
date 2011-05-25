@@ -54,7 +54,7 @@ public class DiskLoggerTest extends TestCase {
     @Before
     public void setUp() throws Exception {
         FSUtils.delTree(new File(testdir));
-        l = new DiskLogger(testdir, 1, 1, SyncMode.FSYNC, 0, 0);
+        l = new DiskLogger(testdir, new LSN(1,1L), SyncMode.FSYNC, 0, 0);
         l.start();
         l.waitForStartup();
     }
@@ -72,53 +72,48 @@ public class DiskLoggerTest extends TestCase {
         
         SyncListener sl = new SyncListener() {
             
-            public void synced(LogEntry entry) {
-                synchronized (entry) {
+            public void synced(LSN lsn) {
+                synchronized (count) {
                     count.incrementAndGet();
-                    entry.notifyAll();
+                    count.notifyAll();
                 }
             }
             
-            public void failed(LogEntry entry, Exception ex) {
-                synchronized (entry) {
+            public void failed(Exception ex) {
+                synchronized (count) {
                     count.incrementAndGet();
-                    entry.notifyAll();
+                    count.notifyAll();
                 }
             }
         };
         
-        LogEntry e = null;
         for (int i = 0; i < 100; i++) {
             String pl = "Entry " + (i + 1);
             ReusableBuffer plb = ReusableBuffer.wrap(pl.getBytes());
-            e = new LogEntry(plb, sl, LogEntry.PAYLOAD_TYPE_INSERT);
-            l.append(e);
+            l.append(new LogEntry(plb, sl, LogEntry.PAYLOAD_TYPE_INSERT));
         }
-        synchronized (e) {
+        synchronized (count) {
             if (count.get() < 100)
-                e.wait(1000);
+                count.wait(1000);
         }
-        e.free();
         
         try {
-            l.lockLogger();
+            l.lock();
             l.switchLogFile(false);
         } finally {
-            l.unlockLogger();
+            l.unlock();
         }
         
         for (int i = 0; i < 100; i++) {
             String pl = "Entry " + (i + 100 + 1);
             ReusableBuffer plb = ReusableBuffer.wrap(pl.getBytes());
-            e = new LogEntry(plb, sl, LogEntry.PAYLOAD_TYPE_INSERT);
-            l.append(e);
+            l.append(new LogEntry(plb, sl, LogEntry.PAYLOAD_TYPE_INSERT));
         }
         
-        synchronized (e) {
+        synchronized (count) {
             if (count.get() < 200)
-                e.wait(1000);
+                count.wait(1000);
         }
-        e.free();
     }
     
     @Test
@@ -128,49 +123,46 @@ public class DiskLoggerTest extends TestCase {
         
         SyncListener sl = new SyncListener() {
             
-            public void synced(LogEntry entry) {
-                synchronized (entry) {
+            public void synced(LSN lsn) {
+                synchronized (count) {
                     count.incrementAndGet();
-                    entry.notifyAll();
+                    count.notifyAll();
                     // System.out.println("wrote Entry: " + entry.getLogSequenceNo());
                 }
             }
             
-            public void failed(LogEntry entry, Exception ex) {
-                synchronized (entry) {
+            public void failed(Exception ex) {
+                synchronized (count) {
                     count.incrementAndGet();
-                    entry.notifyAll();
+                    count.notifyAll();
                 }
             }
         };
         
-        LogEntry e = null;
         for (int i = 0; i < 100; i++) {
             String pl = "Entry " + (i + 1);
             ReusableBuffer plb = ReusableBuffer.wrap(pl.getBytes());
-            e = new LogEntry(plb, sl, LogEntry.PAYLOAD_TYPE_INSERT);
-            l.append(e);
+            l.append(new LogEntry(plb, sl, LogEntry.PAYLOAD_TYPE_INSERT));
         }
-        synchronized (e) {
+        synchronized (count) {
             if (count.get() < 100)
-                e.wait(1000);
+                count.wait(1000);
         }
-        e.free();
         
         System.out.println("finished writing");
         
         try {
-            l.lockLogger();
+            l.lock();
             l.switchLogFile(false);
         } finally {
-            l.unlockLogger();
+            l.unlock();
         }
         
         DiskLogFile f = new DiskLogFile(testdir + "1.1.dbl");
         while (f.hasNext()) {
             LogEntry tmp = f.next();
-            byte[] data = tmp.getPayload().array();
-            String s = new String(data);
+            //byte[] data = tmp.getPayload().array();
+            //String s = new String(data);
             // System.out.println("item: " + s);
             tmp.free();
         }
@@ -186,43 +178,41 @@ public class DiskLoggerTest extends TestCase {
         
         SyncListener sl = new SyncListener() {
             
-            public void synced(LogEntry entry) {
-                synchronized (entry) {
+            public void synced(LSN lsn) {
+                synchronized (count) {
                     count.incrementAndGet();
-                    entry.notifyAll();
+                    count.notifyAll();
                 }
             }
             
-            public void failed(LogEntry entry, Exception ex) {
-                synchronized (entry) {
+            public void failed(Exception ex) {
+                synchronized (count) {
                     count.incrementAndGet();
-                    entry.notifyAll();
+                    count.notifyAll();
                 }
             }
         };
         
-        LogEntry e = null;
         for (int i = 0; i < 100; i++) {
             String pl = "Entry " + (i + 1);
             ReusableBuffer plb = ReusableBuffer.wrap(pl.getBytes());
-            e = new LogEntry(plb, sl, LogEntry.PAYLOAD_TYPE_INSERT);
-            l.append(e);
+            LogEntry e = new LogEntry(plb, sl, LogEntry.PAYLOAD_TYPE_INSERT);
             if (i < 99)
                 offsets[i + 1] = offsets[i] + LogEntry.headerLength + e.getPayload().remaining();
+            l.append(e);
         }
-        synchronized (e) {
+        synchronized (count) {
             if (count.get() < 100)
-                e.wait(1000);
+                count.wait(1000);
         }
-        e.free();
         
         System.out.println("finished writing");
         
         try {
-            l.lockLogger();
+            l.lock();
             l.switchLogFile(false);
         } finally {
-            l.unlockLogger();
+            l.unlock();
         }
         
         File tmpFile = new File(testdir + "log.dbl");
@@ -310,21 +300,18 @@ public class DiskLoggerTest extends TestCase {
         
         // restart the disk logger and append new log entries
         l.shutdown();
-        l = new DiskLogger(testdir, 1, 200, SyncMode.FSYNC, 0, 0);
+        l = new DiskLogger(testdir, new LSN(1, 200L), SyncMode.FSYNC, 0, 0);
         l.start();
         
-        e = null;
         for (int i = 99; i < 120; i++) {
             String pl = "Entry " + (i + 1);
             ReusableBuffer plb = ReusableBuffer.wrap(pl.getBytes());
-            e = new LogEntry(plb, sl, LogEntry.PAYLOAD_TYPE_INSERT);
-            l.append(e);
+            l.append(new LogEntry(plb, sl, LogEntry.PAYLOAD_TYPE_INSERT));
         }
-        synchronized (e) {
+        synchronized (count) {
             if (count.get() < 121)
-                e.wait(1000);
+                count.wait(1000);
         }
-        e.free();
         
         File[] logFiles = new File(testdir).listFiles();
         DiskLogIterator it = new DiskLogIterator(logFiles, null);
@@ -348,40 +335,38 @@ public class DiskLoggerTest extends TestCase {
             
             SyncListener sl = new SyncListener() {
                 
-                public void synced(LogEntry entry) {
-                    synchronized (entry) {
+                public void synced(LSN lsn) {
+                    synchronized (count) {
                         count.incrementAndGet();
-                        entry.notifyAll();
+                        count.notifyAll();
                     }
                 }
                 
-                public void failed(LogEntry entry, Exception ex) {
-                    synchronized (entry) {
+                public void failed(Exception ex) {
+                    synchronized (count) {
                         System.err.println(ex);
                         count.incrementAndGet();
-                        entry.notifyAll();
+                        count.notifyAll();
                     }
                 }
             };
             
-            LogEntry e = null;
             for (int i = 0; i < 100; i++) {
                 String pl = "Entry " + (k * 100 + i + 1);
                 ReusableBuffer plb = ReusableBuffer.wrap(pl.getBytes());
-                e = new LogEntry(plb, sl, LogEntry.PAYLOAD_TYPE_INSERT);
-                l.append(e);
+                l.append(new LogEntry(plb, sl, LogEntry.PAYLOAD_TYPE_INSERT));
             }
-            synchronized (e) {
+            synchronized (count) {
                 if (count.get() < 100)
-                    e.wait();
+                    count.wait();
             }
-            e.free();
             
             try {
-                l.lockLogger();
-                LSN lsn = l.switchLogFile(false);
+                l.lock();
+                //LSN lsn = 
+                    l.switchLogFile(false);
             } finally {
-                l.unlockLogger();
+                l.unlock();
             }
             
         }

@@ -8,6 +8,7 @@
 package org.xtreemfs.babudb;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -45,7 +46,13 @@ class TransactionManagerImpl extends TransactionManagerInternal {
     private final List<TransactionListener>   listeners  = new LinkedList<TransactionListener>();
     
     private volatile LSN                      latestOnDisk;
-        
+    
+    private final boolean                     isAsync;
+    
+    public TransactionManagerImpl (boolean isAsync) {
+        this.isAsync = isAsync;
+    }
+    
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal#init(
      *          org.xtreemfs.babudb.lsmdb.LSN)
@@ -60,30 +67,161 @@ class TransactionManagerImpl extends TransactionManagerInternal {
      */
     public void setLogger(DiskLogger logger) {
         
-        DiskLogger old = diskLogger.getAndSet(logger);
-        if (logger == null) {
-            latestOnDisk = old.getLatestLSN();
+        synchronized (diskLogger) {
+            
+            DiskLogger old = diskLogger.getAndSet(logger);
+            if (logger == null) {
+                latestOnDisk = old.getLatestLSN();
+            } else {
+                diskLogger.notify(); 
+            }
         }
     }
       
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal#makePersistent(
-     *          java.util.Map, org.xtreemfs.babudb.api.dev.transaction.TransactionInternal, 
-     *          org.xtreemfs.foundation.buffer.ReusableBuffer)
+     *          org.xtreemfs.babudb.api.dev.transaction.TransactionInternal, 
+     *          org.xtreemfs.foundation.buffer.ReusableBuffer, 
+     *          org.xtreemfs.babudb.BabuDBRequestResultImpl)
      */
     @Override
-    public <T> BabuDBRequestResultImpl<T> makePersistent(final TransactionInternal txn, 
-            ReusableBuffer payload) throws BabuDBException {
-        
+    public void makePersistent(final TransactionInternal txn, ReusableBuffer payload, 
+            BabuDBRequestResultImpl<Object> future) throws BabuDBException {
+
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "Trying to perform transaction %s ...", 
                 txn.toString());
         
-        // before processing
+        try {
+                    
+            Object[] result = inMemory(txn, payload);
+            LogEntry entry = generateLogEntry(txn, payload, future, result);
+                        
+            onDisk(txn, entry);
+                        
+            // notify listeners (async)
+            if (isAsync) {
+                future.finished(result, null);
+                
+                for (TransactionListener l : listeners) {
+                    l.transactionPerformed(txn);
+                }
+            }
+            
+        } finally {
+            txn.unlockWorkers();
+        }
+    }
+    
+    /**
+     * Method to create a logEntry for the given transaction.
+     * 
+     * @param txn
+     * @param payload
+     * @param listener
+     * 
+     * @return a prepared logEntry. 
+     */
+   private final LogEntry generateLogEntry(final TransactionInternal txn, 
+           ReusableBuffer payload, final BabuDBRequestResultImpl<Object> listener, 
+           final Object[] results) {
+        
+        LogEntry result = new LogEntry(payload, new SyncListener() {
+            
+            @Override
+            public void synced(LSN lsn) {
+        
+                try {
+                    
+                    if (!isAsync) {
+                        BabuDBException irregs = txn.getIrregularities();
+                        
+                        if (irregs == null) {
+                            listener.finished(results, lsn);
+                        } else {
+                            throw new BabuDBException(irregs.getErrorCode(), "Transaction "
+                            	+ "failed at the execution of the " + (txn.size() + 1) 
+                                + "th operation, because: " + irregs.getMessage(), irregs);
+                        }
+                    }
+                } catch (BabuDBException error) {
+                    
+                    if (!isAsync) {
+                        listener.failed(error);
+                    } else {
+                        Logging.logError(Logging.LEVEL_WARN, this, error);
+                    }
+                } finally {
+                    
+                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "... transaction %s finished.", 
+                            txn.toString());
+                    
+                    // notify listeners (sync)
+                    if (!isAsync) {
+                        for (TransactionListener l : listeners) {
+                            l.transactionPerformed(txn);
+                        }
+                    }
+                }
+            }
+            
+            @Override
+            public void failed(Exception ex) {
+                if (!isAsync) {
+                    listener.failed((ex != null && ex instanceof BabuDBException) ? 
+                            (BabuDBException) ex : new BabuDBException(
+                                    ErrorCode.INTERNAL_ERROR, ex.getMessage()));
+                }
+            }
+        }, LogEntry.PAYLOAD_TYPE_TRANSACTION);
+        
+        return result;
+    }
+    
+    /**
+     * Initialize the on-disk processing. The transaction's log entry is send to the diskLogger.
+     * 
+     * @param txn
+     * @param entry
+     */
+    private final void onDisk(TransactionInternal txn, LogEntry entry) throws BabuDBException {
+        
+        // append the entry to the DiskLogger if available, wait otherwise
+        try {
+            
+            synchronized (diskLogger) {
+                
+                while (diskLogger.get() == null) {
+                    diskLogger.wait();
+                }
+                
+                diskLogger.get().append(entry);
+            }
+        } catch (InterruptedException ie) {
+            
+            if (entry != null) entry.free();
+            throw new BabuDBException(ErrorCode.INTERRUPTED, "Operation " +
+                        "could not have been stored persistent to disk and " +
+                        "will therefore be discarded.", ie.getCause());
+        } 
+    }
+    
+    /**
+     * Internal method to process the in-memory changes on BabuDB for a given transaction.
+     * 
+     * @param txn
+     * @throws BabuDBException
+     */
+    private final Object[] inMemory(TransactionInternal txn, ReusableBuffer payload) 
+            throws BabuDBException {
+        
+        List<Object> operationResults = new ArrayList<Object>();
+                
+        // in memory processing
         for (int i = 0; i < txn.size(); i++) {
             try {
                 OperationInternal operation = txn.get(i);
                 txn.lockResponsibleWorker(operation.getDatabaseName());
-                inMemoryProcessing.get(operation.getType()).before(operation);
+                operationResults.add(inMemoryProcessing.get(operation.getType()).process(operation));
                 
             } catch (BabuDBException be) {
                 
@@ -104,85 +242,14 @@ class TransactionManagerImpl extends TransactionManagerInternal {
                     }
                 } else {
                     
+                    // no operation could have been executed so far
                     BufferPool.free(payload);
                     throw be;
                 }
             }
         }
         
-        // build the entry
-        LogEntry entry = new LogEntry(payload, null, LogEntry.PAYLOAD_TYPE_TRANSACTION);
-        
-        // setup the result
-        final BabuDBRequestResultImpl<T> result = new BabuDBRequestResultImpl<T>(entry);
-        
-        // define the listener
-        entry.setListener(new SyncListener() {
-            
-            @Override
-            public void synced(LogEntry entry) {
-                try {
-                    
-                    // processing after
-                    for (OperationInternal operation : txn) {
-                        inMemoryProcessing.get(operation.getType()).after(operation);
-                    }
-                    
-                    // notify listeners
-                    for (TransactionListener l : listeners) {
-                        l.transactionPerformed(txn);
-                    }
-                    
-                    BabuDBException irregs = txn.getIrregularities();
-                    if (irregs == null) result.finished();
-                    
-                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "... transaction %s finished.", 
-                            txn.toString());
-                    
-                    if (irregs != null) throw new BabuDBException(irregs.getErrorCode(), 
-                            "Transaction failed at the execution of the " + (txn.size() + 1) + 
-                            "th operation, because: " + irregs.getMessage(), irregs);
-                } catch (BabuDBException error) {
-                    result.failed(error);
-                } finally {
-                    if (entry != null) entry.free();
-                    txn.unlockWorkers();
-                }
-            }
-            
-            @Override
-            public void failed(LogEntry entry, Exception ex) {
-                result.failed((ex != null && ex instanceof BabuDBException) ? 
-                        (BabuDBException) ex : new BabuDBException(
-                                ErrorCode.INTERNAL_ERROR, ex.getMessage()));
-                if (entry != null) entry.free();
-                txn.unlockWorkers();
-            }
-        });
-        
-        // append the entry to the DiskLogger
-        try {
-            DiskLogger logger = diskLogger.get();
-            if (logger != null) {
-                logger.append(entry);
-            } else {
-                if (entry != null) entry.free();
-                throw new BabuDBException(ErrorCode.INTERNAL_ERROR, "BabuDB has currently been " +
-                	"stopped by an internal event. It will be back as soon as possible.");
-            }
-        } catch (InterruptedException ie) {
-            if (entry != null) entry.free();
-            throw new BabuDBException(ErrorCode.INTERRUPTED, "Operation " +
-                        "could not have been stored persistent to disk and " +
-                        "will therefore be discarded.", ie.getCause());
-        }
-        
-        // processing meanwhile
-        for (OperationInternal operation : txn) {
-            inMemoryProcessing.get(operation.getType()).meanwhile(operation);
-        }
-        
-        return result;
+        return operationResults.toArray();
     }
     
     /* (non-Javadoc)
@@ -203,11 +270,9 @@ class TransactionManagerImpl extends TransactionManagerInternal {
                 // get processing logic
                 InMemoryProcessing processing = inMemoryProcessing.get(type);
                 
-                // replay
+                // replay in-memory changes
                 try {
-                    processing.before(operation);
-                    processing.meanwhile(operation);
-                    processing.after(operation);   
+                    processing.process(operation);   
                 } catch (BabuDBException be) {
                     
                     // there might be false positives if a snapshot to delete has already been 
@@ -231,7 +296,7 @@ class TransactionManagerImpl extends TransactionManagerInternal {
     public void lockService() throws InterruptedException {
         DiskLogger logger = diskLogger.get();
         if(logger != null) {
-            logger.lockLogger();
+            logger.lock();
         }
     }
 
@@ -243,7 +308,7 @@ class TransactionManagerImpl extends TransactionManagerInternal {
         
         DiskLogger logger = diskLogger.get();
         if (logger != null && logger.hasLock()) {
-            logger.unlockLogger();
+            logger.unlock();
         }
     }
 

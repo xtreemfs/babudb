@@ -12,7 +12,9 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.database.UserDefinedLookup;
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
@@ -29,7 +31,7 @@ public class LSMDBWorker extends LifeCycleThread {
         INSERT, LOOKUP, PREFIX_LOOKUP, RANGE_LOOKUP, USER_DEFINED_LOOKUP, LOCK
     };
     
-    private final Object                         requestLock = new Object();
+    private final AtomicBoolean                  locked = new AtomicBoolean(false);
     
     private final BabuDBInternal                 dbs;
     
@@ -192,13 +194,14 @@ public class LSMDBWorker extends LifeCycleThread {
         }
     }
     
+    @SuppressWarnings("unchecked")
     private void doInsert(final LSMDBRequest<?> r) {
 
         try {
             dbs.getTransactionManager().makePersistent(
                     dbs.getDatabaseManager().createTransaction().insertRecordGroup(
-                            r.getDatabase().getDatabaseName(), r.getInsertData(), r.getDatabase(), 
-                            r.getListener()));
+                            r.getDatabase().getDatabaseName(), r.getInsertData(), r.getDatabase()), 
+                            (BabuDBRequestResultImpl<Object>) r.getListener());
         } catch (BabuDBException e) {
             r.getListener().failed(e);
         }
@@ -246,10 +249,12 @@ public class LSMDBWorker extends LifeCycleThread {
     
     private void doLock(final LSMDBRequest<Object> r) {
 
-        synchronized (requestLock) {
-            r.getListener().finished(requestLock);
+        synchronized (locked) {
+            r.getListener().finished(locked);
             try {
-                requestLock.wait();
+                if (locked.get()) {
+                    locked.wait();
+                }
             } catch (InterruptedException e) {
                 r.getListener().failed(
                         new BabuDBException(ErrorCode.INTERRUPTED, e.getMessage(), e));

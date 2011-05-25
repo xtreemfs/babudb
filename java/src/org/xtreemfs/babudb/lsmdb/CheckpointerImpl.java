@@ -250,14 +250,14 @@ public class CheckpointerImpl extends CheckpointerInternal {
             
             try {
                 // critical block...
-                logger.lockLogger();
+                logger.lock();
                 for (DatabaseInternal db : databases) {
                     snapIds[i++] = db.proceedCreateSnapshot();
                 }
                 lastWrittenLSN = logger.switchLogFile(incrementViewId);
                 incrementViewId = false;
             } finally {
-                logger.unlockLogger();
+                logger.unlock();
             }
             
             i = 0;

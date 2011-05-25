@@ -12,8 +12,8 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
 import org.xtreemfs.babudb.api.dev.transaction.OperationInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
@@ -37,7 +37,7 @@ public abstract class TransactionInternal extends LinkedList<OperationInternal>
         implements Transaction, Iterable<OperationInternal> {
     private static final long serialVersionUID = 1383031301195486005L;
     
-    private Map<String, DatabaseRequestResult<Object>> databaseLockFutureMap = null;
+    private Map<String, DatabaseRequestResult<AtomicBoolean>> databaseLockFutureMap = null;
     
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.transaction.Transaction#createSnapshot(java.lang.String, 
@@ -144,7 +144,7 @@ public abstract class TransactionInternal extends LinkedList<OperationInternal>
      *                           transaction.
      */
     public final synchronized void updateWorkerLocks(
-            Map<String, DatabaseRequestResult<Object>> databaseLockFutureMap) {
+            Map<String, DatabaseRequestResult<AtomicBoolean>> databaseLockFutureMap) {
         
         this.databaseLockFutureMap = databaseLockFutureMap;
     }
@@ -159,7 +159,9 @@ public abstract class TransactionInternal extends LinkedList<OperationInternal>
             throws BabuDBException {
         
         if (databaseLockFutureMap != null) {
-            DatabaseRequestResult<Object> lockFuture = databaseLockFutureMap.get(databaseName);
+            DatabaseRequestResult<AtomicBoolean> lockFuture = 
+                databaseLockFutureMap.get(databaseName);
+            
             if (lockFuture != null) {
                 lockFuture.get();
             }
@@ -171,13 +173,14 @@ public abstract class TransactionInternal extends LinkedList<OperationInternal>
      */
     public final synchronized void unlockWorkers() {
         if (databaseLockFutureMap != null) {
-            Set<DatabaseRequestResult<Object>> lockFutures = 
-                new HashSet<DatabaseRequestResult<Object>>(databaseLockFutureMap.values());
-            for (DatabaseRequestResult<Object> lockFuture : lockFutures) {
+            Set<DatabaseRequestResult<AtomicBoolean>> lockFutures = 
+                new HashSet<DatabaseRequestResult<AtomicBoolean>>(databaseLockFutureMap.values());
+            for (DatabaseRequestResult<AtomicBoolean> lockFuture : lockFutures) {
                 
                 try {
-                    final Object workerLock = lockFuture.get();
+                    final AtomicBoolean workerLock = lockFuture.get();
                     synchronized (workerLock) {
+                        workerLock.set(false);
                         workerLock.notify();
                     }
                 } catch (BabuDBException be) {
@@ -222,20 +225,7 @@ public abstract class TransactionInternal extends LinkedList<OperationInternal>
      */
     public abstract TransactionInternal insertRecordGroup(String databaseName, 
             InsertRecordGroup irg, LSMDatabase db);
-    
-    /**
-     * Add a new group insert operation to this transaction.
-     * 
-     * @param databaseName - the name of the database.
-     * @param db - where the group has to be inserted.
-     * @param irg - insert group.
-     * @param listener - waiting for the request to finish.
-     *            
-     * @return the resulting Transaction.
-     */
-    public abstract TransactionInternal insertRecordGroup(String databaseName, 
-            InsertRecordGroup irg, LSMDatabase db, BabuDBRequestResultImpl<?> listener);
-    
+        
     /**
      * Adds a custom operation to the transaction.
      * 

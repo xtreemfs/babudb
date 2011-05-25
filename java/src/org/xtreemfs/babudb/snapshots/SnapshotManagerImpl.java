@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Map.Entry;
 
+import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.database.DatabaseRO;
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseInternal;
@@ -107,8 +108,10 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
         throws BabuDBException {
         
         // synchronously executing the request
+        BabuDBRequestResultImpl<Object> result = new BabuDBRequestResultImpl<Object>();
         dbs.getTransactionManager().makePersistent(
-                dbs.getDatabaseManager().createTransaction().createSnapshot(dbName, snap)).get();
+                dbs.getDatabaseManager().createTransaction().createSnapshot(dbName, snap), result);
+        result.get();
     }
     
     /* (non-Javadoc)
@@ -134,9 +137,12 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
     
     @Override
     public void deletePersistentSnapshot(String dbName, String snapshotName) throws BabuDBException {
+        
+        BabuDBRequestResultImpl<Object> result = new BabuDBRequestResultImpl<Object>();
         dbs.getTransactionManager().makePersistent(
                 dbs.getDatabaseManager().createTransaction().deleteSnapshot(
-                        dbName, snapshotName)).get();
+                        dbName, snapshotName), result);
+        result.get();
     }
     
     @Override
@@ -229,7 +235,7 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
             }
             
             @Override
-            public void before(OperationInternal operation) throws BabuDBException {
+            public Object process(OperationInternal operation) throws BabuDBException {
                 
                 Object[] args = operation.getParams();
                 
@@ -260,18 +266,7 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
                     throw new BabuDBException(ErrorCode.SNAP_EXISTS, "snapshot '" + snap.getName()
                         + "' already exists");
                 }
-            }
-            
-            @Override
-            public void after(OperationInternal operation) throws BabuDBException {
                 
-                Object[] args = operation.getParams();
-                
-                // parse args
-                int dbId = (Integer) args[0];
-                SnapshotConfig snap = (SnapshotConfig) args[1];
-                
-                Map<String, Snapshot> snapMap = snapshotDBs.get(operation.getDatabaseName());
                 snapMap.put(snap.getName(), new Snapshot(null));
                 
                 // first, create new in-memory snapshots of all indices
@@ -303,6 +298,8 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
                                 snapIds));
                     }
                 }
+                
+                return null;
             }
         });
 
@@ -328,8 +325,8 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
             }
 
             @Override
-            public void before(OperationInternal operation) throws BabuDBException {
-                
+            public Object process(OperationInternal operation) throws BabuDBException {
+
                 // parse args
                 String snapshotName = (String) operation.getParams()[0];
                 
@@ -361,6 +358,8 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
                 // delete the snapshot subdirectory on disk if available
                 FSUtils.delTree(new File(getSnapshotDir(operation.getDatabaseName(), 
                         snapshotName)));
+                
+                return null;
             }
         });
     }

@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.database.Database;
@@ -34,7 +35,6 @@ import org.xtreemfs.babudb.api.transaction.TransactionListener;
 import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
-import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
@@ -171,9 +171,10 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
     public DatabaseInternal createDatabase(String databaseName, int numIndices,
         ByteRangeComparator[] comparators) throws BabuDBException {
         
+        BabuDBRequestResultImpl<Object> result = new BabuDBRequestResultImpl<Object>();
         dbs.getTransactionManager().makePersistent(
-                createTransaction().createDatabase(databaseName, numIndices, comparators)).get();        
-        return dbsByName.get(databaseName);
+                createTransaction().createDatabase(databaseName, numIndices, comparators), result);        
+        return (DatabaseInternal) ((Object[]) result.get())[0];
     }
     
     /* (non-Javadoc)
@@ -181,8 +182,10 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
      */
     @Override
     public void deleteDatabase(String databaseName) throws BabuDBException {
+        BabuDBRequestResultImpl<Object> result = new BabuDBRequestResultImpl<Object>();
         dbs.getTransactionManager().makePersistent(
-                createTransaction().deleteDatabase(databaseName)).get();
+                createTransaction().deleteDatabase(databaseName), result);
+        result.get();
     }
     
     /* (non-Javadoc)
@@ -190,8 +193,10 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
      */
     @Override
     public void copyDatabase(String sourceDB, String destDB) throws BabuDBException {
+        BabuDBRequestResultImpl<Object> result = new BabuDBRequestResultImpl<Object>();
         dbs.getTransactionManager().makePersistent(
-                createTransaction().copyDatabase(sourceDB, destDB)).get();
+                createTransaction().copyDatabase(sourceDB, destDB), result);
+        result.get();
     }
     
     /* (non-Javadoc)
@@ -256,13 +261,12 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
             
             @Override
             public OperationInternal convertToOperation(Object[] args) {
-                return new BabuDBTransaction.BabuDBOperation(Operation.TYPE_CREATE_DB, (String) args[0], 
-                        new Object[] { args[1], args[2] });
+                return new BabuDBTransaction.BabuDBOperation(Operation.TYPE_CREATE_DB, 
+                        (String) args[0], new Object[] { args[1], args[2] });
             }
             
             @Override
-            public void before(OperationInternal operation) throws BabuDBException {
-                
+            public DatabaseInternal process(OperationInternal operation) throws BabuDBException {
                 // parse args
                 Object[] args = operation.getParams();
                 int numIndices = (Integer) args[0];
@@ -301,6 +305,8 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                         dbs.getDBConfigFile().save();
                     }
                 }
+                
+                return db;
             }
         });
         
@@ -323,10 +329,10 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                 return new BabuDBTransaction.BabuDBOperation(Operation.TYPE_DELETE_DB, (String) args[0], 
                         null);
             }
-            
+
             @Override
-            public void before(OperationInternal operation) throws BabuDBException {
-                                
+            public Object process(OperationInternal operation) throws BabuDBException {
+                
                 int dbId = InsertRecordGroup.DB_ID_UNKNOWN;
                 synchronized (getDBModificationLock()) {
                     synchronized (dbs.getCheckpointer()) {
@@ -350,6 +356,8 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                         }
                     }
                 }
+                
+                return null;
             }
         });
         
@@ -375,9 +383,9 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                 return new BabuDBTransaction.BabuDBOperation(Operation.TYPE_COPY_DB, (String) args[0], 
                         new Object[] { args[1] });
             }
-            
+
             @Override
-            public void before(OperationInternal operation) throws BabuDBException {
+            public Object process(OperationInternal operation) throws BabuDBException {
                 
                 // parse args
                 String destDB = (String) operation.getParams()[0];
@@ -422,6 +430,8 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                     dbsByName.put(destDB, newDB);
                     dbs.getDBConfigFile().save();
                 }
+                
+                return null;
             }
         });
         
@@ -434,7 +444,7 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                 InsertRecordGroup irg = InsertRecordGroup.deserialize(serialized);
                 serialized.flip();
                 
-                return new Object[] { irg, null, null };
+                return new Object[] { irg, null };
             }
             
             @Override
@@ -444,7 +454,7 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
             }
             
             @Override
-            public void before(OperationInternal operation) throws BabuDBException {
+            public Object process(OperationInternal operation) throws BabuDBException {
                 
                 Object[] args = operation.getParams();
                 
@@ -472,6 +482,7 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                 
                 int numIndices = lsmDB.getIndexCount();
                 
+                // check for user errors
                 for (InsertRecord ir : irg.getInserts()) {
                     if ((ir.getIndexId() >= numIndices) || (ir.getIndexId() < 0)) {
                         
@@ -479,79 +490,19 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                                 ir.getIndexId() + " does not exist");
                     }
                 }
-            }
-            
-            @SuppressWarnings("unchecked")
-            @Override
-            public void meanwhile(OperationInternal operation) {
                 
-                Object[] args = operation.getParams();
-                
-                // parse args
-                InsertRecordGroup irg = (InsertRecordGroup) args[0];
-                LSMDatabase lsmDB = null;
-                BabuDBRequestResultImpl<Object> listener = null;
-                if (args.length > 1 && args[1] instanceof LSMDatabase) {
-                    lsmDB = (LSMDatabase) args[1];
-                } else if (args.length > 1 && args[1] instanceof BabuDBRequestResultImpl) {
-                    listener = (BabuDBRequestResultImpl<Object>) args[1];
-                }
-                if (args.length > 2 && args[2] instanceof BabuDBRequestResultImpl) {
-                    listener = (BabuDBRequestResultImpl<Object>) args[2];
-                }
-                
-                // in case of asynchronous inserts, complete the request
-                // immediately
-                if (dbs.getConfig().getSyncMode().equals(SyncMode.ASYNC)) {
+                // insert into the in-memory-tree
+                for (InsertRecord ir : irg.getInserts()) {
+                    LSMTree index = lsmDB.getIndex(ir.getIndexId());
                     
-                    // insert into the in-memory-tree
-                    for (InsertRecord ir : irg.getInserts()) {
-                        LSMTree index = lsmDB.getIndex(ir.getIndexId());
-                        if (ir.getValue() != null) {
-                            index.insert(ir.getKey(), ir.getValue());
-                        } else {
-                            index.delete(ir.getKey());
-                        }
+                    if (ir.getValue() != null) {
+                        index.insert(ir.getKey(), ir.getValue());
+                    } else {
+                        index.delete(ir.getKey());
                     }
-                    if (listener != null) listener.finished();
-                }
-            }
-            
-            @SuppressWarnings("unchecked")
-            @Override
-            public void after(OperationInternal operation) {
-                
-                Object[] args = operation.getParams();
-                
-                // parse args
-                InsertRecordGroup irg = (InsertRecordGroup) args[0];
-                LSMDatabase lsmDB = null;
-                BabuDBRequestResultImpl<Object> listener = null;                
-                if (args.length > 1 && args[1] instanceof LSMDatabase) {
-                    lsmDB = (LSMDatabase) args[1];
-                } else if (args.length > 1 && args[1] instanceof BabuDBRequestResultImpl) {
-                    listener = (BabuDBRequestResultImpl<Object>) args[1];
-                }
-                if (args.length > 2 && args[2] instanceof BabuDBRequestResultImpl) {
-                    listener = (BabuDBRequestResultImpl<Object>) args[2];
                 }
                 
-                // in case of synchronous inserts, wait until the disk logger
-                // returns
-                if (!dbs.getConfig().getSyncMode().equals(SyncMode.ASYNC)) {
-                    
-                    // insert into the in-memory-tree
-                    for (InsertRecord ir : irg.getInserts()) {
-                        LSMTree index = lsmDB.getIndex(ir.getIndexId());
-                        
-                        if (ir.getValue() != null) {
-                            index.insert(ir.getKey(), ir.getValue());
-                        } else {
-                            index.delete(ir.getKey());
-                        }
-                    }
-                    if (listener != null) listener.finished();
-                }
+                return null;
             }
         });
     }
@@ -625,12 +576,12 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
         if (dbs.getWorkerCount() > 0) {
             
             // maps the lockFuture of the workers affected by this txn
-            Map<LSMDBWorker, BabuDBRequestResultImpl<Object>> workerLockFutureMap = 
-                new HashMap<LSMDBWorker, BabuDBRequestResultImpl<Object>>();
+            Map<LSMDBWorker, BabuDBRequestResultImpl<AtomicBoolean>> workerLockFutureMap = 
+                new HashMap<LSMDBWorker, BabuDBRequestResultImpl<AtomicBoolean>>();
             
             // maps the lockFutures by the databases affected by this txn
-            Map<String, DatabaseRequestResult<Object>> databaseLockFutureMap = 
-                new HashMap<String, DatabaseRequestResult<Object>>();
+            Map<String, DatabaseRequestResult<AtomicBoolean>> databaseLockFutureMap = 
+                new HashMap<String, DatabaseRequestResult<AtomicBoolean>>();
             
             for (String dbName : txn.databasesAffected()) {
                 try {
@@ -641,12 +592,13 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                             dbs.getWorker(getDatabase(dbName).getLSMDB().getDatabaseId());
                         
                         // retrieve the lockFuture of the worker if already available
-                        BabuDBRequestResultImpl<Object> lockFuture = workerLockFutureMap.get(worker);
+                        BabuDBRequestResultImpl<AtomicBoolean> lockFuture = 
+                            workerLockFutureMap.get(worker);
                         
                         // create a new lockFuture otherwise
                         if (lockFuture == null) {
-                            lockFuture = new BabuDBRequestResultImpl<Object>(txn);
-                            worker.addRequest(new LSMDBRequest<Object>(lockFuture));
+                            lockFuture = new BabuDBRequestResultImpl<AtomicBoolean>(txn);
+                            worker.addRequest(new LSMDBRequest<AtomicBoolean>(lockFuture));
                             workerLockFutureMap.put(worker, lockFuture);
                         }
                         
@@ -665,7 +617,9 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
         }
             
         // execute the transaction
-        dbs.getTransactionManager().makePersistent(txn).get();
+        BabuDBRequestResultImpl<Object> result = new BabuDBRequestResultImpl<Object>();
+        dbs.getTransactionManager().makePersistent(txn, result);
+        result.get();
     }
     
     /* (non-Javadoc)

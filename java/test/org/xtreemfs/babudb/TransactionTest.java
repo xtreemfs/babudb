@@ -103,11 +103,11 @@ public class TransactionTest extends TestCase {
         
         assertEquals(Operation.TYPE_GROUP_INSERT, txn.getOperations().get(2).getType());
         assertEquals("db1", txn.getOperations().get(2).getDatabaseName());
-        assertEquals(3, txn.getOperations().get(2).getParams().length);
+        assertEquals(2, txn.getOperations().get(2).getParams().length);
         
         assertEquals(Operation.TYPE_GROUP_INSERT, txn.getOperations().get(3).getType());
         assertEquals("db2", txn.getOperations().get(3).getDatabaseName());
-        assertEquals(3, txn.getOperations().get(3).getParams().length);
+        assertEquals(2, txn.getOperations().get(3).getParams().length);
         
         assertEquals(Operation.TYPE_DELETE_DB, txn.getOperations().get(4).getType());
         assertEquals("db1", txn.getOperations().get(4).getDatabaseName());
@@ -115,7 +115,7 @@ public class TransactionTest extends TestCase {
         
         assertEquals(Operation.TYPE_GROUP_INSERT, txn.getOperations().get(5).getType());
         assertEquals("new-database", txn.getOperations().get(5).getDatabaseName());
-        assertEquals(3, txn.getOperations().get(5).getParams().length);
+        assertEquals(2, txn.getOperations().get(5).getParams().length);
         
         // test of the aggregate function
         byte aggregate = txn.aggregateOperationTypes();

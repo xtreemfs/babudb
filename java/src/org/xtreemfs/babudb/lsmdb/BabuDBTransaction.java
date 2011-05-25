@@ -102,15 +102,8 @@ public class BabuDBTransaction extends TransactionInternal {
     public TransactionInternal insertRecordGroup(String databaseName, InsertRecordGroup irg, 
             LSMDatabase db) {
         
-        return insertRecordGroup(databaseName, irg, db, null);
-    }
-
-    @Override
-    public TransactionInternal insertRecordGroup(String databaseName, InsertRecordGroup irg, 
-            LSMDatabase db, BabuDBRequestResultImpl<?> listener) {
-        
         return addOperation(new BabuDBOperation(Operation.TYPE_GROUP_INSERT, databaseName, 
-                new Object[] { irg, db, listener }));
+                new Object[] { irg, db }));
     }
     
     @Override

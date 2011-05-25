@@ -40,6 +40,7 @@ import org.xtreemfs.babudb.log.DiskLogIterator;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
+import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
 import org.xtreemfs.babudb.lsmdb.DBConfig;
 import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
@@ -137,7 +138,7 @@ public class BabuDBImpl implements BabuDBInternal {
     BabuDBImpl(BabuDBConfig configuration) throws BabuDBException {
         
         this.configuration = configuration;
-        this.txnMan = new TransactionManagerImpl();
+        this.txnMan = new TransactionManagerImpl(configuration.getSyncMode().equals(SyncMode.ASYNC));
         this.databaseManager = new DatabaseManagerImpl(this);
         this.dbConfigFile = new DBConfig(this);
         this.snapshotManager = new SnapshotManagerImpl(this);
@@ -186,9 +187,9 @@ public class BabuDBImpl implements BabuDBInternal {
         
         // set up and start the disk logger
         try {
-            logger = new DiskLogger(configuration.getDbLogDir(), nextLSN.getViewId(),
-                nextLSN.getSequenceNo(), configuration.getSyncMode(), configuration.getPseudoSyncWait(),
-                configuration.getMaxQueueLength() * Math.max(1, configuration.getNumThreads()));
+            logger = new DiskLogger(configuration.getDbLogDir(), nextLSN, 
+                    configuration.getSyncMode(), configuration.getPseudoSyncWait(),
+                    configuration.getMaxQueueLength() * Math.max(1, configuration.getNumThreads()));
             logger.setLifeCycleListener(this);
             logger.start();
             logger.waitForStartup();
@@ -326,9 +327,9 @@ public class BabuDBImpl implements BabuDBInternal {
             Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done, " + "using LSN: " + nextLSN);
             
             try {
-                logger = new DiskLogger(configuration.getDbLogDir(), nextLSN.getViewId(), nextLSN
-                        .getSequenceNo(), configuration.getSyncMode(), configuration.getPseudoSyncWait(),
-                    configuration.getMaxQueueLength() * configuration.getNumThreads());
+                logger = new DiskLogger(configuration.getDbLogDir(), nextLSN, 
+                        configuration.getSyncMode(), configuration.getPseudoSyncWait(),
+                        configuration.getMaxQueueLength() * configuration.getNumThreads());
                 logger.setLifeCycleListener(this);
                 logger.start();
                 logger.waitForStartup();
@@ -609,9 +610,7 @@ public class BabuDBImpl implements BabuDBInternal {
                         
                         // execute the in-memory logic
                         try {
-                            processingLogic.before(operation);
-                            processingLogic.meanwhile(operation);
-                            processingLogic.after(operation);
+                            processingLogic.process(operation);
                         } catch (BabuDBException be) {
                             
                             // there might be false positives if a snapshot to

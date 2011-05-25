@@ -81,19 +81,18 @@ public abstract class TransactionManagerInternal {
      * 
      * @param <T>
      * @param transaction - the transaction-object.
+     * @param requestFuture
      * 
      * @throws BabuDBException if something went wrong.
-     * 
-     * @return the result listener.
      */
-    public final <T> BabuDBRequestResultImpl<T> makePersistent(TransactionInternal transaction) 
-            throws BabuDBException {
+    public final void makePersistent(TransactionInternal transaction,
+            BabuDBRequestResultImpl<Object> requestFuture) throws BabuDBException {
         
         try {
             ReusableBuffer buffer = transaction.serialize(
                     BufferPool.allocate(transaction.getSize()));
             buffer.flip();
-            return makePersistent(transaction, buffer);
+            makePersistent(transaction, buffer, requestFuture);
         } catch (IOException e) {
             throw new BabuDBException (ErrorCode.IO_ERROR, e.getMessage(), e);
         }
@@ -103,20 +102,18 @@ public abstract class TransactionManagerInternal {
      * Method let some operation become persistent. Every operation executed
      * on BabuDB has to pass this method first.
      * 
-     * @param <T>
      * @param serialized - the buffer of the serialized transaction, if previously calculated. 
+     * @param requestFuture
      * 
      * @throws BabuDBException if something went wrong.
-     * 
-     * @return the result listener.
      */
-    public final <T> BabuDBRequestResultImpl<T> makePersistent(ReusableBuffer serialized) 
-            throws BabuDBException {
+    public final void makePersistent(ReusableBuffer serialized, 
+            BabuDBRequestResultImpl<Object> requestFuture) throws BabuDBException {
                 
         try {
             TransactionInternal txn = deserialize(serialized);
             serialized.flip();
-            return makePersistent(txn, serialized);
+            makePersistent(txn, serialized, requestFuture);
         } catch (IOException e) {
             throw new BabuDBException(ErrorCode.IO_ERROR, e.getMessage(), e);
         }
@@ -126,16 +123,15 @@ public abstract class TransactionManagerInternal {
      * Method let some operation become persistent. Every operation executed
      * on BabuDB has to pass this method first.
      * 
-     * @param <T>
      * @param transaction - the transaction-object.
      * @param serialized - the buffer of the serialized transaction, if previously calculated. 
+     * @param requestFuture
      * 
      * @throws BabuDBException if something went wrong.
-     * 
-     * @return the result listener.
      */
-    public abstract <T> BabuDBRequestResultImpl<T> makePersistent(TransactionInternal transaction, 
-            ReusableBuffer serialized) throws BabuDBException;
+    public abstract void makePersistent(TransactionInternal transaction, 
+            ReusableBuffer serialized, BabuDBRequestResultImpl<Object> requestFuture) 
+            throws BabuDBException;
     
     /**
      * Method to replay transactions at database restart for example.

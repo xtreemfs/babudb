@@ -16,6 +16,7 @@ import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
+import org.xtreemfs.babudb.lsmdb.LSN;
 
 /**
  * Default return value for BabuDB requests.
@@ -34,7 +35,9 @@ public class BabuDBRequestResultImpl<T> implements DatabaseRequestResult<T> {
     
     private final AtomicBoolean         finished = new AtomicBoolean(false);
     
-    protected Object                    context;
+    protected final Object              context;
+    
+    private LSN                         assignedLSN = null;
     
 /*
  * constructors
@@ -58,25 +61,26 @@ public class BabuDBRequestResultImpl<T> implements DatabaseRequestResult<T> {
     }
     
 /*
- * state changing methods    
+ * getter/setter
  */
     
-    /**
-     * Change the context. This has to be done BEFORE a listener has been registered.
-     * 
-     * @param context
-     */
-    public void updateContext(Object context) {
-        this.context = context;
+    public LSN getAssignedLSN() {
+        return assignedLSN;
     }
+    
+/*
+ * state changing methods    
+ */
     
     /**
      * Internal operation to run if the request was finished without 
      * a return value.
      * Has to be invoked exactly one time!
+     * 
+     * @param lsn
      */
-    public void finished() {
-        finished(null, null);
+    public void finished(LSN lsn) {
+        finished(null, null, lsn);
     }
     
     /**
@@ -84,9 +88,21 @@ public class BabuDBRequestResultImpl<T> implements DatabaseRequestResult<T> {
      * Has to be invoked exactly one time!
      * 
      * @param result
+     * @param lsn
      */
     public void finished(T result) {
-        finished(result, null);
+        finished(result, null, null);
+    }
+    
+    /**
+     * Internal operation to run if the request was finished.
+     * Has to be invoked exactly one time!
+     * 
+     * @param result
+     * @param lsn
+     */
+    public void finished(T result, LSN lsn) {
+        finished(result, null, lsn);
     }
     
     /**
@@ -96,7 +112,7 @@ public class BabuDBRequestResultImpl<T> implements DatabaseRequestResult<T> {
      * @param error - has to be not null, if an error occurs.
      */
     public void failed(BabuDBException error) {
-        finished(null, error);
+        finished(null, error, null);
     }
     
 /*
@@ -110,11 +126,13 @@ public class BabuDBRequestResultImpl<T> implements DatabaseRequestResult<T> {
      * @param result
      * @param error 
      *            has to be not null, if an error occurs.
+     * @param lsn
      */
-    private void finished(T result, BabuDBException error) {
+    private void finished(T result, BabuDBException error, LSN lsn) {
         assert (result == null || error == null) : "Results are not permitted on error!";
         this.error = error;
         this.result = result;
+        this.assignedLSN = lsn;
         
         // notify the synchronously waiting instances
         synchronized (finished) {
