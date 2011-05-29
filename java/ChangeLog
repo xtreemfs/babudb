@@ -50,3 +50,6 @@
   * fixed bug that caused problems with the log replay in the event of asynchronous log appends
   * BabuDB shutdowns are now performed gracefully by default, which means that pending log appends will be written to disk before terminating the database
   * Added support for light-weight transactions. A light-weight transaction atomically executes a list of arbitrary modifications, including database creations and deletions, insertions and deletions of records, as well as snapshots. 
+
+2011-06-**: release 0.5.2  
+  * introduced the internal mechanism ResponseManager to decouple internal BabuDB processes from user-implemented DatabaseRequestListeners

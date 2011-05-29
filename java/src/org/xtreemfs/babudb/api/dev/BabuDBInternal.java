@@ -34,6 +34,14 @@ public interface BabuDBInternal extends BabuDB, LifeCycleListener {
      * @return a reference to the checkpointer
      */
     public CheckpointerInternal getCheckpointer();
+    
+    /**
+     * Returns a reference to the response manager. The response manager executes user-implemented
+     * listener logic for {@link BabuDB} requests.
+     * 
+     * @return a reference to the response manager
+     */
+    public ResponseManagerInternal getResponseManager();
         
     /**
      * Returns a reference to the database manager. The database manager gives

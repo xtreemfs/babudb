@@ -28,6 +28,7 @@ import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.dev.CheckpointerInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
+import org.xtreemfs.babudb.api.dev.ResponseManagerInternal;
 import org.xtreemfs.babudb.api.dev.SnapshotManagerInternal;
 import org.xtreemfs.babudb.api.dev.transaction.InMemoryProcessing;
 import org.xtreemfs.babudb.api.dev.transaction.OperationInternal;
@@ -92,6 +93,11 @@ public class BabuDBImpl implements BabuDBInternal {
     private final DatabaseManagerInternal databaseManager;
     
     /**
+     * the thread managing user-response listeners
+     */
+    private final ResponseManagerImpl     responseManager;
+    
+    /**
      * All necessary parameters to run the BabuDB.
      */
     private final BabuDBConfig            configuration;
@@ -138,7 +144,9 @@ public class BabuDBImpl implements BabuDBInternal {
     BabuDBImpl(BabuDBConfig configuration) throws BabuDBException {
         
         this.configuration = configuration;
-        this.txnMan = new TransactionManagerImpl(configuration.getSyncMode().equals(SyncMode.ASYNC));
+        this.responseManager = new ResponseManagerImpl(configuration.getMaxQueueLength());
+        this.txnMan = new TransactionManagerImpl(
+                configuration.getSyncMode().equals(SyncMode.ASYNC));
         this.databaseManager = new DatabaseManagerImpl(this);
         this.dbConfigFile = new DBConfig(this);
         this.snapshotManager = new SnapshotManagerImpl(this);
@@ -154,6 +162,8 @@ public class BabuDBImpl implements BabuDBInternal {
     @Override
     public void init(StaticInitialization staticInit) throws BabuDBException {
         
+        responseManager.setLifeCycleListener(this);
+        responseManager.start();
         snapshotManager.init();
         
         // determine the LSN from which to start the log replay
@@ -421,19 +431,27 @@ public class BabuDBImpl implements BabuDBInternal {
         }
         
         if (worker != null) {
-            for (LSMDBWorker w : worker)
+            for (LSMDBWorker w : worker) {
                 try {
                     w.waitForShutdown();
                 } catch (Exception e) {
                     Logging.logError(Logging.LEVEL_DEBUG, this, e);
                 }
+            }
             
             Logging.logMessage(Logging.LEVEL_DEBUG, this, "%d worker threads shut down " +
             		"successfully", worker.length);
         }
         
-        if (exc != null)
+        try {
+            responseManager.shutdown();
+        } catch (Exception e) {
+            throw new BabuDBException(ErrorCode.INTERRUPTED, e.getMessage(), e);
+        }
+        
+        if (exc != null) {
             throw exc;
+        }
         
         Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB shutdown complete.");
     }
@@ -519,6 +537,14 @@ public class BabuDBImpl implements BabuDBInternal {
     @Override
     public SnapshotManagerInternal getSnapshotManager() {
         return snapshotManager;
+    }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.BabuDBInternal#getResponseManager()
+     */
+    @Override
+    public ResponseManagerInternal getResponseManager() {
+        return responseManager;
     }
     
     /*
@@ -654,11 +680,11 @@ public class BabuDBImpl implements BabuDBInternal {
             Logging.logError(Logging.LEVEL_ERROR, this, ex);
             
             if (ex.getCause() instanceof LogEntryException) {
-                throw new BabuDBException(ErrorCode.IO_ERROR, "corrupted/incomplete log entry in database "
-                    + "operations log", ex.getCause());
+                throw new BabuDBException(ErrorCode.IO_ERROR, "corrupted/incomplete log entry in " +
+                		"database operations log", ex.getCause());
             } else {
-                throw new BabuDBException(ErrorCode.IO_ERROR, "corrupted/incomplete log entry in database "
-                    + "operations log", ex);
+                throw new BabuDBException(ErrorCode.IO_ERROR, "corrupted/incomplete log entry in " +
+                		"database operations log", ex);
             }
         }
     }
@@ -699,8 +725,8 @@ public class BabuDBImpl implements BabuDBInternal {
         try {
             shutdown();
         } catch (BabuDBException e) {
-            Logging.logMessage(Logging.LEVEL_WARN, this, "BabuDB could not"
-                + "have been terminated gracefully after plugin crash. " + "Because: %s", e.getMessage());
+            Logging.logMessage(Logging.LEVEL_WARN, this, "BabuDB could not have been terminated " +
+            		"gracefully after plugin crash. " + "Because: %s", e.getMessage());
             e.printStackTrace();
         }
     }

@@ -221,7 +221,8 @@ class TransactionManagerImpl extends TransactionManagerInternal {
             try {
                 OperationInternal operation = txn.get(i);
                 txn.lockResponsibleWorker(operation.getDatabaseName());
-                operationResults.add(inMemoryProcessing.get(operation.getType()).process(operation));
+                operationResults.add(
+                        inMemoryProcessing.get(operation.getType()).process(operation));
                 
             } catch (BabuDBException be) {
                 
@@ -230,14 +231,13 @@ class TransactionManagerImpl extends TransactionManagerInternal {
                 
                     // trim the transaction
                     txn.cutOfAt(i, be);
-                    BufferPool.free(payload);
-                    payload = null;
+                    
                     try {
-                        payload = BufferPool.allocate(txn.getSize());
-                        txn.serialize(payload);
+                        payload.shrink(txn.getSize());
+                        break;
                     } catch (IOException ioe) {
                         
-                        if (payload != null) BufferPool.free(payload);
+                        BufferPool.free(payload);
                         throw new BabuDBException(ErrorCode.IO_ERROR, ioe.getMessage(), ioe);
                     }
                 } else {

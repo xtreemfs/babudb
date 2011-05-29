@@ -67,7 +67,7 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
                 for (String snapName : snapshots) {
                     BabuDBView view = new DiskIndexView(snapDir + "/" + snapName, entry.getValue()
                             .getComparators(), compressed, mmaped);
-                    snapMap.put(snapName, new Snapshot(view));
+                    snapMap.put(snapName, new Snapshot(view, dbs));
                 }
             }
         }
@@ -108,7 +108,8 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
         throws BabuDBException {
         
         // synchronously executing the request
-        BabuDBRequestResultImpl<Object> result = new BabuDBRequestResultImpl<Object>();
+        BabuDBRequestResultImpl<Object> result = 
+            new BabuDBRequestResultImpl<Object>(dbs.getResponseManager());
         dbs.getTransactionManager().makePersistent(
                 dbs.getDatabaseManager().createTransaction().createSnapshot(dbName, snap), result);
         result.get();
@@ -138,7 +139,8 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
     @Override
     public void deletePersistentSnapshot(String dbName, String snapshotName) throws BabuDBException {
         
-        BabuDBRequestResultImpl<Object> result = new BabuDBRequestResultImpl<Object>();
+        BabuDBRequestResultImpl<Object> result = 
+            new BabuDBRequestResultImpl<Object>(dbs.getResponseManager());
         dbs.getTransactionManager().makePersistent(
                 dbs.getDatabaseManager().createTransaction().deleteSnapshot(
                         dbName, snapshotName), result);
@@ -267,7 +269,7 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
                         + "' already exists");
                 }
                 
-                snapMap.put(snap.getName(), new Snapshot(null));
+                snapMap.put(snap.getName(), new Snapshot(null, dbs));
                 
                 // first, create new in-memory snapshots of all indices
                 int[] snapIds = null;

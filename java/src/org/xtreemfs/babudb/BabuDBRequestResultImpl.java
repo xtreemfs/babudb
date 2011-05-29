@@ -14,9 +14,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
+import org.xtreemfs.babudb.api.dev.ResponseManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.foundation.logging.Logging;
 
 /**
  * Default return value for BabuDB requests.
@@ -27,17 +29,19 @@ import org.xtreemfs.babudb.lsmdb.LSN;
  */
 public class BabuDBRequestResultImpl<T> implements DatabaseRequestResult<T> {
     
-    private DatabaseRequestListener<T>  listener; 
+    private final ResponseManagerInternal       respMan;
+    
+    private DatabaseRequestListener<T>          listener; 
 
-    private T                           result;
+    private T                                   result;
     
-    private BabuDBException             error; 
+    private BabuDBException                     error; 
     
-    private final AtomicBoolean         finished = new AtomicBoolean(false);
+    private final AtomicBoolean                 finished = new AtomicBoolean(false);
     
-    protected final Object              context;
+    protected final Object                      context;
     
-    private LSN                         assignedLSN = null;
+    private LSN                                 assignedLSN = null;
     
 /*
  * constructors
@@ -45,19 +49,22 @@ public class BabuDBRequestResultImpl<T> implements DatabaseRequestResult<T> {
     
     /**
      * Creates a new future-object for a BabuDB request.
+     * 
+     * @param respMan - thread to handle request listener.
      */
-    public BabuDBRequestResultImpl() {
-        this.context = null;
+    public BabuDBRequestResultImpl(ResponseManagerInternal respMan) {
+        this(null, respMan);
     }
     
     /**
      * Creates a new future-object for a BabuDB request.
      * 
-     * @param context
-     *          can be null.
+     * @param context - can be null.
+     * @param respMan - thread to handle request listener.
      */
-    public BabuDBRequestResultImpl(Object context) {
+    public BabuDBRequestResultImpl(Object context, ResponseManagerInternal respMan) {
         this.context = context;
+        this.respMan = respMan;
     }
     
 /*
@@ -124,9 +131,9 @@ public class BabuDBRequestResultImpl<T> implements DatabaseRequestResult<T> {
      * Has to be invoked exactly one time!
      * 
      * @param result
-     * @param error 
-     *            has to be not null, if an error occurs.
+     * @param error - has to be not null, if an error occurs.
      * @param lsn
+     * @throws InterruptedException 
      */
     private void finished(T result, BabuDBException error, LSN lsn) {
         assert (result == null || error == null) : "Results are not permitted on error!";
@@ -144,10 +151,10 @@ public class BabuDBRequestResultImpl<T> implements DatabaseRequestResult<T> {
         
         // notify the asynchronous-listener
         if (listener != null) {
-            if (error != null) {
-                listener.failed(error, context);
-            } else {
-                listener.finished(result, context);
+            try {
+                respMan.enqueueResponse(listener, error, result, context);
+            } catch (InterruptedException e) {
+                Logging.logError(Logging.LEVEL_ERROR, this, e);
             }
         }
     }

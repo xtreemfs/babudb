@@ -171,7 +171,8 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
     public DatabaseInternal createDatabase(String databaseName, int numIndices,
         ByteRangeComparator[] comparators) throws BabuDBException {
         
-        BabuDBRequestResultImpl<Object> result = new BabuDBRequestResultImpl<Object>();
+        BabuDBRequestResultImpl<Object> result = 
+            new BabuDBRequestResultImpl<Object>(dbs.getResponseManager());
         dbs.getTransactionManager().makePersistent(
                 createTransaction().createDatabase(databaseName, numIndices, comparators), result);        
         return (DatabaseInternal) ((Object[]) result.get())[0];
@@ -182,7 +183,8 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
      */
     @Override
     public void deleteDatabase(String databaseName) throws BabuDBException {
-        BabuDBRequestResultImpl<Object> result = new BabuDBRequestResultImpl<Object>();
+        BabuDBRequestResultImpl<Object> result = 
+            new BabuDBRequestResultImpl<Object>(dbs.getResponseManager());
         dbs.getTransactionManager().makePersistent(
                 createTransaction().deleteDatabase(databaseName), result);
         result.get();
@@ -193,7 +195,8 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
      */
     @Override
     public void copyDatabase(String sourceDB, String destDB) throws BabuDBException {
-        BabuDBRequestResultImpl<Object> result = new BabuDBRequestResultImpl<Object>();
+        BabuDBRequestResultImpl<Object> result = 
+            new BabuDBRequestResultImpl<Object>(dbs.getResponseManager());
         dbs.getTransactionManager().makePersistent(
                 createTransaction().copyDatabase(sourceDB, destDB), result);
         result.get();
@@ -597,7 +600,8 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
                         
                         // create a new lockFuture otherwise
                         if (lockFuture == null) {
-                            lockFuture = new BabuDBRequestResultImpl<AtomicBoolean>(txn);
+                            lockFuture = new BabuDBRequestResultImpl<AtomicBoolean>(txn, 
+                                    dbs.getResponseManager());
                             worker.addRequest(new LSMDBRequest<AtomicBoolean>(lockFuture));
                             workerLockFutureMap.put(worker, lockFuture);
                         }
@@ -617,7 +621,8 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
         }
             
         // execute the transaction
-        BabuDBRequestResultImpl<Object> result = new BabuDBRequestResultImpl<Object>();
+        BabuDBRequestResultImpl<Object> result = 
+            new BabuDBRequestResultImpl<Object>(dbs.getResponseManager());
         dbs.getTransactionManager().makePersistent(txn, result);
         result.get();
     }

@@ -12,14 +12,18 @@ import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
 import org.xtreemfs.babudb.api.database.DatabaseRO;
 import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.api.database.UserDefinedLookup;
+import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 
 public class Snapshot implements DatabaseRO {
         
-    private BabuDBView view;
+    private final BabuDBInternal dbs;
     
-    public Snapshot(BabuDBView view) {
+    private BabuDBView           view;
+    
+    public Snapshot(BabuDBView view, BabuDBInternal dbs) {
         this.view = view;
+        this.dbs = dbs;
     }
     
     public synchronized BabuDBView getView() {
@@ -46,7 +50,7 @@ public class Snapshot implements DatabaseRO {
     @Override
     public DatabaseRequestResult<byte[]> lookup(int indexId, byte[] key, Object context) {
         BabuDBRequestResultImpl<byte[]> result = 
-            new BabuDBRequestResultImpl<byte[]>(context);
+            new BabuDBRequestResultImpl<byte[]>(context, dbs.getResponseManager());
         byte[] r;
         try {
             r = view.directLookup(indexId, key);
@@ -66,7 +70,8 @@ public class Snapshot implements DatabaseRO {
             Object context) {
         
         BabuDBRequestResultImpl<ResultSet<byte[], byte[]>> result = 
-            new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(context);
+            new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(context, 
+                    dbs.getResponseManager());
         
         ResultSet<byte[], byte[]> r;
         try {
@@ -84,8 +89,8 @@ public class Snapshot implements DatabaseRO {
             Object context) {
         
         BabuDBRequestResultImpl<ResultSet<byte[], byte[]>> result = 
-            new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(
-                    context);
+            new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(context, 
+                    dbs.getResponseManager());
         ResultSet<byte[], byte[]> r;
         try {
             r = view.directPrefixLookup(indexId, key, false);
@@ -102,7 +107,8 @@ public class Snapshot implements DatabaseRO {
         byte[] to, Object context) {
         
         BabuDBRequestResultImpl<ResultSet<byte[], byte[]>> result = 
-            new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(context);
+            new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(context, 
+                    dbs.getResponseManager());
         ResultSet<byte[], byte[]> r;
         try {
             r = view.directRangeLookup(indexId, from, to, true);
@@ -119,7 +125,8 @@ public class Snapshot implements DatabaseRO {
         byte[] to, Object context) {
 
         BabuDBRequestResultImpl<ResultSet<byte[], byte[]>> result = 
-            new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(context);
+            new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(context, 
+                    dbs.getResponseManager());
         
         ResultSet<byte[], byte[]> r;
         try {

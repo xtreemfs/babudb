@@ -26,10 +26,10 @@ import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.foundation.logging.Logging;
 
 public class DatabaseImpl implements DatabaseInternal {
+        
+    private final BabuDBInternal        dbs;
     
-    private BabuDBInternal      dbs;
-    
-    private LSMDatabase         lsmDB;
+    private LSMDatabase                 lsmDB;
     
 /*
  * constructors/destructors
@@ -38,11 +38,11 @@ public class DatabaseImpl implements DatabaseInternal {
     /**
      * Creates a new Database.
      * 
-     * @param lsmDB
-     *            the underlying LSM database
+     * @param dbs
+     * @param lsmDB - the underlying LSM database.
      */
-    public DatabaseImpl(BabuDBInternal master, LSMDatabase lsmDB) {
-        this.dbs = master;
+    public DatabaseImpl(BabuDBInternal dbs, LSMDatabase lsmDB) {
+        this.dbs = dbs;
         this.lsmDB = lsmDB;
     }
     
@@ -110,7 +110,8 @@ public class DatabaseImpl implements DatabaseInternal {
                         + " is sent to worker #" + dbId % dbs.getWorkerCount());
             }
             
-            BabuDBRequestResultImpl<Object> result = new BabuDBRequestResultImpl<Object>(context);
+            BabuDBRequestResultImpl<Object> result = 
+                new BabuDBRequestResultImpl<Object>(context, dbs.getResponseManager());
             try {
                 w.addRequest(new LSMDBRequest<Object>(lsmDB, result, ins));
             } catch (InterruptedException ex) {
@@ -136,7 +137,8 @@ public class DatabaseImpl implements DatabaseInternal {
      */
     private DatabaseRequestResult<Object> directInsert(BabuDBInsertGroup irg, Object context) {
 
-        BabuDBRequestResultImpl<Object> result = new BabuDBRequestResultImpl<Object>(context);
+        BabuDBRequestResultImpl<Object> result = 
+            new BabuDBRequestResultImpl<Object>(context, dbs.getResponseManager());
         
         try {
             dbs.getTransactionManager().makePersistent(
@@ -166,7 +168,7 @@ public class DatabaseImpl implements DatabaseInternal {
             Object context) {
         
         BabuDBRequestResultImpl<byte[]> result = 
-            new BabuDBRequestResultImpl<byte[]>(context);
+            new BabuDBRequestResultImpl<byte[]>(context, dbs.getResponseManager());
         LSMDBWorker w = dbs.getWorker(lsmDB.getDatabaseId());
         if (w != null) {
             if (Logging.isNotice()) {
@@ -237,8 +239,8 @@ public class DatabaseImpl implements DatabaseInternal {
             int indexId, byte[] key, Object context, boolean ascending) {
         
         final BabuDBRequestResultImpl<ResultSet<byte[], byte[]>> result = 
-            new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(
-                    context);
+            new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(context, 
+                    dbs.getResponseManager());
         
         // if there are worker threads, delegate the prefix lookup to the
         // responsible worker thread
@@ -309,8 +311,8 @@ public class DatabaseImpl implements DatabaseInternal {
             boolean ascending) {
         
         final BabuDBRequestResultImpl<ResultSet<byte[], byte[]>> result = 
-            new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(
-            context);
+            new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(context, 
+                    dbs.getResponseManager());
         
         // if there are worker threads, delegate the range lookup to the
         // responsible worker thread
@@ -357,7 +359,7 @@ public class DatabaseImpl implements DatabaseInternal {
             UserDefinedLookup udl, Object context) {
         
         final BabuDBRequestResultImpl<Object> result = 
-            new BabuDBRequestResultImpl<Object>(context);
+            new BabuDBRequestResultImpl<Object>(context, dbs.getResponseManager());
         
         LSMDBWorker w = dbs.getWorker(lsmDB.getDatabaseId());
         if (w != null) {
