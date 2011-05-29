@@ -116,7 +116,8 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
     private void executeLocallyAndReplicate(TransactionInternal txn, final ReusableBuffer payload, 
             final BabuDBRequestResultImpl<Object> future) throws BabuDBException {
         
-        final BabuDBRequestResultImpl<Object> localFuture = new BabuDBRequestResultImpl<Object>();
+        final BabuDBRequestResultImpl<Object> localFuture = 
+            new BabuDBRequestResultImpl<Object>(babuDBProxy.getResponseManager());
         localTxnMan.makePersistent(txn, payload.createViewBuffer(), localFuture);
         localFuture.registerListener(new DatabaseRequestListener<Object>() {
         

@@ -261,8 +261,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
                                 "Starting synchronization from '%s' to '%s'.", 
                                 localState.toString(), latest.toString());
                     
-                        BabuDBRequestResultImpl<Object> ready = 
-                            new BabuDBRequestResultImpl<Object>();
+                        BabuDBRequestResultImpl<Object> ready = babuDB.createRequestFuture();
                         
                         replicationStage.manualLoad(ready, latest);
                         ready.get();

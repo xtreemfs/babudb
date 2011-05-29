@@ -11,6 +11,7 @@ import org.xtreemfs.babudb.api.StaticInitialization;
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.dev.CheckpointerInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
+import org.xtreemfs.babudb.api.dev.ResponseManagerInternal;
 import org.xtreemfs.babudb.api.dev.SnapshotManagerInternal;
 import org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
@@ -127,6 +128,13 @@ public class BabuDBMock implements BabuDBInternal {
         Logging.logMessage(Logging.LEVEL_INFO, this,
                 "Mock '%s' tried to access PerMan.", name);
         return perMan;
+    }
+    
+    @Override
+    public ResponseManagerInternal getResponseManager() {
+        Logging.logMessage(Logging.LEVEL_INFO, this,
+                "Mock '%s' tried to access RespMan.", name);
+        return null;
     }
 
     @Override

@@ -20,6 +20,7 @@ import java.util.Set;
 import org.xtreemfs.babudb.api.database.Database;
 import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
+import org.xtreemfs.babudb.api.dev.ResponseManagerInternal;
 import org.xtreemfs.babudb.api.dev.transaction.TransactionInternal;
 import org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
@@ -47,10 +48,11 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
     private final    ReplicationManager         replicationManager;
     private final    BabuDBProxy                babuDBProxy;
     private final    TransactionManagerInternal txnManProxy;
-
+    private final    ResponseManagerInternal    responseManager;
+    
     public DatabaseManagerProxy(DatabaseManagerInternal localDBMan, Policy policy, 
             ReplicationManager replMan, BabuDBProxy babuDBProxy, 
-            TransactionManagerInternal persMan) {
+            TransactionManagerInternal persMan, ResponseManagerInternal respMan) {
         
         assert (localDBMan != null);
         
@@ -59,6 +61,7 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
         this.replicationPolicy = policy;
         this.replicationManager = replMan;
         this.babuDBProxy = babuDBProxy;
+        this.responseManager = respMan;
     }
     
     /* (non-Javadoc)
@@ -408,5 +411,9 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
     
     public Policy getReplicationPolicy() {
         return replicationPolicy;
+    }
+    
+    public ResponseManagerInternal getResponseManager() {
+        return responseManager;
     }
 }

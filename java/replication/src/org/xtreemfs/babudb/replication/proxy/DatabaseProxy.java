@@ -560,7 +560,8 @@ public class DatabaseProxy implements DatabaseInternal {
     @Override
     public DatabaseRequestResult<Object> insert(BabuDBInsertGroup irg, Object context) {
         
-        BabuDBRequestResultImpl<Object> result = new BabuDBRequestResultImpl<Object>(context);
+        BabuDBRequestResultImpl<Object> result = 
+            new BabuDBRequestResultImpl<Object>(context, dbMan.getResponseManager());
         
         try {
             dbMan.getTransactionManager().makePersistent(

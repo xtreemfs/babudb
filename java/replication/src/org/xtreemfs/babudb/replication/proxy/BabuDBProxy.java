@@ -12,6 +12,7 @@ import org.xtreemfs.babudb.api.StaticInitialization;
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.dev.CheckpointerInternal;
 import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
+import org.xtreemfs.babudb.api.dev.ResponseManagerInternal;
 import org.xtreemfs.babudb.api.dev.SnapshotManagerInternal;
 import org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
@@ -49,7 +50,7 @@ public class BabuDBProxy implements BabuDBInternal {
         this.txnManProxy = new TransactionManagerProxy(replMan, 
                 localDB.getTransactionManager(), replicationPolicy, this);
         DatabaseManagerProxy dbMan = new DatabaseManagerProxy(localDB.getDatabaseManager(), 
-                replicationPolicy, replMan, this, txnManProxy);
+                replicationPolicy, replMan, this, txnManProxy, localDB.getResponseManager());
         this.client = replMan.getProxyClient(dbMan);
         this.dbManProxy = dbMan;
     }
@@ -223,5 +224,13 @@ public class BabuDBProxy implements BabuDBInternal {
      */
     public ProxyAccessClient getClient() {
         return client;
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.BabuDBInternal#getResponseManager()
+     */
+    @Override
+    public ResponseManagerInternal getResponseManager() {
+        return localBabuDB.getResponseManager();
     }
 }

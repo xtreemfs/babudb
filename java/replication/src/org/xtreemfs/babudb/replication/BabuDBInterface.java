@@ -71,7 +71,8 @@ public class BabuDBInterface {
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "Appending entry to logger: %s", 
                 new String(entry.getPayload().array()));
         
-        BabuDBRequestResultImpl<Object> future = new BabuDBRequestResultImpl<Object>();
+        BabuDBRequestResultImpl<Object> future = 
+            new BabuDBRequestResultImpl<Object>(dbs.getResponseManager());
         localTxnMan.makePersistent(entry.getPayload(), future);
         future.registerListener(listener);
     }
@@ -199,5 +200,12 @@ public class BabuDBInterface {
      */
     public TransactionManagerInternal getTransactionManager() {
         return dbs.getTransactionManager();
+    }
+    
+    /**
+     * @return a {@link BabuDBRequestResultImpl} object.
+     */
+    public BabuDBRequestResultImpl<Object> createRequestFuture() {
+        return new BabuDBRequestResultImpl<Object>(dbs.getResponseManager());
     }
 }
