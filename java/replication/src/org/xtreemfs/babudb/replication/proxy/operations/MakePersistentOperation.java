@@ -13,7 +13,6 @@ import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.pbrpc.Common.emptyRequest;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.Database;
-import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.pbrpc.RemoteAccessServiceConstants;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.transmission.ErrorCode;
@@ -92,15 +91,19 @@ public class MakePersistentOperation extends Operation {
                 public void failed(BabuDBException error, Object context) {
                     Logging.logError(Logging.LEVEL_DEBUG, this, error);
                                         
-                    rq.sendSuccess(ErrorCodeResponse.newBuilder().setErrorCode(
-                            ErrorCode.mapUserError(error.getErrorCode())).build());
+                    rq.sendSuccess(Database.newBuilder()
+                            .setErrorCode(ErrorCode.mapUserError(error.getErrorCode()))
+                            .setDatabaseId(-1)
+                            .setDatabaseName("\0").build());
                 }
             });
         } catch (BabuDBException error) {
             Logging.logError(Logging.LEVEL_DEBUG, this, error);
             
-            rq.sendSuccess(ErrorCodeResponse.newBuilder().setErrorCode(
-                    ErrorCode.mapUserError(error.getErrorCode())).build());
+            rq.sendSuccess(Database.newBuilder()
+                    .setErrorCode(ErrorCode.mapUserError(error.getErrorCode()))
+                    .setDatabaseId(-1)
+                    .setDatabaseName("\0").build());
         } 
     }
 }
