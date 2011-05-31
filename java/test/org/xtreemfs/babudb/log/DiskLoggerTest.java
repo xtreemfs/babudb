@@ -187,6 +187,8 @@ public class DiskLoggerTest extends TestCase {
             }
             
             public void failed(Exception ex) {
+                fail("this should not happen");
+                
                 synchronized (count) {
                     count.incrementAndGet();
                     count.notifyAll();
@@ -207,8 +209,7 @@ public class DiskLoggerTest extends TestCase {
             l.append(e);
         }
         synchronized (count) {
-            if (count.get() < 100)
-                count.wait(1000);
+            while (count.get() < 100) count.wait(1000);
         }
         
         System.out.println("finished writing");
