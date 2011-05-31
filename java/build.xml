@@ -14,16 +14,16 @@
 	<property name="doctarget" value="${distparentdir}/javadoc.zip" />
 
 	<path id="BabuDB.classpath">
-		<pathelement location="bin" />
+		<pathelement location="${distparentdir}/bin" />
 		<pathelement location="lib/Foundation.jar" />
 	</path>
 
 	<target name="init">
-		<mkdir dir="bin" />
+		<mkdir dir="${distparentdir}/bin" />
 	</target>
 
 	<target name="clean">
-		<delete dir="bin" />
+		<delete dir="${distparentdir}/bin" />
 	</target>
 
 	<target name="distclean" depends="clean">
@@ -67,7 +67,7 @@
 
 	<target depends="init" name="build-project">
 		<echo message="${ant.project.name}: ${ant.file}" />
-		<javac debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}">
+		<javac debug="true" debuglevel="${debuglevel}" destdir="${distparentdir}/bin" source="${source}" target="${target}">
 			<src path="src" />
 			<classpath refid="BabuDB.classpath" />
 		</javac>
@@ -75,21 +75,21 @@
 
 	<target name="jar" depends="build">
 		<mkdir dir="${distdir}" />
-		<copy file="AUTHORS" todir="bin" />
-		<copy file="LICENSE" todir="bin" />
-		<copy todir="bin">
+		<copy file="AUTHORS" todir="${distparentdir}/bin" />
+		<copy file="LICENSE" todir="${distparentdir}/bin" />
+		<copy todir="${distparentdir}/bin">
 			<fileset dir="src" excludes="**/*.java" />
 		</copy>
-		<jar destfile="${distdir}/BabuDB.jar" basedir="bin" excludes="org/xtreemfs/babudb/sandbox/**" />
+		<jar destfile="${distdir}/BabuDB.jar" basedir="${distparentdir}/bin" excludes="org/xtreemfs/babudb/sandbox/**" />
 	</target>
 
 	<target name="singlejar" depends="jar">
 		<mkdir dir="${distdir-singlejar}" />
-		<mkdir dir="bin/tmp" />
-		<unjar src="${distdir}/BabuDB.jar" dest="bin/tmp" />
-		<unjar src="lib/Foundation.jar" dest="bin/tmp" />
-		<jar destfile="${distdir-singlejar}/BabuDB.jar" basedir="bin/tmp" excludes="org/xtreemfs/babudb/sandbox/**" />
-		<delete dir="bin/tmp" />
+		<mkdir dir="${distparentdir}/bin/tmp" />
+		<unjar src="${distdir}/BabuDB.jar" dest="${distparentdir}/bin/tmp" />
+		<unjar src="lib/Foundation.jar" dest="${distparentdir}/bin/tmp" />
+		<jar destfile="${distdir-singlejar}/BabuDB.jar" basedir="${distparentdir}/bin/tmp" excludes="org/xtreemfs/babudb/sandbox/**" />
+		<delete dir="${distparentdir}/bin/tmp" />
 	</target>
 
 	<target name="release" depends="jar,singlejar,javadoc">

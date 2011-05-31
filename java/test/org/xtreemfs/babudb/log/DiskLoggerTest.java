@@ -54,7 +54,7 @@ public class DiskLoggerTest extends TestCase {
     @Before
     public void setUp() throws Exception {
         FSUtils.delTree(new File(testdir));
-        l = new DiskLogger(testdir, new LSN(1,1L), SyncMode.FSYNC, 0, 0);
+        l = new DiskLogger(testdir, new LSN(1, 1L), SyncMode.FSYNC, 0, 0);
         l.start();
         l.waitForStartup();
     }
@@ -127,7 +127,8 @@ public class DiskLoggerTest extends TestCase {
                 synchronized (count) {
                     count.incrementAndGet();
                     count.notifyAll();
-                    // System.out.println("wrote Entry: " + entry.getLogSequenceNo());
+                    // System.out.println("wrote Entry: " +
+                    // entry.getLogSequenceNo());
                 }
             }
             
@@ -161,8 +162,8 @@ public class DiskLoggerTest extends TestCase {
         DiskLogFile f = new DiskLogFile(testdir + "1.1.dbl");
         while (f.hasNext()) {
             LogEntry tmp = f.next();
-            //byte[] data = tmp.getPayload().array();
-            //String s = new String(data);
+            // byte[] data = tmp.getPayload().array();
+            // String s = new String(data);
             // System.out.println("item: " + s);
             tmp.free();
         }
@@ -209,7 +210,8 @@ public class DiskLoggerTest extends TestCase {
             l.append(e);
         }
         synchronized (count) {
-            while (count.get() < 100) count.wait(1000);
+            while (count.get() < 100)
+                count.wait(1000);
         }
         
         System.out.println("finished writing");
@@ -258,7 +260,7 @@ public class DiskLoggerTest extends TestCase {
         raf.close();
         
         f = new DiskLogFile(tmpFile.getAbsolutePath());
-        for(int i = 0; i < 50; i++) {
+        for (int i = 0; i < 50; i++) {
             LogEntry next = f.next();
             assertNotNull(next);
             next.free();
@@ -276,7 +278,7 @@ public class DiskLoggerTest extends TestCase {
         raf.close();
         
         f = new DiskLogFile(tmpFile.getAbsolutePath());
-        for(int i = 0; i < 50; i++) {
+        for (int i = 0; i < 50; i++) {
             LogEntry next = f.next();
             assertNotNull(next);
             next.free();
@@ -293,7 +295,7 @@ public class DiskLoggerTest extends TestCase {
         raf.close();
         
         f = new DiskLogFile(tmpFile.getAbsolutePath());
-        for(int i = 0; i < 99; i++) {
+        for (int i = 0; i < 99; i++) {
             LogEntry next = f.next();
             assertNotNull(next);
             next.free();
@@ -323,7 +325,7 @@ public class DiskLoggerTest extends TestCase {
         
         File[] logFiles = new File(testdir).listFiles();
         DiskLogIterator it = new DiskLogIterator(logFiles, null);
-        for(int i = 0; i < 120; i++) {
+        for (int i = 0; i < 120; i++) {
             LogEntry next = it.next();
             assertNotNull(next);
             next.free();
@@ -332,11 +334,13 @@ public class DiskLoggerTest extends TestCase {
         
     }
     
+    @Test
     public void testLogIterator() throws Exception {
         
         final int numLogFiles = 3;
         
-        // create multiple consecutive log files, each containing 100 log entries
+        // create multiple consecutive log files, each containing 100 log
+        // entries
         for (int k = 0; k < numLogFiles; k++) {
             
             final AtomicInteger count = new AtomicInteger(0);
@@ -371,8 +375,8 @@ public class DiskLoggerTest extends TestCase {
             
             try {
                 l.lock();
-                //LSN lsn = 
-                    l.switchLogFile(false);
+                // LSN lsn =
+                l.switchLogFile(false);
             } finally {
                 l.unlock();
             }
@@ -395,7 +399,7 @@ public class DiskLoggerTest extends TestCase {
         it.destroy();
         
         // create and test iterators that starts at different LSNs
-        for (int k: new int[]{1, 100, 101, 200, 201, 300, 77, 112, 189, 222}) {
+        for (int k : new int[] { 1, 100, 101, 200, 201, 300, 77, 112, 189, 222 }) {
             
             LSN lsn = new LSN(1, k);
             
@@ -413,10 +417,72 @@ public class DiskLoggerTest extends TestCase {
         
     }
     
+    @Test
+    public void testSyncListener() throws Exception {
+        
+        final int numEntries = 1000;
+        final int numRuns = 10;
+        
+        LSN lsn = new LSN(1, 0);
+        for (int j = 0; j < numRuns; j++) {
+            
+            final AtomicInteger count = new AtomicInteger(0);
+            int totalSize = 0;
+            
+            SyncListener sl = new SyncListener() {
+                
+                public void synced(LSN lsn) {
+                    synchronized (count) {
+                        count.incrementAndGet();
+                        count.notifyAll();
+                    }
+                }
+                
+                public void failed(Exception ex) {
+                    fail("this should not happen");
+                    
+                    synchronized (count) {
+                        count.incrementAndGet();
+                        count.notifyAll();
+                    }
+                }
+            };
+            
+            for (int i = 0; i < numEntries; i++) {
+                
+                String pl = "Entry " + (i + 1);
+                ReusableBuffer plb = ReusableBuffer.wrap(pl.getBytes());
+                LogEntry e = new LogEntry(plb, sl, LogEntry.PAYLOAD_TYPE_INSERT);
+                int entrySize = LogEntry.headerLength + e.getPayload().remaining();
+                
+                totalSize += entrySize;
+                l.append(e);
+            }
+            
+            synchronized (count) {
+                while (count.get() < numEntries)
+                    count.wait(5);
+            }
+            
+            LSN newLSN = null;
+            try {
+                l.lock();
+                newLSN = l.switchLogFile(false);
+            } finally {
+                l.unlock();
+            }
+            
+            File logFile = new File(testdir + lsn.getViewId() + "." + (lsn.getSequenceNo() + 1) + ".dbl");
+            lsn = newLSN;
+            assertEquals(totalSize, logFile.length());
+            
+        }
+    }
+    
     private static void copyFile(File src, File dst) throws Exception {
         FileInputStream in = new FileInputStream(src);
         FileOutputStream out = new FileOutputStream(dst);
-        while(in.available() > 0) {
+        while (in.available() > 0) {
             int b = in.read();
             out.write(b);
         }

@@ -12,7 +12,7 @@
 	<property name="releasetarget" value="${distparentdir}/replication.zip" />
 
 	<path id="BabuDB-replication.classpath">
-		<pathelement location="bin" />
+		<pathelement location="${distparentdir}/repl-bin" />
 		<pathelement location="../dist/BabuDB/BabuDB.jar" />
 		<pathelement location="../lib/Foundation.jar" />
 		<pathelement location="lib/Flease.jar" />
@@ -20,11 +20,11 @@
 	</path>
 
 	<target name="init">
-		<mkdir dir="bin" />
+		<mkdir dir="${distparentdir}/repl-bin" />
 	</target>
 
 	<target name="clean">
-		<delete dir="bin" />
+		<delete dir="${distparentdir}/repl-bin" />
 	</target>
 
 	<target name="distclean" depends="clean">
@@ -36,7 +36,7 @@
 
 	<target depends="init" name="build-project">
 		<echo message="${ant.project.name}: ${ant.file}" />
-		<javac debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}">
+		<javac debug="true" debuglevel="${debuglevel}" destdir="${distparentdir}/repl-bin" source="${source}" target="${target}">
 			<src path="src" />
 			<classpath refid="BabuDB-replication.classpath" />
 		</javac>
@@ -44,10 +44,10 @@
 
 	<target name="jar" depends="build">
 		<mkdir dir="${distdir}" />
-		<copy todir="bin">
+		<copy todir="${distparentdir}/repl-bin">
 			<fileset dir="src" excludes="**/*.java" />
 		</copy>
-		<jar destfile="${distdir}/replication.jar" basedir="bin" excludes="org/xtreemfs/babudb/sandbox/**" />
+		<jar destfile="${distdir}/replication.jar" basedir="${distparentdir}/repl-bin" excludes="org/xtreemfs/babudb/sandbox/**" />
 	</target>
 
 	<target name="release" depends="jar">
