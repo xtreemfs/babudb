@@ -105,8 +105,8 @@ public class DatabaseImpl implements DatabaseInternal {
         
         LSMDBWorker w = dbs.getWorker(dbId);
         if (w != null) {
-            if (Logging.isNotice()) {
-                Logging.logMessage(Logging.LEVEL_NOTICE, this, "insert request" 
+            if (Logging.isDebug()) {
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, "insert request" 
                         + " is sent to worker #" + dbId % dbs.getWorkerCount());
             }
             
@@ -171,8 +171,8 @@ public class DatabaseImpl implements DatabaseInternal {
             new BabuDBRequestResultImpl<byte[]>(context, dbs.getResponseManager());
         LSMDBWorker w = dbs.getWorker(lsmDB.getDatabaseId());
         if (w != null) {
-            if (Logging.isNotice()) {
-                Logging.logMessage(Logging.LEVEL_NOTICE, this, "lookup request" 
+            if (Logging.isDebug()) {
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, "lookup request" 
                         + " is sent to worker #" 
                         + lsmDB.getDatabaseId() % dbs.getWorkerCount());
             }
@@ -246,8 +246,8 @@ public class DatabaseImpl implements DatabaseInternal {
         // responsible worker thread
         LSMDBWorker w = dbs.getWorker(lsmDB.getDatabaseId());
         if (w != null) {
-            if (Logging.isNotice() && w != null) {
-                Logging.logMessage(Logging.LEVEL_NOTICE, this, "lookup request" 
+            if (Logging.isDebug() && w != null) {
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, "lookup request" 
                         + " is sent to worker #"
                         + lsmDB.getDatabaseId() % dbs.getWorkerCount());
             }
@@ -318,8 +318,8 @@ public class DatabaseImpl implements DatabaseInternal {
         // responsible worker thread
         LSMDBWorker w = dbs.getWorker(lsmDB.getDatabaseId());
         if (w != null) {
-            if (Logging.isNotice() && w != null) {
-                Logging.logMessage(Logging.LEVEL_NOTICE, this, "lookup request" 
+            if (Logging.isDebug() && w != null) {
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, "lookup request" 
                         + " is sent to worker #"
                         + lsmDB.getDatabaseId() % dbs.getWorkerCount());
             }

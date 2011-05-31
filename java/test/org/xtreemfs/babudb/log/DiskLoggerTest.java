@@ -175,6 +175,7 @@ public class DiskLoggerTest extends TestCase {
         int[] offsets = new int[100];
         
         final AtomicInteger count = new AtomicInteger(0);
+        int totalSize = 0;
         
         SyncListener sl = new SyncListener() {
             
@@ -197,8 +198,12 @@ public class DiskLoggerTest extends TestCase {
             String pl = "Entry " + (i + 1);
             ReusableBuffer plb = ReusableBuffer.wrap(pl.getBytes());
             LogEntry e = new LogEntry(plb, sl, LogEntry.PAYLOAD_TYPE_INSERT);
+            int entrySize = LogEntry.headerLength + e.getPayload().remaining();
+            
             if (i < 99)
-                offsets[i + 1] = offsets[i] + LogEntry.headerLength + e.getPayload().remaining();
+                offsets[i + 1] = offsets[i] + entrySize;
+            else
+                totalSize = offsets[offsets.length - 1] + entrySize;
             l.append(e);
         }
         synchronized (count) {
@@ -214,6 +219,8 @@ public class DiskLoggerTest extends TestCase {
         } finally {
             l.unlock();
         }
+        
+        assertEquals(totalSize, logFile.length());
         
         File tmpFile = new File(testdir + "log.dbl");
         copyFile(logFile, tmpFile);
