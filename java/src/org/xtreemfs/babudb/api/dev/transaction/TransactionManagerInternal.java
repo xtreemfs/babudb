@@ -88,12 +88,14 @@ public abstract class TransactionManagerInternal {
     public final void makePersistent(TransactionInternal transaction,
             BabuDBRequestResultImpl<Object> requestFuture) throws BabuDBException {
         
+        ReusableBuffer buffer = null;
         try {
-            ReusableBuffer buffer = transaction.serialize(
+            buffer = transaction.serialize(
                     BufferPool.allocate(transaction.getSize()));
             buffer.flip();
             makePersistent(transaction, buffer, requestFuture);
         } catch (IOException e) {
+            if (buffer != null) BufferPool.free(buffer);
             throw new BabuDBException (ErrorCode.IO_ERROR, e.getMessage(), e);
         }
     }
@@ -115,6 +117,7 @@ public abstract class TransactionManagerInternal {
             serialized.flip();
             makePersistent(txn, serialized, requestFuture);
         } catch (IOException e) {
+            if (serialized != null) BufferPool.free(serialized);
             throw new BabuDBException(ErrorCode.IO_ERROR, e.getMessage(), e);
         }
     }
