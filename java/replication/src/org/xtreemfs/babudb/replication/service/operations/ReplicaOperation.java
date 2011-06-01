@@ -169,6 +169,7 @@ public class ReplicaOperation extends Operation {
                             "REQUEST: returning %d log-entries to %s.", 
                             result.getLogEntriesCount(), rq.getSenderAddress().toString());
                     
+                    resultPayLoad.flip();
                     rq.sendSuccess(result.build(), resultPayLoad);
                 } else {
                     rq.sendSuccess(result.setErrorCode(

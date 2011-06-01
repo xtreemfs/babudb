@@ -30,6 +30,7 @@ import org.xtreemfs.babudb.replication.policy.Policy;
 import org.xtreemfs.babudb.replication.service.accounting.ReplicateResponse;
 import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.ClientResponseAvailableListener;
 import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter.ErrorCodeException;
+import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 
 import static org.xtreemfs.babudb.log.LogEntry.*;
@@ -80,24 +81,29 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
         
         assert (serialized != null);
         
-        InetSocketAddress master = getServerToPerformAt(txn.aggregateOperationTypes());
-        if (master == null) {
-            
-            // check if this service has been locked and increment the access counter
-            synchronized (accessCounter) {
-                try {
-                    while (isLocked()) {
-                        accessCounter.wait();
+        try {
+            InetSocketAddress master = getServerToPerformAt(txn.aggregateOperationTypes());
+            if (master == null) {
+                
+                // check if this service has been locked and increment the access counter
+                synchronized (accessCounter) {
+                    try {
+                        while (isLocked()) {
+                            accessCounter.wait();
+                        }
+                    } catch (InterruptedException e) {
+                        throw new BabuDBException(ErrorCode.INTERRUPTED, 
+                                "Waiting for a lease holder was interrupted.", e);    
                     }
-                } catch (InterruptedException e) {
-                    throw new BabuDBException(ErrorCode.INTERRUPTED, 
-                            "Waiting for a lease holder was interrupted.", e);    
+                    accessCounter.incrementAndGet();
                 }
-                accessCounter.incrementAndGet();
+                executeLocallyAndReplicate(txn, serialized, future);
+            } else {      
+                redirectToMaster(serialized, master, future);
             }
-            executeLocallyAndReplicate(txn, serialized, future);
-        } else {      
-            redirectToMaster(serialized, master, future);
+        } catch (BabuDBException be) {
+            BufferPool.free(serialized);
+            throw be;
         }
     }
     
