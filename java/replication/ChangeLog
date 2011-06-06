@@ -6,3 +6,8 @@
   * bugfix: prefix lookups now return records in the correct order
   * bugfix: context objects are no longer lost on replicated db inserts
   * reduced logging output
+  
+2011-06-06
+  * adopted plug-in to the latest BabuDB changes
+  * bugfix: buffer finalization for transactions now works properly
+  * bugfix: fixed issue that caused a sending of wrongly encoded responses on a proxy make persistent operation
