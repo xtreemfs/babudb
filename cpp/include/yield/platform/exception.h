@@ -4,12 +4,9 @@
 #ifndef YIELD_PLATFORM_EXCEPTION_H
 #define YIELD_PLATFORM_EXCEPTION_H
 
-#include "yield/platform/platform_config.h" // for YIELD
-
 #include <exception>
 
-
-namespace YIELD
+namespace yield
 {
 	class Exception : public std::exception
 	{
@@ -24,6 +21,6 @@ namespace YIELD
 	private:
 		const char* _what;
 	};
-};
+}
 
 #endif

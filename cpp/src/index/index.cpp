@@ -176,11 +176,11 @@ bool ImmutableIndex::LoadRoot() {
 ImmutableIndex::DiskIndices ImmutableIndex::FindIndices(const string& name_prefix) {
   DiskIndices results;
 
-  pair<YIELD::Path,YIELD::Path> dir_prefix = YIELD::Path(name_prefix).split();
-  YIELD::DirectoryWalker walker(dir_prefix.first);
+  pair<yield::Path,yield::Path> dir_prefix = yield::Path(name_prefix).split();
+  yield::DirectoryWalker walker(dir_prefix.first);
 
   while(walker.hasNext()) {
-    auto_ptr<YIELD::DirectoryEntry> entry = walker.getNext();
+    auto_ptr<yield::DirectoryEntry> entry = walker.getNext();
 
     lsn_t lsn;
     if(matchFilename(entry->getPath(), dir_prefix.second.getHostCharsetPath(), "idx", lsn)) {
@@ -191,15 +191,15 @@ ImmutableIndex::DiskIndices ImmutableIndex::FindIndices(const string& name_prefi
   return results;
 }
 
-static bool MoreRecent(const std::pair<YIELD::Path,lsn_t>& one,
-                       const std::pair<YIELD::Path,lsn_t>& two) {
+static bool MoreRecent(const std::pair<yield::Path,lsn_t>& one,
+                       const std::pair<yield::Path,lsn_t>& two) {
   return one.second > two.second;
 }
 
 ImmutableIndex* ImmutableIndex::LoadLatestIntactIndex(
     DiskIndices& on_disk, const KeyOrder& order) {
   // find latest intact ImmutableIndex
-  YIELD::Path latest_intact_path("");
+  yield::Path latest_intact_path("");
   sort(on_disk.begin(), on_disk.end(), MoreRecent);
 
   for (DiskIndices::iterator i = on_disk.begin(); i != on_disk.end(); ++i) {
@@ -217,8 +217,8 @@ void ImmutableIndex::CleanupObsolete(const string& file_name, const string& to) 
 
   for (DiskIndices::iterator i = on_disk.begin(); i != on_disk.end(); ++i) {
     if (i->second < current_lsn) {  // not the latest intact index
-      pair<YIELD::Path,YIELD::Path> parts = YIELD::Path(i->first).split();
-      YIELD::DiskOperations::rename(i->first, to + parts.second.getHostCharsetPath());
+      pair<yield::Path,yield::Path> parts = yield::Path(i->first).split();
+      yield::DiskOperations::rename(i->first, to + parts.second.getHostCharsetPath());
     }
   }
 }

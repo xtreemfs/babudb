@@ -4,7 +4,7 @@
 #include "yield/platform/stat.h"
 #include "yield/platform/disk_operations.h"
 #include "yield/platform/platform_exception.h"
-using namespace YIELD;
+using namespace yield;
 
 #ifdef _WIN32
 

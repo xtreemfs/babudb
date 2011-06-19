@@ -9,8 +9,8 @@ using namespace std;
 
 namespace babudb {
 
-bool matchFilename(const YIELD::Path& fullpath, const string& desired_prefix, const string& desired_ext, unsigned int& lsn) {
-	pair<YIELD::Path,YIELD::Path> parts = fullpath.split();
+bool matchFilename(const yield::Path& fullpath, const string& desired_prefix, const string& desired_ext, unsigned int& lsn) {
+	pair<yield::Path,yield::Path> parts = fullpath.split();
 
 	std::istringstream tokenizer(parts.second.getHostCharsetPath());
 

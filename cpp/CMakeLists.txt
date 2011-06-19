@@ -3,7 +3,7 @@ project (babudb)
 
 find_path(SRC_DIR CMakeLists.txt PATHS .)
 message(STATUS "babudb root directory: " ${SRC_DIR})
-# Important for installing yield_platform to lib/
+# Important for installing YIELD_platform to lib/
 set(CMAKE_INSTALL_PREFIX ${SRC_DIR})
 
 include_directories(include/ src/)
@@ -13,14 +13,14 @@ file(GLOB ALL_FILES
      src/*.cpp
      src/log/*.cpp
      src/index/*.cpp 
-     src/yield_platform/*.cpp
+     src/YIELD_platform/*.cpp
      src/*.h
      src/log/*.h
      src/index/*.h 
-     src/yield_platform/*.h
+     src/YIELD_platform/*.h
      include/babudb/log/*.h
      include/babudb/index/*.h
-     include/babudb/yield_platform/*.h)
+     include/babudb/YIELD_platform/*.h)
 
 # Separate code and tests
 set(SRC_FILES "")

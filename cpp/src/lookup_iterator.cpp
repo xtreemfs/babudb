@@ -15,7 +15,7 @@
 
 #include <yield/platform/memory_mapped_file.h>
 #include <yield/platform/assert.h>
-using namespace YIELD;
+using namespace yield;
 
 using namespace babudb;
 

@@ -2,7 +2,7 @@
 // This source comes from the Yield project. It is licensed under the GPLv2 (see COPYING for terms and conditions).
 
 #include "yield/platform/platform_exception.h"
-using namespace YIELD;
+using namespace yield;
 
 #ifdef _WIN32
 #include "yield/platform/windows.h"

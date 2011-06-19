@@ -4,7 +4,7 @@
 #include "yield/platform/disk_operations.h"
 #include "yield/platform/directory_walker.h"
 #include "yield/platform/platform_exception.h"
-using namespace YIELD;
+using namespace yield;
 
 using namespace std;
 

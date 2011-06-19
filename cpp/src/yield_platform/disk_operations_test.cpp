@@ -4,7 +4,7 @@
 #include "yield/platform/yunit.h"
 #include "yield/platform/platform_exception.h"
 #include "yield/platform/disk_operations.h"
-using namespace YIELD;
+using namespace yield;
 
 
 #define TEST_FILE_NAME "DiskOperations_test.txt"

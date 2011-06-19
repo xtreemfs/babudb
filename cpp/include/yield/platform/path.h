@@ -4,8 +4,6 @@
 #ifndef YIELD_PLATFORM_PATH_H
 #define YIELD_PLATFORM_PATH_H
 
-#include "yield/platform/platform_config.h" // for YIELD
-
 #include <string>
 #include <cstring>
 #include <utility>
@@ -21,7 +19,7 @@
 #endif
 
 
-namespace YIELD
+namespace yield
 {
   class Path
   {
@@ -62,6 +60,6 @@ namespace YIELD
     void MultiByteToMultiByte( const char* fromcode, const std::string& frompath, const char* tocode, std::string& topath );
 #endif
   };
-};
+}
 
 #endif

@@ -4,12 +4,10 @@
 #ifndef YIELD_PLATFORM_PLATFORM_TYPES_H
 #define YIELD_PLATFORM_PLATFORM_TYPES_H
 
-#include "yield/platform/platform_config.h" // for YIELD
-
 #include <stdint.h>
 #include <sys/types.h> // For size_t
 
-namespace YIELD
+namespace yield
 {
 	typedef uint32_t timeout_ns_t; // This is a uint32_t (which can only store ~4.3s in ns) because Solaris+gcc (4.0, 4.2) mangles uint64_t's on function calls in 32-bit binaries (no explanation for that yet)
 
@@ -49,7 +47,7 @@ namespace YIELD
 	inline uint32_t upper32( uint64_t val ) { return ( uint32_t )( val >> 32 ); }
 	inline uint32_t lower32( uint64_t val ) { return ( uint32_t )( val & 0xffFFffFF ); }
 	inline uint64_t create_uint64( uint32_t upper, uint32_t lower ) { return ( ( uint64_t )upper ) << 32 | ( uint64_t )lower; }
-};
+}
 
 #ifndef SIZE_MAX
 #define SIZE_MAX ( ( size_t ) - 1 )

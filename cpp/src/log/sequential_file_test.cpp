@@ -15,7 +15,7 @@
 #define POSIX  // for O_ definitions from fcntl.h
 #include <fcntl.h>
 
-using namespace YIELD;
+using namespace yield;
 using namespace babudb;
 
 TEST_TMPDIR(SequentialFile_iteration,babudb)

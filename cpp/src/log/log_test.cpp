@@ -10,7 +10,7 @@
 
 #include "babudb/profiles/string_key.h"
 #include "yield/platform/memory_mapped_file.h"
-using YIELD::MemoryMappedFile;
+using yield::MemoryMappedFile;
 using namespace babudb;
 
 #include "babudb/test.h"

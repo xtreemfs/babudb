@@ -9,7 +9,7 @@
 #include <memory>
 
 
-namespace YIELD
+namespace yield
 {
 	class DirectoryEntry : public Stat
 	{
@@ -53,6 +53,6 @@ namespace YIELD
 		std::wstring search_pattern;
 #endif
 	};
-};
+}
 
 #endif

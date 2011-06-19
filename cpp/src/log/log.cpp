@@ -23,7 +23,7 @@ using namespace babudb;
 using namespace std;
 
 #include "yield/platform/directory_walker.h"
-using namespace YIELD;
+using namespace yield;
 
 Log::Log(Buffer data) : tail(NULL), name_prefix("") {  // volatile in-memory
   LogStorage* storage = new VolatileLogStorage(data);
@@ -48,21 +48,21 @@ void Log::Close() {
 
 class LSNBefore {
 public:
-  typedef pair<YIELD::Path, lsn_t> vector_entry;
+  typedef pair<yield::Path, lsn_t> vector_entry;
   bool operator () (const vector_entry& l, const vector_entry& r) { return l.second < r.second; }
 };
 
-typedef vector< pair<YIELD::Path, lsn_t> > DiskSections;
+typedef vector< pair<yield::Path, lsn_t> > DiskSections;
 
 static DiskSections scanAvailableLogSections(const string& name_prefix) {
   DiskSections result;
 
-  pair<YIELD::Path,YIELD::Path> prefix_parts = YIELD::Path(name_prefix).split();
-  YIELD::DirectoryWalker walker(prefix_parts.first);
+  pair<yield::Path,yield::Path> prefix_parts = yield::Path(name_prefix).split();
+  yield::DirectoryWalker walker(prefix_parts.first);
 
   while(walker.hasNext()) {
     lsn_t lsn;
-    auto_ptr<YIELD::DirectoryEntry> entry = walker.getNext();
+    auto_ptr<yield::DirectoryEntry> entry = walker.getNext();
 
     if(matchFilename(entry->getPath(), prefix_parts.second.getHostCharsetPath(), "log", lsn))
       result.push_back(make_pair(entry->getPath(), lsn));
@@ -80,8 +80,8 @@ void Log::Cleanup(lsn_t to_lsn, const string& obsolete_prefix) {
     DiskSections::iterator next = i; next++;
 
     if (next != disk_sections.end() && next->second <= to_lsn) {
-      pair<YIELD::Path,YIELD::Path> parts = i->first.split();
-      YIELD::DiskOperations::rename(i->first, obsolete_prefix + parts.second.getHostCharsetPath());
+      pair<yield::Path,yield::Path> parts = i->first.split();
+      yield::DiskOperations::rename(i->first, obsolete_prefix + parts.second.getHostCharsetPath());
     }
   }
 }

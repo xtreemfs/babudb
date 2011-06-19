@@ -17,7 +17,7 @@ using namespace babudb;
 #include <string>
 
 #include <yield/platform/assert.h>
-using namespace YIELD;
+using namespace yield;
 
 #define POSIX  // for O_ definitions from fcntl.h
 #include <fcntl.h>

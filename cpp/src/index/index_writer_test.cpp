@@ -15,7 +15,7 @@ using std::pair;
 #include "index/index.h"
 #include "index/merger.h"
 #include "log_index.h"
-using namespace YIELD;
+using namespace yield;
 using namespace babudb;
 
 #include "babudb/test.h"

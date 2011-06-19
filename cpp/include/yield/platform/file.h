@@ -14,7 +14,7 @@
 #endif
 
 
-namespace YIELD
+namespace yield
 {
   class Path;
 
@@ -69,6 +69,6 @@ namespace YIELD
     static void aio_write_notify( sigval_t );
 #endif
   };
-};
+}
 
 #endif

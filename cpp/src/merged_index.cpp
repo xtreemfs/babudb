@@ -20,7 +20,7 @@ using namespace babudb;
 
 #include <yield/platform/yunit.h>
 #include "yield/platform/path.h"
-using namespace YIELD;
+using namespace yield;
 
 MergedIndex::MergedIndex(const string& name, const KeyOrder& order) 
     : tail(NULL), immutable_index(NULL), name_prefix(name), order(order)  {

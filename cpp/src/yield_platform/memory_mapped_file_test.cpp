@@ -10,7 +10,7 @@ using std::memcpy;
 #include <cstring>
 using std::strcmp;
 
-using namespace YIELD;
+using namespace yield;
 
 #define TEST_FILE_NAME "MemoryMappedFile_test.dat"
 #define TESTSTRING "Test string"

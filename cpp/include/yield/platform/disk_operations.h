@@ -21,8 +21,7 @@
 #define O_CLOSE_ON_DESTRUCT 010000000
 #define O_SPARSE 020000000
 
-
-namespace YIELD
+namespace yield
 {
 	class DiskOperations
 	{
@@ -42,6 +41,6 @@ namespace YIELD
 	private:
 		static bool _rmtree( const Path&, unsigned long flags  );
 	};
-};
+}
 
 #endif

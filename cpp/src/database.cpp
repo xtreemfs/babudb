@@ -23,7 +23,7 @@ using namespace babudb;
 using std::pair;
 
 #include "yield/platform/memory_mapped_file.h"
-using namespace YIELD;
+using namespace yield;
 
 string GetIndexPrefix(const string& db_name,
                       const string& index_name) {
@@ -168,8 +168,8 @@ bool Database::ImportIndex(
     lsn_t version, const string& filename, bool delete_source) {
   const string index_file = GetIndexFile(database_name, index_name, version);
   if (delete_source) {
-    return YIELD::DiskOperations::rename(filename, index_file);
+    return yield::DiskOperations::rename(filename, index_file);
   } else {
-    return YIELD::File::CopyFile(filename, index_file);
+    return yield::File::CopyFile(filename, index_file);
   }
 }

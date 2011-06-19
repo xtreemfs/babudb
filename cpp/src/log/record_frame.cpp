@@ -10,7 +10,7 @@
 #include "babudb/log/record_frame.h"
 
 #include <yield/platform/assert.h>
-using namespace YIELD;
+using namespace yield;
 using namespace babudb;
 
 void* RecordFrame::getPayload()	const { 

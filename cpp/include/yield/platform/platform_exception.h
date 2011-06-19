@@ -6,8 +6,7 @@
 
 #include "yield/platform/exception.h"
 
-
-namespace YIELD
+namespace yield
 {
 	class PlatformException : public Exception
 	{
@@ -24,6 +23,6 @@ namespace YIELD
 		unsigned long error_code;
 		char what_buffer[100];
 	};
-};
+}
 
 #endif

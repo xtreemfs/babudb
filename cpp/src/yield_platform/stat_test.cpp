@@ -6,7 +6,7 @@
 #include "yield/platform/stat.h"
 #include "yield/platform/disk_operations.h"
 
-using namespace YIELD;
+using namespace yield;
 
 #define TEST_FILE_NAME "Stat_test.txt"
 #define TEST_DIR_NAME "Stat_test"

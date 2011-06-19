@@ -14,7 +14,7 @@
 #include "yield/platform/debug.h" // Should be last to get DebugBreak on Windows
 
 
-namespace YIELD
+namespace yield
 {
 	class TestCase;
 
@@ -64,7 +64,7 @@ namespace YIELD
 					std::cerr << ": passed" << std::endl;
 					continue;
 				}
-				catch ( YIELD::AssertionException& exc )
+				catch ( yield::AssertionException& exc )
 				{
 					std::cerr << " failed: " << exc.what() << std::endl;
 				}
@@ -88,15 +88,15 @@ namespace YIELD
 	};
 
 #define TEST_SUITE( TestSuiteName ) \
-YIELD::TestSuite& TestSuiteName##TestSuite() { static YIELD::TestSuite* ts = new YIELD::TestSuite(); return *ts; } \
+yield::TestSuite& TestSuiteName##TestSuite() { static yield::TestSuite* ts = new yield::TestSuite(); return *ts; } \
 class TestSuiteName##TestSuiteDest { public: ~TestSuiteName##TestSuiteDest() { delete &TestSuiteName##TestSuite(); }}; \
 TestSuiteName##TestSuiteDest TestSuiteName##TestSuiteDestObj;
 
 #define DECLARE_TEST_SUITE( TestSuiteName ) \
-extern YIELD::TestSuite& TestSuiteName##TestSuite();
+extern yield::TestSuite& TestSuiteName##TestSuite();
 
 #define TESTEX( TestCaseName, TestCaseParentClassName, TestSuiteName ) \
-extern YIELD::TestSuite& TestSuiteName##TestSuite(); \
+extern yield::TestSuite& TestSuiteName##TestSuite(); \
 class TestCaseName##Test : public TestCaseParentClassName \
 { \
 public:\
@@ -111,7 +111,7 @@ void TestCaseName##Test::runTest()
 
 #ifdef YIELD_BUILDING_STANDALONE_TEST
 #define TEST_MAIN( TestSuiteName ) \
-	int main( int argc, char** argv ) { return YIELD::TestRunner().run( TestSuiteName##TestSuite() ); }
+	int main( int argc, char** argv ) { return yield::TestRunner().run( TestSuiteName##TestSuite() ); }
 #else
 #define TEST_MAIN( TestSuiteName)
 #endif

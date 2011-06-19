@@ -13,7 +13,7 @@ using std::pair;
 #include "index_writer.h"
 #include "index.h"
 #include "yield/platform/memory_mapped_file.h"
-using namespace YIELD;
+using namespace yield;
 using namespace babudb;
 
 #include "babudb/test.h"

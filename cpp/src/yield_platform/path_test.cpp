@@ -3,7 +3,7 @@
 
 #include "yield/platform/yunit.h"
 #include "yield/platform/path.h"
-using namespace YIELD;
+using namespace yield;
 
 
 #define TEST_FILE_NAME_ASCII "somefile.txt"

@@ -8,7 +8,7 @@
 #include "yield/platform/path.h"
 
 
-namespace YIELD
+namespace yield
 {
 	class Stat
 	{
@@ -40,6 +40,6 @@ namespace YIELD
 		size_t _st_size; int64_t _st_mtime, _st_ctime, _st_atime; // Unix doesn't like using the actual names, thus the _
 		bool is_hidden;
 	};
-};
+}
 
 #endif

@@ -14,7 +14,7 @@
 #include "babudb/log/log.h"
 
 #include "yield/platform/memory_mapped_file.h"
-using YIELD::MemoryMappedFile;
+using yield::MemoryMappedFile;
 using namespace babudb;
 
 TEST_TMPDIR(LogIteratorEmptyLog,babudb)

@@ -4,7 +4,7 @@
 #include "yield/platform/file.h"
 #include "yield/platform/path.h"
 #include "yield/platform/stat.h"
-using namespace YIELD;
+using namespace yield;
 
 #ifdef _WIN32
 #include "yield/platform/windows.h"
@@ -263,7 +263,7 @@ uint64_t AIOFile::seek( uint64_t offset, unsigned char whence )
 #ifdef _WIN32
   return ( aioe.aiocb.Offset = ( ULONG )File::seek( offset, whence ) );
 #else
-  YIELD::DebugBreak();
+  yield::DebugBreak();
 #endif
 }
 */
@@ -283,7 +283,7 @@ bool File::CopyFile(const std::string& from, const std::string& to) {
   ssize_t read = buffer_size;
   while (read == buffer_size) {
     read = source->read(buffer, buffer_size);
-    if (dest->write(buffer, read) != read) {
+    if (dest->write(buffer, (size_t)read) != read) {
       return false;
     }
   }

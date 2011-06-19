@@ -6,8 +6,7 @@
 
 #include "yield/platform/file.h"
 
-
-namespace YIELD
+namespace yield
 {
 	class MemoryMappedFile : public File
 	{
@@ -34,6 +33,6 @@ namespace YIELD
 		void* mapping;
 #endif
 	};
-};
+}
 
 #endif

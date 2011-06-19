@@ -2,7 +2,7 @@
 // This source comes from the Yield project. It is licensed under the GPLv2 (see COPYING for terms and conditions).
 
 #include "yield/platform/memory_mapped_file.h"
-using namespace YIELD;
+using namespace yield;
 
 #include "yield/platform/platform_exception.h"
 #include "yield/platform/debug.h"

@@ -11,36 +11,36 @@
 
 #define TEST_OUTPUT_DIR "test_out"
 
-class TestCaseTmpDir : public YIELD::TestCase {
+class TestCaseTmpDir : public yield::TestCase {
 public:
-	TestCaseTmpDir(const char* short_description, YIELD::TestSuite& test_suite)
-		: YIELD::TestCase(short_description, test_suite) {}
+	TestCaseTmpDir(const char* short_description, yield::TestSuite& test_suite)
+		: yield::TestCase(short_description, test_suite) {}
 
 	void setUp() {
-		if(YIELD::DiskOperations::exists(YIELD::Path(TEST_OUTPUT_DIR) + __short_description))
-			YIELD::DiskOperations::rmtree(YIELD::Path(TEST_OUTPUT_DIR) + __short_description);
+		if(yield::DiskOperations::exists(yield::Path(TEST_OUTPUT_DIR) + __short_description))
+			yield::DiskOperations::rmtree(yield::Path(TEST_OUTPUT_DIR) + __short_description);
 		try {
-			YIELD::DiskOperations::mkdir(YIELD::Path(TEST_OUTPUT_DIR));
-		} catch(YIELD::PlatformException& ) {}
+			yield::DiskOperations::mkdir(yield::Path(TEST_OUTPUT_DIR));
+		} catch(yield::PlatformException& ) {}
 
-		YIELD::DiskOperations::mkdir(YIELD::Path(TEST_OUTPUT_DIR) + __short_description);
+		yield::DiskOperations::mkdir(yield::Path(TEST_OUTPUT_DIR) + __short_description);
 	}
 
-	YIELD::Path testPath(const std::string& filename = "") {
-		return YIELD::Path(TEST_OUTPUT_DIR) + __short_description + filename;
+	yield::Path testPath(const std::string& filename = "") {
+		return yield::Path(TEST_OUTPUT_DIR) + __short_description + filename;
 	}
 };
 
 #define EXPECT_EQUAL(stat_a,stat_b) \
-	{ if ( !( (stat_a) == (stat_b) ) ) throw YIELD::AssertionException( __FILE__, __LINE__, #stat_a" != "#stat_b ); }
+	{ if ( !( (stat_a) == (stat_b) ) ) throw yield::AssertionException( __FILE__, __LINE__, #stat_a" != "#stat_b ); }
 #define EXPECT_TRUE(stat) \
-	{ if ( !( (stat) == true ) ) throw YIELD::AssertionException( __FILE__, __LINE__, #stat" != true" ); }
+	{ if ( !( (stat) == true ) ) throw yield::AssertionException( __FILE__, __LINE__, #stat" != true" ); }
 #define EXPECT_FALSE(stat) \
-	{ if ( !( (stat) == false ) ) throw YIELD::AssertionException( __FILE__, __LINE__, #stat" != false" ); }
+	{ if ( !( (stat) == false ) ) throw yield::AssertionException( __FILE__, __LINE__, #stat" != false" ); }
 
 
 #define TEST_TMPDIR( short_description, TestSuiteName ) \
-extern YIELD::TestSuite& TestSuiteName##TestSuite(); \
+extern yield::TestSuite& TestSuiteName##TestSuite(); \
 class short_description##Test : public TestCaseTmpDir \
 { \
 public:\

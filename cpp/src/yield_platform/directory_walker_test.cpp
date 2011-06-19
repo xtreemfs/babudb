@@ -4,7 +4,7 @@
 #include "yield/platform/yunit.h"
 #include "yield/platform/directory_walker.h"
 #include "yield/platform/disk_operations.h"
-using namespace YIELD;
+using namespace yield;
 
 using namespace std;
 
