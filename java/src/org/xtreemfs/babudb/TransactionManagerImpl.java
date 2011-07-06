@@ -262,6 +262,7 @@ class TransactionManagerImpl extends TransactionManagerInternal {
         for (OperationInternal operation : txn) {
             
             byte type = operation.getType();
+            
             // exclude database create/copy/delete calls from replay
             if (type != Operation.TYPE_COPY_DB && 
                 type != Operation.TYPE_CREATE_DB && 
@@ -276,11 +277,14 @@ class TransactionManagerImpl extends TransactionManagerInternal {
                 } catch (BabuDBException be) {
                     
                     // there might be false positives if a snapshot to delete has already been 
-                    // deleted or a snapshot to create has already been created
+                    // deleted or a snapshot to create has already been created.
+                    // also there could be inserts for databases that have been deleted already.
                     if (!(type == Operation.TYPE_CREATE_SNAP && 
-                            be.getErrorCode() == ErrorCode.SNAP_EXISTS) &&
-                        !(type == Operation.TYPE_DELETE_SNAP && 
-                            be.getErrorCode() == ErrorCode.NO_SUCH_SNAPSHOT)) {
+                            be.getErrorCode() == ErrorCode.SNAP_EXISTS) 
+                     && !(type == Operation.TYPE_DELETE_SNAP && 
+                            be.getErrorCode() == ErrorCode.NO_SUCH_SNAPSHOT)
+                     && !(type == Operation.TYPE_GROUP_INSERT &&
+                            be.getErrorCode().equals(ErrorCode.NO_SUCH_DB))){
                         
                         throw be;
                     }

@@ -201,7 +201,7 @@ public class DBConfig {
                                 dbs.getConfig().getMMapLimit()));
                         dbman.putDatabase(db);
                         Logging.logMessage(Logging.LEVEL_DEBUG, this, "loaded DB " + dbName
-                            + " successfully.");
+                            + "(" + dbId + ") successfully.");
                     }
                 }
             }

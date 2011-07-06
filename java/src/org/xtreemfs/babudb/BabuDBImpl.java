@@ -8,12 +8,7 @@
 package org.xtreemfs.babudb;
 
 import static org.xtreemfs.babudb.BabuDBFactory.BABUDB_VERSION;
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_COPY;
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_CREATE;
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_DELETE;
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_SNAP;
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_SNAP_DELETE;
-import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_TRANSACTION;
+import static org.xtreemfs.babudb.log.LogEntry.*;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -646,7 +641,9 @@ public class BabuDBImpl implements BabuDBInternal {
                             if (!(type == PAYLOAD_TYPE_SNAP && 
                                      be.getErrorCode() == ErrorCode.SNAP_EXISTS)
                              && !(type == PAYLOAD_TYPE_SNAP_DELETE && 
-                                     be.getErrorCode() == ErrorCode.NO_SUCH_SNAPSHOT)) {
+                                     be.getErrorCode() == ErrorCode.NO_SUCH_SNAPSHOT) 
+                             && !(type == PAYLOAD_TYPE_INSERT &&
+                                     be.getErrorCode().equals(ErrorCode.NO_SUCH_DB))) {
                                 
                                 throw be;
                             }
@@ -673,19 +670,13 @@ public class BabuDBImpl implements BabuDBInternal {
             
         } catch (IOException ex) {
             
-            throw new BabuDBException(ErrorCode.IO_ERROR, "cannot load "
-                + "database operations log, file might be corrupted", ex);
+            throw new BabuDBException(ErrorCode.IO_ERROR, "cannot load database operations log, " +
+            		"file might be corrupted", ex);
         } catch (Exception ex) {
             
             Logging.logError(Logging.LEVEL_ERROR, this, ex);
-            
-            if (ex.getCause() instanceof LogEntryException) {
-                throw new BabuDBException(ErrorCode.IO_ERROR, "corrupted/incomplete log entry in " +
-                		"database operations log", ex.getCause());
-            } else {
-                throw new BabuDBException(ErrorCode.IO_ERROR, "corrupted/incomplete log entry in " +
-                		"database operations log", ex);
-            }
+            throw new BabuDBException(ErrorCode.IO_ERROR, "corrupted/incomplete log entry in " +
+            		"database operations log", ex);
         }
     }
     

@@ -149,7 +149,8 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
         DatabaseInternal db = dbsById.get(dbId);
         
         if (db == null) {
-            throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database does not exist");
+            throw new BabuDBException(ErrorCode.NO_SUCH_DB, "database (" + dbId + 
+                    ") does not exist");
         }
         return db;
     }
