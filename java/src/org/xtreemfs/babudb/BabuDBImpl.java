@@ -465,6 +465,7 @@ public class BabuDBImpl implements BabuDBInternal {
             
             this.databaseManager.shutdown();
             this.snapshotManager.shutdown();
+            this.responseManager.shutdown();
             
         } catch (Exception ex) {
             // we will probably get that when we kill a thread because we do

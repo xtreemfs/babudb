@@ -82,6 +82,12 @@ public class BabuDBTest extends TestCase {
         ig.addInsert(2, "Blupp".getBytes(), "Blahh".getBytes());
         db.insert(ig, null).get();
         
+        Database db2 = database.getDatabaseManager().createDatabase("test2", 1);
+        ig = db2.createInsertGroup();
+        ig.addInsert(0, "test".getBytes(), "test".getBytes());
+        db2.insert(ig, null).get();
+        database.getDatabaseManager().deleteDatabase("test2");
+        
         database.shutdown();
         
         database = BabuDBFactory.createBabuDB(new BabuDBConfig(baseDir, baseDir, 0, 0, 0, SyncMode.ASYNC, 0,
