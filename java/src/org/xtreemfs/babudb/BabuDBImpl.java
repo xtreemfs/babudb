@@ -35,7 +35,6 @@ import org.xtreemfs.babudb.conversion.AutoConverter;
 import org.xtreemfs.babudb.log.DiskLogIterator;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
-import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
 import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
 import org.xtreemfs.babudb.lsmdb.DBConfig;
@@ -140,8 +139,7 @@ public class BabuDBImpl implements BabuDBInternal {
         
         this.configuration = configuration;
         this.responseManager = new ResponseManagerImpl(configuration.getMaxQueueLength());
-        this.txnMan = new TransactionManagerImpl(
-                configuration.getSyncMode().equals(SyncMode.ASYNC));
+        this.txnMan = new TransactionManagerImpl(configuration.getSyncMode().equals(SyncMode.ASYNC));
         this.databaseManager = new DatabaseManagerImpl(this);
         this.dbConfigFile = new DBConfig(this);
         this.snapshotManager = new SnapshotManagerImpl(this);
@@ -192,9 +190,9 @@ public class BabuDBImpl implements BabuDBInternal {
         
         // set up and start the disk logger
         try {
-            logger = new DiskLogger(configuration.getDbLogDir(), nextLSN, 
-                    configuration.getSyncMode(), configuration.getPseudoSyncWait(),
-                    configuration.getMaxQueueLength() * Math.max(1, configuration.getNumThreads()));
+            logger = new DiskLogger(configuration.getDbLogDir(), nextLSN, configuration.getSyncMode(),
+                configuration.getPseudoSyncWait(), configuration.getMaxQueueLength()
+                    * Math.max(1, configuration.getNumThreads()));
             logger.setLifeCycleListener(this);
             logger.start();
             logger.waitForStartup();
@@ -332,9 +330,9 @@ public class BabuDBImpl implements BabuDBInternal {
             Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done, " + "using LSN: " + nextLSN);
             
             try {
-                logger = new DiskLogger(configuration.getDbLogDir(), nextLSN, 
-                        configuration.getSyncMode(), configuration.getPseudoSyncWait(),
-                        configuration.getMaxQueueLength() * configuration.getNumThreads());
+                logger = new DiskLogger(configuration.getDbLogDir(), nextLSN, configuration.getSyncMode(),
+                    configuration.getPseudoSyncWait(), configuration.getMaxQueueLength()
+                        * configuration.getNumThreads());
                 logger.setLifeCycleListener(this);
                 logger.start();
                 logger.waitForStartup();
@@ -434,8 +432,8 @@ public class BabuDBImpl implements BabuDBInternal {
                 }
             }
             
-            Logging.logMessage(Logging.LEVEL_DEBUG, this, "%d worker threads shut down " +
-            		"successfully", worker.length);
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "%d worker threads shut down " + "successfully",
+                worker.length);
         }
         
         try {
@@ -535,7 +533,9 @@ public class BabuDBImpl implements BabuDBInternal {
         return snapshotManager;
     }
     
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
+     * 
      * @see org.xtreemfs.babudb.api.dev.BabuDBInternal#getResponseManager()
      */
     @Override
@@ -608,9 +608,9 @@ public class BabuDBImpl implements BabuDBInternal {
                     le = it.next();
                     byte type = le.getPayloadType();
                     
-                    Logging.logMessage(Logging.LEVEL_DEBUG, this, 
-                            "Reading entry LSN(%s) of type (%d) with %d bytes payload from log.", 
-                            le.getLSN().toString(), (int) type, le.getPayload().remaining());
+                    Logging.logMessage(Logging.LEVEL_DEBUG, this,
+                        "Reading entry LSN(%s) of type (%d) with %d bytes payload from log.", le.getLSN()
+                                .toString(), (int) type, le.getPayload().remaining());
                     
                     // in normal there are only transactions to be replayed
                     if (type == PAYLOAD_TYPE_TRANSACTION) {
@@ -627,8 +627,8 @@ public class BabuDBImpl implements BabuDBInternal {
                         InMemoryProcessing processingLogic = txnMan.getProcessingLogic().get(type);
                         
                         // deserialize the arguments retrieved from the logEntry
-                        OperationInternal operation = processingLogic.convertToOperation(
-                                processingLogic.deserializeRequest(le.getPayload()));
+                        OperationInternal operation = processingLogic.convertToOperation(processingLogic
+                                .deserializeRequest(le.getPayload()));
                         
                         // execute the in-memory logic
                         try {
@@ -636,15 +636,32 @@ public class BabuDBImpl implements BabuDBInternal {
                         } catch (BabuDBException be) {
                             
                             // there might be false positives if a snapshot to
-                            // delete has already
-                            // been deleted or a snapshot to create has already
-                            // been created
-                            if (!(type == PAYLOAD_TYPE_SNAP && 
-                                     be.getErrorCode() == ErrorCode.SNAP_EXISTS)
-                             && !(type == PAYLOAD_TYPE_SNAP_DELETE && 
-                                     be.getErrorCode() == ErrorCode.NO_SUCH_SNAPSHOT) 
-                             && !(type == PAYLOAD_TYPE_INSERT &&
-                                     be.getErrorCode().equals(ErrorCode.NO_SUCH_DB))) {
+                            // delete has already been deleted, a snapshot to
+                            // create has already been created, or an insertion
+                            // has been applied to a database that has already
+                            // been deleted
+                            
+                            // FIXME: A clean solution needs to be provided that
+                            // is capable of distinguishing between a corrupted
+                            // database and a "false positive". False positives
+                            // may occur because management operations are
+                            // immediately applied to the persistent database
+                            // state rather than being applied when the log is
+                            // replayed.
+                            // A clean solution would involve a single immutable
+                            // configuration file per database/snapshot, which
+                            // resides in the database directory and is written
+                            // when the first checkpoint is created. When a
+                            // database/snapshot gets deleted, an additional
+                            // (empty) file is created that indicates the
+                            // deletion. When old log files are removed in
+                            // response to a checkpoint, the system disposes of
+                            // all directories of databases and snapshots that
+                            // were deleted in these log files.
+                            if (!(type == PAYLOAD_TYPE_SNAP && be.getErrorCode() == ErrorCode.SNAP_EXISTS)
+                                && !(type == PAYLOAD_TYPE_SNAP_DELETE && be.getErrorCode() == ErrorCode.NO_SUCH_SNAPSHOT)
+                                && !(type == PAYLOAD_TYPE_INSERT && be.getErrorCode().equals(
+                                    ErrorCode.NO_SUCH_DB))) {
                                 
                                 throw be;
                             }
@@ -671,13 +688,13 @@ public class BabuDBImpl implements BabuDBInternal {
             
         } catch (IOException ex) {
             
-            throw new BabuDBException(ErrorCode.IO_ERROR, "cannot load database operations log, " +
-            		"file might be corrupted", ex);
+            throw new BabuDBException(ErrorCode.IO_ERROR, "cannot load database operations log, "
+                + "file might be corrupted", ex);
         } catch (Exception ex) {
             
             Logging.logError(Logging.LEVEL_ERROR, this, ex);
-            throw new BabuDBException(ErrorCode.IO_ERROR, "corrupted/incomplete log entry in " +
-            		"database operations log", ex);
+            throw new BabuDBException(ErrorCode.IO_ERROR, "corrupted/incomplete log entry in "
+                + "database operations log", ex);
         }
     }
     
@@ -691,7 +708,7 @@ public class BabuDBImpl implements BabuDBInternal {
      * @see org.xtreemfs.foundation.LifeCycleListener#startupPerformed()
      */
     @Override
-    public void startupPerformed() { 
+    public void startupPerformed() {
         Logging.logMessage(Logging.LEVEL_INFO, this, "has been successfully started.");
     }
     
@@ -701,7 +718,7 @@ public class BabuDBImpl implements BabuDBInternal {
      * @see org.xtreemfs.foundation.LifeCycleListener#shutdownPerformed()
      */
     @Override
-    public void shutdownPerformed() { 
+    public void shutdownPerformed() {
         Logging.logMessage(Logging.LEVEL_INFO, this, "has been successfully stopped.");
     }
     
@@ -717,8 +734,8 @@ public class BabuDBImpl implements BabuDBInternal {
         try {
             shutdown();
         } catch (BabuDBException e) {
-            Logging.logMessage(Logging.LEVEL_WARN, this, "BabuDB could not have been terminated " +
-            		"gracefully after plugin crash. " + "Because: %s", e.getMessage());
+            Logging.logMessage(Logging.LEVEL_WARN, this, "BabuDB could not have been terminated "
+                + "gracefully after plugin crash. " + "Because: %s", e.getMessage());
             e.printStackTrace();
         }
     }
