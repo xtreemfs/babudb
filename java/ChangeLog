@@ -54,3 +54,8 @@
 2011-06-06: release 0.5.2  
   * removed potential deadlocks that could occur when accessing indices from within a DatabaseRequestListener
   * fixed race condition that could cause a TransactionListener to be notified before applying changes to the in-memory state
+  
+2011-07-15: release 0.5.3
+  * fixed bug that could cause a NullPointerException to be thrown when freeing a result set
+  * fixed bug that caused startup problems after having deleted a database
+  

@@ -32,7 +32,7 @@ public final class BabuDBFactory {
     /**
      * Version (name)
      */
-    public static final String BABUDB_VERSION           = "0.5.2";
+    public static final String BABUDB_VERSION           = "0.5.3";
     
     /**
      * Version of the DB on-disk format (to detect incompatibilities).
