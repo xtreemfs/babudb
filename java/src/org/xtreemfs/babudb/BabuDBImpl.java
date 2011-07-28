@@ -658,7 +658,8 @@ public class BabuDBImpl implements BabuDBInternal {
                             // response to a checkpoint, the system disposes of
                             // all directories of databases and snapshots that
                             // were deleted in these log files.
-                            if (!(type == PAYLOAD_TYPE_SNAP && be.getErrorCode() == ErrorCode.SNAP_EXISTS)
+                            if (!(type == PAYLOAD_TYPE_SNAP && (be.getErrorCode() == ErrorCode.SNAP_EXISTS || be
+                                    .getErrorCode() == ErrorCode.NO_SUCH_DB))
                                 && !(type == PAYLOAD_TYPE_SNAP_DELETE && be.getErrorCode() == ErrorCode.NO_SUCH_SNAPSHOT)
                                 && !(type == PAYLOAD_TYPE_INSERT && be.getErrorCode().equals(
                                     ErrorCode.NO_SUCH_DB))) {

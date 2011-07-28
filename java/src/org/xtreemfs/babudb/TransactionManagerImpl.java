@@ -279,8 +279,8 @@ class TransactionManagerImpl extends TransactionManagerInternal {
                     // there might be false positives if a snapshot to delete has already been 
                     // deleted or a snapshot to create has already been created.
                     // also there could be inserts for databases that have been deleted already.
-                    if (!(type == Operation.TYPE_CREATE_SNAP && 
-                            be.getErrorCode() == ErrorCode.SNAP_EXISTS) 
+                    if (!(type == Operation.TYPE_CREATE_SNAP && (be.getErrorCode() == ErrorCode.SNAP_EXISTS || be
+                            .getErrorCode() == ErrorCode.NO_SUCH_DB))
                      && !(type == Operation.TYPE_DELETE_SNAP && 
                             be.getErrorCode() == ErrorCode.NO_SUCH_SNAPSHOT)
                      && !(type == Operation.TYPE_GROUP_INSERT &&
