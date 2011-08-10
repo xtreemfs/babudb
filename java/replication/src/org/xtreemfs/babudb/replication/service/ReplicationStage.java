@@ -205,6 +205,7 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                     }
                     
                     clearQueue();
+                    missing = null; // reset the missing field to ensure invariants
                     setLogic(BASIC, "Clean restart of the replication stage.");
                     break;
                 }
