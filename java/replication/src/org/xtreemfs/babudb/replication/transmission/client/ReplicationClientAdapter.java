@@ -340,20 +340,31 @@ public class ReplicationClientAdapter extends ReplicationServiceClient
                 public ReusableBuffer[] resolve(LogEntries response, ReusableBuffer data) 
                         throws ErrorCodeException, IOException {
                     
-                    if (response.getErrorCode() != 0) {
-                        throw new ErrorCodeException(response.getErrorCode());
+                    try {
+                        if (response.getErrorCode() != 0) {
+                            throw new ErrorCodeException(response.getErrorCode());
+                        }
+                        int leCount = response.getLogEntriesCount();
+                        ReusableBuffer[] r = new ReusableBuffer[leCount];
+                        
+                        if (data != null) {
+                            int pos = 0;
+                            for (int i = 0; i < leCount; i++) {
+                                r[i] = data.createViewBuffer();
+                                r[i].position(pos);
+                                assert (response.getLogEntries(i).getLength() > 0);
+                                pos += response.getLogEntries(i).getLength();
+                                r[i].limit(pos);
+                            }
+                            
+                            assert(pos == data.remaining()) : 
+                                "pos " + pos + " != remaining " + data.remaining();
+                        }
+                        
+                        return r;
+                    } finally {
+                        if (data != null) BufferPool.free(data);
                     }
-                    int leCount = response.getLogEntriesCount();
-                    ReusableBuffer[] r = new ReusableBuffer[leCount];
-                    
-                    int pos = 0;
-                    for (int i = 0; i < leCount; i++) {
-                        r[i] = data.createViewBuffer();
-                        r[i].position(pos);
-                        pos += response.getLogEntries(i).getLength();
-                        r[i].limit(pos);
-                    }
-                    return r;
                 }
             };
         } catch (final IOException e) {

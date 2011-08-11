@@ -49,7 +49,7 @@ public class DatabaseProxy implements DatabaseInternal {
     
     public DatabaseProxy(DatabaseInternal  localDatabase, DatabaseManagerProxy dbManProxy) {
         
-        assert (localDatabase != null);
+        assert (localDatabase != null && !(localDatabase instanceof DatabaseProxy));
         
         this.localDB = localDatabase;
         this.name = localDB.getName();

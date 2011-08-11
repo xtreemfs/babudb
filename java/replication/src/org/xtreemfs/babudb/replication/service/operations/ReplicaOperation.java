@@ -139,18 +139,30 @@ public class ReplicaOperation extends Operation {
                         assert (le.getPayload().array().length > 0) : 
                             "Empty log-entries are not allowed!";
                         ReusableBuffer buf = le.serialize(checksum);
+                        
                         result.addLogEntries(
                                 org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry
                                 .newBuilder().setLength(buf.remaining()));
-                        int newSize = resultPayLoad.remaining() + 
-                                      buf.remaining();
+                        
+                        int newSize = resultPayLoad.position() + buf.remaining();
+                        
                         if (!resultPayLoad.enlarge(newSize)) {
                             ReusableBuffer tmp = BufferPool.allocate(newSize);
                             
                             tmp.put(resultPayLoad);
                             BufferPool.free(resultPayLoad);
                             resultPayLoad = tmp;
+                            assert (resultPayLoad.remaining() >= buf.remaining()) :
+                                "the target buffer (" + resultPayLoad.remaining() + ") has " +
+                                "not enough space allocated to fetch the src buffer (" + 
+                                buf.remaining() + ")";
+                            
                         }
+                        assert (resultPayLoad.remaining() >= buf.remaining()) :
+                            "the target buffer (" + resultPayLoad.remaining() + ") was not " +
+                            "correctly enlarged to fetch the src buffer (" + buf.remaining() +
+                            "), newSize: " + newSize;
+                        
                         resultPayLoad.put(buf);
                         BufferPool.free(buf);
                         

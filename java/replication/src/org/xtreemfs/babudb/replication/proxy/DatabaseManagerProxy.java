@@ -54,7 +54,7 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
             ReplicationManager replMan, BabuDBProxy babuDBProxy, 
             TransactionManagerInternal persMan, ResponseManagerInternal respMan) {
         
-        assert (localDBMan != null);
+        assert (localDBMan != null && !(localDBMan instanceof DatabaseManagerProxy));
         
         this.txnManProxy = persMan;
         this.localDBMan = localDBMan;
