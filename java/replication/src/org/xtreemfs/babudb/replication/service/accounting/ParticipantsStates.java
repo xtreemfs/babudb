@@ -483,6 +483,10 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
      */
     @Override
     public ConditionClient getByAddress(InetSocketAddress address) throws UnknownParticipantException {
+        if (stateTable.get(getUID(address)) == null) {
+            throw new UnknownParticipantException("Server " + address.getHostName() + 
+                    " is not a valid replication participant.");
+        }
         return stateTable.get(getUID(address)).client;
     }
     
