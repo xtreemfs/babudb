@@ -100,7 +100,7 @@ public class LogEntry {
             buf.putInt(0);
             buf.position(0);
             
-            csumAlgo.update(buf.array(), 0, buf.limit());
+            csumAlgo.update(buf.array(), 0, bufSize);
             int cPos = buf.position();
             
             // write the checksum to the buffer
@@ -172,7 +172,9 @@ public class LogEntry {
         throws LogEntryException {
         checkIntegrity(data);
         
+        final int startPos = data.position();
         final int bufSize = data.getInt();
+        
         LogEntry e = new LogEntry();
         e.checksum = data.getInt();
         e.viewId = data.getInt();
@@ -186,12 +188,16 @@ public class LogEntry {
         
         if (USE_CHECKSUMS) {
             // reset the old checksum to 0, before calculating a new one
-            data.position(Integer.SIZE / 8);
+            data.position(startPos + Integer.SIZE / 8);
             data.putInt(0);
-            data.position(0);
+            data.position(startPos);
             
-            csumAlgo.update(data.array(), 0, data.limit());
+            csumAlgo.update(data.array(), startPos, bufSize);
             int csum = (int) csumAlgo.getValue();
+            
+            // write back the checksum to the buffer
+            data.position(startPos + Integer.SIZE / 8);
+            data.putInt((int) e.checksum);
             
             if (csum != e.checksum) {
                 throw new LogEntryException(
@@ -199,6 +205,8 @@ public class LogEntry {
                     "checksum do not match.");
             }
         }
+        
+        data.position(startPos);
         
         return e;
     }

@@ -17,7 +17,6 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.lsmdb.LSN;
 
 /**
@@ -86,10 +85,12 @@ public class DiskLogIterator implements Iterator<LogEntry> {
                 }
             }
             
+            // TODO invalid since natural gaps from viewId incrementation have to be tolerated
             // check if log entries are missing
-            if (from != null && !LSMDatabase.NO_DB_LSN.equals(from) && last.compareTo(from) > 0)
-                throw new LogEntryException("missing log entries: database ends at LSN " + from.toString()
-                        + ", first log entry LSN is " + last.toString());
+            //if (from != null && !LSMDatabase.NO_DB_LSN.equals(from) && 
+            //    last.compareTo(from) > 0 && from.getSequenceNo() > 0)
+            //    throw new LogEntryException("missing log entries: database ends at LSN " + from.toString()
+            //            + ", first log entry LSN is " + last.toString());
             
             // re-add the last removed log file, if there is a chance, that
             // from is located there
