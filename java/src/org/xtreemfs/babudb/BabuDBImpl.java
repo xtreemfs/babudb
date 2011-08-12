@@ -266,9 +266,9 @@ public class BabuDBImpl implements BabuDBInternal {
                 for (LSMDBWorker w : worker)
                     w.shutdown();
             
-            logger.shutdown();
             try {
                 dbCheckptr.suspendCheckpointing();
+                logger.shutdown();
                 logger.waitForShutdown();
                 txnMan.setLogger(null);
                 if (worker != null)

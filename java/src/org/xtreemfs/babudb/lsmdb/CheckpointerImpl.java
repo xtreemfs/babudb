@@ -59,7 +59,7 @@ public class CheckpointerImpl extends CheckpointerInternal {
     
     private volatile boolean                   quit;
         
-    private final AtomicBoolean                suspended = new AtomicBoolean(true);
+    private final AtomicBoolean                suspended = new AtomicBoolean(false);
     
     private DiskLogger                         logger;
     
@@ -115,17 +115,18 @@ public class CheckpointerImpl extends CheckpointerInternal {
         this.maxLogLength = maxLogLength;
 
         synchronized (this) {
-            
-            super.start();
-            try {
-                waitForStartup();
-            } catch (Exception e) {
-                throw new BabuDBException(ErrorCode.INTERNAL_ERROR, e.getMessage(), e);
-            }
-            
             synchronized (suspended) {
-                suspended.set(false);
-                suspended.notify();
+                if (!suspended.get() && !quit) {
+                    start();
+                    try {
+                        waitForStartup();
+                    } catch (Exception e) {
+                        throw new BabuDBException(ErrorCode.INTERNAL_ERROR, e.getMessage(), e);
+                    }
+                } else {
+                    suspended.set(false);
+                    notify();
+                }
             }
         }
     }
@@ -159,7 +160,7 @@ public class CheckpointerImpl extends CheckpointerInternal {
         // in the processing queue
         synchronized (this) {
             forceCheckpoint = true;
-            this.notify();
+            notify();
         }
         
         // wait for the checkpoint to complete
@@ -344,20 +345,6 @@ public class CheckpointerImpl extends CheckpointerInternal {
         notifyStarted();
         while (!quit) {
             synchronized (this) {
-                
-                // this block allows to suspend the Checkpointer from taking
-                // checkpoints until it has been re-init()
-                synchronized (suspended) {
-                    if (suspended.get()) {
-                        suspended.notify();
-                        try {
-                            suspended.wait();
-                        } catch (InterruptedException ex) {
-                            if (quit) break;
-                        }
-                    }
-                }
-                
                 if (!forceCheckpoint) {
                     try {
                         wait(checkInterval);
@@ -367,6 +354,24 @@ public class CheckpointerImpl extends CheckpointerInternal {
                 }
                 manualCheckpoint = forceCheckpoint;
                 forceCheckpoint = false;
+                
+                // this block allows to suspend the Checkpointer from taking
+                // checkpoints until it has been re-init()
+                synchronized (suspended) {
+                    if (suspended.get()) {
+                        suspended.notify();
+                        try {
+                            synchronized (checkpointComplete) {
+                                if (checkpointComplete.compareAndSet(false, true)) {
+                                    checkpointComplete.notify();
+                                }
+                            }
+                            wait();
+                        } catch (InterruptedException ex) {
+                            if (quit) break;
+                        }
+                    }
+                }
             }
             
             try {
