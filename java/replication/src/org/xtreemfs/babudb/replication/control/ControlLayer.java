@@ -198,11 +198,10 @@ public class ControlLayer extends TopLayer {
         joinFlease();
     }
     
-    /**
-     * Use only at initialization. Waits for the first failover to happen.
-     * 
-     * @throws InterruptedException if waiting was interrupted.
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.control.ControlLayerInterface#waitForInitialFailover()
      */
+    @Override
     public void waitForInitialFailover() throws InterruptedException {
         synchronized (initialFailoverObserved) {
             if (!initialFailoverObserved.get()) {

@@ -49,6 +49,13 @@ public interface ControlLayerInterface extends TimeDriftListener, FleaseMessageR
     public void registerUserInterface(LockableService service);
     
     /**
+     * Use only at initialization. Waits for the first failover to happen.
+     * 
+     * @throws InterruptedException if waiting was interrupted.
+     */
+    public void waitForInitialFailover() throws InterruptedException;
+    
+    /**
      * Method to register a {@link LockableService} to the control layer.
      * 
      * @param service

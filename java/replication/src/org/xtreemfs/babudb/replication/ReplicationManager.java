@@ -62,7 +62,6 @@ public class ReplicationManager implements LifeCycleListener {
         serviceLayer.setLifeCycleListener(this);
         controlLayer.setLifeCycleListener(this);
         
-        cl.waitForInitialFailover();
     }
     
 /*
@@ -71,8 +70,10 @@ public class ReplicationManager implements LifeCycleListener {
     
     /**
      * Starts the stages if available.
+     * 
+     * @throws InterruptedException if initialization was interrupted.
      */
-    public void initialize(LockableService babudbProxy) {
+    public void initialize(LockableService babudbProxy) throws InterruptedException {
         
         assert (babudbProxy != null);
         
@@ -80,6 +81,8 @@ public class ReplicationManager implements LifeCycleListener {
         transmissionLayer.start();
         serviceLayer.start(controlLayer);
         controlLayer.start();
+        
+        controlLayer.waitForInitialFailover();
     }
 
     /**

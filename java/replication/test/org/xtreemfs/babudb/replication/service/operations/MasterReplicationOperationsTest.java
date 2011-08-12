@@ -230,6 +230,12 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
                 fail("Operation should not have been accessed by this test!");
                 return null;
             }
+
+            @Override
+            public void waitForInitialFailover() throws InterruptedException {
+                // TODO Auto-generated method stub
+                
+            }
         }, new BabuDBInterface(new BabuDBMock("BabuDBMock", conf0, testLSN)), new RequestManagement() {
             
             @Override
