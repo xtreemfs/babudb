@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.xtreemfs.babudb.config.ReplicationConfig;
@@ -75,6 +76,8 @@ public class ControlLayer extends TopLayer {
      */
     private AtomicReference<InetSocketAddress> masterLock = 
         new AtomicReference<InetSocketAddress>(null);
+    
+    private final AtomicBoolean initialFailoverObserved = new AtomicBoolean(false);
     
     public ControlLayer(ServiceToControlInterface serviceLayer, ReplicationConfig config) 
             throws IOException {
@@ -195,6 +198,23 @@ public class ControlLayer extends TopLayer {
         joinFlease();
     }
     
+    /**
+     * Use only at initialization. Waits for the first failover to happen.
+     * 
+     * @throws InterruptedException if waiting was interrupted.
+     */
+    public void waitForInitialFailover() throws InterruptedException {
+        synchronized (initialFailoverObserved) {
+            if (!initialFailoverObserved.get()) {
+                initialFailoverObserved.wait();
+                
+                if (!initialFailoverObserved.get()) {
+                    throw new InterruptedException();
+                }
+            }
+        }
+    }
+    
     /*
      * (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.Layer#shutdown()
@@ -212,6 +232,10 @@ public class ControlLayer extends TopLayer {
             listener.crashPerformed(e);
         }
         failoverTaskRunner.shutdown();
+        
+        synchronized (initialFailoverObserved) {
+            initialFailoverObserved.notify();
+        }
     }
 
     /* (non-Javadoc)
@@ -390,6 +414,12 @@ public class ControlLayer extends TopLayer {
                             becomeMaster();
                         } else {
                             becomeSlave(newLeaseHolder);
+                        }
+                        
+                        synchronized (initialFailoverObserved) {
+                            if (initialFailoverObserved.compareAndSet(false, true)) {
+                                initialFailoverObserved.notify();
+                            }
                         }
                     } catch (Exception e) {
                         if (!quit) {
