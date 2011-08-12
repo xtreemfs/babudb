@@ -14,6 +14,7 @@ import java.util.zip.Checksum;
 
 import org.xtreemfs.babudb.log.DiskLogIterator;
 import org.xtreemfs.babudb.log.LogEntry;
+import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.LSNRange;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntries;
@@ -118,8 +119,13 @@ public class ReplicaOperation extends Operation {
                 // wait, if there is a checkpoint in proceeding
                 babuInterface.waitForCheckpoint();
                 
-                it = fileIO.getLogEntryIterator(start);
-                
+                try {
+                    it = fileIO.getLogEntryIterator(start);
+                } catch (LogEntryException exc) {
+                    if (resultPayLoad != null) BufferPool.free(resultPayLoad);
+                    rq.sendSuccess(result.setErrorCode(ErrorCode.LOG_UNAVAILABLE).build());
+                    return;
+                }
                 while (it.hasNext() &&
                        result.getLogEntriesCount() < 
                        MAX_LOGENTRIES_PER_REQUEST && (le = it.next())
