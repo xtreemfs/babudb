@@ -312,11 +312,15 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.RequestManagement#createStableState(
-     *          org.xtreemfs.babudb.lsmdb.LSN, java.net.InetSocketAddress)
+     * @see org.xtreemfs.babudb.replication.service.RequestManagement#
+     *          createStableState(org.xtreemfs.babudb.lsmdb.LSN, java.net.InetSocketAddress)
      */
     @Override
-    public void createStableState(final LSN lastLSNOnView, final InetSocketAddress master) {
+    public void createStableState(final LSN lastLSNOnView, final InetSocketAddress master) 
+            throws InterruptedException {
+        
+        // finish entries at the queue gracefully before establishing a stable state
+        lock();
         
         // if slave already is in a stable DB state, unlock user operations immediately and return
         if (lastOnView.get().equals(lastLSNOnView)) {

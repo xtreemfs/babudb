@@ -307,7 +307,7 @@ public class ControlLayer extends TopLayer {
      * Method to exclude this BabuDB instance from {@link Flease}.
      */
     private void exitFlease() {
-        fleaseStage.closeCell(REPLICATION_CELL);
+        fleaseStage.closeCell(REPLICATION_CELL, true);
     }
     
     /**

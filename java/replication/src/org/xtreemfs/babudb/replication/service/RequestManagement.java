@@ -47,6 +47,10 @@ public interface RequestManagement {
      * 
      * @param lastOnView
      * @param master
+     * 
+     * @throws InterruptedException if creation of a stable state was interrupted by shutdown 
+     *                              or crash.
      */
-    public void createStableState(LSN lastOnView, InetSocketAddress master);
+    public void createStableState(LSN lastOnView, InetSocketAddress master) 
+            throws InterruptedException;
 }

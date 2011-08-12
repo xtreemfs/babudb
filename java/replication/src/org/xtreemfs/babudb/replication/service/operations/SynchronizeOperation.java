@@ -14,6 +14,7 @@ import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage;
 import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
 import org.xtreemfs.babudb.replication.service.RequestManagement;
+import org.xtreemfs.babudb.replication.transmission.ErrorCode;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
 import org.xtreemfs.foundation.logging.Logging;
@@ -74,8 +75,14 @@ public class SynchronizeOperation extends Operation {
         Logging.logMessage(Logging.LEVEL_INFO, this, "SynchronizeOperation:  received %s by %s", 
                 lsn.toString(), participant.toString());
         
-        rqMan.createStableState(lsn, participant);
-        
-        rq.sendSuccess(ErrorCodeResponse.getDefaultInstance());
+        try {
+            rqMan.createStableState(lsn, participant);
+            rq.sendSuccess(ErrorCodeResponse.getDefaultInstance());
+        } catch (InterruptedException ie) {
+            Logging.logMessage(Logging.LEVEL_WARN, this, "Participant was not able to establish " +
+            		"stable state @ LSN (%s).", lsn.toString());
+            rq.sendSuccess(ErrorCodeResponse.newBuilder().setErrorCode(
+                    ErrorCode.SERVICE_UNAVAILABLE).build());
+        }
     }
 }

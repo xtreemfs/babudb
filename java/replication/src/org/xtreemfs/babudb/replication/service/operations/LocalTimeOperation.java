@@ -50,7 +50,7 @@ public class LocalTimeOperation extends Operation {
     @Override
     public void processRequest(Request rq) {
         long time = TimeSync.getGlobalTime();
-        Logging.logMessage(Logging.LEVEL_INFO, this, "LocalTimeOperation:" +
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "LocalTimeOperation:" +
                 " reporting %d to %s.", time, rq.getSenderAddress().toString());
         
         rq.sendSuccess(Timestamp.newBuilder().setValue(time).build());
