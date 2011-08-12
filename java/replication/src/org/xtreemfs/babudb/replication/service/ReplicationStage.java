@@ -35,6 +35,7 @@ import org.xtreemfs.babudb.replication.service.logic.RequestLogic;
 import org.xtreemfs.babudb.replication.transmission.FileIOInterface;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.foundation.LifeCycleThread;
+import org.xtreemfs.foundation.TimeSync;
 import org.xtreemfs.foundation.logging.Logging;
 
 import static org.xtreemfs.babudb.replication.service.logic.LogicID.*;
@@ -399,9 +400,18 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
     @Override
     public void enqueueOperation(Object[] args) throws BusyServerException, ServiceLockedException {
         synchronized (accessCounter) {
-            if (locked) {
-                throw new ServiceLockedException();
-            } else if (accessCounter.incrementAndGet() > MAX_Q && MAX_Q != 0){
+            int timeout = ReplicationConfig.REQUEST_TIMEOUT;
+            try {
+                while (locked) {
+                    long time = TimeSync.getLocalSystemTime();
+                    if (timeout > 0) accessCounter.wait(timeout);
+                    else break;
+                    timeout -= (TimeSync.getLocalSystemTime() - time);
+                } 
+            } catch (InterruptedException ie) { /* ignored */ }
+            if (locked) throw new ServiceLockedException();
+            
+            if (accessCounter.incrementAndGet() > MAX_Q && MAX_Q != 0){
                 accessCounter.decrementAndGet();
                 throw new BusyServerException(getName() + ": Operation could not " +
                             "be performed.");

@@ -32,6 +32,7 @@ import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.Clie
 import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter.ErrorCodeException;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
+import org.xtreemfs.foundation.logging.Logging;
 
 import static org.xtreemfs.babudb.log.LogEntry.*;
 import static org.xtreemfs.babudb.replication.transmission.ErrorCode.mapTransmissionError;
@@ -335,14 +336,15 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
          */
         @Override
         public void requestFailed(Exception e) {
-            BabuDBException be = new BabuDBException(
-                    ErrorCode.REPLICATION_FAILURE, e.getMessage());
+            Logging.logError(Logging.LEVEL_WARN, this, e);
             
             if (e instanceof ErrorCodeException) {
-                be = new BabuDBException(mapTransmissionError(
-                        ((ErrorCodeException) e).getCode()),e.getMessage());
+                requestFuture.failed(new BabuDBException(mapTransmissionError(
+                        ((ErrorCodeException) e).getCode()),e.getMessage()));
+            } else {
+                requestFuture.failed(new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
+                        e.getMessage()));
             }
-            requestFuture.failed(be);
         }
 
         /* (non-Javadoc)
@@ -359,6 +361,8 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
          */
         @Override
         public void failed(Exception ex) {
+            Logging.logError(Logging.LEVEL_WARN, this, ex);
+            
             requestFuture.failed(
                     new BabuDBException(ErrorCode.REPLICATION_FAILURE, ex.getMessage()));
         }
