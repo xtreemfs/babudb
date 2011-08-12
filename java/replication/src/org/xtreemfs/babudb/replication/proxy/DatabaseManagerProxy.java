@@ -145,8 +145,13 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
     @Override
     public DatabaseInternal createDatabase(String databaseName, int numIndices, 
             ByteRangeComparator[] comparators) throws BabuDBException {
-        return new DatabaseProxy(localDBMan.createDatabase(databaseName, numIndices, comparators), 
-                this);
+        
+        DatabaseInternal result = localDBMan.createDatabase(databaseName, numIndices, comparators);
+        if (result instanceof DatabaseProxy) {
+            return result;
+        } else {
+            return new DatabaseProxy(result, this);
+        }
     }
 
     /* (non-Javadoc)
