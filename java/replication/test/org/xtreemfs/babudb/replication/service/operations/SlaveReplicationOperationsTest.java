@@ -30,7 +30,6 @@ import org.xtreemfs.babudb.replication.LockableService.ServiceLockedException;
 import org.xtreemfs.babudb.replication.control.ControlLayerInterface;
 import org.xtreemfs.babudb.replication.service.ReplicationRequestHandler;
 import org.xtreemfs.babudb.replication.service.RequestManagement;
-import org.xtreemfs.babudb.replication.service.StageRequest;
 import org.xtreemfs.babudb.replication.service.ReplicationStage.BusyServerException;
 import org.xtreemfs.babudb.replication.service.accounting.StatesManipulation;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsStates.UnknownParticipantException;
@@ -195,12 +194,7 @@ public class SlaveReplicationOperationsTest implements LifeCycleListener {
                 
             }
         }, new BabuDBInterface(new BabuDBMock("BabuDBMock", conf0, testLSN)), new RequestManagement() {
-            
-            @Override
-            public void finalizeRequest(StageRequest op) {
-                fail("Operation should not have been accessed by this test!");
-            }
-            
+                        
             @Override
             public void enqueueOperation(Object[] args) throws BusyServerException, ServiceLockedException {
                 
