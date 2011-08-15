@@ -18,7 +18,6 @@ import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.LogEntryException;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntries;
-import org.xtreemfs.babudb.replication.service.Pacemaker;
 import org.xtreemfs.babudb.replication.service.ReplicationStage;
 import org.xtreemfs.babudb.replication.service.ReplicationStage.Range;
 import org.xtreemfs.babudb.replication.service.SlaveView;
@@ -53,9 +52,8 @@ public class RequestLogic extends Logic {
      * @param slaveView
      * @param fileIO
      */
-    public RequestLogic(ReplicationStage stage, Pacemaker pacemaker, 
-            SlaveView slaveView, FileIOInterface fileIO) {
-        super(stage, pacemaker, slaveView, fileIO);
+    public RequestLogic(ReplicationStage stage, SlaveView slaveView, FileIOInterface fileIO) {
+        super(stage, slaveView, fileIO);
     }
     
     /*

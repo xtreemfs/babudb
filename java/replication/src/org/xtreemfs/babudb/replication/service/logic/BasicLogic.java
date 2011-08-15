@@ -13,7 +13,6 @@ import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.service.Pacemaker;
 import org.xtreemfs.babudb.replication.service.ReplicationStage;
 import org.xtreemfs.babudb.replication.service.ReplicationStage.Range;
 import org.xtreemfs.babudb.replication.service.SlaveView;
@@ -37,14 +36,13 @@ public class BasicLogic extends Logic {
     
     /**
      * @param stage
-     * @param pacemaker
      * @param slaveView
      * @param fileIO
      * @param q
      */
-    public BasicLogic(ReplicationStage stage, Pacemaker pacemaker, SlaveView slaveView, 
+    public BasicLogic(ReplicationStage stage, SlaveView slaveView, 
             FileIOInterface fileIO) {
-        super(stage, pacemaker, slaveView, fileIO);
+        super(stage, slaveView, fileIO);
     }
     
     /*
@@ -100,8 +98,7 @@ public class BasicLogic extends Logic {
                         
                         @Override
                         public void finished(Object result, Object context) {
-                            stage.finalizeRequest(op);
-                            pacemaker.updateLSN(lsn);
+                            stage.finalizeRequest(op, lsn);
                         }
                         
                         @Override

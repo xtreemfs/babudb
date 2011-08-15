@@ -59,9 +59,8 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
      *          org.xtreemfs.babudb.lsmdb.LSN)
      */
     public synchronized void updateLSN(LSN lsn) {
-        if (latestLSN.compareTo(lsn) < 0 || halted) {
+        if (latestLSN.compareTo(lsn) < 0) {
             latestLSN = lsn;
-            halted = false;
             notify();
         }
     }
@@ -99,7 +98,7 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
                 synchronized (this) {
                     wait(MAX_DELAY_BETWEEN_HEARTBEATS);
                     
-                    if (halted) {
+                    while (halted) {
                         wait();
                     }
                 }
@@ -128,7 +127,8 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
 
                 @Override
                 public void requestFailed(Exception e) {
-                    Logging.logMessage(Logging.LEVEL_WARN, this, 
+                    
+                    Logging.logMessage(Logging.LEVEL_INFO, this, 
                             "Heartbeat could not be send to %s, because %s", 
                             c.toString(), e.getMessage());
                     Logging.logError(Logging.LEVEL_DEBUG, this, e);
@@ -142,6 +142,15 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
      */
     public synchronized void infarction() {
         halted = true;
+    }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.service.Pacemaker#reanimate()
+     */
+    @Override
+    public synchronized void reanimate() {
+        halted = false;
+        notify();
     }
     
     /* (non-Javadoc)

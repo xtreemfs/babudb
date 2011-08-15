@@ -29,11 +29,6 @@ public interface ParticipantsOverview {
     public List<ConditionClient> getConditionClients();
     
     /**
-     * @return a list of all available {@link ConditionClient}s marked as alive.
-     */
-    public List<ConditionClient> getSafeConditionClients();
-
-    /**
      * @param address
      * 
      * @throws UnknownParticipantException if the address of at least one participant could not have 

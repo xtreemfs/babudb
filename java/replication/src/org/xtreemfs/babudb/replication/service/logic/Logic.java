@@ -7,7 +7,6 @@
  */
 package org.xtreemfs.babudb.replication.service.logic;
 
-import org.xtreemfs.babudb.replication.service.Pacemaker;
 import org.xtreemfs.babudb.replication.service.ReplicationStage;
 import org.xtreemfs.babudb.replication.service.SlaveView;
 import org.xtreemfs.babudb.replication.service.ReplicationStage.ConnectionLostException;
@@ -23,17 +22,13 @@ import org.xtreemfs.babudb.replication.transmission.FileIOInterface;
 public abstract class Logic {
     
     protected final ReplicationStage stage;
-
-    protected final Pacemaker        pacemaker;
     
     protected final SlaveView        slaveView;
         
     protected final FileIOInterface  fileIO;
     
-    public Logic(ReplicationStage stage, Pacemaker pacemaker, 
-            SlaveView slaveView, FileIOInterface fileIO) {
+    public Logic(ReplicationStage stage, SlaveView slaveView, FileIOInterface fileIO) {
         
-        this.pacemaker = pacemaker;
         this.slaveView = slaveView;
         this.fileIO = fileIO;
         this.stage = stage;

@@ -21,7 +21,6 @@ import org.xtreemfs.babudb.lsmdb.LSMDatabase.DBFileMetaData;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.DBFileMetaDatas;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
-import org.xtreemfs.babudb.replication.service.Pacemaker;
 import org.xtreemfs.babudb.replication.service.ReplicationStage;
 import org.xtreemfs.babudb.replication.service.ReplicationStage.Range;
 import org.xtreemfs.babudb.replication.service.SlaveView;
@@ -51,14 +50,13 @@ public class LoadLogic extends Logic {
     
     /**
      * @param stage
-     * @param pacemaker
      * @param slaveView
      * @param fileIO
      * @param babuInterface
      */
-    public LoadLogic(ReplicationStage stage, Pacemaker pacemaker, 
-            SlaveView slaveView, FileIOInterface fileIO, int maxChunkSize) {
-        super(stage, pacemaker, slaveView, fileIO);
+    public LoadLogic(ReplicationStage stage, SlaveView slaveView, FileIOInterface fileIO, 
+            int maxChunkSize) {
+        super(stage, slaveView, fileIO);
         
         this.maxChunkSize = maxChunkSize;
     }

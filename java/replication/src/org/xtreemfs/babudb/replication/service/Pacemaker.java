@@ -42,16 +42,21 @@ public interface Pacemaker {
 
     /**
      * <p>Sets {@code lsn} if it is greater than the available {@link LSN}.
-     * If so, than a heartBeat is proceeded immediately.</p>
+     * If so and HB-Thread has no infarction, than a heartbeat is processed 
+     * immediately.</p>
      * 
      * @param lsn
      */
     public void updateLSN(LSN lsn);
 
     /**
-     * <p>Stops the {@link HeartbeatThread} temporarily,
-     * until the next update is received.</p>
+     * <p>Stops the {@link HeartbeatThread} temporarily.</p>
      */
     public void infarction();
+    
+    /**
+     * <p>Restarts the {@link HeartbeatThread} after infarction.</p>
+     */
+    public void reanimate();
 
 }

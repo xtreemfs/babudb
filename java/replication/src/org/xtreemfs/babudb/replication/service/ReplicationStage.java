@@ -78,19 +78,17 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
     
     /** Table of different replication-behavior objects. */
     private final Map<LogicID, Logic>           logics;
-    
-    /** Counter for the number of tries needed to perform an operation */
-    private int                                 tries = 0;
-    
-    private BabuDBRequestResultImpl<Object>    listener = null;
+       
+    /** Listener to wait for a synchronization to finish. */
+    private BabuDBRequestResultImpl<Object>     syncListener = null;
     
     /** needed to control the heartbeat */
-    protected final Pacemaker                   pacemaker;
+    private final Pacemaker                     pacemaker;
     
     /** interface to {@link BabuDB} internals */
     private final BabuDBInterface               babudb;
     
-    private ControlLayerInterface            topLayer;
+    private ControlLayerInterface               topLayer;
     
     /**
      * @param lastOnView
@@ -119,13 +117,13 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
         logics = new HashMap<LogicID, Logic>();
         
         
-        Logic lg = new BasicLogic(this, pacemaker, slaveView, fileIO);
+        Logic lg = new BasicLogic(this, slaveView, fileIO);
         logics.put(lg.getId(), lg);
         
-        lg = new RequestLogic(this, pacemaker, slaveView, fileIO);
+        lg = new RequestLogic(this, slaveView, fileIO);
         logics.put(lg.getId(), lg);
         
-        lg = new LoadLogic(this, pacemaker, slaveView, fileIO, maxChunkSize);
+        lg = new LoadLogic(this, slaveView, fileIO, maxChunkSize);
         logics.put(lg.getId(), lg);
     }
     
@@ -159,9 +157,15 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
     @Override
     public void run() {
         
+        /* initialization */
+        /** Counter for the number of tries needed to perform an operation */
+        int tries = 0;
+        boolean infarcted = false;
+        
         notifyStarted();
+        
         while (!quit) {
-            boolean infarcted = false;
+            
             try {
                 // sleep if a request shall be retried 
                 if (tries != 0) Thread.sleep(RETRY_DELAY_MS * tries);
@@ -180,6 +184,7 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                 // update the heartbeatThread and re-animate it
                 if (infarcted && logicID.equals(BASIC)) { 
                     pacemaker.updateLSN(babudb.getState());
+                    pacemaker.reanimate();
                     infarcted = false;
                 }
                 
@@ -189,8 +194,7 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                 
                 switch (cle.errNo) {
                 case LOG_UNAVAILABLE : 
-                    setLogic(LOAD, "Master said, logfile was cut off: " +
-                            cle.getMessage());
+                    setLogic(LOAD, "Master said, logfile has been cut off: " + cle.getMessage());
                     break;
                 case BUSY :
                     if (++tries < ReplicationConfig.MAX_RETRIES) break;
@@ -198,11 +202,10 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                     // --> empty the queue to ensure a clean restart
                 default :
                     Logging.logError(Logging.LEVEL_WARN, this, cle);
-                    if (listener != null) {
-                        listener.failed(new BabuDBException(
-                                ErrorCode.REPLICATION_FAILURE,
+                    if (syncListener != null) {
+                        syncListener.failed(new BabuDBException(ErrorCode.REPLICATION_FAILURE,
                                 cle.getMessage()));
-                        listener = null;
+                        syncListener = null;
                     }
                     
                     clearQueue();
@@ -218,7 +221,7 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                     return;
                 }
             } catch(Exception e) {
-                
+                                
                 clearQueue();
                 notifyCrashed(e);
                 return;                
@@ -254,9 +257,9 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                 lgc.toString(), reason);
         
         this.logicID = lgc;
-        if (listener != null && lgc.equals(BASIC)){
-            listener.finished(!loaded);
-            listener = null;
+        if (syncListener != null && lgc.equals(BASIC)){
+            syncListener.finished(!loaded);
+            syncListener = null;
         }
     }
     
@@ -274,19 +277,19 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
      * or if just the log file was switched. 
      * otherwise, if it was a load, the listener will be notified with false.
      * 
-     * @param listener
+     * @param syncListener
      * @param to
      */
-    public void manualLoad(BabuDBRequestResultImpl<Object> listener, LSN to) {
+    public void manualLoad(BabuDBRequestResultImpl<Object> syncListener, LSN to) {
         
         LSN start = babudb.getState();
         
         if (start.equals(to)) {
             
-            listener.finished(to);
+            syncListener.finished(to);
         } else {
         
-            this.listener = listener;
+            this.syncListener = syncListener;
             LSN end = new LSN(
                         // we have to assume, that there is an entry following the
                         // state we would like to establish, because the request
@@ -297,13 +300,13 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
             if (start.compareTo(end) < 0) {
                 
                 missing = new Range(start, end);
-                setLogic(REQUEST, "manual synchronization");
+                setLogic(REQUEST, "manual synchronization (log-update)");
                 
             // roll-back local DB state
             } else {
                 
                 missing = new Range(null, end);
-                setLogic(LOAD, "manual synchronization");
+                setLogic(LOAD, "manual synchronization (rollback)");
             }
             
             // necessary to wake up the mechanism
@@ -422,9 +425,22 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
         q.add(new StageRequest(args));
     }
     
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.RequestManagement#finalizeRequest(
-     *          org.xtreemfs.babudb.replication.service.StageRequest)
+    /**
+     * <p>Frees the given operation and decrements the number of requests and updates the LSN 
+     * of the successfully executed operation.</p>
+     * 
+     * @param op
+     * @param lsn
+     */
+    public void finalizeRequest(StageRequest op, LSN lsn) {
+        pacemaker.updateLSN(lsn);
+        finalizeRequest(op);
+    }
+    
+    /**
+     * <p>Frees the given operation and decrements the number of requests.</p>
+     * 
+     * @param op
      */
     public void finalizeRequest(StageRequest op) { 
         op.free();

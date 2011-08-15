@@ -69,6 +69,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
         State(ReplicationClientAdapter client) {
             this.client = client;
             reset();
+            dead = false;
         }
         
         /**
@@ -156,7 +157,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
     private volatile LSN                        latestCommon;
     
     /**
-     * Sets the stateTable up. 
+     * Sets the stateTable up. For all participants is assumed they are available.
      * 
      * @param syncN - global synchronization n.
      * @param localAddress
@@ -167,12 +168,12 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
     public ParticipantsStates(int syncN, Set<InetSocketAddress> participants, 
             ClientFactory clientFactory) throws UnknownParticipantException {
         
-        assert(participants!=null);
+        assert(participants != null);
         
         latestCommon = new LSN(0,0L);
         this.syncN = ((syncN > 0) ? syncN - 1 : syncN);
-        participantsCount = deadSlaves = participants.size();
-        availableSlaves = 0;
+        participantsCount = availableSlaves = participants.size();
+        deadSlaves = 0;
         
         /*
          * The initial set of participants accounted by the table is must
@@ -458,21 +459,6 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
         Collections.reverse(states);
         for (State s : states) {
             result.add(s.client);
-        }
-        return result;
-    }
-    
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview#getSafeConditionClients()
-     */
-    @Override
-    public List<ConditionClient> getSafeConditionClients() {
-        
-        List<ConditionClient> result = new ArrayList<ConditionClient>();
-        synchronized (stateTable) {
-            for (State s : stateTable.values()) {
-                if (!s.dead) result.add(s.client);
-            }
         }
         return result;
     }

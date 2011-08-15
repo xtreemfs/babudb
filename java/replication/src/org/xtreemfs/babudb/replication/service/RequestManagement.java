@@ -22,13 +22,6 @@ import org.xtreemfs.babudb.replication.service.ReplicationStage.BusyServerExcept
 public interface RequestManagement {
 
     /**
-     * <p>Frees the given operation and decrements the number of requests.</p>
-     * 
-     * @param op
-     */
-    public void finalizeRequest(StageRequest op);
-
-    /**
      * send an request for a stage operation
      *
      * @param rq
