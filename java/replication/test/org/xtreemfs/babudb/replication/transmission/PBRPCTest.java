@@ -243,5 +243,6 @@ public class PBRPCTest implements LifeCycleListener {
     @Override
     public void crashPerformed(Throwable cause) {
         fail("Dispatcher crashed: " + cause.getMessage());
+        cause.printStackTrace();
     }
 }

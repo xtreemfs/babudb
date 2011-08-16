@@ -55,6 +55,11 @@ public interface Pacemaker {
     public void infarction();
     
     /**
+     * @return true, if the {@link HeartbeatThread} is stopped, false otherwise.
+     */
+    public boolean hasInfarct();
+    
+    /**
      * <p>Restarts the {@link HeartbeatThread} after infarction.</p>
      */
     public void reanimate();

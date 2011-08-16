@@ -13,6 +13,7 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.HeartbeatMessage;
 import org.xtreemfs.babudb.pbrpc.ReplicationServiceConstants;
+import org.xtreemfs.babudb.replication.control.ControlLayerInterface;
 import org.xtreemfs.babudb.replication.service.RequestManagement;
 import org.xtreemfs.babudb.replication.transmission.ErrorCode;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
@@ -33,10 +34,13 @@ import com.google.protobuf.Message;
 
 public class SynchronizeOperation extends Operation {
     
-    private final RequestManagement             rqMan;
+    private final RequestManagement     rqMan;
     
-    public SynchronizeOperation(RequestManagement rqManagement) {
+    private final ControlLayerInterface control;
+    
+    public SynchronizeOperation(RequestManagement rqManagement, ControlLayerInterface control) {
         this.rqMan = rqManagement;
+        this.control = control;
     }
 
     /*
@@ -76,7 +80,7 @@ public class SynchronizeOperation extends Operation {
                 lsn.toString(), participant.toString());
         
         try {
-            rqMan.createStableState(lsn, participant);
+            rqMan.createStableState(lsn, participant, control);
             rq.sendSuccess(ErrorCodeResponse.getDefaultInstance());
         } catch (InterruptedException ie) {
             Logging.logMessage(Logging.LEVEL_WARN, this, "Participant was not able to establish " +

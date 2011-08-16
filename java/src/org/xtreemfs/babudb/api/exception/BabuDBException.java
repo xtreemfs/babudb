@@ -48,6 +48,11 @@ public class BabuDBException extends Exception {
         REPLICATION_FAILURE,
         
         /**
+         * If User Application handles replication-redirects.
+         */
+        REDIRECT,
+        
+        /**
          * The requested snapshot does not exist in the database
          */
         NO_SUCH_SNAPSHOT,

@@ -21,13 +21,13 @@ public interface LockableService {
     }
     
     /**
-     * Ensures that the service is not used currently and may not be used throwing 
-     * ServiceLockedExceptions, until service is unlocked again.
+     * Ensures that the service is not used currently and may not be used throwing, 
+     * until service is unlocked again. A steady state is assured.
      * 
      * @throws InterruptedException if waiting for pending requests to be finished has failed.
      */
     public void lock() throws InterruptedException;
-    
+        
     /**
      * Method to unlock the service. Has to be locked before.
      */

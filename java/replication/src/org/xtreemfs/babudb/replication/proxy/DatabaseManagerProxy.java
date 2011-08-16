@@ -203,6 +203,9 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
             return null;
         }
         
+        if (replicationManager.redirectIsVisible()) {
+            throw new BabuDBException(ErrorCode.REDIRECT, master.toString());
+        }
         return master;
     }
 

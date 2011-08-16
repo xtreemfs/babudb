@@ -21,11 +21,7 @@ import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase;
-import org.xtreemfs.babudb.pbrpc.GlobalTypes.EntryMap;
-import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.replication.policy.Policy;
-import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture;
-import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.ClientResponseAvailableListener;
 import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter.ErrorCodeException;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
@@ -70,76 +66,29 @@ public class DatabaseProxy implements DatabaseInternal {
      *          java.lang.Object)
      */
     @Override
-    public DatabaseRequestResult<byte[]> lookup(int indexId, byte[] key, 
-            final Object context) {
+    public DatabaseRequestResult<byte[]> lookup(int indexId, byte[] key, Object context) {
         
         assert (key != null);
         
         InetSocketAddress master = null;
+        BabuDBRequestResultImpl<byte[]> result = 
+            new BabuDBRequestResultImpl<byte[]>(context, dbMan.getResponseManager());
+        
         try {
             master = getServerToPerformAt();
             
             if (master == null) {
                 return localDB.lookup(indexId, key, context);
             }
-        } catch (final BabuDBException e) {
-            return new DatabaseRequestResult<byte[]>() {
-                
-                @Override
-                public void registerListener(
-                        DatabaseRequestListener<byte[]> listener) {
-                    listener.failed(e, context);
-                }
-                
-                @Override
-                public byte[] get() throws BabuDBException {
-                    throw e;
-                }
-            };
+        } catch (BabuDBException e) {
+            result.failed(e);
+            return result;
         } 
         
-        final ClientResponseFuture<byte[], ErrorCodeResponse> r = dbMan.getClient().lookup(name, indexId, 
-                ReusableBuffer.wrap(key), master);
+        dbMan.getClient().lookup(name, indexId, ReusableBuffer.wrap(key), master).registerListener(
+                new ListenerWrapper<byte[]>(result));
         
-        return new DatabaseRequestResult<byte[]>() {
-            
-            @Override
-            public void registerListener(
-                    final DatabaseRequestListener<byte[]> listener) {
-                
-                r.registerListener(new ClientResponseAvailableListener<byte[]>() {
-
-                    @Override
-                    public void responseAvailable(byte[] rp) {
-                        listener.finished(rp, context);
-                    }
-
-                    @Override
-                    public void requestFailed(Exception e) {
-                        BabuDBException be = new BabuDBException(
-                                ErrorCode.REPLICATION_FAILURE, e.getMessage());
-                        
-                        if (e instanceof ErrorCodeException) {
-                            be = new BabuDBException(mapTransmissionError(
-                                    ((ErrorCodeException) e).getCode()),e.getMessage());
-                        }
-                            
-                        listener.failed(be, context);
-                    }
-                });
-            }
-            
-            @Override
-            public byte[] get() throws BabuDBException {
-                try {
-                    return r.get();
-                } catch (ErrorCodeException ece) {
-                    throw new BabuDBException(mapTransmissionError(ece.getCode()),ece.getMessage());
-                } catch (Exception e) {
-                    throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
-                }
-            }
-        };
+        return result;
     }
 
     /* (non-Javadoc)
@@ -148,74 +97,27 @@ public class DatabaseProxy implements DatabaseInternal {
      */
     @Override
     public DatabaseRequestResult<ResultSet<byte[], byte[]>> prefixLookup(
-            int indexId, byte[] key, final Object context) {
+            int indexId, byte[] key, Object context) {
         
         InetSocketAddress master = null;
+        BabuDBRequestResultImpl<ResultSet<byte[], byte[]>> result = 
+            new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(context, dbMan.getResponseManager());
+        
         try {
             master = getServerToPerformAt();
             
             if (master == null) {
                 return localDB.prefixLookup(indexId, key, context);
             }
-        } catch (final BabuDBException e) {
-            return new DatabaseRequestResult<ResultSet<byte[], byte[]>>() {
-                
-                @Override
-                public void registerListener(
-                        DatabaseRequestListener<ResultSet<byte[], byte[]>> listener) {
-                    listener.failed(e, context);
-                }
-                
-                @Override
-                public ResultSet<byte[], byte[]> get() 
-                        throws BabuDBException {
-                    throw e;
-                }
-            };
+        } catch (BabuDBException e) {
+            
+            result.failed(e);
+            return result;
         }
         
-        final ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap> r = 
-            dbMan.getClient().prefixLookup(name, indexId, ReusableBuffer.wrap(key), master);
-        
-        return new DatabaseRequestResult<ResultSet<byte[], byte[]>>() {
-            
-            @Override
-            public void registerListener(
-                    final DatabaseRequestListener<ResultSet<byte[], byte[]>> listener) {
-                
-                r.registerListener(new ClientResponseAvailableListener<ResultSet<byte[], byte[]>>() {
-
-                    @Override
-                    public void responseAvailable(ResultSet<byte[], byte[]> rp) {
-                        listener.finished(rp, context);
-                    }
-
-                    @Override
-                    public void requestFailed(Exception e) {                        
-                        BabuDBException be = new BabuDBException(
-                                ErrorCode.REPLICATION_FAILURE, e.getMessage());
-                        
-                        if (e instanceof ErrorCodeException) {
-                            be = new BabuDBException(mapTransmissionError(
-                                    (((ErrorCodeException) e).getCode())),e.getMessage());
-                        }
-                            
-                        listener.failed(be, context);
-                    }
-                });
-            }
-            
-            @Override
-            public ResultSet<byte[], byte[]> get() throws BabuDBException {
-                try {
-                    return r.get();
-                } catch (ErrorCodeException ece) {
-                    throw new BabuDBException(mapTransmissionError(ece.getCode()),ece.getMessage());
-                } catch (Exception e) {
-                    throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
-                }
-            }
-        };
+        dbMan.getClient().prefixLookup(name, indexId, ReusableBuffer.wrap(key), master).registerListener(
+                new ListenerWrapper<ResultSet<byte[], byte[]>>(result));
+        return result;
     }
 
     /* (non-Javadoc)
@@ -224,73 +126,25 @@ public class DatabaseProxy implements DatabaseInternal {
      */
     @Override
     public DatabaseRequestResult<ResultSet<byte[], byte[]>> 
-            reversePrefixLookup(int indexId, byte[] key, final Object context) {
+            reversePrefixLookup(int indexId, byte[] key, Object context) {
         
         InetSocketAddress master = null;
+        BabuDBRequestResultImpl<ResultSet<byte[], byte[]>> result = 
+            new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(context, dbMan.getResponseManager());
         try {
             master = getServerToPerformAt();
             if (master == null) {
                 return localDB.reversePrefixLookup(indexId, key, context);
             }
-        } catch (final BabuDBException e) {
-            return new DatabaseRequestResult<ResultSet<byte[], byte[]>>() {
-                
-                @Override
-                public void registerListener(
-                        DatabaseRequestListener<ResultSet<byte[], byte[]>> listener) {
-                    listener.failed(e, context);
-                }
-                
-                @Override
-                public ResultSet<byte[], byte[]> get() 
-                        throws BabuDBException {
-                    throw e;
-                }
-            };
+        } catch (BabuDBException e) {
+            
+            result.failed(e);
+            return result;
         }
         
-        final ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap> r = 
-            dbMan.getClient().prefixLookupR(name, indexId, ReusableBuffer.wrap(key), master);
-        
-        return new DatabaseRequestResult<ResultSet<byte[], byte[]>>() {
-            
-            @Override
-            public void registerListener(
-                    final DatabaseRequestListener<ResultSet<byte[], byte[]>> listener) {
-                
-                r.registerListener(new ClientResponseAvailableListener<ResultSet<byte[], byte[]>>() {
-
-                    @Override
-                    public void responseAvailable(ResultSet<byte[], byte[]> rp) {
-                        listener.finished(rp, context);
-                    }
-
-                    @Override
-                    public void requestFailed(Exception e) {
-                        BabuDBException be = new BabuDBException(
-                                ErrorCode.REPLICATION_FAILURE, e.getMessage());
-                        
-                        if (e instanceof ErrorCodeException) {
-                            be = new BabuDBException(mapTransmissionError(
-                                    ((ErrorCodeException) e).getCode()),e.getMessage());
-                        }
-                            
-                        listener.failed(be, context);
-                    }
-                });
-            }
-            
-            @Override
-            public ResultSet<byte[], byte[]> get() throws BabuDBException {
-                try {
-                    return r.get();
-                } catch (ErrorCodeException ece) {
-                    throw new BabuDBException(mapTransmissionError(ece.getCode()),ece.getMessage());
-                } catch (Exception e) {
-                    throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
-                }
-            }
-        };
+        dbMan.getClient().prefixLookupR(name, indexId, ReusableBuffer.wrap(key), master).registerListener(
+                new ListenerWrapper<ResultSet<byte[], byte[]>>(result));
+        return result;
     }
 
     /* (non-Javadoc)
@@ -299,74 +153,25 @@ public class DatabaseProxy implements DatabaseInternal {
      */
     @Override
     public DatabaseRequestResult<ResultSet<byte[], byte[]>> rangeLookup(
-            int indexId, byte[] from, byte[] to, final Object context) {
+            int indexId, byte[] from, byte[] to, Object context) {
         
         InetSocketAddress master = null;
+        BabuDBRequestResultImpl<ResultSet<byte[], byte[]>> result = 
+            new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(context, dbMan.getResponseManager());
         try {
             master = getServerToPerformAt();
             if (master == null) {
                 return localDB.rangeLookup(indexId, from, to, context);
             }
-        } catch (final BabuDBException e) {
-            return new DatabaseRequestResult<ResultSet<byte[], byte[]>>() {
-                
-                @Override
-                public void registerListener(
-                        DatabaseRequestListener<ResultSet<byte[], byte[]>> listener) {
-                    listener.failed(e, context);
-                }
-                
-                @Override
-                public ResultSet<byte[], byte[]> get() 
-                        throws BabuDBException {
-                    throw e;
-                }
-            };
+        } catch (BabuDBException e) {
+            result.failed(e);
+            return result;
         }
         
-        final ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap> r = 
-            dbMan.getClient().rangeLookup(name, indexId, ReusableBuffer.wrap(from), 
-                    ReusableBuffer.wrap(to), master);
+        dbMan.getClient().rangeLookup(name, indexId, ReusableBuffer.wrap(from), ReusableBuffer.wrap(to), master)
+                            .registerListener(new ListenerWrapper<ResultSet<byte[], byte[]>>(result));
         
-        return new DatabaseRequestResult<ResultSet<byte[], byte[]>>() {
-            
-            @Override
-            public void registerListener(
-                    final DatabaseRequestListener<ResultSet<byte[], byte[]>> listener) {
-                
-                r.registerListener(new ClientResponseAvailableListener<ResultSet<byte[], byte[]>>() {
-
-                    @Override
-                    public void responseAvailable(ResultSet<byte[], byte[]> rp) {
-                        listener.finished(rp, context);
-                    }
-
-                    @Override
-                    public void requestFailed(Exception e) {
-                        BabuDBException be = new BabuDBException(
-                                ErrorCode.REPLICATION_FAILURE, e.getMessage());
-                        
-                        if (e instanceof ErrorCodeException) {
-                            be = new BabuDBException(mapTransmissionError(
-                                    ((ErrorCodeException) e).getCode()),e.getMessage());
-                        }
-                            
-                        listener.failed(be, context);
-                    }
-                });
-            }
-            
-            @Override
-            public ResultSet<byte[], byte[]> get() throws BabuDBException {
-                try {
-                    return r.get();
-                } catch (ErrorCodeException ece) {
-                    throw new BabuDBException(mapTransmissionError(ece.getCode()),ece.getMessage());
-                } catch (Exception e) {
-                    throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
-                }
-            }
-        };
+        return result;
     }
 
     /* (non-Javadoc)
@@ -375,75 +180,24 @@ public class DatabaseProxy implements DatabaseInternal {
      */
     @Override
     public DatabaseRequestResult<ResultSet<byte[], byte[]>> 
-            reverseRangeLookup(int indexId, byte[] from, byte[] to, 
-            final Object context) {
+            reverseRangeLookup(int indexId, byte[] from, byte[] to, Object context) {
         
         InetSocketAddress master = null;
+        BabuDBRequestResultImpl<ResultSet<byte[], byte[]>> result = 
+            new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(context, dbMan.getResponseManager());
         try {
             master = getServerToPerformAt();
             if (master == null) {
                 return localDB.reverseRangeLookup(indexId, from, to, context);
             }
-        } catch (final BabuDBException e) {
-            return new DatabaseRequestResult<ResultSet<byte[], byte[]>>() {
-                
-                @Override
-                public void registerListener(
-                        DatabaseRequestListener<ResultSet<byte[], byte[]>> listener) {
-                    listener.failed(e, context);
-                }
-                
-                @Override
-                public ResultSet<byte[], byte[]> get() 
-                        throws BabuDBException {
-                    throw e;
-                }
-            };
+        } catch (BabuDBException e) {
+            result.failed(e);
+            return result;
         }
         
-        final ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap> r = 
-            dbMan.getClient().rangeLookupR(name, indexId, 
-                    ReusableBuffer.wrap(from), ReusableBuffer.wrap(to), master);
-        
-        return new DatabaseRequestResult<ResultSet<byte[], byte[]>>() {
-            
-            @Override
-            public void registerListener(
-                    final DatabaseRequestListener<ResultSet<byte[], byte[]>> listener) {
-                
-                r.registerListener(new ClientResponseAvailableListener<ResultSet<byte[], byte[]>>() {
-
-                    @Override
-                    public void responseAvailable(ResultSet<byte[], byte[]> rp) {
-                        listener.finished(rp, context);
-                    }
-
-                    @Override
-                    public void requestFailed(Exception e) {
-                        BabuDBException be = new BabuDBException(
-                                ErrorCode.REPLICATION_FAILURE, e.getMessage());
-                        
-                        if (e instanceof ErrorCodeException) {
-                            be = new BabuDBException(mapTransmissionError(
-                                    ((ErrorCodeException) e).getCode()),e.getMessage());
-                        }
-                            
-                        listener.failed(be, context);
-                    }
-                });
-            }
-            
-            @Override
-            public ResultSet<byte[], byte[]> get() throws BabuDBException {
-                try {
-                    return r.get();
-                } catch (ErrorCodeException ece) {
-                    throw new BabuDBException(mapTransmissionError(ece.getCode()),ece.getMessage());
-                } catch (Exception e) {
-                    throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
-                }
-            }
-        };
+        dbMan.getClient().rangeLookupR(name, indexId, ReusableBuffer.wrap(from), ReusableBuffer.wrap(to), master)
+                            .registerListener(new ListenerWrapper<ResultSet<byte[], byte[]>>(result));
+        return result;
     }
 
     /* (non-Javadoc)
@@ -613,6 +367,9 @@ public class DatabaseProxy implements DatabaseInternal {
             return null;
         }
 
+        if (dbMan.getReplicationManager().redirectIsVisible()) {
+            throw new BabuDBException(ErrorCode.REDIRECT, master.toString());
+        }
         return master;
     }
     

@@ -26,7 +26,6 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.mock.BabuDBMock;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.LockableService;
-import org.xtreemfs.babudb.replication.LockableService.ServiceLockedException;
 import org.xtreemfs.babudb.replication.control.ControlLayerInterface;
 import org.xtreemfs.babudb.replication.service.ReplicationRequestHandler;
 import org.xtreemfs.babudb.replication.service.RequestManagement;
@@ -196,7 +195,7 @@ public class SlaveReplicationOperationsTest implements LifeCycleListener {
         }, new BabuDBInterface(new BabuDBMock("BabuDBMock", conf0, testLSN)), new RequestManagement() {
                         
             @Override
-            public void enqueueOperation(Object[] args) throws BusyServerException, ServiceLockedException {
+            public void enqueueOperation(Object[] args) throws BusyServerException {
                 
                 assertTrue(args.length == 2);
                 LSN receivedLSN = (LSN) args[0];
@@ -216,7 +215,7 @@ public class SlaveReplicationOperationsTest implements LifeCycleListener {
             }
             
             @Override
-            public void createStableState(LSN lastOnView, InetSocketAddress master) {
+            public void createStableState(LSN lastOnView, InetSocketAddress master, ControlLayerInterface control) {
                 fail("Operation should not have been accessed by this test!");
             }
         }, lastOnView, config.getChunkSize(), new FileIO(config), MAX_Q);

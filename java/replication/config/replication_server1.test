@@ -59,3 +59,6 @@ babudb.ssl.enabled = false
 
 # chunk size, for initial load of file chunks
 #babudb.repl.chunkSize = 5242880
+
+# decides whether redirects should be handled by the user-application or not
+#babudb.repl.redirectIsVisible = false

@@ -89,7 +89,7 @@ public interface ControlLayerInterface extends TimeDriftListener, FleaseMessageR
      * @param master
      */
     public void notifyForSuccessfulFailover(InetSocketAddress master);
-    
+        
     /**
      * Unlocks the replication related services.
      */

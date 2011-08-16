@@ -19,23 +19,17 @@ import org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.api.transaction.TransactionListener;
-import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
-import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.LockableService;
 import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.replication.policy.Policy;
 import org.xtreemfs.babudb.replication.service.accounting.ReplicateResponse;
-import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.ClientResponseAvailableListener;
-import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter.ErrorCodeException;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
-import org.xtreemfs.foundation.logging.Logging;
 
 import static org.xtreemfs.babudb.log.LogEntry.*;
-import static org.xtreemfs.babudb.replication.transmission.ErrorCode.mapTransmissionError;
 import static org.xtreemfs.babudb.api.transaction.Operation.*;
 import static org.xtreemfs.babudb.api.dev.transaction.TransactionInternal.containsOperationType;
 
@@ -55,9 +49,10 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
     private final AtomicInteger                 accessCounter = new AtomicInteger(0);
     private boolean                             locked = true;
     
-    public TransactionManagerProxy(ReplicationManager replMan,
-            TransactionManagerInternal localTxnMan, Policy replicationPolicy, 
-            BabuDBProxy babuDBProxy) {
+    public TransactionManagerProxy(ReplicationManager replMan, TransactionManagerInternal localTxnMan, 
+            Policy replicationPolicy, BabuDBProxy babuDBProxy) {
+        
+        assert (!(localTxnMan instanceof TransactionManagerProxy));
         
         this.babuDBProxy = babuDBProxy;
         this.replicationPolicy = replicationPolicy;
@@ -76,9 +71,8 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
      *          org.xtreemfs.foundation.buffer.ReusableBuffer)
      */
     @Override
-    public void makePersistent(TransactionInternal txn, 
-            ReusableBuffer serialized, BabuDBRequestResultImpl<Object> future) 
-            throws BabuDBException {
+    public void makePersistent(TransactionInternal txn, ReusableBuffer serialized, 
+            BabuDBRequestResultImpl<Object> future) throws BabuDBException {
         
         assert (serialized != null);
         
@@ -89,7 +83,7 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
                 // check if this service has been locked and increment the access counter
                 synchronized (accessCounter) {
                     try {
-                        while (isLocked()) {
+                        while (locked) {
                             accessCounter.wait();
                         }
                     } catch (InterruptedException e) {
@@ -139,7 +133,7 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
                 }
                 
                 LSN assignedByDiskLogger = localFuture.getAssignedLSN();
-                LogEntry le = new LogEntry(payload, new ListenerWrapper(future, result), 
+                LogEntry le = new LogEntry(payload, new ListenerWrapper<Object>(future, result), 
                                            PAYLOAD_TYPE_TRANSACTION);
                 le.assignId(assignedByDiskLogger.getViewId(), assignedByDiskLogger.getSequenceNo());
                 
@@ -179,23 +173,9 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
     private void redirectToMaster(ReusableBuffer load, InetSocketAddress master, 
             BabuDBRequestResultImpl<Object> future) {
         
-        babuDBProxy.getClient().makePersistent(master, load).registerListener(
-                new ListenerWrapper(future));
+        babuDBProxy.getClient().makePersistent(master, load).registerListener(new ListenerWrapper<Object>(future));
     }
-    
-    private boolean isLocked() {
-        synchronized (accessCounter) {
-            try {
-                if (locked) {
-                    accessCounter.wait(ReplicationConfig.DELAY_TO_WAIT_FOR_LEASE_MS);
-                }
-            } catch (InterruptedException e) {
-                /* I don't care */
-            }
-            return locked;
-        }
-    }
-    
+        
     /**
      * @param aggregatedType - of the request.
      * 
@@ -230,6 +210,9 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
             return null;
         }
         
+        if (replMan.redirectIsVisible()) {
+            throw new BabuDBException(ErrorCode.REDIRECT, master.toString());
+        }
         return master;
     }
     
@@ -295,76 +278,6 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
         synchronized (accessCounter) {
             locked = false;
             accessCounter.notifyAll();
-        }
-    }
-
-    /**
-     * Wrapper class for encapsulating and updating the 
-     * {@link DatabaseRequestListener} connected to the request results.
-     * 
-     * @author flangner
-     * @since 19.01.2011
-     */
-    private final static class ListenerWrapper implements ClientResponseAvailableListener<Object>, 
-            SyncListener {
-        
-        private final BabuDBRequestResultImpl<Object> requestFuture;
-        private final Object                          result;
-        
-        public ListenerWrapper(BabuDBRequestResultImpl<Object> requestFuture) {
-            this.requestFuture = requestFuture;
-            this.result = null;
-        }
-        
-        public ListenerWrapper(BabuDBRequestResultImpl<Object> requestFuture, Object result) {
-            this.requestFuture = requestFuture;
-            this.result = result;
-        }
-        
-        /* (non-Javadoc)
-         * @see org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.
-         *              ClientResponseAvailableListener#responseAvailable(java.lang.Object)
-         */
-        @Override
-        public void responseAvailable(Object r) {
-            requestFuture.finished(r);
-        }
-
-        /* (non-Javadoc)
-         * @see org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.
-         *              ClientResponseAvailableListener#requestFailed(java.lang.Exception)
-         */
-        @Override
-        public void requestFailed(Exception e) {
-            Logging.logError(Logging.LEVEL_WARN, this, e);
-            
-            if (e instanceof ErrorCodeException) {
-                requestFuture.failed(new BabuDBException(mapTransmissionError(
-                        ((ErrorCodeException) e).getCode()),e.getMessage()));
-            } else {
-                requestFuture.failed(new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
-                        e.getMessage()));
-            }
-        }
-
-        /* (non-Javadoc)
-         * @see org.xtreemfs.babudb.log.SyncListener#synced(org.xtreemfs.babudb.log.LogEntry)
-         */
-        @Override
-        public void synced(LSN lsn) {
-            requestFuture.finished(result, lsn);
-        }
-
-        /* (non-Javadoc)
-         * @see org.xtreemfs.babudb.log.SyncListener#failed(org.xtreemfs.babudb.log.LogEntry, 
-         *              java.lang.Exception)
-         */
-        @Override
-        public void failed(Exception ex) {
-            Logging.logError(Logging.LEVEL_WARN, this, ex);
-            
-            requestFuture.failed(
-                    new BabuDBException(ErrorCode.REPLICATION_FAILURE, ex.getMessage()));
         }
     }
 

@@ -15,9 +15,8 @@ import org.xtreemfs.babudb.api.dev.ResponseManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 
 /**
- * Thread to process response handles for BabuDB request futures. This is necessary to decouple 
- * internal BabuDB threads from user listeners. It does not prevent user listeners from deadlocking
- * them selves
+ * Thread to process response handles for BabuDB request futures. This is necessary to decouple internal BabuDB 
+ * threads from user listeners. It does not prevent user listeners from deadlock by them selves.
  * 
  * @author flangner
  * @since 05/29/2011
@@ -77,7 +76,7 @@ public class ResponseManagerImpl extends ResponseManagerInternal {
      * @see java.lang.Thread#run()
      */
     @Override
-    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @SuppressWarnings("unchecked")
     public void run() {
         
         ResponseRecord respRec = null;

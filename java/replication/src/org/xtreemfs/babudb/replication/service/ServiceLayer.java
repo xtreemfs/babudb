@@ -15,10 +15,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.CRC32;
 
-import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.config.ReplicationConfig;
@@ -207,12 +207,10 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
                         participantsStates.markAsDead(slave);
                         result.decrementPermittedFailures();
                         
-                        Logging.logMessage(Logging.LEVEL_INFO, this, 
-                                "'%s' was marked as dead, because %s", 
-                                slave.getDefaultServerAddress().toString(), 
-                                e.getMessage());
+                        Logging.logMessage(Logging.LEVEL_INFO, this, "'%s' was marked as dead, because %s", 
+                                slave.getDefaultServerAddress().toString(), e.getMessage());
                         if (e.getMessage() == null) {
-                            Logging.logError(Logging.LEVEL_DEBUG, this, e);
+                            Logging.logError(Logging.LEVEL_INFO, this, e);
                         }
                     }
                 });
@@ -252,7 +250,10 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
             }
         
             // synchronize with the most up-to-date slave, if necessary
+            replicationStage.lock();
             LSN localState = babuDB.getState();
+            replicationStage.unlock();
+            
             if (localState.compareTo(latest) < 0) {
                 for (Entry<ClientInterface, LSN> entry : states.entrySet()) {
                     if (entry.getValue().equals(latest)) {   
@@ -261,10 +262,35 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
                                 "Starting synchronization from '%s' to '%s'.", 
                                 localState.toString(), latest.toString());
                     
-                        BabuDBRequestResultImpl<Object> ready = babuDB.createRequestFuture();
+                        final AtomicBoolean ready = new AtomicBoolean(false);
                         
-                        replicationStage.manualLoad(ready, latest);
-                        ready.get();
+                        replicationStage.manualLoad(new SyncListener() {
+                            
+                            @Override
+                            public void synced(LSN lsn) {
+                                synchronized (ready) {
+                                    if (ready.compareAndSet(false, true))
+                                        ready.notify();
+                                }
+                            }
+                            
+                            @Override
+                            public void failed(Exception ex) {
+                                
+                                Logging.logMessage(Logging.LEVEL_WARN, this, "Loading a state manually failed, " +
+                                		"because %s.", ex.getMessage());
+                                
+                                synchronized (ready) {
+                                    if (ready.compareAndSet(false, true))
+                                        ready.notify();
+                                }
+                            }
+                        }, latest);
+                        
+                        // wait for manual load to finish
+                        synchronized (ready) {
+                            while (!ready.get()) ready.wait();
+                        }
                     
                         assert(latest.equals(babuDB.getState())) : 
                             "Synchronization failed: (expected=" + 
@@ -377,7 +403,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         lastOnView.set(normalized);
                 
         try {
-            replicationStage.start(topLayer);
+            replicationStage.start();
             heartbeatThread.start(latest);
             heartbeatThread.waitForStartup();
             replicationStage.waitForStartup();

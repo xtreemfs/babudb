@@ -12,8 +12,6 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import org.xtreemfs.babudb.config.ReplicationConfig;
-import org.xtreemfs.babudb.pbrpc.GlobalTypes.Timestamp;
-import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture;
 import org.xtreemfs.babudb.replication.service.clients.ConditionClient;
 import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.TimeSync;
@@ -135,11 +133,9 @@ import org.xtreemfs.foundation.logging.Logging;
             int numDriftedClients = 0;
             int numContactedClients = 0;
             for (ConditionClient client : participants) {
-                ClientResponseFuture<Long, Timestamp> rp = null;
                 try {
                     start = TimeSync.getGlobalTime();
-                    rp = client.time();
-                    cTime = rp.get();
+                    cTime = client.time().get();
                     end = TimeSync.getGlobalTime();
                     
                     numContactedClients++;

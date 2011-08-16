@@ -62,6 +62,7 @@ public abstract class CheckpointerInternal extends LifeCycleThread implements Ch
     
     /**
      * This method suspends the Checkpointer from taking checkpoints.
+     * Not thread-safe!
      * 
      * @throws InterruptedException
      */

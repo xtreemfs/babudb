@@ -155,88 +155,90 @@ public class BabuDBImpl implements BabuDBInternal {
     @Override
     public void init(StaticInitialization staticInit) throws BabuDBException {
         
-        responseManager.setLifeCycleListener(this);
-        responseManager.start();
-        snapshotManager.init();
-        
-        // determine the LSN from which to start the log replay
-        
-        // to be able to recover from crashes during checkpoints, it is
-        // necessary to start with the smallest LSN found on disk
-        LSN dbLsn = null;
-        for (DatabaseInternal db : databaseManager.getDatabaseList()) {
-            if (dbLsn == null)
-                dbLsn = db.getLSMDB().getOndiskLSN();
-            else {
-                LSN onDiskLSN = db.getLSMDB().getOndiskLSN();
-                if (!(LSMDatabase.NO_DB_LSN.equals(dbLsn) || LSMDatabase.NO_DB_LSN.equals(onDiskLSN)))
-                    dbLsn = dbLsn.compareTo(onDiskLSN) < 0 ? dbLsn : onDiskLSN;
-            }
-        }
-        if (dbLsn == null) {
-            // empty database
-            dbLsn = new LSN(0, 0);
-        } else {
-            // need next LSN which is onDisk + 1
-            dbLsn = new LSN(dbLsn.getViewId() == 0 ? 1 : dbLsn.getViewId(), dbLsn.getSequenceNo() + 1);
-        }
-        
-        Logging.logMessage(Logging.LEVEL_INFO, this, "starting log replay at LSN %s", dbLsn);
-        LSN nextLSN = replayLogs(dbLsn);
-        if (dbLsn.compareTo(nextLSN) > 0) {
-            nextLSN = dbLsn;
-        }
-        Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done, using LSN: " + nextLSN);
-        
-        // set up and start the disk logger
-        try {
-            logger = new DiskLogger(configuration.getDbLogDir(), nextLSN, configuration.getSyncMode(),
-                configuration.getPseudoSyncWait(), configuration.getMaxQueueLength()
-                    * Math.max(1, configuration.getNumThreads()));
-            logger.setLifeCycleListener(this);
-            logger.start();
-            logger.waitForStartup();
-        } catch (Exception ex) {
-            throw new BabuDBException(ErrorCode.IO_ERROR, "cannot start database operations logger", ex);
-        }
-        this.txnMan.init(new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo() - 1L));
-        this.txnMan.setLogger(logger);
-        
-        if (configuration.getNumThreads() > 0) {
-            worker = new LSMDBWorker[configuration.getNumThreads()];
-            for (int i = 0; i < configuration.getNumThreads(); i++) {
-                worker[i] = new LSMDBWorker(this, i, configuration.getMaxQueueLength());
-                worker[i].start();
-            }
-        } else {
-            // number of workers is 0 => requests will be responded directly.
-            assert (configuration.getNumThreads() == 0);
+        synchronized (stopped) {                
+            responseManager.setLifeCycleListener(this);
+            responseManager.start();
+            snapshotManager.init();
             
-            worker = null;
+            // determine the LSN from which to start the log replay
+            
+            // to be able to recover from crashes during checkpoints, it is
+            // necessary to start with the smallest LSN found on disk
+            LSN dbLsn = null;
+            for (DatabaseInternal db : databaseManager.getDatabaseList()) {
+                if (dbLsn == null)
+                    dbLsn = db.getLSMDB().getOndiskLSN();
+                else {
+                    LSN onDiskLSN = db.getLSMDB().getOndiskLSN();
+                    if (!(LSMDatabase.NO_DB_LSN.equals(dbLsn) || LSMDatabase.NO_DB_LSN.equals(onDiskLSN)))
+                        dbLsn = dbLsn.compareTo(onDiskLSN) < 0 ? dbLsn : onDiskLSN;
+                }
+            }
+            if (dbLsn == null) {
+                // empty database
+                dbLsn = new LSN(0, 0);
+            } else {
+                // need next LSN which is onDisk + 1
+                dbLsn = new LSN(dbLsn.getViewId() == 0 ? 1 : dbLsn.getViewId(), dbLsn.getSequenceNo() + 1);
+            }
+            
+            Logging.logMessage(Logging.LEVEL_INFO, this, "starting log replay at LSN %s", dbLsn);
+            LSN nextLSN = replayLogs(dbLsn);
+            if (dbLsn.compareTo(nextLSN) > 0) {
+                nextLSN = dbLsn;
+            }
+            Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done, using LSN: " + nextLSN);
+            
+            // set up and start the disk logger
+            try {
+                logger = new DiskLogger(configuration.getDbLogDir(), nextLSN, configuration.getSyncMode(),
+                    configuration.getPseudoSyncWait(), configuration.getMaxQueueLength()
+                        * Math.max(1, configuration.getNumThreads()));
+                logger.setLifeCycleListener(this);
+                logger.start();
+                logger.waitForStartup();
+            } catch (Exception ex) {
+                throw new BabuDBException(ErrorCode.IO_ERROR, "cannot start database operations logger", ex);
+            }
+            this.txnMan.init(new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo() - 1L));
+            this.txnMan.setLogger(logger);
+            
+            if (configuration.getNumThreads() > 0) {
+                worker = new LSMDBWorker[configuration.getNumThreads()];
+                for (int i = 0; i < configuration.getNumThreads(); i++) {
+                    worker[i] = new LSMDBWorker(this, i, configuration.getMaxQueueLength());
+                    worker[i].start();
+                }
+            } else {
+                // number of workers is 0 => requests will be responded directly.
+                assert (configuration.getNumThreads() == 0);
+                
+                worker = null;
+            }
+            
+            if (dbConfigFile.isConversionRequired())
+                AutoConverter.completeConversion(this);
+            
+            // initialize and start the checkpointer; this has to be separated from
+            // the instantiation because the instance has to be there when the log
+            // is replayed
+            this.dbCheckptr.init(logger, configuration.getCheckInterval(), configuration.getMaxLogfileSize());
+            
+            final LSN firstLSN = new LSN(1, 1L);
+            if (staticInit != null && nextLSN.equals(firstLSN)) {
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, "Running initialization script...");
+                staticInit.initialize(databaseManager, snapshotManager);
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, "... initialization script finished successfully.");
+            } else if (staticInit != null) {
+                Logging.logMessage(Logging.LEVEL_INFO, this, "Static initialization was ignored, "
+                    + "because database is not empty.");
+            }
+            
+            this.stopped.set(false);
+            
+            Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running " + "(version "
+                + BABUDB_VERSION + ")");
         }
-        
-        if (dbConfigFile.isConversionRequired())
-            AutoConverter.completeConversion(this);
-        
-        // initialize and start the checkpointer; this has to be separated from
-        // the instantiation because the instance has to be there when the log
-        // is replayed
-        this.dbCheckptr.init(logger, configuration.getCheckInterval(), configuration.getMaxLogfileSize());
-        
-        final LSN firstLSN = new LSN(1, 1L);
-        if (staticInit != null && nextLSN.equals(firstLSN)) {
-            Logging.logMessage(Logging.LEVEL_DEBUG, this, "Running initialization script...");
-            staticInit.initialize(databaseManager, snapshotManager);
-            Logging.logMessage(Logging.LEVEL_DEBUG, this, "... initialization script finished successfully.");
-        } else if (staticInit != null) {
-            Logging.logMessage(Logging.LEVEL_INFO, this, "Static initialization was ignored, "
-                + "because database is not empty.");
-        }
-        
-        this.stopped.set(false);
-        
-        Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running " + "(version "
-            + BABUDB_VERSION + ")");
     }
     
     /*
@@ -278,6 +280,7 @@ public class BabuDBImpl implements BabuDBInternal {
             } catch (Exception ex) {
                 Logging.logMessage(Logging.LEVEL_ERROR, this, "BabuDB could"
                     + " not be stopped, because '%s'.", ex.getMessage());
+                Logging.logError(Logging.LEVEL_ERROR, this, ex);
             }
             stopped.set(true);
             Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB has been " + "stopped.");
@@ -295,7 +298,7 @@ public class BabuDBImpl implements BabuDBInternal {
         synchronized (stopped) {
             
             if (!stopped.get()) {
-                throw new BabuDBException(ErrorCode.IO_ERROR, "BabuDB has to" + " be stopped before!");
+                throw new BabuDBException(ErrorCode.IO_ERROR, "BabuDB has to be stopped before!");
             }
             
             databaseManager.reset();

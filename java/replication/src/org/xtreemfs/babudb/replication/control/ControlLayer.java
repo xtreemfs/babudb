@@ -74,8 +74,7 @@ public class ControlLayer extends TopLayer {
      * to ensure services not to be locked after unlock this flag tracks the currently registered 
      * master 
      */
-    private AtomicReference<InetSocketAddress> masterLock = 
-        new AtomicReference<InetSocketAddress>(null);
+    private AtomicReference<InetSocketAddress> masterLock = new AtomicReference<InetSocketAddress>(null);
     
     private final AtomicBoolean initialFailoverObserved = new AtomicBoolean(false);
     
@@ -157,9 +156,7 @@ public class ControlLayer extends TopLayer {
      */
     @Override
     public void notifyForSuccessfulFailover(InetSocketAddress master) {
-        synchronized (master) {
-            masterLock.set(master);
-        }
+        masterLock.set(master);
     }
     
     /* (non-Javadoc)
@@ -424,6 +421,7 @@ public class ControlLayer extends TopLayer {
                         if (!quit) {
                             Logging.logMessage(Logging.LEVEL_WARN, this, "Processing a failover " +
                             		"did not succeed, because: ", e.getMessage());
+                            Logging.logError(Logging.LEVEL_WARN, this, e);
                             leaseHolder.reset();
                         }
                     }
@@ -447,17 +445,11 @@ public class ControlLayer extends TopLayer {
          */
         private void prepareFailover(InetSocketAddress newLeaseholder) throws InterruptedException {
             
-            synchronized (masterLock) {
-                InetSocketAddress mLock = masterLock.get();
-                
-                // we change the locally registered master
-                if (mLock != null && !newLeaseholder.equals(masterLock.get())) {
-                    try {
-                        lockAll();
-                    } finally {
-                        unlockReplication();
-                    }
-                }
+            InetSocketAddress mLock = masterLock.get();
+            
+            // we change the locally registered master
+            if (mLock != null && !newLeaseholder.equals(mLock) && thisAddress != mLock) {
+                lockAll();
             }
         }
         

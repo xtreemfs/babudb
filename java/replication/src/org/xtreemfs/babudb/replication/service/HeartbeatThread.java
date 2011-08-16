@@ -34,7 +34,7 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
     private LSN                         latestLSN;
     
     /** set to true, if the thread should be stopped temporarily */
-    private boolean                     halted = false;
+    private boolean                     hasInfarct = false;
        
     /** set to true, if thread should shut down */
     private volatile boolean            quit = false;
@@ -98,7 +98,7 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
                 synchronized (this) {
                     wait(MAX_DELAY_BETWEEN_HEARTBEATS);
                     
-                    while (halted) {
+                    while (hasInfarct) {
                         wait();
                     }
                 }
@@ -127,7 +127,7 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
 
                 @Override
                 public void requestFailed(Exception e) {
-                    
+                   
                     Logging.logMessage(Logging.LEVEL_INFO, this, 
                             "Heartbeat could not be send to %s, because %s", 
                             c.toString(), e.getMessage());
@@ -141,7 +141,14 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
      * @see org.xtreemfs.babudb.replication.service.Pacemaker#infarction()
      */
     public synchronized void infarction() {
-        halted = true;
+        hasInfarct = true;
+    }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.service.Pacemaker#hasInfarct()
+     */
+    public synchronized boolean hasInfarct() {
+        return hasInfarct;
     }
     
     /* (non-Javadoc)
@@ -149,8 +156,10 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
      */
     @Override
     public synchronized void reanimate() {
-        halted = false;
-        notify();
+        if (hasInfarct) {
+            hasInfarct = false;
+            notify();
+        }
     }
     
     /* (non-Javadoc)

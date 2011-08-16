@@ -20,8 +20,6 @@ import org.xtreemfs.foundation.buffer.ReusableBuffer;
  */
 
 public class StageRequest implements Comparable<StageRequest>{
-
-    public final static StageRequest NOOP_REQUEST = new StageRequest(null);
     
     private Object[]            args;
     

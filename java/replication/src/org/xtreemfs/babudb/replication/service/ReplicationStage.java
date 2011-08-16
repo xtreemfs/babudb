@@ -10,18 +10,16 @@ package org.xtreemfs.babudb.replication.service;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.PriorityBlockingQueue;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.xtreemfs.babudb.api.BabuDB;
-import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
-import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.config.ReplicationConfig;
-import org.xtreemfs.babudb.log.LogEntry;
+import org.xtreemfs.babudb.log.SyncListener;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.LockableService;
@@ -30,16 +28,14 @@ import org.xtreemfs.babudb.replication.control.ControlLayerInterface;
 import org.xtreemfs.babudb.replication.service.logic.BasicLogic;
 import org.xtreemfs.babudb.replication.service.logic.LoadLogic;
 import org.xtreemfs.babudb.replication.service.logic.Logic;
-import org.xtreemfs.babudb.replication.service.logic.LogicID;
+import org.xtreemfs.babudb.replication.service.logic.Logic.LogicID;
 import org.xtreemfs.babudb.replication.service.logic.RequestLogic;
 import org.xtreemfs.babudb.replication.transmission.FileIOInterface;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.foundation.LifeCycleThread;
-import org.xtreemfs.foundation.TimeSync;
-import org.xtreemfs.foundation.logging.Logging;
 
-import static org.xtreemfs.babudb.replication.service.logic.LogicID.*;
-import static org.xtreemfs.babudb.replication.transmission.ErrorCode.*;
+import static org.xtreemfs.babudb.replication.service.logic.Logic.LogicID.*;
+import static org.xtreemfs.babudb.replication.service.ReplicationStage.StageCondition.*;
 
 /**
  * Stage to perform {@link ReplicationManager}-{@link Operation}s on the slave.
@@ -50,65 +46,53 @@ import static org.xtreemfs.babudb.replication.transmission.ErrorCode.*;
 
 public class ReplicationStage extends LifeCycleThread implements RequestManagement, LockableService {
 
-    private final static int                    RETRY_DELAY_MS = 500;
+    private final static int          RETRY_DELAY_MS = 500;
             
-    public final AtomicReference<LSN>           lastOnView;
+    public final AtomicReference<LSN> lastOnView;
         
-    /** 
-     * {@link LSN} range of missing {@link LogEntries} shared between the 
-     * {@link Logic} and requested at the other server.
-     * Start of the range will always be the LSN of the last inserted 
-     * {@link LogEntry}. End the last entry that was requested to be replicated.
-     */
-    public Range                                missing = null;
-    
-    /** {@link LogicID} of the {@link Logic} currently used. */
-    private LogicID                             logicID = BASIC;
-    
     /** queue containing all incoming requests */
-    private final BlockingQueue<StageRequest>   q;
+    private Queue<StageRequest>       q = new PriorityQueue<StageRequest>();
         
     /** set to true if stage should shut down */
-    private boolean                             quit;
+    private volatile boolean          quit;
     
     /** used for load balancing */
-    private final int                           MAX_Q;
-    private final AtomicInteger                 accessCounter = new AtomicInteger(0);
-    private boolean                             locked = false;
+    private final int                 MAX_Q;
+    
+    /** reentrantLock to serialize replication request procession */
+    private final ReentrantLock       lock = new ReentrantLock();
     
     /** Table of different replication-behavior objects. */
-    private final Map<LogicID, Logic>           logics;
+    private final Map<LogicID, Logic> logics;
        
     /** Listener to wait for a synchronization to finish. */
-    private BabuDBRequestResultImpl<Object>     syncListener = null;
+    private SyncListener              syncListener = null;
     
     /** needed to control the heartbeat */
-    private final Pacemaker                     pacemaker;
+    private final Pacemaker           pacemaker;
     
     /** interface to {@link BabuDB} internals */
-    private final BabuDBInterface               babudb;
+    private final BabuDBInterface     babudb;
     
-    private ControlLayerInterface               topLayer;
+    private StageCondition            operatingCondition = StageCondition.DEFAULT;
     
     /**
-     * @param lastOnView
      * @param slaveView
-     * @param roleChangeListener - listener to notify about the need of a role 
-     *                             change.
      * @param pacemaker - for the heartbeat.
      * @param max_q - 0 means infinite.
      * @param lastOnView - reference for the compare-variable lastOnView.
+     * @param fileIO
+     * @param babuInterface
+     * @param maxChunkSize
      */
-    public ReplicationStage(int max_q, Pacemaker pacemaker, SlaveView slaveView, 
-            FileIOInterface fileIO, BabuDBInterface babuInterface, 
-            AtomicReference<LSN> lastOnView, int maxChunkSize) {
+    public ReplicationStage(int max_q, Pacemaker pacemaker, SlaveView slaveView, FileIOInterface fileIO, 
+            BabuDBInterface babuInterface, AtomicReference<LSN> lastOnView, int maxChunkSize) {
         
         super("ReplicationStage");
 
         this.babudb = babuInterface;
         this.lastOnView = lastOnView;
         this.pacemaker = pacemaker;
-        this.q = new PriorityBlockingQueue<StageRequest>();
         this.MAX_Q = max_q;
         
         // ---------------------
@@ -116,25 +100,22 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
         // ---------------------
         logics = new HashMap<LogicID, Logic>();
         
-        
-        Logic lg = new BasicLogic(this, slaveView, fileIO);
+        Logic lg = new BasicLogic(babuInterface, slaveView, fileIO, lastOnView, pacemaker);
         logics.put(lg.getId(), lg);
         
-        lg = new RequestLogic(this, slaveView, fileIO);
+        lg = new RequestLogic(babuInterface, slaveView, fileIO, lastOnView);
         logics.put(lg.getId(), lg);
         
-        lg = new LoadLogic(this, slaveView, fileIO, maxChunkSize);
+        lg = new LoadLogic(babuInterface, slaveView, fileIO, maxChunkSize, lastOnView);
         logics.put(lg.getId(), lg);
     }
     
-    /**
-     * Use this method to start the replication stage. Pass the user service for re-initialization
-     * after master failover.
-     * 
-     * @param topLayer
+    
+    /* (non-Javadoc)
+     * @see java.lang.Thread#start()
      */
-    public void start(ControlLayerInterface topLayer) {
-        this.topLayer = topLayer;
+    @Override
+    public synchronized void start() {
         quit = false;
         super.start();
     }
@@ -143,13 +124,30 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
      * Shut the stage thread down.
      * Resets inner state.
      */
-    public void shutdown() {
+    public synchronized void shutdown() {
         quit = true;
         interrupt();
-        missing = null;
-        logicID = BASIC;
     }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.service.RequestManagement#
+     *      enqueueOperation(java.lang.Object[])
+     */
+    @Override
+    public synchronized void enqueueOperation(Object[] args) throws BusyServerException {
         
+        if ((MAX_Q != 0 && (q.size() + 1) > MAX_Q) || quit) {
+            throw new BusyServerException(getName() + ": Operation could not be performed.");
+        } else {
+            q.add(new StageRequest(args));
+        }
+        
+        // wake-up this stage on first entry
+        if (q.size() == 1) {
+            notify();
+        }
+    }
+    
     /*
      * (non-Javadoc)
      * @see java.lang.Thread#run()
@@ -160,71 +158,71 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
         /* initialization */
         /** Counter for the number of tries needed to perform an operation */
         int tries = 0;
-        boolean infarcted = false;
+        StageCondition currentCondition;
         
         notifyStarted();
         
         while (!quit) {
             
             try {
+                
                 // sleep if a request shall be retried 
                 if (tries != 0) Thread.sleep(RETRY_DELAY_MS * tries);
-                
-                // prevent the heartbeatThread from sending messages as long as
-                // this server is synchronizing with another server
-                if (!infarcted && !logicID.equals(BASIC)) {
+               
+                StageRequest rq = null;
+                synchronized(this) {
                     
-                    pacemaker.infarction();
-                    infarcted = true;
-                }
-                
-                // operate the request
-                logics.get(logicID).run();
-                
-                // update the heartbeatThread and re-animate it
-                if (infarcted && logicID.equals(BASIC)) { 
-                    pacemaker.updateLSN(babudb.getState());
-                    pacemaker.reanimate();
-                    infarcted = false;
-                }
-                
-                // reset the number of tries
-                tries = 0;
-            } catch(ConnectionLostException cle) {
-                
-                switch (cle.errNo) {
-                case LOG_UNAVAILABLE : 
-                    setLogic(LOAD, "Master said, logfile has been cut off: " + cle.getMessage());
-                    break;
-                case BUSY :
-                    if (++tries < ReplicationConfig.MAX_RETRIES) break;
-                case SERVICE_UNAVAILABLE : 
-                    // --> empty the queue to ensure a clean restart
-                default :
-                    Logging.logError(Logging.LEVEL_WARN, this, cle);
-                    if (syncListener != null) {
-                        syncListener.failed(new BabuDBException(ErrorCode.REPLICATION_FAILURE,
-                                cle.getMessage()));
-                        syncListener = null;
+                    // wait for requests to become available for processing
+                    // or the operatingCondition to change
+                    if (operatingCondition.equals(DEFAULT) && q.isEmpty()) {
+                        wait();
                     }
-                    
-                    clearQueue();
-                    missing = null; // reset the missing field to ensure invariants
-                    setLogic(BASIC, "Clean restart of the replication stage.");
-                    break;
+                                        
+                    // get the processing information
+                    currentCondition = operatingCondition;
+                    if (currentCondition.equals(DEFAULT)) {
+                        rq = q.poll();
+                        assert(rq != null);
+                    }
+                }
+                lock.lock();
+                
+                currentCondition = process(currentCondition, rq);
+                
+                // thread-safety for the operatingCondition
+                synchronized (this) {
+                    if (!currentCondition.equals(DEFAULT) && currentCondition.equals(operatingCondition)) {
+                        
+                        // -> clean restart
+                        if (++tries < ReplicationConfig.MAX_RETRIES) {
+                            
+                            // cancel syncListener
+                            if (syncListener != null) {
+                                syncListener.failed(new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
+                                        "Synchronization was canceled after " + ReplicationConfig.MAX_RETRIES + 
+                                        " retries."));
+                                syncListener = null;
+                            }
+                            
+                            // reset stage condition
+                            clearQueue();
+                            operatingCondition = StageCondition.DEFAULT;
+                        }
+                    } else {
+                        // reset the number of tries
+                        tries = 0;
+                        // update condition
+                        operatingCondition = currentCondition; 
+                    }
                 }
             } catch(InterruptedException ie) {
-                if (!quit){
-                    
+                if (!quit) {
                     clearQueue();
                     notifyCrashed(ie);
                     return;
-                }
-            } catch(Exception e) {
-                                
-                clearQueue();
-                notifyCrashed(e);
-                return;                
+                } 
+            } finally {
+                if (hasLock()) unlock();
             }
         }
         
@@ -232,43 +230,39 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
         notifyStopped();
     }
     
-    /**
-     * <p>Changes the currently used logic to the given <code>lgc</code>.</p>
-     * <b>WARNING: This operation is not thread safe!</b>
-     * <br>
-     * @param lgc
-     * @param reason - for the logic change, needed for logging purpose.
-     */
-    public void setLogic(LogicID lgc, String reason) {
-        setLogic(lgc, reason, false);
-    }
-    
-    /**
-     * <p>Changes the currently used logic to the given <code>lgc</code>.</p>
-     * <b>WARNING: This operation is not thread safe!</b>
-     * <br>
-     * @param lgc
-     * @param reason - for the logic change, needed for logging purpose.
-     * @param loaded - true if the database was loaded remotely, false otherwise.
-     */
-    public void setLogic(LogicID lgc, String reason, boolean loaded) {
-        Logging.logMessage(Logging.LEVEL_INFO, this, 
-                "Replication logic changed: %s, because: %s", 
-                lgc.toString(), reason);
+    private StageCondition process(StageCondition current, StageRequest rq) throws InterruptedException {
+        StageCondition result;
         
-        this.logicID = lgc;
-        if (syncListener != null && lgc.equals(BASIC)){
-            syncListener.finished(!loaded);
-            syncListener = null;
+        if (current.equals(DEFAULT)) {
+            
+            assert (rq != null);
+            
+            // update the heartbeatThread and re-animate
+            if (pacemaker.hasInfarct()) {
+                pacemaker.updateLSN(babudb.getState());
+                pacemaker.reanimate();
+            }
+                            
+            // run DEFAULT-logic
+            result = logics.get(BASIC).run(rq);
+            if (!result.equals(DEFAULT)) {
+                synchronized (this) {
+                    q.add(rq);
+                }
+            }
+        } else {
+            
+            assert (rq == null);
+            
+            // prevent the heartbeatThread from sending messages as long as
+            // this server is synchronizing with another server
+            pacemaker.infarction();
+            
+            // run sync-logic
+            result = logics.get(current.logicID).run(current);
         }
-    }
-    
-    public BabuDBInterface getBabuDB() {
-        return babudb;
-    }
-    
-    public BlockingQueue<StageRequest> getQueue() {
-        return q;
+        
+        return result;
     }
     
     /**
@@ -280,13 +274,13 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
      * @param syncListener
      * @param to
      */
-    public void manualLoad(BabuDBRequestResultImpl<Object> syncListener, LSN to) {
-        
+    public synchronized void manualLoad(SyncListener syncListener, LSN to) {
+                
         LSN start = babudb.getState();
         
         if (start.equals(to)) {
             
-            syncListener.finished(to);
+            syncListener.synced(to);
         } else {
         
             this.syncListener = syncListener;
@@ -297,47 +291,41 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                         to.getViewId(), to.getSequenceNo() + 1L);
             
             // update local DB state
+            StageCondition old = operatingCondition;
             if (start.compareTo(end) < 0) {
-                
-                missing = new Range(start, end);
-                setLogic(REQUEST, "manual synchronization (log-update)");
+                operatingCondition = new StageCondition(end);
                 
             // roll-back local DB state
             } else {
-                
-                missing = new Range(null, end);
-                setLogic(LOAD, "manual synchronization (rollback)");
+                operatingCondition = new StageCondition(LOAD, end);
             }
             
             // necessary to wake up the mechanism
-            assert (q.isEmpty());
-            q.add(StageRequest.NOOP_REQUEST);
+            if (old.equals(DEFAULT) && q.isEmpty()) notify();
         }
     }
     
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.service.RequestManagement#
-     *          createStableState(org.xtreemfs.babudb.lsmdb.LSN, java.net.InetSocketAddress)
+     *      createStableState(org.xtreemfs.babudb.lsmdb.LSN, java.net.InetSocketAddress, 
+     *                        org.xtreemfs.babudb.replication.control.ControlLayerInterface)
      */
     @Override
-    public void createStableState(final LSN lastLSNOnView, final InetSocketAddress master) 
-            throws InterruptedException {
-        
-        // finish entries at the queue gracefully before establishing a stable state
-        lock();
+    public void createStableState(final LSN lastLSNOnView, final InetSocketAddress master, 
+            final ControlLayerInterface control) throws InterruptedException {
         
         // if slave already is in a stable DB state, unlock user operations immediately and return
         if (lastOnView.get().equals(lastLSNOnView)) {
             
             try {
                 
-                // only take a checkpoint if the master also did
+                // only take a checkpoint if the master did so
                 if (lastLSNOnView.getSequenceNo() != 0L) {
                     lastOnView.set(babudb.checkpoint());
                     pacemaker.updateLSN(babudb.getState());
                 }
-                topLayer.notifyForSuccessfulFailover(master);
-                topLayer.unlockUser();
+                control.notifyForSuccessfulFailover(master);
+                control.unlockUser();
             } catch (BabuDBException e) {
                 
                 
@@ -351,21 +339,18 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
             
         // otherwise establish a stable global DB state
         } else {
-            BabuDBRequestResultImpl<Object> result = new BabuDBRequestResultImpl<Object>(null);
             
-            manualLoad(result, lastLSNOnView);
-            
-            result.registerListener(new DatabaseRequestListener<Object>() {
+            manualLoad(new SyncListener() {
                 
                 @Override
-                public void finished(Object result, Object context) {
+                public void synced(LSN lsn) {
                     try {
                         
                         // always take a checkpoint
                         lastOnView.set(babudb.checkpoint());
                         pacemaker.updateLSN(babudb.getState());
-                        topLayer.notifyForSuccessfulFailover(master);
-                        topLayer.unlockUser();
+                        control.notifyForSuccessfulFailover(master);
+                        control.unlockUser();
                         
                     } catch (BabuDBException e) {
                         
@@ -380,77 +365,23 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                 }
                 
                 @Override
-                public void failed(BabuDBException error, Object context) {
-                    
+                public void failed(Exception ex) {
                     // manual load failed. retry if master has not changed meanwhile
                     // ignore the failure otherwise
                     try {
-                        if (master.equals(topLayer.getLeaseHolder(1))) {
-                            createStableState(lastLSNOnView, master);
+                        if (master.equals(control.getLeaseHolder(1))) {
+                            createStableState(lastLSNOnView, master, control);
                         }
                     } catch (InterruptedException e) {
                         /* ignored */
                     } 
                 }
-            });
+            }, lastLSNOnView);
         }
     }
     
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.service.RequestManagement#enqueueOperation(
-     *          java.lang.Object[])
-     */
-    @Override
-    public void enqueueOperation(Object[] args) throws BusyServerException, ServiceLockedException {
-        synchronized (accessCounter) {
-            int timeout = ReplicationConfig.REQUEST_TIMEOUT;
-            try {
-                while (locked) {
-                    long time = TimeSync.getLocalSystemTime();
-                    if (timeout > 0) accessCounter.wait(timeout);
-                    else break;
-                    timeout -= (TimeSync.getLocalSystemTime() - time);
-                } 
-            } catch (InterruptedException ie) { /* ignored */ }
-            if (locked) throw new ServiceLockedException();
-            
-            if (accessCounter.incrementAndGet() > MAX_Q && MAX_Q != 0){
-                accessCounter.decrementAndGet();
-                throw new BusyServerException(getName() + ": Operation could not " +
-                            "be performed.");
-            } else if (quit) {
-                throw new BusyServerException(getName() + ": Shutting down.");
-            }
-        }
-        q.add(new StageRequest(args));
-    }
-    
-    /**
-     * <p>Frees the given operation and decrements the number of requests and updates the LSN 
-     * of the successfully executed operation.</p>
-     * 
-     * @param op
-     * @param lsn
-     */
-    public void finalizeRequest(StageRequest op, LSN lsn) {
-        pacemaker.updateLSN(lsn);
-        finalizeRequest(op);
-    }
-    
-    /**
-     * <p>Frees the given operation and decrements the number of requests.</p>
-     * 
-     * @param op
-     */
-    public void finalizeRequest(StageRequest op) { 
-        op.free();
-        
-        // request has finished. decrement the access counter
-        synchronized (accessCounter) {
-            if (accessCounter.decrementAndGet() == 0) {
-                accessCounter.notify();
-            }
-        }
+    public boolean hasLock() {
+        return lock.isHeldByCurrentThread();
     }
     
     /* (non-Javadoc)
@@ -458,11 +389,11 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
      */
     @Override
     public void lock() throws InterruptedException {
-        synchronized (accessCounter) {
-            locked = true;
-            while (locked && accessCounter.get() > 0) {
-                accessCounter.wait();
-            }
+        if (!hasLock()) {
+            lock.lock();
+            logics.get(BASIC).waitForSteadyState();
+            
+            // TODO it might be necessary to drop the replication queue
         }
     }
 
@@ -471,18 +402,8 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
      */
     @Override
     public void unlock() {
-        synchronized (accessCounter) {
-            locked = false;
-            accessCounter.notifyAll();
-        }
-    }
-    
-    /* (non-Javadoc)
-     * @see java.lang.Thread#start()
-     */
-    @Override
-    public synchronized void start() {
-        throw new UnsupportedOperationException("Use start(LockableService userService) instead!");
+        assert (hasLock());
+        lock.unlock();
     }
     
 /*
@@ -495,9 +416,7 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
     private void clearQueue() {
         StageRequest rq = q.poll();
         while (rq != null) {
-            if (rq != StageRequest.NOOP_REQUEST) {
-                finalizeRequest(rq);
-            }
+            rq.free();
             rq = q.poll();
         }
     }
@@ -512,42 +431,43 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
     public static final class BusyServerException extends Exception {
         private static final long serialVersionUID = 2823332601654877350L; 
         public BusyServerException(String string) {
-            super("Participant is too busy at the moment: "+string);
+            super("Participant is too busy at the moment: " + string);
         }
     }
     
     /**
-     * <p>{@link Exception} to throw if the 
-     * connection to the master is lost.</p>
+     * Request for filling a loophole.
      * 
-     * @author flangner
-     * @since 08/14/2009
-     */
-    public static final class ConnectionLostException extends Exception {
-        private static final long serialVersionUID = -167881170791343478L;
-        int errNo;
-        
-        public ConnectionLostException(int errorNumber) {
-            this.errNo = errorNumber;
-        }
-        
-        public ConnectionLostException(String string, int errorNumber) {
-            super("Connection to the participant is lost: " + string);
-            this.errNo = errorNumber;
-        }
-    }
-    
-    /**
      * @author flangner
      * @since 01/05/2011
      */
-    public static final class Range {
-        public final LSN start;
-        public final LSN end;
+    public static final class StageCondition {
         
-        public Range(LSN start, LSN end) {
-            this.start = start;
-            this.end = end;
+        public final static StageCondition DEFAULT = new StageCondition(BASIC, null);
+        public final static StageCondition LOAD_LOOPHOLE = new StageCondition(LOAD, null);
+        public final LSN end;
+        public final LogicID logicID;
+                
+        /**
+         * Marks a loophole that has to fixed by a REQUEST.
+         * 
+         * @param end
+         */
+        public StageCondition(LSN end) {
+            this(REQUEST, end);
+        }
+        
+        /**
+         * User-defined LoopholeMarker.
+         * 
+         * @param logicID
+         * @param end
+         */
+        public StageCondition(LogicID logicID, LSN end) {
+            assert (logicID != null);
+            
+            this.logicID = logicID;
+            this.end = end;   
         }
     }
 }

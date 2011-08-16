@@ -100,14 +100,14 @@ public class ReplicaOperation extends Operation {
         if (start.equals(lastOnView.get())) {
             
             Logging.logMessage(Logging.LEVEL_INFO, this, 
-                   "REQUEST answer is empty (there has been a failover only).");
+                   "REQUEST answer is empty (there has been a failover only)."); // XXX
             
             rq.sendSuccess(result.build());
             return;  
         }
         
         final LSN firstEntry = new LSN(start.getViewId(), 
-                                       start.getSequenceNo() + 1L);
+                start.getSequenceNo() + 1L);
         
         assert (firstEntry.compareTo(end) < 0) : 
             "At least one LogEntry has to be requested!";
@@ -120,8 +120,11 @@ public class ReplicaOperation extends Operation {
                 babuInterface.waitForCheckpoint();
                 
                 try {
-                    it = fileIO.getLogEntryIterator(start);
+                    it = fileIO.getLogEntryIterator(firstEntry);
                 } catch (LogEntryException exc) {
+                    Logging.logMessage(Logging.LEVEL_INFO, this, "LogEntryIterator for LSN(%s) is unavailable.", 
+                            firstEntry.toString()); //XXX
+                    Logging.logError(Logging.LEVEL_INFO, this, exc); //XXX
                     if (resultPayLoad != null) BufferPool.free(resultPayLoad);
                     rq.sendSuccess(result.setErrorCode(ErrorCode.LOG_UNAVAILABLE).build());
                     return;
@@ -183,15 +186,14 @@ public class ReplicaOperation extends Operation {
                 
                 if (result.getLogEntriesCount() > 0) {
                     // send the response, if the requested log entries are found
-                    Logging.logMessage(Logging.LEVEL_DEBUG, this, 
-                            "REQUEST: returning %d log-entries to %s.", 
-                            result.getLogEntriesCount(), rq.getSenderAddress().toString());
+                    Logging.logMessage(Logging.LEVEL_INFO, this, "REQUEST: returning %d log-entries to %s.", 
+                            result.getLogEntriesCount(), rq.getSenderAddress().toString()); //XXX
                     
                     resultPayLoad.flip();
                     rq.sendSuccess(result.build(), resultPayLoad);
                 } else {
-                    rq.sendSuccess(result.setErrorCode(
-                            ErrorCode.LOG_UNAVAILABLE).build());
+                    Logging.logMessage(Logging.LEVEL_INFO, this, "No logentries could have been retrieved."); // XXX
+                    rq.sendSuccess(result.setErrorCode(ErrorCode.LOG_UNAVAILABLE).build());
                 }
             } catch (Exception e) {
                 Logging.logError(Logging.LEVEL_INFO, this, e);

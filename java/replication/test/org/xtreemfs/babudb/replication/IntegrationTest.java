@@ -68,9 +68,46 @@ public class IntegrationTest extends TestCase {
         System.out.println("=== " + getName() + " ===");
         
         // starting three local BabuDB services supporting replication; based on mock databases
-        babu0 = BabuDBFactory.createBabuDB(conf0);
-        babu1 = BabuDBFactory.createBabuDB(conf1);
-        babu2 = BabuDBFactory.createBabuDB(conf2);
+        Thread t0 = new Thread(new Runnable() {
+            
+            @Override
+            public void run() {
+                try {
+                    babu0 = BabuDBFactory.createBabuDB(conf0);
+                } catch (BabuDBException e) {
+                    fail();
+                }
+            }
+        });
+        Thread t1 = new Thread(new Runnable() {
+            
+            @Override
+            public void run() {
+                try {
+                    babu1 = BabuDBFactory.createBabuDB(conf1);
+                } catch (BabuDBException e) {
+                    fail();
+                }
+            }
+        });
+        Thread t2 = new Thread(new Runnable() {
+            
+            @Override
+            public void run() {
+                try {
+                    babu2 = BabuDBFactory.createBabuDB(conf2);
+                } catch (BabuDBException e) {
+                    fail();
+                }
+            }
+        });
+        
+        t0.start();
+        t1.start();
+        t2.start();
+        t0.join();
+        t1.join();
+        t2.join();
     }
 
     /**

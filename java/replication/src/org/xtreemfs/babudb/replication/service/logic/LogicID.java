@@ -12,8 +12,3 @@ package org.xtreemfs.babudb.replication.service.logic;
  * @since 06/08/2009
  */
 
-public enum LogicID {
-    BASIC,
-    REQUEST,
-    LOAD,
-}

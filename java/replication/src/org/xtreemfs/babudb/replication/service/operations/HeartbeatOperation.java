@@ -75,8 +75,8 @@ public class HeartbeatOperation extends Operation {
                                                         rawLSN.getSequenceNo());
         try {
             
-            InetSocketAddress participant = new InetSocketAddress(
-                    rq.getSenderAddress().getAddress(), message.getPort());
+            InetSocketAddress participant = 
+                new InetSocketAddress(rq.getSenderAddress().getAddress(), message.getPort());
             
             sManipulator.update(participant, lsn, TimeSync.getGlobalTime());
             

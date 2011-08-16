@@ -57,7 +57,7 @@ public class ReplicationRequestHandler extends RequestHandler {
         op = new HeartbeatOperation(pStates);
         operations.put(op.getProcedureId(), op);
         
-        op = new SynchronizeOperation(reqMan);
+        op = new SynchronizeOperation(reqMan, ctrlLayer);
         operations.put(op.getProcedureId(),op);
         
         op = new ReplicateOperation(reqMan);

@@ -94,6 +94,8 @@ public class ReplicationConfig extends PluginConfig {
     // for slave usage only
     
     protected String                 backupDir;
+    
+    protected boolean                redirect = false;
         
     /** 
      * maximal retries per failure 
@@ -144,11 +146,12 @@ public class ReplicationConfig extends PluginConfig {
     
     public ReplicationConfig(Set<InetSocketAddress> participants, 
             int localTimeRenew, SSLOptions sslOptions, int syncN, 
-            String tempDir, BabuDBConfig babuConf) throws IOException {
+            String tempDir, BabuDBConfig babuConf, boolean redirect) throws IOException {
         
         this.babuDBConfig = babuConf;
         this.participants = new HashSet<InetSocketAddress>();
         this.localTimeRenew = localTimeRenew;
+        this.redirect = redirect;
         Socket s;
         for (InetSocketAddress participant : participants) {
             s = new Socket();
@@ -206,8 +209,8 @@ public class ReplicationConfig extends PluginConfig {
             backupDir = tempDir + File.separator;
         }
         
-        this.localTimeRenew = this.readOptionalInt("babudb.localTimeRenew", 
-                                                   3000);
+        this.localTimeRenew = this.readOptionalInt("babudb.localTimeRenew", 3000);
+        this.redirect = readOptionalBoolean("babudb.repl.redirectIsVisible", false);
         this.timeSyncInterval = this.readOptionalInt("babudb.timeSync", 20000);
         
         if (this.readOptionalBoolean("babudb.ssl.enabled", false)) {
@@ -298,6 +301,10 @@ public class ReplicationConfig extends PluginConfig {
     
     public int getTimeSyncInterval() {
         return timeSyncInterval;
+    }
+    
+    public boolean redirectIsVisible() {
+        return redirect;
     }
     
     public int getSyncN() {

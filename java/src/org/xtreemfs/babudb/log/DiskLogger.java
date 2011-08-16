@@ -86,7 +86,7 @@ public class DiskLogger extends LifeCycleThread {
     /**
      * If set to true the thread will shutdown.
      */
-    private boolean                     quit = true;
+    private volatile boolean            quit = true;
     private boolean                     graceful;
 
     /**
@@ -297,6 +297,7 @@ public class DiskLogger extends LifeCycleThread {
                         
                     // get some entries from the queue
                     } else {
+                        
                         LogEntry tmp = null;
                         while (tmpE.size() < MAX_ENTRIES_PER_BLOCK - 1 && 
                               (tmp = entries.poll()) != null) {
@@ -304,6 +305,7 @@ public class DiskLogger extends LifeCycleThread {
                             tmpE.add(tmp);
                         }
                         notifyAll();
+                        lock();
                     }
                 }
                 
@@ -328,6 +330,8 @@ public class DiskLogger extends LifeCycleThread {
                     notifyCrashed(ex);
                     return;
                 }
+            } finally {
+                if (hasLock()) unlock();
             }
         }
         
@@ -335,7 +339,12 @@ public class DiskLogger extends LifeCycleThread {
             
             // process pending requests on shutdown if graceful flag has not been reset
             if (graceful) {
-                processLogEntries(entries);
+                try {
+                    lock();
+                    processLogEntries(entries);
+                } finally {
+                    unlock();
+                }
             }
             
             cleanUp();
@@ -349,7 +358,7 @@ public class DiskLogger extends LifeCycleThread {
     /**
      * stops this thread gracefully
      */
-    public void shutdown() {
+    public void shutdown() throws InterruptedException {
         shutdown(true);
     }
     
@@ -358,9 +367,11 @@ public class DiskLogger extends LifeCycleThread {
      * on disk log. may cause inconsistency. use shutdown by default.
      * 
      * @param graceful - flag to determine, if shutdown should process gracefully, or not.
+     * @throws InterruptedException 
      */
-    public synchronized void shutdown(boolean graceful) {
+    public synchronized void shutdown(boolean graceful) throws InterruptedException {
                 
+        lock();
         this.graceful = graceful;
         quit = true;
         notifyAll();
@@ -371,6 +382,7 @@ public class DiskLogger extends LifeCycleThread {
                 pseudoSyncWait.notify();
             }
         }
+        unlock();
     }
     
     /**
@@ -439,62 +451,58 @@ public class DiskLogger extends LifeCycleThread {
      * @throws IOException 
      * @throws InterruptedException 
      */
-    private final void processLogEntries(List<LogEntry> entries) throws IOException, 
-            InterruptedException {
+    private final void processLogEntries(List<LogEntry> entries) throws IOException, InterruptedException {
 
-        lock();
-        try {
-            for (LogEntry le : entries) {
-                assert (le != null) : "Entry must not be null";
-                int viewID = currentViewId.get();
-                long seqNo = nextLogSequenceNo.getAndIncrement();
-    
-                assert(le.getLSN() == null || 
-                        (le.getLSN().getSequenceNo() == seqNo && 
-                                le.getLSN().getViewId() == viewID)) : 
-                    "LogEntry (" + le.getPayloadType() + ") had " +
-                    "unexpected LSN: " + le.getLSN() + "\n" + viewID +
-                    ":" + seqNo + " was expected instead.";
+        assert(hasLock());
+        
+        for (LogEntry le : entries) {
+            assert (le != null) : "Entry must not be null";
+            int viewID = currentViewId.get();
+            long seqNo = nextLogSequenceNo.getAndIncrement();
+
+            if (le.getLSN() != null &&
+               (le.getLSN().getSequenceNo() != seqNo || le.getLSN().getViewId() != viewID)) { 
                 
-                le.assignId(viewID, seqNo);
-                
-                ReusableBuffer buffer = null;
-                try {
-                    buffer = le.serialize(csumAlgo);
-                        
-                    Logging.logMessage(Logging.LEVEL_DEBUG, this, 
-                            "Writing entry LSN(%d:%d) with %d bytes payload [%s] to log. " +
-                            "[serialized %d bytes]", viewID, seqNo, 
-                            le.getPayload().remaining(), new String(le.getPayload().array()), 
-                            buffer.remaining());
-                    
-                    // write the LogEntry to the local disk
-                    channel.write(buffer.getBuffer());
-                    
-                } finally {
-                    csumAlgo.reset();
-                    if (buffer != null) BufferPool.free(buffer);
-                }
+                throw new IOException("LogEntry (" + le.getPayloadType() + ") had unexpected LSN: " + le.getLSN() + 
+                        "\n" + viewID + ":" + seqNo + " was expected instead.");
             }
             
-            if (syncMode == SyncMode.FSYNC) {
-                channel.force(true);
-            } else if (this.syncMode == SyncMode.FDATASYNC) {
-                channel.force(false);
+            le.assignId(viewID, seqNo);
+            
+            ReusableBuffer buffer = null;
+            try {
+                buffer = le.serialize(csumAlgo);
+                    
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                        "Writing entry LSN(%d:%d) with %d bytes payload [%s] to log. " +
+                        "[serialized %d bytes]", viewID, seqNo, 
+                        le.getPayload().remaining(), new String(le.getPayload().array()), 
+                        buffer.remaining());
+                
+                // write the LogEntry to the local disk
+                channel.write(buffer.getBuffer());
+                
+            } finally {
+                csumAlgo.reset();
+                if (buffer != null) BufferPool.free(buffer);
             }
-            for (LogEntry le : entries) { 
-                le.free();
-                le.getListener().synced(le.getLSN()); 
-            }  
-            entries.clear();
-    
-            if (pseudoSyncWait > 0) {
-                synchronized (pseudoSyncWait) {
-                    pseudoSyncWait.wait(pseudoSyncWait);
-                }
+        }
+        
+        if (syncMode == SyncMode.FSYNC) {
+            channel.force(true);
+        } else if (this.syncMode == SyncMode.FDATASYNC) {
+            channel.force(false);
+        }
+        for (LogEntry le : entries) { 
+            le.free();
+            le.getListener().synced(le.getLSN()); 
+        }  
+        entries.clear();
+
+        if (pseudoSyncWait > 0) {
+            synchronized (pseudoSyncWait) {
+                pseudoSyncWait.wait(pseudoSyncWait);
             }
-        } finally {
-            unlock();
         }
     }
     

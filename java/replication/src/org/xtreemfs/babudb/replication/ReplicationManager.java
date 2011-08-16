@@ -38,6 +38,8 @@ public class ReplicationManager implements LifeCycleListener {
     private final TopLayer          controlLayer;
     private final ServiceLayer      serviceLayer;
     private final TransmissionLayer transmissionLayer;
+    
+    private final boolean           redirectIsVisible;
         
     /**
      * <p>For setting up the {@link BabuDB} with replication. 
@@ -49,6 +51,7 @@ public class ReplicationManager implements LifeCycleListener {
      */
     public ReplicationManager(BabuDBInternal dbs, ReplicationConfig conf) throws Exception {
         
+        redirectIsVisible = conf.redirectIsVisible();
         TimeSync.initializeLocal(conf.getTimeSyncInterval(), 
                                  conf.getLocalTimeRenew()).setLifeCycleListener(this);
 
@@ -61,7 +64,6 @@ public class ReplicationManager implements LifeCycleListener {
         transmissionLayer.setLifeCycleListener(this);
         serviceLayer.setLifeCycleListener(this);
         controlLayer.setLifeCycleListener(this);
-        
     }
     
 /*
@@ -92,6 +94,13 @@ public class ReplicationManager implements LifeCycleListener {
      */
     public InetSocketAddress getMaster() throws InterruptedException {
         return controlLayer.getLeaseHolder(0);
+    }
+    
+    /**
+     * @return true if redirects shall throw BabuDBExceptions (REDIRECT) or not.
+     */
+    public final boolean redirectIsVisible() {
+        return redirectIsVisible;
     }
     
     /**

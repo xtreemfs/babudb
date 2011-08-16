@@ -323,12 +323,8 @@ public class ReplicationClientAdapter extends ReplicationServiceClient
             org.xtreemfs.babudb.lsmdb.LSN start, 
             org.xtreemfs.babudb.lsmdb.LSN end) {
         
-        LSN s = LSN.newBuilder().setViewId(start.getViewId())
-        .setSequenceNo(start.getSequenceNo())
-        .build();
-        LSN f = LSN.newBuilder().setViewId(end.getViewId())
-                .setSequenceNo(end.getSequenceNo())
-                .build();
+        LSN s = LSN.newBuilder().setViewId(start.getViewId()).setSequenceNo(start.getSequenceNo()).build();
+        LSN f = LSN.newBuilder().setViewId(end.getViewId()).setSequenceNo(end.getSequenceNo()).build();
 
         try {
 

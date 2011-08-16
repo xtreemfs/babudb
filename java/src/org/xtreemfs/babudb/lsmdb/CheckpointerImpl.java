@@ -60,6 +60,7 @@ public class CheckpointerImpl extends CheckpointerInternal {
     private volatile boolean                   quit;
         
     private final AtomicBoolean                suspended = new AtomicBoolean(false);
+    private final Object                       suspensionLock = new Object();
     
     private DiskLogger                         logger;
     
@@ -107,26 +108,22 @@ public class CheckpointerImpl extends CheckpointerInternal {
     }
     
     @Override
-    public void init(DiskLogger logger, int checkInterval, long maxLogLength) 
-            throws BabuDBException {
+    public void init(DiskLogger logger, int checkInterval, long maxLogLength) throws BabuDBException {
         
         this.logger = logger;
         this.checkInterval = 1000L * checkInterval;
         this.maxLogLength = maxLogLength;
 
-        synchronized (this) {
-            synchronized (suspended) {
-                if (!suspended.get() && !quit) {
-                    start();
-                    try {
-                        waitForStartup();
-                    } catch (Exception e) {
-                        throw new BabuDBException(ErrorCode.INTERNAL_ERROR, e.getMessage(), e);
-                    }
-                } else {
-                    suspended.set(false);
-                    notify();
-                }
+        if (!suspended.compareAndSet(true, false) && !quit) {
+            start();
+            try {
+                waitForStartup();
+            } catch (Exception e) {
+                throw new BabuDBException(ErrorCode.INTERNAL_ERROR, e.getMessage(), e);
+            }
+        } else {
+            synchronized (suspensionLock) {
+                suspensionLock.notify();
             }
         }
     }
@@ -135,13 +132,15 @@ public class CheckpointerImpl extends CheckpointerInternal {
      * @see org.xtreemfs.babudb.api.dev.CheckpointerInternal#suspendCheckpointing()
      */
     @Override
-    public synchronized void suspendCheckpointing() throws InterruptedException {
+    public void suspendCheckpointing() throws InterruptedException {
         
         synchronized (suspended) {
-            if (!suspended.getAndSet(true)) {
-                notify();
+            if (!suspended.compareAndSet(false, true)) {
+                synchronized (this) {
+                    notify();
+                }
                 suspended.wait();
-            }
+            } 
         }
     }
     
@@ -344,37 +343,33 @@ public class CheckpointerImpl extends CheckpointerInternal {
         boolean manualCheckpoint = false;
         notifyStarted();
         while (!quit) {
-            synchronized (this) {
-                if (!forceCheckpoint) {
-                    try {
+            try {
+                synchronized (this) {
+                    if (!forceCheckpoint) {
                         wait(checkInterval);
-                    } catch (InterruptedException ex) {
-                        if (quit) break;
                     }
+                    manualCheckpoint = forceCheckpoint;
+                    forceCheckpoint = false;
                 }
-                manualCheckpoint = forceCheckpoint;
-                forceCheckpoint = false;
-                
+            
                 // this block allows to suspend the Checkpointer from taking
                 // checkpoints until it has been re-init()
                 synchronized (suspended) {
                     if (suspended.get()) {
-                        suspended.notify();
-                        try {
-                            synchronized (checkpointComplete) {
-                                if (checkpointComplete.compareAndSet(false, true)) {
-                                    checkpointComplete.notify();
-                                }
+                        // clean-up checkpoint-request
+                        synchronized (checkpointComplete) {
+                            if (checkpointComplete.compareAndSet(false, true)) {
+                                checkpointComplete.notify();
                             }
-                            wait();
-                        } catch (InterruptedException ex) {
-                            if (quit) break;
                         }
+                        // lock
+                        suspended.notify();
+                        synchronized (suspensionLock) {
+                            suspensionLock.wait();
+                        }
+                        continue;
                     }
                 }
-            }
-            
-            try {
                 
                 final long lfsize = logger.getLogFileSize();
                 if (manualCheckpoint || lfsize > maxLogLength) {

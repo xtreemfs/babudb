@@ -56,13 +56,12 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
      *          java.net.InetSocketAddress, org.xtreemfs.foundation.buffer.ReusableBuffer)
      */
     @Override
-    public ClientResponseFuture<Object, Database> makePersistent(InetSocketAddress master, 
-            ReusableBuffer data) {
+    public ClientResponseFuture<Object, Database> makePersistent(InetSocketAddress master, ReusableBuffer data) {
+        
         assert (master != null);
         
         try {
-            RPCResponse<Database> result = makePersistent(master, 
-                    AUTHENTICATION, USER_CREDENTIALS, data);
+            RPCResponse<Database> result = makePersistent(master, AUTHENTICATION, USER_CREDENTIALS, data);
             
             return new ClientResponseFuture<Object, Database>(result) {
                 
@@ -76,8 +75,8 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
                     
                     if (response.getDatabaseId() > -1) {
                         return new Object[] { 
-                                new DatabaseProxy(response.getDatabaseName(), 
-                                                  response.getDatabaseId(), dbMan) };
+                                new DatabaseProxy(response.getDatabaseName(), response.getDatabaseId(), dbMan) 
+                                };
                     } else {
                         return new Object[]{};
                     }
@@ -100,14 +99,12 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
      *          java.net.InetSocketAddress)
      */
     @Override
-    public ClientResponseFuture<Integer, Database> getDatabase(String dbName, 
-            InetSocketAddress master) {
+    public ClientResponseFuture<Integer, Database> getDatabase(String dbName, InetSocketAddress master) {
  
         assert (master != null);
         
         try {
-            RPCResponse<Database> result = getDatabaseByName(master, AUTHENTICATION, 
-                    USER_CREDENTIALS, dbName);
+            RPCResponse<Database> result = getDatabaseByName(master, AUTHENTICATION, USER_CREDENTIALS, dbName);
             
             return new ClientResponseFuture<Integer, Database>(result) {              
 
@@ -138,8 +135,7 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
      *          java.net.InetSocketAddress)
      */
     @Override
-    public ClientResponseFuture<Map<String, Integer>, Databases> getDatabases(
-            InetSocketAddress master) {
+    public ClientResponseFuture<Map<String, Integer>, Databases> getDatabases(InetSocketAddress master) {
         
         assert (master != null);
         
@@ -224,8 +220,7 @@ public class ProxyAccessClientAdapter extends RemoteAccessServiceClient
      */
     @Override
     public ClientResponseFuture<ResultSet<byte[], byte[]>, EntryMap> 
-            prefixLookup(String dbName, int indexId, ReusableBuffer key, 
-                    InetSocketAddress master) {
+            prefixLookup(String dbName, int indexId, ReusableBuffer key, InetSocketAddress master) {
 
         assert (master != null);
         

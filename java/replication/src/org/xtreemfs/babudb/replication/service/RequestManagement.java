@@ -10,7 +10,7 @@ package org.xtreemfs.babudb.replication.service;
 import java.net.InetSocketAddress;
 
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.LockableService.ServiceLockedException;
+import org.xtreemfs.babudb.replication.control.ControlLayerInterface;
 import org.xtreemfs.babudb.replication.service.ReplicationStage.BusyServerException;
 
 /**
@@ -22,17 +22,13 @@ import org.xtreemfs.babudb.replication.service.ReplicationStage.BusyServerExcept
 public interface RequestManagement {
 
     /**
-     * send an request for a stage operation
+     * Method to delegate dispatched replicate-requests from the replication logic itself.
      *
-     * @param rq
-     *            the request
-     * @param the
-     *            method in the stage to execute
+     * @param rq - the request
      *            
-     * @throws BusyServerException
-     * @throws ServiceLockedException;
+     * @throws BusyServerException if queue-size has reached MAX_Q.
      */
-    public void enqueueOperation(Object[] args) throws BusyServerException, ServiceLockedException;
+    public void enqueueOperation(Object[] rq) throws BusyServerException;
 
     /**
      * This method is used to synchronize a server with the master to establish a global stable 
@@ -40,10 +36,11 @@ public interface RequestManagement {
      * 
      * @param lastOnView
      * @param master
+     * @param control
      * 
      * @throws InterruptedException if creation of a stable state was interrupted by shutdown 
      *                              or crash.
      */
-    public void createStableState(LSN lastOnView, InetSocketAddress master) 
+    public void createStableState(LSN lastOnView, InetSocketAddress master, ControlLayerInterface control) 
             throws InterruptedException;
 }

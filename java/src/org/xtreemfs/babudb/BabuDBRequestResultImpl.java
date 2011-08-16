@@ -63,6 +63,9 @@ public class BabuDBRequestResultImpl<T> implements DatabaseRequestResult<T> {
      * @param respMan - thread to handle request listener.
      */
     public BabuDBRequestResultImpl(Object context, ResponseManagerInternal respMan) {
+        
+        assert (respMan != null);
+        
         this.context = context;
         this.respMan = respMan;
     }

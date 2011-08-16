@@ -62,17 +62,15 @@ public class BabuDBInterface {
      * @param entry - {@link LogEntry}.
      * @param listener - awaiting the result for this insert.
      *
-     * @throws BabuDBException 
+     * @throws BabuDBException if appending failed.
      */
-    public void appendToLocalPersistenceManager(LogEntry entry, 
-            DatabaseRequestListener<Object> listener) 
+    public void appendToLocalPersistenceManager(LogEntry entry, DatabaseRequestListener<Object> listener) 
             throws BabuDBException {
         
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "Appending entry to logger: %s", 
                 new String(entry.getPayload().array()));
         
-        BabuDBRequestResultImpl<Object> future = 
-            new BabuDBRequestResultImpl<Object>(dbs.getResponseManager());
+        BabuDBRequestResultImpl<Object> future = new BabuDBRequestResultImpl<Object>(dbs.getResponseManager());
         localTxnMan.makePersistent(entry.getPayload(), future);
         future.registerListener(listener);
     }

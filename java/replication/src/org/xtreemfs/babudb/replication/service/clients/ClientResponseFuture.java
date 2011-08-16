@@ -66,6 +66,8 @@ public abstract class ClientResponseFuture<T,M extends Message> {
                         } finally {
                             rp.freeBuffers();
                         }
+                    } else {
+                        assert (false) : "RPC infrastructure has been corrupted! A request has been answered twice!";
                     }
                     
                     finished.notifyAll();

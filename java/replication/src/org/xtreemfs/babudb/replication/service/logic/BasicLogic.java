@@ -13,14 +13,13 @@ import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.service.ReplicationStage;
-import org.xtreemfs.babudb.replication.service.ReplicationStage.Range;
+import org.xtreemfs.babudb.replication.BabuDBInterface;
+import org.xtreemfs.babudb.replication.service.Pacemaker;
 import org.xtreemfs.babudb.replication.service.SlaveView;
 import org.xtreemfs.babudb.replication.service.StageRequest;
+import org.xtreemfs.babudb.replication.service.ReplicationStage.StageCondition;
 import org.xtreemfs.babudb.replication.transmission.FileIOInterface;
 import org.xtreemfs.foundation.logging.Logging;
-
-import static org.xtreemfs.babudb.replication.service.logic.LogicID.*;
 
 /**
  * <p>Performs the basic replication operations on the DBS.</p>
@@ -30,91 +29,104 @@ import static org.xtreemfs.babudb.replication.service.logic.LogicID.*;
  */
 
 public class BasicLogic extends Logic {
-        
-    /** LSN of the last entry asynchronously inserted */
-    private final AtomicReference<LSN>          lastAsyncInserted = new AtomicReference<LSN>(null);
     
-    /**
-     * @param stage
+    /** Interface to the Heartbeat to update the LSN on successful replication of a LogEntry */
+    private final Pacemaker pacemaker;
+    
+    /** 
+     * @param babuDB
      * @param slaveView
      * @param fileIO
-     * @param q
+     * @param lastOnView
+     * @param pacemaker
      */
-    public BasicLogic(ReplicationStage stage, SlaveView slaveView, 
-            FileIOInterface fileIO) {
-        super(stage, slaveView, fileIO);
+    public BasicLogic(BabuDBInterface babuDB, SlaveView slaveView, FileIOInterface fileIO, 
+            AtomicReference<LSN> lastOnView, Pacemaker pacemaker) {
+        super(babuDB, slaveView, fileIO, lastOnView);
+        
+        this.pacemaker = pacemaker;
     }
     
-    /*
-     * (non-Javadoc)
+    /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.stages.logic.Logic#getId()
      */
     @Override
     public LogicID getId() {
-        return BASIC;
+        return LogicID.BASIC;
     }
 
-    /*
-     * (non-Javadoc)
-     * @see java.lang.Runnable#run()
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.service.logic.Logic#
+     *      run(org.xtreemfs.babudb.replication.service.StageRequest)
      */
     @Override
-    public void run() throws InterruptedException {     
-        assert (stage.missing == null) : "PROGRAMATICAL ERROR!";
+    public StageCondition run(final StageRequest rq) {
+                        
+        final LSN lsn = rq.getLSN();
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "Replicate requested: %s", lsn.toString());
         
-        final StageRequest op = stage.getQueue().take();
-        
-        // filter dummy stage request
-        if (op == StageRequest.NOOP_REQUEST) return;
-        
-        final LSN lsn = op.getLSN();
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "Replicate requested: %s", 
-                lsn.toString());
-        
-        LSN lastAsync = lastAsyncInserted.get();
-        LSN actual = stage.getBabuDB().getState();
-        actual = (lastAsync == null || actual.compareTo(lastAsync) >= 0) ? actual : lastAsync;
+        LSN actual = getState();
         LSN expected = new LSN(actual.getViewId(), actual.getSequenceNo() + 1L);
         
         // check the LSN of the logEntry to write
         if (lsn.compareTo(actual) <= 0) {
             // entry was already inserted
-            stage.finalizeRequest(op);
-            return;
+            rq.free();
+            Logging.logMessage(Logging.LEVEL_INFO, this, "BASIC: Entry LSN(%s) dropped @LSN(%s).", 
+                    lsn.toString(), actual.toString()); // XXX
+            return StageCondition.DEFAULT;
         } else if(!lsn.equals(expected)){
+            Logging.logMessage(Logging.LEVEL_INFO, this, "BASIC: Entries until LSN(%s) missing @LSN(%s).", 
+                    lsn.toString(), actual.toString()); // XXX
             // we missed one or more entries
-            stage.getQueue().add(op);
-            stage.missing = new Range(actual, lsn);
-            stage.setLogic(REQUEST, "We missed some LogEntries from " +
-                    actual.toString() + " to "+ lsn.toString() + ".");
-            return;
+            return new StageCondition(lsn);
         } 
         
         // try to finish the request
         try {     
+            
             // perform the operation
-            stage.getBabuDB().appendToLocalPersistenceManager(((LogEntry) op.getArgs()[1]).clone(), 
+            babuDB.appendToLocalPersistenceManager(((LogEntry) rq.getArgs()[1]).clone(), 
                     new DatabaseRequestListener<Object>() {
                         
                         @Override
                         public void finished(Object result, Object context) {
-                            stage.finalizeRequest(op, lsn);
+                            pacemaker.updateLSN(lsn);
+                            updateLastAcknowledgedEntry(lsn);
+                            rq.free();
                         }
                         
                         @Override
                         public void failed(BabuDBException error, Object context) {
-                            lastAsyncInserted.set(null);
-                            stage.finalizeRequest(op);
-                            Logging.logError(Logging.LEVEL_ERROR, stage, error);
+                            Logging.logMessage(Logging.LEVEL_ALERT, this, 
+                                    "Log might be corrupted! A restart may be required!");
+                            Logging.logError(Logging.LEVEL_ERROR, this, error);
+                            
+                            updateLastAsyncInsertedEntry(null);
+                            rq.free();
+                            // log might get corrupted if this error occurs. a restart may be required.
                         }
                     });
-            lastAsyncInserted.set(lsn);
+            updateLastAsyncInsertedEntry(lsn);
             
+            // replication was successful
+            Logging.logMessage(Logging.LEVEL_INFO, this, "BASIC: Entry LSN(%s) replicated.", lsn.toString()); // XXX
+            return StageCondition.DEFAULT;
         } catch (BabuDBException e) {
             
-            // the insert failed due a DB error
-            stage.getQueue().add(op);
-            stage.setLogic(LOAD, e.getMessage());            
+            // switch to LOAD
+            Logging.logMessage(Logging.LEVEL_INFO, this, "BASIC: Entry LSN(%s) replication failed: LOAD required.", 
+                    lsn.toString()); // XXX
+            return StageCondition.LOAD_LOOPHOLE;           
         }
+    }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.service.logic.Logic#
+     *      run(org.xtreemfs.babudb.replication.service.ReplicationStage.StageCondition)
+     */
+    @Override
+    public StageCondition run(StageCondition condition) {
+        throw new UnsupportedOperationException();
     }
 }
