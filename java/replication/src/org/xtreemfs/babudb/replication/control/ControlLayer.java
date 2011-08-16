@@ -21,7 +21,6 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.LockableService;
 import org.xtreemfs.babudb.replication.TopLayer;
 import org.xtreemfs.babudb.replication.service.ServiceToControlInterface;
-import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestControl;
 import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.LifeCycleThread;
 import org.xtreemfs.foundation.buffer.ASCIIString;
@@ -66,16 +65,8 @@ public class ControlLayer extends TopLayer {
     private final FailoverTaskRunner        failoverTaskRunner;
     
     /** services that have to be locked during failover */
-    private LockableService                 userInterface;
     private LockableService                 replicationInterface;
-    private RequestControl                  proxyRequestCtrl;
-    
-    /** 
-     * to ensure services not to be locked after unlock this flag tracks the currently registered 
-     * master 
-     */
-    private AtomicReference<InetSocketAddress> masterLock = new AtomicReference<InetSocketAddress>(null);
-    
+        
     private final AtomicBoolean initialFailoverObserved = new AtomicBoolean(false);
     
     public ControlLayer(ServiceToControlInterface serviceLayer, ReplicationConfig config) 
@@ -124,23 +115,11 @@ public class ControlLayer extends TopLayer {
  */
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.TopLayer#lockAll()
+     * @see org.xtreemfs.babudb.replication.control.ControlLayerInterface#lockReplication()
      */
     @Override
-    public void lockAll() throws InterruptedException {
-        proxyRequestCtrl.enableQueuing();
-        userInterface.lock();
+    public void lockReplication() throws InterruptedException {
         replicationInterface.lock();
-        serviceInterface.reset();
-    }
-    
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.TopLayer#unlockUser()
-     */
-    @Override
-    public void unlockUser() {
-        userInterface.unlock();
-        proxyRequestCtrl.processQueue();
     }
     
     /* (non-Javadoc)
@@ -149,14 +128,6 @@ public class ControlLayer extends TopLayer {
     @Override
     public void unlockReplication() {
         replicationInterface.unlock();
-    }
-    
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.control.ControlLayerInterface#notifySuccessfulFailover(java.net.InetSocketAddress)
-     */
-    @Override
-    public void notifyForSuccessfulFailover(InetSocketAddress master) {
-        masterLock.set(master);
     }
     
     /* (non-Javadoc)
@@ -205,7 +176,7 @@ public class ControlLayer extends TopLayer {
                 initialFailoverObserved.wait();
                 
                 if (!initialFailoverObserved.get()) {
-                    throw new InterruptedException();
+                    throw new InterruptedException("Waiting for the initial failover was interrupted.");
                 }
             }
         }
@@ -276,15 +247,6 @@ public class ControlLayer extends TopLayer {
     public void receive(FleaseMessage message) {
         fleaseStage.receiveMessage(message);
     }
-
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.TopLayer#registerUserInterface(
-     *          org.xtreemfs.babudb.replication.LockableService)
-     */
-    @Override
-    public void registerUserInterface(LockableService service) {
-        userInterface = service;
-    }
     
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.TopLayer#registerReplicationInterface(
@@ -295,14 +257,6 @@ public class ControlLayer extends TopLayer {
         replicationInterface = service;
     }
     
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.control.ControlLayerInterface#registerProxyRequestControl(org.xtreemfs.babudb.replication.transmission.RequestControl)
-     */
-    @Override
-    public void registerProxyRequestControl(RequestControl control) {
-        proxyRequestCtrl = control;
-    }
-
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.control.FleaseEventListener#updateLeaseHolder(
      *          java.net.InetSocketAddress)
@@ -343,6 +297,8 @@ public class ControlLayer extends TopLayer {
             new AtomicReference<InetSocketAddress>(null);
         
         private boolean quit = true;
+        
+        private InetSocketAddress currentLeaseHolder = null;
         
         private FailoverTaskRunner() {
             super("FailOverT@" + thisAddress.getPort());
@@ -403,20 +359,30 @@ public class ControlLayer extends TopLayer {
                     }
                     
                     try {
-                        
-                        prepareFailover(newLeaseHolder);
-                        
-                        if (thisAddress.equals(newLeaseHolder)) {
-                            becomeMaster();
-                        } else {
-                            becomeSlave(newLeaseHolder);
+                                                
+                        // only do a failover if one is required
+                        if (!newLeaseHolder.equals(currentLeaseHolder)) {
+                            
+                            // switch master -> slave
+                            if (thisAddress.equals(currentLeaseHolder)) {
+                                becomeSlave(newLeaseHolder);
+                            // switch slave -> master
+                            } else if (thisAddress.equals(newLeaseHolder)) {
+                                becomeMaster();
+                            // switch slave -> slave (stay slave)
+                            } else {
+                                /* we got nothing to do */
+                            }
                         }
                         
-                        synchronized (initialFailoverObserved) {
-                            if (initialFailoverObserved.compareAndSet(false, true)) {
+                        // update current leaseHolder
+                        if (currentLeaseHolder == null) {
+                            synchronized (initialFailoverObserved) {
+                                initialFailoverObserved.set(true);
                                 initialFailoverObserved.notify();
                             }
                         }
+                        currentLeaseHolder = newLeaseHolder;
                     } catch (Exception e) {
                         if (!quit) {
                             Logging.logMessage(Logging.LEVEL_WARN, this, "Processing a failover " +
@@ -436,42 +402,32 @@ public class ControlLayer extends TopLayer {
         }
         
         /**
-         * Causes a solid state of BabuDB to prepare the failover. Therefore all local executions 
-         * will be stopped. By checking the masterLock this method also ensures that BabuDB will not
-         * be locked after unlock.
-         * 
-         * @param newLeaseholder
-         * @throws InterruptedException
-         */
-        private void prepareFailover(InetSocketAddress newLeaseholder) throws InterruptedException {
-            
-            InetSocketAddress mLock = masterLock.get();
-            
-            // we change the locally registered master
-            if (mLock != null && !newLeaseholder.equals(mLock) && thisAddress != mLock) {
-                lockAll();
-            }
-        }
-        
-        /**
          * This server has to become the new master.
          * 
          * @throws Exception
          */
         private void becomeMaster() throws Exception {
             
-            Logging.logMessage(Logging.LEVEL_INFO, this, "Becoming the replication master.");
-                  
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "Becoming the replication master.");
+            
+            final AtomicBoolean finished = new AtomicBoolean(false);
+            final AtomicReference<Exception> exception = new AtomicReference<Exception>(null);
+            
             // synchronize with other servers 
             serviceInterface.synchronize(new SyncListener() {
                 
                 @Override
                 public void synced(LSN lsn) {
+                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "Master failover succeeded @LSN(%s).", 
+                            lsn.toString());
                     
-                    notifyForSuccessfulFailover(thisAddress);
-                    unlockUser();
-                    
-                    Logging.logMessage(Logging.LEVEL_INFO, this, "Master failover succeeded.");
+                    synchronized (finished) {
+                        if (finished.compareAndSet(false, true)) {
+                            finished.notify();
+                        } else {
+                            assert(false);
+                        }
+                    } 
                 }
                 
                 @Override
@@ -480,11 +436,27 @@ public class ControlLayer extends TopLayer {
                     Logging.logMessage(Logging.LEVEL_WARN, this, 
                             "Master failover did not succeed! Reseting the local lease and " +
                             "waiting for a new impulse from FLease. Reason: %s", ex.getMessage());
+                    Logging.logError(Logging.LEVEL_DEBUG, this, ex);
                     
-                    leaseHolder.reset();
+                    synchronized (finished) {
+                        if (finished.compareAndSet(false, true)) {
+                            exception.set(ex);
+                            finished.notify();
+                        } else {
+                            assert(false);
+                        }
+                    }
                 }
             }, thisAddress.getPort());
             
+            synchronized (finished) {
+                while (!finished.get()) {
+                    finished.wait();
+                }
+                if (exception.get() != null) {
+                    throw exception.get();
+                }
+            }
             // if a new failover request arrives while synchronization is still waiting for a stable
             // state to be established (SyncListener), the listener will be marked as failed when
             // the new master address is set
@@ -498,6 +470,7 @@ public class ControlLayer extends TopLayer {
          */
         private void becomeSlave(InetSocketAddress masterAddress) throws InterruptedException {
             
+            serviceInterface.reset();
             Logging.logMessage(Logging.LEVEL_INFO, this, "Becoming a slave for %s.", 
                     masterAddress.toString());
             

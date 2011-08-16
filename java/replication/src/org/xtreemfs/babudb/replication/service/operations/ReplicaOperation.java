@@ -99,8 +99,8 @@ public class ReplicaOperation extends Operation {
         // enhancement to prevent slaves from loading the DB from the master unnecessarily
         if (start.equals(lastOnView.get())) {
             
-            Logging.logMessage(Logging.LEVEL_INFO, this, 
-                   "REQUEST answer is empty (there has been a failover only)."); // XXX
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                   "REQUEST answer is empty (there has been a failover only).");
             
             rq.sendSuccess(result.build());
             return;  
@@ -122,9 +122,9 @@ public class ReplicaOperation extends Operation {
                 try {
                     it = fileIO.getLogEntryIterator(firstEntry);
                 } catch (LogEntryException exc) {
-                    Logging.logMessage(Logging.LEVEL_INFO, this, "LogEntryIterator for LSN(%s) is unavailable.", 
-                            firstEntry.toString()); //XXX
-                    Logging.logError(Logging.LEVEL_INFO, this, exc); //XXX
+                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "LogEntryIterator for LSN(%s) is unavailable.", 
+                            firstEntry.toString()); 
+                    Logging.logError(Logging.LEVEL_DEBUG, this, exc); 
                     if (resultPayLoad != null) BufferPool.free(resultPayLoad);
                     rq.sendSuccess(result.setErrorCode(ErrorCode.LOG_UNAVAILABLE).build());
                     return;
@@ -186,13 +186,13 @@ public class ReplicaOperation extends Operation {
                 
                 if (result.getLogEntriesCount() > 0) {
                     // send the response, if the requested log entries are found
-                    Logging.logMessage(Logging.LEVEL_INFO, this, "REQUEST: returning %d log-entries to %s.", 
-                            result.getLogEntriesCount(), rq.getSenderAddress().toString()); //XXX
+                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "REQUEST: returning %d log-entries to %s.", 
+                            result.getLogEntriesCount(), rq.getSenderAddress().toString()); 
                     
                     resultPayLoad.flip();
                     rq.sendSuccess(result.build(), resultPayLoad);
                 } else {
-                    Logging.logMessage(Logging.LEVEL_INFO, this, "No logentries could have been retrieved."); // XXX
+                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "No logentries could have been retrieved.");
                     rq.sendSuccess(result.setErrorCode(ErrorCode.LOG_UNAVAILABLE).build());
                 }
             } catch (Exception e) {

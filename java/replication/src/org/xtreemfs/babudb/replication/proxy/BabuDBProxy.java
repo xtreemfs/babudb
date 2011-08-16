@@ -115,11 +115,10 @@ public class BabuDBProxy implements BabuDBInternal {
      */
     @Override
     public void init(StaticInitialization staticInit) throws BabuDBException {
-        localBabuDB.init(staticInit);
-        localBabuDB.replaceTransactionManager(txnManProxy);
-        
         try {
-            replMan.initialize(txnManProxy);
+            localBabuDB.init(staticInit);
+            localBabuDB.replaceTransactionManager(txnManProxy);
+            replMan.init();
         } catch (InterruptedException e) {
             throw new BabuDBException(ErrorCode.INTERRUPTED, e.getMessage());
         }

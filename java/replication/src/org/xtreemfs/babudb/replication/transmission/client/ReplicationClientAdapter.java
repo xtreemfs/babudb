@@ -393,10 +393,14 @@ public class ReplicationClientAdapter extends ReplicationServiceClient
                 public ReusableBuffer resolve(ErrorCodeResponse response, ReusableBuffer data)
                         throws ErrorCodeException, IOException {
                     
-                    if (response.getErrorCode() != 0) {
-                        throw new ErrorCodeException(response.getErrorCode());
-                    }                     
-                    return data.createViewBuffer();
+                    try {
+                        if (response.getErrorCode() != 0) {
+                            throw new ErrorCodeException(response.getErrorCode());
+                        }                     
+                        return data.createViewBuffer();
+                    } finally {
+                        if (data != null) BufferPool.free(data);
+                    }
                 }
             };
         } catch (final IOException e) {

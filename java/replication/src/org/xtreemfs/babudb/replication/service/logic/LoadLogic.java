@@ -88,9 +88,9 @@ public class LoadLogic extends Logic {
         try {
             result = master.load(actual).get();  
         } catch (Exception e) {
-            Logging.logMessage(Logging.LEVEL_INFO, this, "LOAD: metadata could not be retrieved from Master (%s).", 
-                    master.toString()); // XXX
-            Logging.logError(Logging.LEVEL_INFO, this, e); // XXX
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "LOAD: metadata could not be retrieved from Master (%s).", 
+                    master.toString()); 
+            Logging.logError(Logging.LEVEL_DEBUG, this, e);
             
             // failure on transmission -> retry
             return condition;
@@ -105,7 +105,7 @@ public class LoadLogic extends Logic {
                 lov = babuDB.checkpoint();
                 lastOnView.set(lov);
                 
-                Logging.logMessage(Logging.LEVEL_INFO, this, "LOAD: Logfile switched at LSN %s.", lov.toString()); // XXX
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, "LOAD: Logfile switched at LSN %s.", lov.toString());
                 
                 return finish(until);
             } catch (BabuDBException e) {
@@ -150,8 +150,8 @@ public class LoadLogic extends Logic {
                 if (lsn == null) {
                     lsn = LSMDatabase.getSnapshotLSNbyFilename(parentName);
                 } else if (!lsn.equals(LSMDatabase.getSnapshotLSNbyFilename(parentName))) {
-                    Logging.logMessage(Logging.LEVEL_INFO, this, "LOAD: Indexfiles had ambiguous LSNs: %s", 
-                            "LOAD will be retried."); //XXX
+                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "LOAD: Indexfiles had ambiguous LSNs: %s", 
+                            "LOAD will be retried.");
                     return condition;
                 }
             }
@@ -159,7 +159,7 @@ public class LoadLogic extends Logic {
             
             // if we got an empty file, that cannot be right, so try again
             if (!(fileSize > 0L)) {
-                Logging.logMessage(Logging.LEVEL_INFO, this, "LOAD: Empty file received -> retry."); // XXX
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, "LOAD: Empty file received -> retry.");
                 return condition;
             }
             
@@ -194,15 +194,15 @@ public class LoadLogic extends Logic {
                                 if (openChunks.get() < 0) throw new IOException();
                                 
                                 if (buffer.remaining() == 0){
-                                    Logging.logMessage(Logging.LEVEL_ERROR, this, 
-                                        "LOAD: CHUNK ERROR: Empty buffer received!"); // XXX
+                                    Logging.logMessage(Logging.LEVEL_WARN, this, 
+                                        "LOAD: CHUNK ERROR: Empty buffer received!"); 
                                     
                                     throw new IOException("CHUNK ERROR: Empty buffer received!");
                                 }
                                 // insert the file input
                                 File f = fileIO.getFile(fileName);
-                                Logging.logMessage(Logging.LEVEL_INFO, this, 
-                                        "LOAD: SAVING %s to %s.", fileName, f.getPath()); //XXX
+                                Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                                        "LOAD: SAVING %s to %s.", fileName, f.getPath());
                                 
                                 assert (f.exists()) : "File '" + fileName + 
                                         "' was not created properly.";
@@ -210,9 +210,9 @@ public class LoadLogic extends Logic {
                                 fChannel.write(buffer.getBuffer(), pos1);
                             } catch (IOException e) {
                                 
-                                Logging.logMessage(Logging.LEVEL_ERROR, this, 
+                                Logging.logMessage(Logging.LEVEL_WARN, this, 
                                         "LOAD: Chunk request (%s,%d,%d) failed: %s", 
-                                        fileName, pos1, size, e.getMessage()); //XXX
+                                        fileName, pos1, size, e.getMessage());
                                 
                                 openChunks.set(-1);
                                 openChunks.notify();
@@ -226,7 +226,7 @@ public class LoadLogic extends Logic {
                                         
                                     }
                                 }
-                                if (buffer!=null) BufferPool.free(buffer);
+                                if (buffer != null) BufferPool.free(buffer);
                             }
                         
                             // notify, if the last chunk was inserted
@@ -238,13 +238,13 @@ public class LoadLogic extends Logic {
                     public void requestFailed(Exception e) {
                         if (e instanceof ErrorCodeException) {
                             ErrorCodeException err = (ErrorCodeException) e;
-                            Logging.logMessage(Logging.LEVEL_ERROR, this,
+                            Logging.logMessage(Logging.LEVEL_WARN, this,
                                    "LOAD: Chunk request (%s,%d,%d) failed: (%d) %s", 
-                                   fileName, pos1, size, err.getCode()); // XXX
+                                   fileName, pos1, size, err.getCode());
                         } else {
-                            Logging.logMessage(Logging.LEVEL_ERROR, this, 
+                            Logging.logMessage(Logging.LEVEL_WARN, this, 
                                 "LOAD: Chunk request (%s,%d,%d) failed: %s", 
-                                fileName, pos1, size, e.getMessage()); //XXX
+                                fileName, pos1, size, e.getMessage());
                         }
                         
                         synchronized (openChunks) {
@@ -263,7 +263,7 @@ public class LoadLogic extends Logic {
 
         // some chunks failed -> retry
         if (openChunks.get() == -1) { 
-            Logging.logMessage(Logging.LEVEL_INFO, this, "LOAD: At least one chunk could not have been inserted."); // XXX
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "LOAD: At least one chunk could not have been inserted.");
             return condition;
         }
         

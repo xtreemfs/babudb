@@ -13,7 +13,6 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.xtreemfs.babudb.api.BabuDB;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
@@ -59,8 +58,8 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
     /** used for load balancing */
     private final int                 MAX_Q;
     
-    /** reentrantLock to serialize replication request procession */
-    private final ReentrantLock       lock = new ReentrantLock();
+    /** mechanism to determine whether BASIC replication is permitted or not */
+    private boolean                   locked = false;
     
     /** Table of different replication-behavior objects. */
     private final Map<LogicID, Logic> logics;
@@ -74,7 +73,7 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
     /** interface to {@link BabuDB} internals */
     private final BabuDBInterface     babudb;
     
-    private StageCondition            operatingCondition = StageCondition.DEFAULT;
+    private StageCondition            operatingCondition = DEFAULT;
     
     /**
      * @param slaveView
@@ -174,24 +173,28 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                     
                     // wait for requests to become available for processing
                     // or the operatingCondition to change
-                    if (operatingCondition.equals(DEFAULT) && q.isEmpty()) {
+                    while ((operatingCondition.equals(DEFAULT) && q.isEmpty()) || 
+                           (locked && operatingCondition.equals(LOCKED))) {
                         wait();
                     }
                                         
                     // get the processing information
                     currentCondition = operatingCondition;
-                    if (currentCondition.equals(DEFAULT)) {
+                    if (locked && currentCondition.equals(DEFAULT)) {
+                        currentCondition = LOCKED;
+                        Thread.sleep(RETRY_DELAY_MS);
+                    } else if (currentCondition.equals(DEFAULT)) {
                         rq = q.poll();
                         assert(rq != null);
                     }
                 }
-                lock.lock();
                 
                 currentCondition = process(currentCondition, rq);
                 
                 // thread-safety for the operatingCondition
                 synchronized (this) {
-                    if (!currentCondition.equals(DEFAULT) && currentCondition.equals(operatingCondition)) {
+                    if (!currentCondition.equals(LOCKED) && !currentCondition.equals(DEFAULT) && 
+                        currentCondition.equals(operatingCondition)) {
                         
                         // -> clean restart
                         if (++tries < ReplicationConfig.MAX_RETRIES) {
@@ -221,9 +224,7 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                     notifyCrashed(ie);
                     return;
                 } 
-            } finally {
-                if (hasLock()) unlock();
-            }
+            } 
         }
         
         clearQueue();
@@ -233,7 +234,9 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
     private StageCondition process(StageCondition current, StageRequest rq) throws InterruptedException {
         StageCondition result;
         
-        if (current.equals(DEFAULT)) {
+        if (current.equals(LOCKED)) {
+            result = current;
+        } else if (current.equals(DEFAULT)) {
             
             assert (rq != null);
             
@@ -301,7 +304,10 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
             }
             
             // necessary to wake up the mechanism
-            if (old.equals(DEFAULT) && q.isEmpty()) notify();
+            if ((old.equals(DEFAULT) && q.isEmpty()) || 
+                (locked && old.equals(LOCKED))) {
+                notify();
+            }
         }
     }
     
@@ -324,8 +330,6 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                     lastOnView.set(babudb.checkpoint());
                     pacemaker.updateLSN(babudb.getState());
                 }
-                control.notifyForSuccessfulFailover(master);
-                control.unlockUser();
             } catch (BabuDBException e) {
                 
                 
@@ -349,8 +353,6 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                         // always take a checkpoint
                         lastOnView.set(babudb.checkpoint());
                         pacemaker.updateLSN(babudb.getState());
-                        control.notifyForSuccessfulFailover(master);
-                        control.unlockUser();
                         
                     } catch (BabuDBException e) {
                         
@@ -380,20 +382,14 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
         }
     }
     
-    public boolean hasLock() {
-        return lock.isHeldByCurrentThread();
-    }
-    
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.replication.LockableService#lock()
      */
     @Override
-    public void lock() throws InterruptedException {
-        if (!hasLock()) {
-            lock.lock();
+    public synchronized void lock() throws InterruptedException {
+        if (!locked) {
+            locked = true;
             logics.get(BASIC).waitForSteadyState();
-            
-            // TODO it might be necessary to drop the replication queue
         }
     }
 
@@ -401,9 +397,14 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
      * @see org.xtreemfs.babudb.replication.LockableService#unlock()
      */
     @Override
-    public void unlock() {
-        assert (hasLock());
-        lock.unlock();
+    public synchronized void unlock() {
+        if (locked) {
+            locked = false;
+            if (operatingCondition.equals(LOCKED)) {
+                operatingCondition = DEFAULT;
+                notify();
+            }
+        }
     }
     
 /*
@@ -445,6 +446,7 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
         
         public final static StageCondition DEFAULT = new StageCondition(BASIC, null);
         public final static StageCondition LOAD_LOOPHOLE = new StageCondition(LOAD, null);
+        public final static StageCondition LOCKED = null;
         public final LSN end;
         public final LogicID logicID;
                 

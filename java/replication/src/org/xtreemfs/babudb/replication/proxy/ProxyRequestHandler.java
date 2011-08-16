@@ -62,9 +62,6 @@ public class ProxyRequestHandler extends RequestHandler {
         
         op = new RangeLookupReverseOperation(dbs);
         operations.put(op.getProcedureId(), op);
-        
-        // enable message queuing
-        enableQueuing();
     }
     
     /* (non-Javadoc)

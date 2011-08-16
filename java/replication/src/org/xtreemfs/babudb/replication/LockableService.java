@@ -15,11 +15,6 @@ package org.xtreemfs.babudb.replication;
  */
 public interface LockableService {
     
-    public final static class ServiceLockedException extends Exception {
-
-        private static final long serialVersionUID = -2079818427164355757L;       
-    }
-    
     /**
      * Ensures that the service is not used currently and may not be used throwing, 
      * until service is unlocked again. A steady state is assured.

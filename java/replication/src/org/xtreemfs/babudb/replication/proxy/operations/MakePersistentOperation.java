@@ -89,19 +89,15 @@ public class MakePersistentOperation extends Operation {
                 
                 @Override
                 public void failed(BabuDBException error, Object context) {
-                    Logging.logError(Logging.LEVEL_DEBUG, this, error);
-                                        
                     rq.sendSuccess(Database.newBuilder()
-                            .setErrorCode(ErrorCode.mapUserError(error.getErrorCode()))
+                            .setErrorCode(ErrorCode.mapUserError(error))
                             .setDatabaseId(-1)
                             .setDatabaseName("\0").build());
                 }
             });
         } catch (BabuDBException error) {
-            Logging.logError(Logging.LEVEL_DEBUG, this, error);
-            
             rq.sendSuccess(Database.newBuilder()
-                    .setErrorCode(ErrorCode.mapUserError(error.getErrorCode()))
+                    .setErrorCode(ErrorCode.mapUserError(error))
                     .setDatabaseId(-1)
                     .setDatabaseName("\0").build());
         } 

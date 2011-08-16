@@ -90,7 +90,8 @@ public class RequestLogic extends Logic {
             if (logEntries.length == 0) {
                 LSN lov = babuDB.checkpoint();
                 lastOnView.set(lov);
-                Logging.logMessage(Logging.LEVEL_INFO, this, "REQUEST: Recognized master failover @ LSN(%s).", lov.toString()); //XXX
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, "REQUEST: Recognized master failover @ LSN(%s).", 
+                        lov.toString());
                 return finish(until);
             }
             
@@ -150,16 +151,18 @@ public class RequestLogic extends Logic {
             if (count.get() == -1) {
                 throw new LogEntryException("At least one insert could not be proceeded.");
             }
-            Logging.logMessage(Logging.LEVEL_INFO, this, "REQUEST: Inserted %d logEntries.", logEntries.length); //XXX
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "REQUEST: Inserted %d logEntries.", logEntries.length); 
             return finish(until);
         } catch (ErrorCodeException ece) {
             if (ece.getCode() == ErrorCode.LOG_UNAVAILABLE) {
                 // LOAD
-                Logging.logMessage(Logging.LEVEL_INFO, this, "REQUEST: LogFile unavailable @Master(%s).", master.toString()); //XXX
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, "REQUEST: LogFile unavailable @Master(%s).", 
+                        master.toString());
                 return finish(until, true);
             } else {
                 // retry
-                Logging.logMessage(Logging.LEVEL_INFO, this, "REQUEST: Transmission to Master (%s) failed.", master.toString()); //XXX
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, "REQUEST: Transmission to Master (%s) failed.", 
+                        master.toString());
                 return condition;
             }
         } catch (BabuDBException be) {

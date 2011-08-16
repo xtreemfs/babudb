@@ -129,10 +129,8 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         // initialize request logic for 
         // handling BabuDB remote calls
         // ----------------------------------
-        ProxyRequestHandler rqCtrl = new ProxyRequestHandler(babuDB, 
-                config.getBabuDBConfig().getMaxQueueLength());
-        transmissionInterface.addRequestHandler(rqCtrl);
-        receiver.registerProxyRequestControl(rqCtrl);
+        transmissionInterface.addRequestHandler(new ProxyRequestHandler(babuDB, 
+                config.getBabuDBConfig().getMaxQueueLength()));
         
         // ----------------------------------
         // coin the dispatcher of the 

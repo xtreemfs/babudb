@@ -72,12 +72,12 @@ public class BasicLogic extends Logic {
         if (lsn.compareTo(actual) <= 0) {
             // entry was already inserted
             rq.free();
-            Logging.logMessage(Logging.LEVEL_INFO, this, "BASIC: Entry LSN(%s) dropped @LSN(%s).", 
-                    lsn.toString(), actual.toString()); // XXX
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "BASIC: Entry LSN(%s) dropped @LSN(%s).", 
+                    lsn.toString(), actual.toString());
             return StageCondition.DEFAULT;
         } else if(!lsn.equals(expected)){
-            Logging.logMessage(Logging.LEVEL_INFO, this, "BASIC: Entries until LSN(%s) missing @LSN(%s).", 
-                    lsn.toString(), actual.toString()); // XXX
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "BASIC: Entries until LSN(%s) missing @LSN(%s).", 
+                    lsn.toString(), actual.toString());
             // we missed one or more entries
             return new StageCondition(lsn);
         } 
@@ -110,13 +110,13 @@ public class BasicLogic extends Logic {
             updateLastAsyncInsertedEntry(lsn);
             
             // replication was successful
-            Logging.logMessage(Logging.LEVEL_INFO, this, "BASIC: Entry LSN(%s) replicated.", lsn.toString()); // XXX
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "BASIC: Entry LSN(%s) replicated.", lsn.toString()); 
             return StageCondition.DEFAULT;
         } catch (BabuDBException e) {
             
             // switch to LOAD
-            Logging.logMessage(Logging.LEVEL_INFO, this, "BASIC: Entry LSN(%s) replication failed: LOAD required.", 
-                    lsn.toString()); // XXX
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "BASIC: Entry LSN(%s) replication failed: LOAD required.", 
+                    lsn.toString());
             return StageCondition.LOAD_LOOPHOLE;           
         }
     }

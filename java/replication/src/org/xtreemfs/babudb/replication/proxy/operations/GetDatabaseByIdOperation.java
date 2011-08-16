@@ -71,7 +71,7 @@ public class GetDatabaseByIdOperation extends Operation {
                     .build());
         } catch (BabuDBException e) {
             rq.sendSuccess(Database.newBuilder().setErrorCode(
-                    ErrorCode.mapUserError(e.getErrorCode())).setDatabaseId(dbId)
+                    ErrorCode.mapUserError(e)).setDatabaseId(dbId)
                     .setDatabaseName("\0").build());
         }
     }

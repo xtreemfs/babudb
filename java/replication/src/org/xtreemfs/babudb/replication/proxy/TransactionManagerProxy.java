@@ -9,7 +9,6 @@ package org.xtreemfs.babudb.replication.proxy;
 
 import java.net.InetSocketAddress;
 import java.util.Map.Entry;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
@@ -22,7 +21,6 @@ import org.xtreemfs.babudb.api.transaction.TransactionListener;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.babudb.replication.LockableService;
 import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.replication.policy.Policy;
 import org.xtreemfs.babudb.replication.service.accounting.ReplicateResponse;
@@ -40,14 +38,12 @@ import static org.xtreemfs.babudb.api.dev.transaction.TransactionInternal.contai
  * @author flangner
  * @since 11/04/2010
  */
-class TransactionManagerProxy extends TransactionManagerInternal implements LockableService {
+class TransactionManagerProxy extends TransactionManagerInternal {
 
     private final ReplicationManager            replMan;
     private final TransactionManagerInternal    localTxnMan;
     private final Policy                        replicationPolicy;
     private final BabuDBProxy                   babuDBProxy;
-    private final AtomicInteger                 accessCounter = new AtomicInteger(0);
-    private boolean                             locked = true;
     
     public TransactionManagerProxy(ReplicationManager replMan, TransactionManagerInternal localTxnMan, 
             Policy replicationPolicy, BabuDBProxy babuDBProxy) {
@@ -79,19 +75,6 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
         try {
             InetSocketAddress master = getServerToPerformAt(txn.aggregateOperationTypes());
             if (master == null) {
-                
-                // check if this service has been locked and increment the access counter
-                synchronized (accessCounter) {
-                    try {
-                        while (locked) {
-                            accessCounter.wait();
-                        }
-                    } catch (InterruptedException e) {
-                        throw new BabuDBException(ErrorCode.INTERRUPTED, 
-                                "Waiting for a lease holder was interrupted.", e);    
-                    }
-                    accessCounter.incrementAndGet();
-                }
                 executeLocallyAndReplicate(txn, serialized, future);
             } else {      
                 redirectToMaster(serialized, master, future);
@@ -124,17 +107,10 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
         
             @Override
             public void finished(Object result, Object context) {
-                
-                // request has finished. decrement the access counter
-                synchronized (accessCounter) {
-                    if (accessCounter.decrementAndGet() == 0) {
-                        accessCounter.notify();
-                    }
-                }
-                
+                                
                 LSN assignedByDiskLogger = localFuture.getAssignedLSN();
                 LogEntry le = new LogEntry(payload, new ListenerWrapper<Object>(future, result), 
-                                           PAYLOAD_TYPE_TRANSACTION);
+                        PAYLOAD_TYPE_TRANSACTION);
                 le.assignId(assignedByDiskLogger.getViewId(), assignedByDiskLogger.getSequenceNo());
                 
                 ReplicateResponse rp = replMan.replicate(le);
@@ -147,14 +123,6 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
             
             @Override
             public void failed(BabuDBException error, Object context) {
-                
-                // request has finished. decrement the access counter
-                synchronized (accessCounter) {
-                    if (accessCounter.decrementAndGet() == 0) {
-                        accessCounter.notify();
-                    }
-                }
-                
                 future.failed(error);
             }
         });
@@ -255,30 +223,6 @@ class TransactionManagerProxy extends TransactionManagerInternal implements Lock
     @Override
     public void init(LSN initial) {
         localTxnMan.init(initial);
-    }
-
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.proxy.LockableService#lock()
-     */
-    @Override
-    public void lock() throws InterruptedException {       
-        synchronized (accessCounter) {
-            locked = true;
-            while (locked && accessCounter.get() > 0) {
-                accessCounter.wait();
-            }
-        }
-    }
-
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.proxy.LockableService#unlock()
-     */
-    @Override
-    public void unlock() {
-        synchronized (accessCounter) {
-            locked = false;
-            accessCounter.notifyAll();
-        }
     }
 
     /* (non-Javadoc)

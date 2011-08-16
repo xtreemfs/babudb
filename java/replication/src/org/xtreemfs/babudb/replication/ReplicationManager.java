@@ -71,15 +71,12 @@ public class ReplicationManager implements LifeCycleListener {
  */
     
     /**
-     * Starts the stages if available.
+     * Start the stages and wait synchronously for the first failover to succeed.
      * 
      * @throws InterruptedException if initialization was interrupted.
      */
-    public void initialize(LockableService babudbProxy) throws InterruptedException {
+    public void init() throws InterruptedException {
         
-        assert (babudbProxy != null);
-        
-        controlLayer.registerUserInterface(babudbProxy);
         transmissionLayer.start();
         serviceLayer.start(controlLayer);
         controlLayer.start();

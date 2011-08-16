@@ -79,6 +79,8 @@ public class ChunkOperation extends Operation {
             
         } catch (Exception e) {
             
+            if (payload != null) BufferPool.free(payload);
+            
             if (e.getMessage() == null) {
                 Logging.logError(Logging.LEVEL_WARN, this, e);
             } else {
@@ -87,15 +89,12 @@ public class ChunkOperation extends Operation {
                         " available anymore, because: %s", 
                         chunk.toString(), e.getMessage());
             }
-            rq.sendSuccess(
-                    ErrorCodeResponse.newBuilder().setErrorCode(
-                            ErrorCode.FILE_UNAVAILABLE).build());
+            rq.sendSuccess(ErrorCodeResponse.newBuilder().setErrorCode(
+                           ErrorCode.FILE_UNAVAILABLE).build());
         } finally {
             try {
                 if (channel != null) channel.close();
             } catch (IOException e) { /* ignored */ }
-            
-            if (payload != null) BufferPool.free(payload);
         }
     }
 }

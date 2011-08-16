@@ -162,18 +162,18 @@ public abstract class Logic {
         // update the missing entries
         if (end != null && next.compareTo(end) < 0) {
             if (load) {
-                Logging.logMessage(Logging.LEVEL_INFO, this, "LOAD to LSN(%s) @ LSN(%s).", 
-                        end.toString(), actual.toString()); //XXX
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, "LOAD to LSN(%s) @ LSN(%s).", 
+                        end.toString(), actual.toString());
                 return new StageCondition(LogicID.LOAD, end);
             } else {
-                Logging.logMessage(Logging.LEVEL_INFO, this, "REQUEST to LSN(%s) @ LSN(%s).", 
-                        end.toString(), actual.toString()); //XXX
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, "REQUEST to LSN(%s) @ LSN(%s).", 
+                        end.toString(), actual.toString());
                 return new StageCondition(end);
             }
            
         // all went fine -> back to basic
         } else {
-            Logging.logMessage(Logging.LEVEL_INFO, this, "Back to basic @ LSN(%s).", actual.toString()); //XXX
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "Back to basic @ LSN(%s).", actual.toString()); 
             lastAsyncInserted.set(new LSN (0, 0L));
             return StageCondition.DEFAULT;
         }

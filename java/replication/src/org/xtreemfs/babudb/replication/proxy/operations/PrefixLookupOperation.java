@@ -111,12 +111,12 @@ public class PrefixLookupOperation extends Operation {
                 @Override
                 public void failed(BabuDBException error, Object context) {
                     rq.sendSuccess(ErrorCodeResponse.newBuilder().setErrorCode(
-                            ErrorCode.mapUserError(error.getErrorCode())).build());
+                            ErrorCode.mapUserError(error)).build());
                 }
             });
         } catch (BabuDBException e) {
             rq.sendSuccess(ErrorCodeResponse.newBuilder().setErrorCode(
-                    ErrorCode.mapUserError(e.getErrorCode())).build());
+                    ErrorCode.mapUserError(e)).build());
         }
     }
 }

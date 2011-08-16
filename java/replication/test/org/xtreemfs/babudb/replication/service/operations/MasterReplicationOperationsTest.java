@@ -41,7 +41,6 @@ import org.xtreemfs.babudb.replication.transmission.ErrorCode;
 import org.xtreemfs.babudb.replication.transmission.FileIO;
 import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter;
 import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter.ErrorCodeException;
-import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestControl;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestDispatcher;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestHandler;
 import org.xtreemfs.foundation.LifeCycleListener;
@@ -181,42 +180,17 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
             public void driftDetected() {
                 fail("Operation should not have been accessed by this test!");
             }
-            
-            @Override
-            public void unlockUser() {
-                fail("Operation should not have been accessed by this test!");
-            }
-            
+                        
             @Override
             public void unlockReplication() {
                 Logging.logMessage(Logging.LEVEL_INFO, this, "Mock Replication unlocked.");
             }
             
             @Override
-            public void registerUserInterface(LockableService service) {
-                fail("Operation should not have been accessed by this test!");
-            }
-            
-            @Override
             public void registerReplicationControl(LockableService service) {
                 fail("Operation should not have been accessed by this test!");
             }
-            
-            @Override
-            public void registerProxyRequestControl(RequestControl control) {
-                fail("Operation should not have been accessed by this test!");
-            }
-            
-            @Override
-            public void notifyForSuccessfulFailover(InetSocketAddress master) {
-                fail("Operation should not have been accessed by this test!");
-            }
-            
-            @Override
-            public void lockAll() throws InterruptedException {
-                Logging.logMessage(Logging.LEVEL_INFO, this, "Mock services locked.");
-            }
-            
+                                    
             @Override
             public boolean isItMe(InetSocketAddress address) {
                 fail("Operation should not have been accessed by this test!");
@@ -231,8 +205,12 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
 
             @Override
             public void waitForInitialFailover() throws InterruptedException {
-                // TODO Auto-generated method stub
-                
+                Logging.logMessage(Logging.LEVEL_INFO, this, "Mock Waiting for initial failover - finished!");
+            }
+
+            @Override
+            public void lockReplication() throws InterruptedException {
+                Logging.logMessage(Logging.LEVEL_INFO, this, "Mock Replication locked!");
             }
         }, new BabuDBInterface(new BabuDBMock("BabuDBMock", conf0, testLSN)), new RequestManagement() {
                         

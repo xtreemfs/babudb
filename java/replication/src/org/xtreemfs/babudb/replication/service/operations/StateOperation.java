@@ -61,7 +61,8 @@ public class StateOperation extends Operation {
     public void processRequest(Request rq) {
         
         try {
-            topLayer.lockAll();
+            
+            topLayer.lockReplication();
             org.xtreemfs.babudb.lsmdb.LSN state = dbInterface.getState();
             Logging.logMessage(Logging.LEVEL_INFO, this, "StateOperation:" +
                         " reporting %s to %s.", state.toString(),

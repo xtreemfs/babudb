@@ -7,6 +7,8 @@
  */
 package org.xtreemfs.babudb.replication.transmission;
 
+import org.xtreemfs.foundation.logging.Logging;
+
 /**
  * Listing of all error codes that might occur on a replication remote request.
  * 
@@ -48,16 +50,16 @@ public final class ErrorCode {
      * @return the transmission representation of a BabuDB user error, or UNKNOWN, if e was no user 
      *         error.
      */
-    public final static int mapUserError(
-            org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode e) {
+    public final static int mapUserError(org.xtreemfs.babudb.api.exception.BabuDBException e) {
         
-        switch (e) {
+        switch (e.getErrorCode()) {
         case DB_EXISTS :        return ErrorCode.T_DB_EXISTS;
         case NO_SUCH_DB :       return ErrorCode.T_NO_SUCH_DB;
         case NO_SUCH_INDEX :    return ErrorCode.T_NO_SUCH_INDEX;
         case SNAP_EXISTS :      return ErrorCode.T_SNAP_EXISTS;
         case NO_SUCH_SNAPSHOT : return ErrorCode.T_NO_SUCH_SNAPSHOT;
-        default :               return ErrorCode.UNKNOWN;
+        default :               Logging.logError(Logging.LEVEL_DEBUG, e, e);            
+                                return ErrorCode.UNKNOWN;
         }
     }
     

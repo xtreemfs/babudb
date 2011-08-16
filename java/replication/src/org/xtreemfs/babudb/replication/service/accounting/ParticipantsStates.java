@@ -66,10 +66,12 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
          * @param client
          * @param timeStamp
          */
-        State(ReplicationClientAdapter client) {
+        State(ReplicationClientAdapter client, long timeStamp) {
             this.client = client;
-            reset();
+            lastUpdate = timeStamp;
             dead = false;
+            openRequests = 0;
+            lastAcknowledged = new LSN(0,0L);
         }
         
         /**
@@ -180,9 +182,9 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
          * not be changed during the runtime!
          */
         synchronized (stateTable) {
+            long timeStamp = TimeSync.getGlobalTime();
             for (InetSocketAddress participant : participants) {
-                stateTable.put(getUID(participant), 
-                               new State(clientFactory.getClient(participant)));
+                stateTable.put(getUID(participant), new State(clientFactory.getClient(participant), timeStamp));
             }
             
             Logging.logMessage(Logging.LEVEL_DEBUG, this, 

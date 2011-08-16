@@ -36,7 +36,6 @@ import org.xtreemfs.babudb.replication.service.clients.ClientInterface;
 import org.xtreemfs.babudb.replication.service.clients.SlaveClient;
 import org.xtreemfs.babudb.replication.transmission.FileIO;
 import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter;
-import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestControl;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestDispatcher;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestHandler;
 import org.xtreemfs.foundation.LifeCycleListener;
@@ -139,19 +138,9 @@ public class SlaveReplicationOperationsTest implements LifeCycleListener {
             public void driftDetected() {
                 fail("Operation should not have been accessed by this test!");
             }
-            
-            @Override
-            public void unlockUser() {
-                fail("Operation should not have been accessed by this test!");
-            }
-            
+                        
             @Override
             public void unlockReplication() {
-                fail("Operation should not have been accessed by this test!");
-            }
-            
-            @Override
-            public void registerUserInterface(LockableService service) {
                 fail("Operation should not have been accessed by this test!");
             }
             
@@ -159,22 +148,7 @@ public class SlaveReplicationOperationsTest implements LifeCycleListener {
             public void registerReplicationControl(LockableService service) {
                 fail("Operation should not have been accessed by this test!");
             }
-            
-            @Override
-            public void registerProxyRequestControl(RequestControl control) {
-                fail("Operation should not have been accessed by this test!");
-            }
-            
-            @Override
-            public void notifyForSuccessfulFailover(InetSocketAddress master) {
-                fail("Operation should not have been accessed by this test!");
-            }
-            
-            @Override
-            public void lockAll() throws InterruptedException {
-                fail("Operation should not have been accessed by this test!");
-            }
-            
+                                    
             @Override
             public boolean isItMe(InetSocketAddress address) {
                 fail("Operation should not have been accessed by this test!");
@@ -189,6 +163,12 @@ public class SlaveReplicationOperationsTest implements LifeCycleListener {
 
             @Override
             public void waitForInitialFailover() throws InterruptedException {
+                // TODO Auto-generated method stub
+                
+            }
+
+            @Override
+            public void lockReplication() throws InterruptedException {
                 // TODO Auto-generated method stub
                 
             }

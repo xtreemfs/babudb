@@ -123,12 +123,12 @@ public class RangeLookupReverseOperation extends Operation {
                 @Override
                 public void failed(BabuDBException error, Object context) {
                     rq.sendSuccess(ErrorCodeResponse.newBuilder().setErrorCode(
-                            ErrorCode.mapUserError(error.getErrorCode())).build());
+                            ErrorCode.mapUserError(error)).build());
                 }
             });
         } catch (BabuDBException e) {
             rq.sendSuccess(ErrorCodeResponse.newBuilder().setErrorCode(
-                    ErrorCode.mapUserError(e.getErrorCode())).build());
+                    ErrorCode.mapUserError(e)).build());
         } finally {
             if (f != null) BufferPool.free(f);
             if (t != null) BufferPool.free(t);
