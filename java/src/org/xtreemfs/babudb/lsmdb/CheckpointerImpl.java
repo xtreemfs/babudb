@@ -17,6 +17,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -41,8 +43,7 @@ public class CheckpointerImpl extends CheckpointerInternal {
     
     private final static class MaterializationRequest {
         
-        MaterializationRequest(String dbName, int[] snapIDs, 
-                SnapshotConfig snap) {
+        MaterializationRequest(String dbName, int[] snapIDs, SnapshotConfig snap) {
             
             this.dbName = dbName;
             this.snapIDs = snapIDs;
@@ -57,10 +58,14 @@ public class CheckpointerImpl extends CheckpointerInternal {
         
     }
     
+    private static final String                RUNTIME_STATE_CPCOUNT        = "checkpointer.cpCount";
+    private static final String                RUNTIME_STATE_LASTCP         = "checkpointer.lastCp";
+    private static final String                RUNTIME_STATE_LASTCPDURATION = "checkpointer.lastCpDuration";
+    
     private volatile boolean                   quit;
-        
-    private final AtomicBoolean                suspended = new AtomicBoolean(false);
-    private final Object                       suspensionLock = new Object();
+    
+    private final AtomicBoolean                suspended                    = new AtomicBoolean(false);
+    private final Object                       suspensionLock               = new Object();
     
     private DiskLogger                         logger;
     
@@ -77,7 +82,7 @@ public class CheckpointerImpl extends CheckpointerInternal {
      * a queue containing all snapshot materialization requests that should be
      * executed before the next checkpoint is made
      */
-    private final List<MaterializationRequest> requests = new LinkedList<MaterializationRequest>();
+    private final List<MaterializationRequest> requests                     = new LinkedList<MaterializationRequest>();
     
     /**
      * indicates whether the next checkpoint has been triggered manually or
@@ -88,13 +93,19 @@ public class CheckpointerImpl extends CheckpointerInternal {
     /**
      * indicates when the current checkpoint is complete and is also a lock
      */
-    private AtomicBoolean                      checkpointComplete = new AtomicBoolean(true);
+    private AtomicBoolean                      checkpointComplete           = new AtomicBoolean(true);
     
     /**
      * Flag to notify the disk-logger about a viewId incrementation.
      */
-    private boolean                            incrementViewId    = false;
+    private boolean                            incrementViewId              = false;
     private volatile LSN                       lastWrittenLSN;
+    
+    private AtomicInteger                      _checkpointCount             = new AtomicInteger();
+    
+    private AtomicLong                         _lastCheckpoint              = new AtomicLong();
+    
+    private AtomicLong                         _lastCheckpointDuration      = new AtomicLong();
     
     /**
      * Creates a new database checkpointer
@@ -113,7 +124,7 @@ public class CheckpointerImpl extends CheckpointerInternal {
         this.logger = logger;
         this.checkInterval = 1000L * checkInterval;
         this.maxLogLength = maxLogLength;
-
+        
         if (!suspended.compareAndSet(true, false) && !quit) {
             start();
             try {
@@ -128,8 +139,11 @@ public class CheckpointerImpl extends CheckpointerInternal {
         }
     }
     
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.api.dev.CheckpointerInternal#suspendCheckpointing()
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * org.xtreemfs.babudb.api.dev.CheckpointerInternal#suspendCheckpointing()
      */
     @Override
     public void suspendCheckpointing() throws InterruptedException {
@@ -140,11 +154,13 @@ public class CheckpointerImpl extends CheckpointerInternal {
                     notify();
                 }
                 suspended.wait();
-            } 
+            }
         }
     }
     
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
+     * 
      * @see org.xtreemfs.babudb.api.dev.CheckpointerInternal#checkpoint(boolean)
      */
     @Override
@@ -184,7 +200,8 @@ public class CheckpointerImpl extends CheckpointerInternal {
     /**
      * Materialize all snapshots in the queue before taking a checkpoint.
      * 
-     * @throws BabuDBException if materialization failed.
+     * @throws BabuDBException
+     *             if materialization failed.
      */
     private void materializeSnapshots() throws BabuDBException {
         
@@ -199,25 +216,21 @@ public class CheckpointerImpl extends CheckpointerInternal {
             if (rq == null)
                 break;
             
-            if(Logging.isDebug())
-	            Logging.logMessage(Logging.LEVEL_DEBUG, this,
-	                "snapshot materialization request found for database '" + 
-	                rq.dbName + "', snapshot: '" + rq.snap.getName() + "'");
+            if (Logging.isDebug())
+                Logging.logMessage(Logging.LEVEL_DEBUG, this, "snapshot materialization request found for database '"
+                        + rq.dbName + "', snapshot: '" + rq.snap.getName() + "'");
             
             SnapshotManagerInternal snapMan = dbs.getSnapshotManager();
             
             // write the snapshot
             dbs.getDatabaseManager().getDatabase(rq.dbName)
-                    .proceedWriteSnapshot(rq.snapIDs, 
-                            snapMan.getSnapshotDir(rq.dbName,
-                            rq.snap.getName()), rq.snap);
+                    .proceedWriteSnapshot(rq.snapIDs, snapMan.getSnapshotDir(rq.dbName, rq.snap.getName()), rq.snap);
             
             // notify the snapshot manager about the completion
             // of the snapshot
             snapMan.snapshotComplete(rq.dbName, rq.snap);
             
-            Logging.logMessage(Logging.LEVEL_DEBUG, this,
-                        "snapshot materialization complete");
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "snapshot materialization complete");
         }
     }
     
@@ -262,10 +275,8 @@ public class CheckpointerImpl extends CheckpointerInternal {
             
             i = 0;
             for (DatabaseInternal db : databases) {
-                db.proceedWriteSnapshot(lastWrittenLSN.getViewId(), lastWrittenLSN.getSequenceNo(), 
-                        snapIds[i++]);
-                db.proceedCleanupSnapshot(lastWrittenLSN.getViewId(), 
-                        lastWrittenLSN.getSequenceNo());
+                db.proceedWriteSnapshot(lastWrittenLSN.getViewId(), lastWrittenLSN.getSequenceNo(), snapIds[i++]);
+                db.proceedCleanupSnapshot(lastWrittenLSN.getViewId(), lastWrittenLSN.getSequenceNo());
             }
             
             // delete all logfile with LSN <= lastWrittenLSN
@@ -291,7 +302,7 @@ public class CheckpointerImpl extends CheckpointerInternal {
                         f = new File(dbs.getConfig().getDbLogDir() + log);
                         if (!f.delete())
                             Logging.logMessage(Logging.LEVEL_WARN, this, "could not delete log file: %s",
-                                f.getAbsolutePath());
+                                    f.getAbsolutePath());
                     }
                 }
             }
@@ -301,9 +312,12 @@ public class CheckpointerImpl extends CheckpointerInternal {
         Logging.logMessage(Logging.LEVEL_INFO, this, "checkpoint complete");
     }
     
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.api.dev.CheckpointerInternal#addSnapshotMaterializationRequest(
-     *          java.lang.String, int[], org.xtreemfs.babudb.snapshots.SnapshotConfig)
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.xtreemfs.babudb.api.dev.CheckpointerInternal#
+     * addSnapshotMaterializationRequest( java.lang.String, int[],
+     * org.xtreemfs.babudb.snapshots.SnapshotConfig)
      */
     @Override
     public void addSnapshotMaterializationRequest(String dbName, int[] snapIds, SnapshotConfig snap) {
@@ -312,9 +326,11 @@ public class CheckpointerImpl extends CheckpointerInternal {
         }
     }
     
-    /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.api.dev.CheckpointerInternal#removeSnapshotMaterializationRequest(
-     *          java.lang.String, java.lang.String)
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.xtreemfs.babudb.api.dev.CheckpointerInternal#
+     * removeSnapshotMaterializationRequest( java.lang.String, java.lang.String)
      */
     @Override
     public void removeSnapshotMaterializationRequest(String dbName, String snapshotName) {
@@ -351,7 +367,7 @@ public class CheckpointerImpl extends CheckpointerInternal {
                     manualCheckpoint = forceCheckpoint;
                     forceCheckpoint = false;
                 }
-            
+                
                 // this block allows to suspend the Checkpointer from taking
                 // checkpoints until it has been re-init()
                 synchronized (suspended) {
@@ -375,27 +391,29 @@ public class CheckpointerImpl extends CheckpointerInternal {
                 if (manualCheckpoint || lfsize > maxLogLength) {
                     
                     if (!manualCheckpoint) {
-                        Logging.logMessage(Logging.LEVEL_INFO, this,
-                            "database operation log has exceeded threshold " +
-                            "size of " + maxLogLength + " ("  + lfsize + ")");
+                        Logging.logMessage(Logging.LEVEL_INFO, this, "database operation log has exceeded threshold "
+                                + "size of " + maxLogLength + " (" + lfsize + ")");
                     } else {
-                        Logging.logMessage(Logging.LEVEL_INFO, this, 
-                                "triggered manual checkpoint");
+                        Logging.logMessage(Logging.LEVEL_INFO, this, "triggered manual checkpoint");
                     }
                     
                     synchronized (dbs.getDatabaseManager().getDBModificationLock()) {
                         synchronized (this) {
+                            long start = System.currentTimeMillis();
                             materializeSnapshots();
-
                             createCheckpoint();
-                        }                        
-                    }                    
+                            _lastCheckpointDuration.set(System.currentTimeMillis() - start);
+                        }
+                    }
                 }
             } catch (InterruptedException ex) {
-                if (quit) break;
-                else Logging.logMessage(Logging.LEVEL_DEBUG, this, "CHECKPOINT WAS ABORTED!");
+                if (quit)
+                    break;
+                else
+                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "CHECKPOINT WAS ABORTED!");
             } catch (Throwable ex) {
-                if (ex instanceof BabuDBException && ((BabuDBException) ex).getCause() instanceof ClosedByInterruptException) {
+                if (ex instanceof BabuDBException
+                        && ((BabuDBException) ex).getCause() instanceof ClosedByInterruptException) {
                     Logging.logMessage(Logging.LEVEL_DEBUG, this, "CHECKPOINT WAS ABORTED!");
                 } else {
                     Logging.logMessage(Logging.LEVEL_ERROR, this, "DATABASE CHECKPOINT CREATION FAILURE!");
@@ -403,18 +421,24 @@ public class CheckpointerImpl extends CheckpointerInternal {
                 }
             } finally {
                 synchronized (checkpointComplete) {
+                    
+                    // update statistics
+                    _checkpointCount.incrementAndGet();
+                    _lastCheckpoint.set(System.currentTimeMillis());
+                    
                     checkpointComplete.set(true);
                     checkpointComplete.notify();
                 }
             }
         }
         
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "checkpointer shut down "
-        		+ "successfully");
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "checkpointer shut down " + "successfully");
         notifyStopped();
     }
     
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
+     * 
      * @see org.xtreemfs.babudb.api.Checkpointer#waitForCheckpoint()
      */
     @Override
@@ -425,4 +449,18 @@ public class CheckpointerImpl extends CheckpointerInternal {
             }
         }
     }
+    
+    @Override
+    public Object getRuntimeState(String property) {
+        
+        if (RUNTIME_STATE_CPCOUNT.equals(property))
+            return _checkpointCount.get();
+        if (RUNTIME_STATE_LASTCP.equals(property))
+            return _lastCheckpoint.get();
+        if (RUNTIME_STATE_LASTCPDURATION.equals(property))
+            return _lastCheckpointDuration.get();
+        
+        return null;
+    }
+    
 }

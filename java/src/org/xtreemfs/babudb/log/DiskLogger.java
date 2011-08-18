@@ -62,6 +62,13 @@ public class DiskLogger extends LifeCycleThread {
          */
         SYNC_WRITE_METADATA
     };
+    
+    /**
+     * Max number of LogEntries to write before sync.
+     */
+    public static final int            MAX_ENTRIES_PER_BLOCK             = 250;
+
+    private static final String        RUNTIME_STATE_PROCESSEDLOGENTRIES = "diskLogger.processedLogEntries";
 
     /**
      * NIO FileChannel used to write ByteBuffers directly to file.
@@ -122,10 +129,8 @@ public class DiskLogger extends LifeCycleThread {
         
     private final int                   maxQ;
     
-    /**
-     * Max number of LogEntries to write before sync.
-     */
-    public static final int             MAX_ENTRIES_PER_BLOCK = 250;
+    private AtomicInteger              _processedLogEntries  = new AtomicInteger();
+    
 
     /**
      * Creates a new instance of DiskLogger
@@ -412,6 +417,14 @@ public class DiskLogger extends LifeCycleThread {
         return new LSN(currentViewId.get(), nextLogSequenceNo.get() - 1L);
     }
     
+    public Object getRuntimeState(String property) {
+
+        if (RUNTIME_STATE_PROCESSEDLOGENTRIES.equals(property))
+            return _processedLogEntries.get();
+
+        return null;
+    }
+    
     private String createLogFileName() {
         return logfileDir + createLogFileName(currentViewId.get(), nextLogSequenceNo.get());
     }
@@ -487,6 +500,8 @@ public class DiskLogger extends LifeCycleThread {
                 csumAlgo.reset();
                 if (buffer != null) BufferPool.free(buffer);
             }
+            
+            _processedLogEntries.incrementAndGet();
         }
         
         if (syncMode == SyncMode.FSYNC) {

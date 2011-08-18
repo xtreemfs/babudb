@@ -34,8 +34,8 @@ import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.conversion.AutoConverter;
 import org.xtreemfs.babudb.log.DiskLogIterator;
 import org.xtreemfs.babudb.log.DiskLogger;
-import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.DiskLogger.SyncMode;
+import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.CheckpointerImpl;
 import org.xtreemfs.babudb.lsmdb.DBConfig;
 import org.xtreemfs.babudb.lsmdb.DatabaseManagerImpl;
@@ -111,6 +111,7 @@ public class BabuDBImpl implements BabuDBInternal {
      * down.
      */
     private final List<LifeCycleThread>   plugins = new Vector<LifeCycleThread>();
+    
     
     static {
         
@@ -462,8 +463,7 @@ public class BabuDBImpl implements BabuDBInternal {
             if (worker != null)
                 for (LSMDBWorker w : worker)
                     w.stop();
-            ((Thread) dbCheckptr).stop();
-            
+            this.dbCheckptr.shutdown();
             this.databaseManager.shutdown();
             this.snapshotManager.shutdown();
             this.responseManager.shutdown();
@@ -524,6 +524,26 @@ public class BabuDBImpl implements BabuDBInternal {
     @Override
     public BabuDBConfig getConfig() {
         return configuration;
+    }
+    
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.xtreemfs.babudb.BabuDB#getRuntimeState()
+     */
+    @Override
+    public Object getRuntimeState(String property) {
+
+        if (property.startsWith("checkpointer"))
+            return dbCheckptr.getRuntimeState(property);
+
+        if (property.startsWith("databaseManager"))
+            return databaseManager.getRuntimeState(property);
+
+        if (property.startsWith("diskLogger"))
+            return logger.getRuntimeState(property);
+
+        return null;
     }
     
     /*

@@ -174,6 +174,17 @@ public interface DatabaseManagerInternal extends DatabaseManager {
     public void removeDatabaseById(int id);
     
     /**
+     * Returns runtime information about the database manager.
+     * 
+     * @param property
+     *            the name of the runtime state property to query
+     * @return An object encapsulating certain state information. The type and
+     *         data of the object depends on the queried property. If the
+     *         property is undefined, <code>null</code> is returned.
+     */
+    public abstract Object getRuntimeState(String property);
+    
+    /**
      * Terminates the {@link DatabaseManager}.
      * 
      * @throws BabuDBException if an error occurs.

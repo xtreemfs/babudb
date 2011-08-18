@@ -17,7 +17,7 @@ import org.xtreemfs.babudb.api.exception.BabuDBException;
  * @date 11/02/2010
  */
 public interface BabuDB {
-    
+
     /**
      * Returns a reference to the BabuDB checkpointer. The checkpointer can be
      * used by applications to enforce the creation of a database checkpoint.
@@ -25,7 +25,7 @@ public interface BabuDB {
      * @return a reference to the checkpointer
      */
     public Checkpointer getCheckpointer();
-    
+
     /**
      * Returns a reference to the database manager. The database manager gives
      * applications access to single databases.
@@ -33,7 +33,7 @@ public interface BabuDB {
      * @return a reference to the database manager
      */
     public DatabaseManager getDatabaseManager();
-    
+
     /**
      * Returns a reference to the snapshot manager. The snapshot manager offers
      * applications the possibility to manage snapshots of single databases.
@@ -41,7 +41,18 @@ public interface BabuDB {
      * @return a reference to the snapshot manager
      */
     public SnapshotManager getSnapshotManager();
-    
+
+    /**
+     * Returns runtime information about the database system.
+     * 
+     * @param propertyName
+     *            the name of the runtime state property to query
+     * @return An object encapsulating certain state information. The type and
+     *         data of the object depends on the queried property. If the
+     *         property is undefined, <code>null</code> is returned.
+     */
+    public Object getRuntimeState(String propertyName);
+
     /**
      * Performs a graceful shutdown, which is equivalent to an invocation of
      * <code>shutdown(true)</code>.
@@ -50,7 +61,7 @@ public interface BabuDB {
      *             if an error occurred
      */
     public void shutdown() throws BabuDBException;
-    
+
     /**
      * Terminates BabuDB. All threads will be terminated and all resources will
      * be freed.
@@ -69,4 +80,5 @@ public interface BabuDB {
      *             if an error occurred
      */
     public void shutdown(boolean graceful) throws BabuDBException;
+
 }
