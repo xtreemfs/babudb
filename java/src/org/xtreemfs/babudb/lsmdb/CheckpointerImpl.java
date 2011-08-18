@@ -59,8 +59,8 @@ public class CheckpointerImpl extends CheckpointerInternal {
     }
     
     private static final String                RUNTIME_STATE_CPCOUNT        = "checkpointer.cpCount";
-    private static final String                RUNTIME_STATE_LASTCP         = "checkpointer.lastCp";
-    private static final String                RUNTIME_STATE_LASTCPDURATION = "checkpointer.lastCpDuration";
+    private static final String                RUNTIME_STATE_LASTCP         = "checkpointer.lastCpTimestampMillis";
+    private static final String                RUNTIME_STATE_LASTCPDURATION = "checkpointer.lastCpDurationMillis";
     
     private volatile boolean                   quit;
     

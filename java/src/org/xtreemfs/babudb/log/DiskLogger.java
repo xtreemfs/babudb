@@ -68,7 +68,7 @@ public class DiskLogger extends LifeCycleThread {
      */
     public static final int            MAX_ENTRIES_PER_BLOCK             = 250;
 
-    private static final String        RUNTIME_STATE_PROCESSEDLOGENTRIES = "diskLogger.processedLogEntries";
+    private static final String        RUNTIME_STATE_PROCESSEDLOGENTRIES = "diskLogger.processedLogEntryCount";
 
     /**
      * NIO FileChannel used to write ByteBuffers directly to file.
