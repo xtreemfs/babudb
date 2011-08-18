@@ -288,10 +288,11 @@ public class DiskLogger extends LifeCycleThread {
                 
                 // wait for an entry
                 synchronized (this) {
-                    if (entries.isEmpty()) {
+
+                    if (!quit && entries.isEmpty()) {
                         wait();
                     }
-                    
+
                     if (quit) {
                         break;
                         
