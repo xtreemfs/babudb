@@ -371,7 +371,7 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                     // manual load failed. retry if master has not changed meanwhile
                     // ignore the failure otherwise
                     try {
-                        if (master.equals(control.getLeaseHolder(1))) {
+                        if (master.equals(control.getLeaseHolder(-1))) {
                             createStableState(lastLSNOnView, master, control);
                         }
                     } catch (InterruptedException e) {

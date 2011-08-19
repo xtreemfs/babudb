@@ -268,4 +268,13 @@ public class BabuDBMock implements BabuDBInternal {
                 "Mock '%s' tried to access shutdown (%s).", name, graceful);
     }
 
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.BabuDB#getRuntimeState(java.lang.String)
+     */
+    @Override
+    public Object getRuntimeState(String propertyName) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
 }

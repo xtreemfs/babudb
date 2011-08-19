@@ -35,6 +35,8 @@ public class ReplicationManager implements LifeCycleListener {
         
     public final static String  VERSION = "1.1";
     
+    private final static String RUNTIME_STATE_MASTER = "replication.control.master";
+    
     private final TopLayer          controlLayer;
     private final ServiceLayer      serviceLayer;
     private final TransmissionLayer transmissionLayer;
@@ -85,12 +87,35 @@ public class ReplicationManager implements LifeCycleListener {
     }
 
     /**
-     * @return the currently designated master, or null, if BabuDB is 
-     *         suspended at the moment.
+     * Blocking call.
+     * 
+     * @return the currently designated master.
      * @throws InterruptedException 
      */
     public InetSocketAddress getMaster() throws InterruptedException {
         return controlLayer.getLeaseHolder(0);
+    }
+    
+    /**
+     * Returns runtime information about the database system.
+     * 
+     * @param property
+     *            the name of the runtime state property to query
+     * @return An object encapsulating certain state information. The type and
+     *         data of the object depends on the queried property. If the
+     *         property is undefined, <code>null</code> is returned.
+     */
+    public Object getRuntimeState(String property) {
+        
+        if (RUNTIME_STATE_MASTER.equals(property)) {
+            try {
+                return controlLayer.getLeaseHolder(-1);
+            } catch (InterruptedException e) {
+                /* ignored */
+            }
+        }
+        
+        return null;
     }
     
     /**

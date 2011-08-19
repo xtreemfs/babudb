@@ -424,4 +424,12 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
     public ResponseManagerInternal getResponseManager() {
         return responseManager;
     }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getRuntimeState(java.lang.String)
+     */
+    @Override
+    public Object getRuntimeState(String property) {
+        return localDBMan.getRuntimeState(property);
+    }
 }

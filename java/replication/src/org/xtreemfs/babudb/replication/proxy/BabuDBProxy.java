@@ -237,4 +237,17 @@ public class BabuDBProxy implements BabuDBInternal {
     public ResponseManagerInternal getResponseManager() {
         return localBabuDB.getResponseManager();
     }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.BabuDB#getRuntimeState(java.lang.String)
+     */
+    @Override
+    public Object getRuntimeState(String propertyName) {
+        
+        if (!propertyName.startsWith("replication")) {
+            return localBabuDB.getRuntimeState(propertyName);
+        } else {
+            return replMan.getRuntimeState(propertyName);
+        }
+    }
 }

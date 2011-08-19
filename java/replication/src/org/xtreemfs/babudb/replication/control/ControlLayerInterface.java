@@ -26,7 +26,7 @@ public interface ControlLayerInterface extends TimeDriftListener, FleaseMessageR
     /**
      * Waits until a lease holder becomes available if necessary.
      * @param timeout - in ms to wait for a lease holder to become available. 
-     *                  May be 0 to wait forever.
+     *                  May be 0 to wait forever. If timeout < 0 there will be no waiting.
      * 
      * @return the address of the current lease holder.
      */

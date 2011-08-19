@@ -104,4 +104,13 @@ public class CheckpointerMock extends CheckpointerInternal {
         // TODO Auto-generated method stub
         
     }
+
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.dev.CheckpointerInternal#getRuntimeState(java.lang.String)
+     */
+    @Override
+    public Object getRuntimeState(String property) {
+        // TODO Auto-generated method stub
+        return null;
+    }
 }
