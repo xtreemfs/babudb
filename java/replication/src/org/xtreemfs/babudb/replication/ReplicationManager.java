@@ -36,6 +36,7 @@ public class ReplicationManager implements LifeCycleListener {
     public final static String  VERSION = "1.1";
     
     private final static String RUNTIME_STATE_MASTER = "replication.control.master";
+    private final static String RUNTIME_STATE_ADDRESS = "replication.control.address";
     
     private final TopLayer          controlLayer;
     private final ServiceLayer      serviceLayer;
@@ -115,6 +116,9 @@ public class ReplicationManager implements LifeCycleListener {
             }
         }
         
+        if (RUNTIME_STATE_ADDRESS.equals(property))
+            return controlLayer.getThisAddress();
+        
         return null;
     }
     
@@ -130,7 +134,7 @@ public class ReplicationManager implements LifeCycleListener {
      * @return true, if the given address is the address of this server. false otherwise.
      */
     public boolean isItMe(InetSocketAddress address) {
-        return controlLayer.isItMe(address);
+        return controlLayer.getThisAddress().equals(address);
     }
     
     /**

@@ -139,12 +139,11 @@ public class ControlLayer extends TopLayer {
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.control.ControlLayerInterface#isItMe(
-     *          java.net.InetSocketAddress)
+     * @see org.xtreemfs.babudb.replication.control.ControlLayerInterface#getThisAddress()
      */
     @Override
-    public boolean isItMe(InetSocketAddress address) {
-        return thisAddress.equals(address);
+    public InetSocketAddress getThisAddress() {
+        return thisAddress;
     }
     
     /*

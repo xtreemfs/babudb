@@ -33,10 +33,9 @@ public interface ControlLayerInterface extends TimeDriftListener, FleaseMessageR
     public InetSocketAddress getLeaseHolder(int timeout) throws InterruptedException;
     
     /**
-     * @param address - the address to compare with.
-     * @return true, if the given address is the address of this server. false otherwise.
+     * @return the address of this server. 
      */
-    public boolean isItMe(InetSocketAddress address);
+    public InetSocketAddress getThisAddress();
     
     /**
      * Use only at initialization. Waits for the first failover to happen.
