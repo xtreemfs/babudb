@@ -8,6 +8,8 @@
 
 package org.xtreemfs.babudb.api;
 
+import java.util.Map;
+
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 
 /**
@@ -52,6 +54,16 @@ public interface BabuDB {
      *         property is undefined, <code>null</code> is returned.
      */
     public Object getRuntimeState(String propertyName);
+    
+    /**
+     * Returns the complete runtime state of the database as a String-to-Object
+     * map.
+     * 
+     * @return An map containing objects encapsulating certain state
+     *         information. The type and data of each object depends on the
+     *         associated property.
+     */
+    public Map<String, Object> getRuntimeState();
 
     /**
      * Performs a graceful shutdown, which is equivalent to an invocation of

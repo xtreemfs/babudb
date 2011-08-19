@@ -432,4 +432,9 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
     public Object getRuntimeState(String property) {
         return localDBMan.getRuntimeState(property);
     }
+    
+    @Override
+    public Map<String, Object> getRuntimeState() {
+        return localDBMan.getRuntimeState();
+    }
 }

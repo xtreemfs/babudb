@@ -7,6 +7,9 @@
  */
 package org.xtreemfs.babudb.replication.proxy;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.xtreemfs.babudb.api.BabuDB;
 import org.xtreemfs.babudb.api.StaticInitialization;
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
@@ -249,5 +252,18 @@ public class BabuDBProxy implements BabuDBInternal {
         } else {
             return replMan.getRuntimeState(propertyName);
         }
+    }
+    
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.api.BabuDB#getRuntimeState()
+     */
+    @Override
+    public Map<String, Object> getRuntimeState() {
+        
+        Map<String, Object> info = new HashMap<String, Object>();
+        info.putAll(localBabuDB.getRuntimeState());
+        info.putAll(replMan.getRuntimeState());
+        
+        return info;
     }
 }

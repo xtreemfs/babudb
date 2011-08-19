@@ -7,6 +7,8 @@
  */
 package org.xtreemfs.babudb.api.dev;
 
+import java.util.Map;
+
 import org.xtreemfs.babudb.api.Checkpointer;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.log.DiskLogger;
@@ -23,14 +25,14 @@ import org.xtreemfs.foundation.LifeCycleThread;
  * @since 03/18/2011
  */
 public abstract class CheckpointerInternal extends LifeCycleThread implements Checkpointer {
-
+    
     /**
      * Default constructor to preinitialize a Checkpointer object.
      */
     public CheckpointerInternal() {
         super("ChkptrThr");
     }
-
+    
     /**
      * Starts the checkpointer synchronously.
      * 
@@ -45,7 +47,7 @@ public abstract class CheckpointerInternal extends LifeCycleThread implements Ch
      *             if initialization failed.
      */
     public abstract void init(DiskLogger logger, int checkInterval, long maxLogLength) throws BabuDBException;
-
+    
     /**
      * Triggers the creation of a new checkpoint. This causes the checkpointer
      * to run its checkpointing mechanism, which causes all outstanding snapshot
@@ -62,7 +64,7 @@ public abstract class CheckpointerInternal extends LifeCycleThread implements Ch
      *         {@link DiskLogger} before the checkpoint.
      */
     public abstract LSN checkpoint(boolean incViewId) throws BabuDBException;
-
+    
     /**
      * This method suspends the Checkpointer from taking checkpoints. Not
      * thread-safe!
@@ -70,7 +72,7 @@ public abstract class CheckpointerInternal extends LifeCycleThread implements Ch
      * @throws InterruptedException
      */
     public abstract void suspendCheckpointing() throws InterruptedException;
-
+    
     /**
      * Method to manually force a checkpoint of the designated database.
      * 
@@ -79,7 +81,7 @@ public abstract class CheckpointerInternal extends LifeCycleThread implements Ch
      * @param snap
      */
     public abstract void addSnapshotMaterializationRequest(String dbName, int[] snapIds, SnapshotConfig snap);
-
+    
     /**
      * Method to manually remove a checkpoint materialization request for the
      * designated database from the queue.
@@ -88,7 +90,7 @@ public abstract class CheckpointerInternal extends LifeCycleThread implements Ch
      * @param snapshotName
      */
     public abstract void removeSnapshotMaterializationRequest(String dbName, String snapshotName);
-
+    
     /**
      * Returns runtime information about the checkpointer.
      * 
@@ -99,5 +101,12 @@ public abstract class CheckpointerInternal extends LifeCycleThread implements Ch
      *         property is undefined, <code>null</code> is returned.
      */
     public abstract Object getRuntimeState(String property);
-
+    
+    /**
+     * Returns all runtime information about the checkpointer.
+     * 
+     * @return a map containing all properties and their associated values
+     */
+    public abstract Map<String, Object> getRuntimeState();
+    
 }

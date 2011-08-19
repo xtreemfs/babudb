@@ -8,12 +8,20 @@
 package org.xtreemfs.babudb;
 
 import static org.xtreemfs.babudb.BabuDBFactory.BABUDB_VERSION;
-import static org.xtreemfs.babudb.log.LogEntry.*;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_COPY;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_CREATE;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_DELETE;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_INSERT;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_SNAP;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_SNAP_DELETE;
+import static org.xtreemfs.babudb.log.LogEntry.PAYLOAD_TYPE_TRANSACTION;
 
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Vector;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -544,6 +552,22 @@ public class BabuDBImpl implements BabuDBInternal {
             return logger.getRuntimeState(property);
 
         return null;
+    }
+    
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.xtreemfs.babudb.BabuDB#getRuntimeState()
+     */
+    @Override
+    public Map<String, Object> getRuntimeState() {
+        
+        Map<String, Object> info = new HashMap<String, Object>();
+        info.putAll(dbCheckptr.getRuntimeState());
+        info.putAll(databaseManager.getRuntimeState());
+        info.putAll(logger.getRuntimeState());
+        
+        return info;
     }
     
     /*

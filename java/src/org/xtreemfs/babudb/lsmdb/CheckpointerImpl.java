@@ -13,9 +13,11 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.nio.channels.ClosedByInterruptException;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -461,6 +463,15 @@ public class CheckpointerImpl extends CheckpointerInternal {
             return _lastCheckpointDuration.get();
         
         return null;
+    }
+    
+    @Override
+    public Map<String, Object> getRuntimeState() {
+        Map<String, Object> map = new HashMap<String, Object>();
+        map.put(RUNTIME_STATE_CPCOUNT, _checkpointCount.get());
+        map.put(RUNTIME_STATE_LASTCP, _lastCheckpoint.get());
+        map.put(RUNTIME_STATE_LASTCPDURATION, _lastCheckpointDuration.get());
+        return map;
     }
     
 }

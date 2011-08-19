@@ -14,8 +14,10 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -418,11 +420,15 @@ public class DiskLogger extends LifeCycleThread {
     }
     
     public Object getRuntimeState(String property) {
-
         if (RUNTIME_STATE_PROCESSEDLOGENTRIES.equals(property))
             return _processedLogEntries.get();
-
         return null;
+    }
+    
+    public Map<String, Object> getRuntimeState() {
+        Map<String, Object> map = new HashMap<String, Object>();
+        map.put(RUNTIME_STATE_PROCESSEDLOGENTRIES, _processedLogEntries.get());
+        return map;
     }
     
     private String createLogFileName() {

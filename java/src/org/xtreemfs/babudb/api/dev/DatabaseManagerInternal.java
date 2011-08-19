@@ -19,15 +19,15 @@ import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.lsmdb.BabuDBInsertGroup;
 
 /**
- * Interface of {@link DatabaseManager} for internal usage. This should not be accessed
- * by any user application, but may be accessed by plugins.
+ * Interface of {@link DatabaseManager} for internal usage. This should not be
+ * accessed by any user application, but may be accessed by plugins.
  * 
  * @author flangner
  * @since 03/18/2011
  */
 
 public interface DatabaseManagerInternal extends DatabaseManager {
-
+    
     /**
      * Creates a new, empty transaction.
      * <p>
@@ -67,8 +67,7 @@ public interface DatabaseManagerInternal extends DatabaseManager {
      *             if the database directory cannot be created or the config
      *             cannot be saved
      */
-    public DatabaseInternal createDatabase(String databaseName, int numIndices) 
-            throws BabuDBException;
+    public DatabaseInternal createDatabase(String databaseName, int numIndices) throws BabuDBException;
     
     /**
      * Creates a new database.
@@ -85,8 +84,8 @@ public interface DatabaseManagerInternal extends DatabaseManager {
      *             if the database directory cannot be created or the config
      *             cannot be saved
      */
-    public DatabaseInternal createDatabase(String databaseName, int numIndices, 
-            ByteRangeComparator[] comparators) throws BabuDBException;
+    public DatabaseInternal createDatabase(String databaseName, int numIndices, ByteRangeComparator[] comparators)
+            throws BabuDBException;
     
     /**
      * Returns the database with the given name.
@@ -132,7 +131,8 @@ public interface DatabaseManagerInternal extends DatabaseManager {
     /**
      * Resets the in-memory database structure.
      * 
-     * @throws BabuDBException if this operation fails.
+     * @throws BabuDBException
+     *             if this operation fails.
      */
     public void reset() throws BabuDBException;
     
@@ -142,8 +142,8 @@ public interface DatabaseManagerInternal extends DatabaseManager {
     public int getNextDBId();
     
     /**
-     * Method to manually set the next to use database identifier. 
-     * Should only be accessed by DBConfig.
+     * Method to manually set the next to use database identifier. Should only
+     * be accessed by DBConfig.
      * 
      * @param id
      */
@@ -161,7 +161,7 @@ public interface DatabaseManagerInternal extends DatabaseManager {
      */
     public void putDatabase(DatabaseInternal database);
     
-    /** 
+    /**
      * @return a set of all database identifiers available.
      */
     public Set<Integer> getAllDatabaseIds();
@@ -185,9 +185,17 @@ public interface DatabaseManagerInternal extends DatabaseManager {
     public abstract Object getRuntimeState(String property);
     
     /**
+     * Returns all runtime information about the database manager.
+     * 
+     * @return a map containing all properties and their associated values
+     */
+    public abstract Map<String, Object> getRuntimeState();
+    
+    /**
      * Terminates the {@link DatabaseManager}.
      * 
-     * @throws BabuDBException if an error occurs.
+     * @throws BabuDBException
+     *             if an error occurs.
      */
     public void shutdown() throws BabuDBException;
 }

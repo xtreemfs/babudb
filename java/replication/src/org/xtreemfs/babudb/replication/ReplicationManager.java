@@ -8,6 +8,8 @@
 package org.xtreemfs.babudb.replication;
 
 import java.net.InetSocketAddress;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.config.ReplicationConfig;
@@ -98,7 +100,7 @@ public class ReplicationManager implements LifeCycleListener {
     }
     
     /**
-     * Returns runtime information about the database system.
+     * Returns runtime information about the replication manager.
      * 
      * @param property
      *            the name of the runtime state property to query
@@ -122,6 +124,22 @@ public class ReplicationManager implements LifeCycleListener {
         return null;
     }
     
+    /**
+     * Returns all runtime information about the replication manager.
+     * 
+     * @return a map containing all properties and their associated values
+     */
+    public Map<String, Object> getRuntimeState() {
+        Map<String, Object> map = new HashMap<String, Object>();
+        try {
+            map.put(RUNTIME_STATE_MASTER, controlLayer.getLeaseHolder(-1));
+        } catch (InterruptedException e) {
+            /* ignored */
+        }
+        map.put(RUNTIME_STATE_ADDRESS, controlLayer.getThisAddress());
+        return map;
+    }
+        
     /**
      * @return true if redirects shall throw BabuDBExceptions (REDIRECT) or not.
      */

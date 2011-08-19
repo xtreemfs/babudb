@@ -720,12 +720,20 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
     
     @Override
     public Object getRuntimeState(String property) {
-        
+                
         if (RUNTIME_STATE_DBCREATIONCOUNT.equals(property))
             return _dbCreationCount.get();
         if (RUNTIME_STATE_DBDELETIONCOUNT.equals(property))
             return _dbDeletionCount.get();
         
         return null;
+    }
+    
+    @Override
+    public Map<String, Object> getRuntimeState() {
+        Map<String, Object> map = new HashMap<String, Object>();
+        map.put(RUNTIME_STATE_DBCREATIONCOUNT, _dbCreationCount.get());
+        map.put(RUNTIME_STATE_DBDELETIONCOUNT, _dbDeletionCount.get());
+        return map;
     }
 }
