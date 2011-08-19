@@ -120,8 +120,7 @@ public class SlaveReplicationOperationsTest implements LifeCycleListener {
             public void markAsDead(ClientInterface slave) {
                 fail("Operation should not have been accessed by this test!");
             }
-        }, 
-                new ControlLayerInterface() {
+        }, new ControlLayerInterface() {
             
             @Override
             public void updateLeaseHolder(InetSocketAddress leaseholder) {
@@ -148,12 +147,6 @@ public class SlaveReplicationOperationsTest implements LifeCycleListener {
             public void registerReplicationControl(LockableService service) {
                 fail("Operation should not have been accessed by this test!");
             }
-                                    
-            @Override
-            public boolean isItMe(InetSocketAddress address) {
-                fail("Operation should not have been accessed by this test!");
-                return false;
-            }
             
             @Override
             public InetSocketAddress getLeaseHolder(int timeout) {
@@ -171,6 +164,12 @@ public class SlaveReplicationOperationsTest implements LifeCycleListener {
             public void lockReplication() throws InterruptedException {
                 // TODO Auto-generated method stub
                 
+            }
+
+            @Override
+            public InetSocketAddress getThisAddress() {
+                fail("Operation should not have been accessed by this test!");
+                return null;
             }
         }, new BabuDBInterface(new BabuDBMock("BabuDBMock", conf0, testLSN)), new RequestManagement() {
                         

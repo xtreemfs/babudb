@@ -190,12 +190,6 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
             public void registerReplicationControl(LockableService service) {
                 fail("Operation should not have been accessed by this test!");
             }
-                                    
-            @Override
-            public boolean isItMe(InetSocketAddress address) {
-                fail("Operation should not have been accessed by this test!");
-                return false;
-            }
             
             @Override
             public InetSocketAddress getLeaseHolder(int timeout) {
@@ -211,6 +205,12 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
             @Override
             public void lockReplication() throws InterruptedException {
                 Logging.logMessage(Logging.LEVEL_INFO, this, "Mock Replication locked!");
+            }
+
+            @Override
+            public InetSocketAddress getThisAddress() {
+                fail("Operation should not have been accessed by this test!");
+                return null;
             }
         }, new BabuDBInterface(new BabuDBMock("BabuDBMock", conf0, testLSN)), new RequestManagement() {
                         
