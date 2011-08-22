@@ -53,10 +53,12 @@ public class Main extends PluginMain {
             		" the slave backup files, because: ", io.getMessage());
         }
         
+        BabuDBInterface dbInterface = new BabuDBInterface(babuDB);
+        
         // initialize the replication services
         ReplicationManager replMan;
         try {
-            replMan = new ReplicationManager(babuDB, configuration);           
+            replMan = new ReplicationManager(configuration, dbInterface);           
         } catch (Exception e) {
             if (e.getMessage() == null) Logging.logError(Logging.LEVEL_ERROR, this, e);
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
@@ -64,7 +66,7 @@ public class Main extends PluginMain {
         } 
         
         // initialize the BabuDB proxy interface
-        return new BabuDBProxy(babuDB, replMan, configuration.getReplicationPolicy());
+        return new BabuDBProxy(babuDB, replMan, configuration.getReplicationPolicy(), dbInterface);
     }
 
     /* (non-Javadoc)

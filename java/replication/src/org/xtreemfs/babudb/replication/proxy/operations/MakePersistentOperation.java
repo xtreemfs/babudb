@@ -64,7 +64,7 @@ public class MakePersistentOperation extends Operation {
         
         try {
             BabuDBRequestResultImpl<Object> result = dbs.createRequestFuture();
-            dbs.getTransactionManager().makePersistent(rq.getData().createViewBuffer(), result);
+            dbs.getTransactionManager().makePersistentNonBlocking(rq.getData().createViewBuffer(), result);
             result.registerListener(new DatabaseRequestListener<Object>() {
                 
                 @Override

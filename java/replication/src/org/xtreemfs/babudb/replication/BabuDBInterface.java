@@ -24,11 +24,12 @@ import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.dev.CheckpointerInternal;
-import org.xtreemfs.babudb.api.dev.DatabaseInternal;
-import org.xtreemfs.babudb.api.dev.DatabaseManagerInternal;
 import org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase.DBFileMetaData;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.replication.proxy.DatabaseManagerProxy;
+import org.xtreemfs.babudb.replication.proxy.DatabaseProxy;
+import org.xtreemfs.babudb.replication.proxy.TransactionManagerProxy;
 import org.xtreemfs.foundation.logging.Logging;
 
 /**
@@ -44,6 +45,8 @@ public class BabuDBInterface {
     
     /** the persistence manager using the local DiskLogger: NOT THE PROXY */
     private final TransactionManagerInternal    localTxnMan;
+    
+    private DatabaseManagerProxy                dbMan;
         
     /**
      * Registers the reference of local {@link BabuDB}.
@@ -53,6 +56,10 @@ public class BabuDBInterface {
     public BabuDBInterface(BabuDBInternal babuDB) {
         localTxnMan = babuDB.getTransactionManager();
         dbs = babuDB;
+    }
+    
+    public void init(DatabaseManagerProxy dbMan) {
+        this.dbMan = dbMan;
     }
     
     /**
@@ -93,7 +100,7 @@ public class BabuDBInterface {
      * @return the BabuDB modification lock object.
      */
     public Object getDBModificationLock() {
-        return getDBMan().getDBModificationLock();
+        return dbs.getDatabaseManager().getDBModificationLock();
     }
 
     /**
@@ -137,8 +144,8 @@ public class BabuDBInterface {
      * @return a map of all available databases identified by their names.
      * @throws BabuDBException 
      */
-    public Map<String, DatabaseInternal> getDatabases() {
-        return getDBMan().getDatabasesInternal();
+    public Map<String, DatabaseProxy> getDatabases() {
+        return dbMan.getDatabasesInternalNonblocking();
     }
     
     /**
@@ -146,8 +153,8 @@ public class BabuDBInterface {
      * @return an instance of the local database available for the given name.
      * @throws BabuDBException 
      */
-    public DatabaseInternal getDatabase(String dbName) throws BabuDBException {
-        return getDBMan().getDatabase(dbName);
+    public DatabaseProxy getDatabase(String dbName) throws BabuDBException {
+        return dbMan.getDatabaseNonblocking(dbName);
     }
     
     /**
@@ -155,8 +162,8 @@ public class BabuDBInterface {
      * @return an instance of the local database available for the given identifier.
      * @throws BabuDBException 
      */
-    public DatabaseInternal getDatabase(int dbId) throws BabuDBException {
-        return getDBMan().getDatabase(dbId);
+    public DatabaseProxy getDatabase(int dbId) throws BabuDBException {
+        return dbMan.getDatabaseNonblocking(dbId);
     }
     
 /*
@@ -169,14 +176,6 @@ public class BabuDBInterface {
     private CheckpointerInternal getChckPtr() {
         return dbs.getCheckpointer();
     }
-    
-    /**
-     * @return the {@link DatabaseManagerInternal} retrieved from the 
-     *         {@link BabuDB}.
-     */
-    private DatabaseManagerInternal getDBMan() {
-        return dbs.getDatabaseManager();
-    }
 
     /**
      * @return a collection of all {@link DBFileMetaData} objects for the latest
@@ -186,7 +185,7 @@ public class BabuDBInterface {
     public Collection<DBFileMetaData> getAllSnapshotFiles() {
         List<DBFileMetaData> result = new Vector<DBFileMetaData>(); 
         
-        for (DatabaseInternal db : getDBMan().getDatabaseList()) {
+        for (DatabaseProxy db : dbMan.getDatabaseListNonblocking()) {
             result.addAll(db.getLSMDB().getLastestSnapshotFiles());
         }
         
@@ -194,10 +193,10 @@ public class BabuDBInterface {
     }
 
     /**
-     * @return the {@link TransactionManagerInternal} of the local BabuDB instance.
+     * @return the {@link TransactionManagerProxy} of the local BabuDB instance.
      */
-    public TransactionManagerInternal getTransactionManager() {
-        return dbs.getTransactionManager();
+    public TransactionManagerProxy getTransactionManager() {
+        return (TransactionManagerProxy) dbs.getTransactionManager();
     }
     
     /**

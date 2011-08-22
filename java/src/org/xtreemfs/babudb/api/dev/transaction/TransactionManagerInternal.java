@@ -95,7 +95,6 @@ public abstract class TransactionManagerInternal {
             buffer.flip();
             makePersistent(transaction, buffer, requestFuture);
         } catch (IOException e) {
-            if (buffer != null) BufferPool.free(buffer);
             throw new BabuDBException (ErrorCode.IO_ERROR, e.getMessage(), e);
         }
     }

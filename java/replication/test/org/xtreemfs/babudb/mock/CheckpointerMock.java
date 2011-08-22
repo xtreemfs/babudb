@@ -7,6 +7,8 @@
  */
 package org.xtreemfs.babudb.mock;
 
+import java.util.Map;
+
 import org.xtreemfs.babudb.api.dev.CheckpointerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.log.DiskLogger;
@@ -110,6 +112,12 @@ public class CheckpointerMock extends CheckpointerInternal {
      */
     @Override
     public Object getRuntimeState(String property) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Map<String, Object> getRuntimeState() {
         // TODO Auto-generated method stub
         return null;
     }

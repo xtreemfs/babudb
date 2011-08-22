@@ -68,7 +68,7 @@ public class LookupOperation extends Operation {
                 new String(key));
         
         try {
-            dbs.getDatabase(req.getDatabaseName()).lookup(req.getIndexId(), key, 
+            dbs.getDatabase(req.getDatabaseName()).lookupNonblocking(req.getIndexId(), key, 
                     null).registerListener(new DatabaseRequestListener<byte[]>() {
                 
                 @Override

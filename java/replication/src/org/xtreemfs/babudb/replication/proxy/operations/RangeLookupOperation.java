@@ -88,7 +88,7 @@ public class RangeLookupOperation extends Operation {
                 (from == null) ? "null" : new String(from), (to == null) ? "null" : new String(to));
        
         try {
-            dbs.getDatabase(req.getDatabaseName()).rangeLookup(req.getIndexId(), 
+            dbs.getDatabase(req.getDatabaseName()).rangeLookupNonblocking(req.getIndexId(), 
                             from, to, null).registerListener(
                                         new DatabaseRequestListener<ResultSet<byte[], byte[]>>() {
                 

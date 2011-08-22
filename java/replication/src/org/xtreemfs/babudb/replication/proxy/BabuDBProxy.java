@@ -24,6 +24,7 @@ import org.xtreemfs.babudb.config.BabuDBConfig;
 import org.xtreemfs.babudb.lsmdb.DBConfig;
 import org.xtreemfs.babudb.lsmdb.LSMDBWorker;
 import org.xtreemfs.babudb.lsmdb.LSN;
+import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.replication.policy.Policy;
 import org.xtreemfs.foundation.LifeCycleThread;
@@ -43,8 +44,8 @@ public class BabuDBProxy implements BabuDBInternal {
     private final ReplicationManager      replMan;
     private final ProxyAccessClient       client;
     
-    public BabuDBProxy(BabuDBInternal localDB, ReplicationManager replMan, 
-            Policy replicationPolicy) {    
+    public BabuDBProxy(BabuDBInternal localDB, ReplicationManager replMan, Policy replicationPolicy, 
+            BabuDBInterface dbInt) {    
         
         assert (localDB != null);
         
@@ -54,6 +55,7 @@ public class BabuDBProxy implements BabuDBInternal {
                 localDB.getTransactionManager(), replicationPolicy, this);
         DatabaseManagerProxy dbMan = new DatabaseManagerProxy(localDB.getDatabaseManager(), 
                 replicationPolicy, replMan, this, txnManProxy, localDB.getResponseManager());
+        dbInt.init(dbMan);
         this.client = replMan.getProxyClient(dbMan);
         this.dbManProxy = dbMan;
     }

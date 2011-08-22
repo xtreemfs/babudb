@@ -175,6 +175,12 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                     // or the operatingCondition to change
                     while ((operatingCondition.equals(DEFAULT) && q.isEmpty()) || 
                            (locked && operatingCondition.equals(LOCKED))) {
+                        
+                        if (syncListener != null) {
+                            syncListener.synced(babudb.getState());
+                            syncListener = null;
+                        }
+                        
                         wait();
                     }
                                         
@@ -286,6 +292,9 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
             syncListener.synced(to);
         } else {
         
+            if (this.syncListener != null) {
+                this.syncListener.failed(new Exception("Listener was replaced due a new synchronization-request."));
+            }
             this.syncListener = syncListener;
             LSN end = new LSN(
                         // we have to assume, that there is an entry following the

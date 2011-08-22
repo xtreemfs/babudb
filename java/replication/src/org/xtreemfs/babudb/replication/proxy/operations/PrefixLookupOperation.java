@@ -76,7 +76,7 @@ public class PrefixLookupOperation extends Operation {
                 (key == null) ? "null" : new String(key));
         
         try {            
-            dbs.getDatabase(req.getDatabaseName()).prefixLookup(req.getIndexId(), key, 
+            dbs.getDatabase(req.getDatabaseName()).prefixLookupNonblocking(req.getIndexId(), key, 
                     null).registerListener(
                             new DatabaseRequestListener<ResultSet<byte[], byte[]>>() {
                 

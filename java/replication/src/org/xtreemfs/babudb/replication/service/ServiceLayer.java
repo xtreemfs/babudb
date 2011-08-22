@@ -266,6 +266,10 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
                             
                             @Override
                             public void synced(LSN lsn) {
+                                
+                                Logging.logMessage(Logging.LEVEL_DEBUG, this, "Synchronization finished @LSN(%s).", 
+                                        lsn.toString());
+                                
                                 synchronized (ready) {
                                     if (ready.compareAndSet(false, true))
                                         ready.notify();

@@ -76,7 +76,7 @@ public class PrefixLookupReverseOperation extends Operation {
                 (key == null) ? "null" : new String(key));
         
         try {          
-            dbs.getDatabase(req.getDatabaseName()).reversePrefixLookup(req.getIndexId(), key, 
+            dbs.getDatabase(req.getDatabaseName()).reversePrefixLookupNonblocking(req.getIndexId(), key, 
                     null).registerListener(
                                 new DatabaseRequestListener<ResultSet<byte[], byte[]>>() {
                 

@@ -7,6 +7,8 @@
  */
 package org.xtreemfs.babudb.mock;
 
+import java.util.Map;
+
 import org.xtreemfs.babudb.api.StaticInitialization;
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.dev.CheckpointerInternal;
@@ -273,6 +275,12 @@ public class BabuDBMock implements BabuDBInternal {
      */
     @Override
     public Object getRuntimeState(String propertyName) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Map<String, Object> getRuntimeState() {
         // TODO Auto-generated method stub
         return null;
     }

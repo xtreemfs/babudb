@@ -32,6 +32,7 @@ import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
+import org.xtreemfs.foundation.TimeSync;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.util.OutputUtils;
 
@@ -401,10 +402,14 @@ public class CheckpointerImpl extends CheckpointerInternal {
                     
                     synchronized (dbs.getDatabaseManager().getDBModificationLock()) {
                         synchronized (this) {
-                            long start = System.currentTimeMillis();
+                            long start = TimeSync.getGlobalTime();
                             materializeSnapshots();
                             createCheckpoint();
-                            _lastCheckpointDuration.set(System.currentTimeMillis() - start);
+                            
+                            // update statistics
+                            _checkpointCount.incrementAndGet();
+                            _lastCheckpoint.set(TimeSync.getGlobalTime());
+                            _lastCheckpointDuration.set(TimeSync.getGlobalTime() - start);
                         }
                     }
                 }
@@ -423,11 +428,6 @@ public class CheckpointerImpl extends CheckpointerInternal {
                 }
             } finally {
                 synchronized (checkpointComplete) {
-                    
-                    // update statistics
-                    _checkpointCount.incrementAndGet();
-                    _lastCheckpoint.set(System.currentTimeMillis());
-                    
                     checkpointComplete.set(true);
                     checkpointComplete.notify();
                 }

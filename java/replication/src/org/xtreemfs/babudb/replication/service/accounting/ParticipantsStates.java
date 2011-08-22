@@ -68,18 +68,16 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
          */
         State(ReplicationClientAdapter client, long timeStamp) {
             this.client = client;
-            lastUpdate = timeStamp;
-            dead = false;
-            openRequests = 0;
-            lastAcknowledged = new LSN(0,0L);
+            reset(timeStamp);
         }
         
         /**
          * resets this state to the initial state
+         * @param time
          */
-        void reset() {
-            lastUpdate = 0L;
-            dead = true;
+        void reset(long time) {
+            lastUpdate = time;
+            dead = false;
             lastAcknowledged = new LSN(0,0L);
             openRequests = 0;
         }
@@ -248,7 +246,10 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
                                     s.client.getDefaultServerAddress().toString(),
                                     toString());
                             
-                            s.reset();
+                            s.dead = true;
+                            s.lastUpdate = 0;
+                            s.openRequests = 0;
+                            s.lastAcknowledged = new LSN(0,0L);
                             availableSlaves--;
                         } else if ( s.openRequests < MAX_OPEN_REQUESTS_PRO_SERVER ) {
                             
@@ -365,12 +366,13 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
                             if (count >= syncN) {
                                 
                                 this.latestCommon = acknowledgedLSN;
-                                notifyListeners();
                                 break;
                             }
                         }
                     }
                 }
+                
+                notifyListeners();
             } else {
                 
                 Logging.logMessage(Logging.LEVEL_ERROR, this, "'%s' is not" +
@@ -410,7 +412,10 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
                         slave.getDefaultServerAddress().toString(), 
                         toString());
                 
-                s.reset();
+                s.dead = true;
+                s.lastUpdate = 0;
+                s.openRequests = 0;
+                s.lastAcknowledged = new LSN(0,0L);
                 deadSlaves++;
                 availableSlaves--;
                 stateTable.notify();
@@ -509,7 +514,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
     private void notifyListeners(){
         
         LatestLSNUpdateListener listener = listeners.poll();
-        while (listener != null && listener.lsn.compareTo(latestCommon)<=0) {
+        while (listener != null && listener.lsn.compareTo(latestCommon) <= 0) {
             
             listener.upToDate();
             listener = listeners.poll();
@@ -537,8 +542,9 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
         // deal with states
         synchronized (stateTable) {
             
+            long timeStamp = TimeSync.getGlobalTime();
             for (State s : stateTable.values()) {
-                s.reset();
+                s.reset(timeStamp);
             }
         }
     }

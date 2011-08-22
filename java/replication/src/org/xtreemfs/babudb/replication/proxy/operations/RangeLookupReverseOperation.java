@@ -88,9 +88,8 @@ public class RangeLookupReverseOperation extends Operation {
                 (from == null) ? "null" : new String(from), (to == null) ? "null" : new String(to));
         
         try {
-            dbs.getDatabase(req.getDatabaseName()).reverseRangeLookup(req.getIndexId(), 
-                            from, to, null).registerListener(
-                                        new DatabaseRequestListener<ResultSet<byte[], byte[]>>() {
+            dbs.getDatabase(req.getDatabaseName()).reverseRangeLookupNonblocking(req.getIndexId(), 
+                            from, to, null).registerListener(new DatabaseRequestListener<ResultSet<byte[], byte[]>>() {
                 
                 @Override
                 public void finished(ResultSet<byte[], byte[]> result, Object context) {

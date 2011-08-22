@@ -10,11 +10,11 @@ package org.xtreemfs.babudb.replication.proxy.operations;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.pbrpc.Common.emptyRequest;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.Databases;
 import org.xtreemfs.babudb.pbrpc.RemoteAccessServiceConstants;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
+import org.xtreemfs.babudb.replication.proxy.DatabaseProxy;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
 import org.xtreemfs.foundation.logging.Logging;
@@ -63,8 +63,8 @@ public class GetDatabasesOperation extends Operation {
         Logging.logMessage(Logging.LEVEL_DEBUG, this, "GetDatabasesOperation.");
         
         Databases.Builder rBuilder = Databases.newBuilder();
-        Map<String, DatabaseInternal> databases = dbs.getDatabases();
-        for (Entry<String, DatabaseInternal> e : databases.entrySet()) {
+        Map<String, DatabaseProxy> databases = dbs.getDatabases();
+        for (Entry<String, DatabaseProxy> e : databases.entrySet()) {
             rBuilder.addDatabase(org.xtreemfs.babudb.pbrpc.GlobalTypes.Database.newBuilder()
                     .setDatabaseName(e.getKey())
                     .setDatabaseId(e.getValue().getLSMDB().getDatabaseId())

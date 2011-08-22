@@ -281,4 +281,10 @@ public class DatabaseManagerMock implements DatabaseManagerInternal {
         // TODO Auto-generated method stub
         return null;
     }
+
+    @Override
+    public Map<String, Object> getRuntimeState() {
+        // TODO Auto-generated method stub
+        return null;
+    }
 }

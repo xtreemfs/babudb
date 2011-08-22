@@ -309,12 +309,13 @@ public class ControlLayer extends TopLayer {
          * @param address - of the new replication master candidate.
          */
         void queueFailoverRequest(InetSocketAddress address) {
-            Logging.logMessage(Logging.LEVEL_INFO, this, 
-                    "Server %s is initiating failover with new master candidate %s.", 
-                    thisAddress.toString(), address.toString());
-            
             synchronized (failoverRequest) {
                 if (failoverRequest.compareAndSet(null, address)) {
+                    
+                    Logging.logMessage(Logging.LEVEL_INFO, this, 
+                            "Server %s is initiating failover with new master candidate %s.", 
+                            thisAddress.toString(), address.toString());
+                    
                     failoverRequest.notify();
                 }
             }
@@ -419,6 +420,8 @@ public class ControlLayer extends TopLayer {
                 public void synced(LSN lsn) {
                     Logging.logMessage(Logging.LEVEL_DEBUG, this, "Master failover succeeded @LSN(%s).", 
                             lsn.toString());
+                               
+                    serviceInterface.reset();
                     
                     synchronized (finished) {
                         if (finished.compareAndSet(false, true)) {

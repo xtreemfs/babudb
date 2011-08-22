@@ -71,7 +71,27 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
     @Override
     public DatabaseInternal getDatabase(String dbName) throws BabuDBException {
         
-        InetSocketAddress master = getServerToPerformAt();
+        InetSocketAddress master = getServerToPerformAt(0);
+        if (master == null) {
+            return new DatabaseProxy(localDBMan.getDatabase(dbName), this);
+        }
+        
+        try {
+            
+            int dbId = babuDBProxy.getClient().getDatabase(dbName, master).get();
+            return new DatabaseProxy(dbName, dbId, this);
+            
+        } catch (ErrorCodeException ece) {
+            throw new BabuDBException(mapTransmissionError(ece.getCode()),ece.getMessage());
+        } catch (Exception e) {
+            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
+        }
+    }
+    
+    // TODO ugly code! redesign!!
+    public DatabaseProxy getDatabaseNonblocking(String dbName) throws BabuDBException {
+        
+        InetSocketAddress master = getServerToPerformAt(-1);
         if (master == null) {
             return new DatabaseProxy(localDBMan.getDatabase(dbName), this);
         }
@@ -95,7 +115,7 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
     public Map<String, DatabaseInternal> getDatabasesInternal() {
         
         try {
-            InetSocketAddress master = getServerToPerformAt();
+            InetSocketAddress master = getServerToPerformAt(0);
             
             Map<String, DatabaseInternal> r = new HashMap<String, DatabaseInternal>();
             if (master == null) {  
@@ -116,6 +136,34 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
         } catch (Exception e) {
             Logging.logError(Logging.LEVEL_ERROR, this, e);
             return new HashMap<String, DatabaseInternal>();
+        }
+    }
+    
+    // TODO ugly code! redesign!!
+    public Map<String, DatabaseProxy> getDatabasesInternalNonblocking() {
+        
+        try {
+            InetSocketAddress master = getServerToPerformAt(-1);
+            
+            Map<String, DatabaseProxy> r = new HashMap<String, DatabaseProxy>();
+            if (master == null) {  
+                
+                for (Entry<String, DatabaseInternal> e : 
+                    localDBMan.getDatabasesInternal().entrySet()) {
+                    
+                    r.put(e.getKey(), new DatabaseProxy(e.getValue(), this));
+                }
+            } else {
+                for (Entry<String, Integer> e : 
+                    babuDBProxy.getClient().getDatabases(master).get().entrySet()) {
+                                    
+                    r.put(e.getKey(), new DatabaseProxy(e.getKey(), e.getValue(), this));
+                }
+            }
+            return r; 
+        } catch (Exception e) {
+            Logging.logError(Logging.LEVEL_ERROR, this, e);
+            return new HashMap<String, DatabaseProxy>();
         }
     }
 
@@ -185,14 +233,16 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
     
     
     /**
+     * @param timeout - 0 means infinitly and < 0 non blocking.
+     * 
      * @return the host to perform the request at, or null, if it is permitted to perform the 
      *         request locally.
      * @throws BabuDBException if replication is currently not available.
      */
-    private InetSocketAddress getServerToPerformAt() throws BabuDBException {
+    private InetSocketAddress getServerToPerformAt(int timeout) throws BabuDBException {
         InetSocketAddress master;
         try {
-            master = replicationManager.getMaster();
+            master = replicationManager.getMaster(timeout);
         } catch (InterruptedException e) {
             throw new BabuDBException(ErrorCode.INTERRUPTED, 
                 "Waiting for a lease holder was interrupted.", e);
@@ -232,6 +282,11 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
     public Collection<DatabaseInternal> getDatabaseList() {
         return getDatabasesInternal().values();
     }
+    
+    // TODO ugly code! redesign!
+    public Collection<DatabaseProxy> getDatabaseListNonblocking() {
+        return getDatabasesInternalNonblocking().values();
+    }
 
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getDBModificationLock()
@@ -262,7 +317,24 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
      */
     @Override
     public DatabaseInternal getDatabase(int dbId) throws BabuDBException {
-        InetSocketAddress master = getServerToPerformAt();
+        InetSocketAddress master = getServerToPerformAt(0);
+        if (master == null) {
+            return new DatabaseProxy(localDBMan.getDatabase(dbId), this);
+        }
+
+        try {
+            String dbName = babuDBProxy.getClient().getDatabase(dbId, master).get();
+            return new DatabaseProxy(dbName, dbId, this);
+        } catch (ErrorCodeException ece) {
+            throw new BabuDBException(mapTransmissionError(ece.getCode()),ece.getMessage());
+        } catch (Exception e) {
+            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
+        }
+    }
+    
+    // TODO ugly code! redesign!!
+    public DatabaseProxy getDatabaseNonblocking(int dbId) throws BabuDBException {
+        InetSocketAddress master = getServerToPerformAt(-1);
         if (master == null) {
             return new DatabaseProxy(localDBMan.getDatabase(dbId), this);
         }
@@ -287,7 +359,7 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
     @Override
     public int getNextDBId() {
         try {
-            if (getServerToPerformAt() == null) {
+            if (getServerToPerformAt(0) == null) {
                 return localDBMan.getNextDBId();
             }
         } catch (BabuDBException be) {
@@ -303,7 +375,7 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
     @Override
     public void setNextDBId(int id) {
         try {
-            if (getServerToPerformAt() == null) {
+            if (getServerToPerformAt(0) == null) {
                 localDBMan.setNextDBId(id);
             }
         } catch (BabuDBException be) {
@@ -319,7 +391,7 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
     @Override
     public Map<String, ByteRangeComparator> getComparatorInstances() {
         try {
-            if (getServerToPerformAt() == null) {
+            if (getServerToPerformAt(0) == null) {
                 return localDBMan.getComparatorInstances();
             }
         } catch (BabuDBException be) {
@@ -335,7 +407,7 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
     @Override
     public void putDatabase(DatabaseInternal database) {
         try {
-            if (getServerToPerformAt() == null) {
+            if (getServerToPerformAt(0) == null) {
                 localDBMan.putDatabase(database);
             }
         } catch (BabuDBException be) {
@@ -351,7 +423,7 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
     @Override
     public Set<Integer> getAllDatabaseIds() {
         try {
-            if (getServerToPerformAt() == null) {
+            if (getServerToPerformAt(0) == null) {
                 return localDBMan.getAllDatabaseIds();
             }
         } catch (BabuDBException be) {
@@ -367,7 +439,7 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
     @Override
     public void removeDatabaseById(int id) {
         try {
-            if (getServerToPerformAt() == null) {
+            if (getServerToPerformAt(0) == null) {
                 localDBMan.removeDatabaseById(id);
             }
         } catch (BabuDBException be) {

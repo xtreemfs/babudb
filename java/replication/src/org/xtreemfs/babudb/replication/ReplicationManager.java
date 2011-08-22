@@ -11,7 +11,6 @@ import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.replication.control.ControlLayer;
@@ -54,14 +53,14 @@ public class ReplicationManager implements LifeCycleListener {
      * @param conf
      * @throws Exception 
      */
-    public ReplicationManager(BabuDBInternal dbs, ReplicationConfig conf) throws Exception {
+    public ReplicationManager(ReplicationConfig conf, BabuDBInterface dbs) throws Exception {
         
         redirectIsVisible = conf.redirectIsVisible();
         TimeSync.initializeLocal(conf.getTimeSyncInterval(), 
                                  conf.getLocalTimeRenew()).setLifeCycleListener(this);
 
         transmissionLayer = new TransmissionLayer(conf);
-        serviceLayer = new ServiceLayer(conf, new BabuDBInterface(dbs), transmissionLayer);
+        serviceLayer = new ServiceLayer(conf, dbs, transmissionLayer);
         ControlLayer cl = new ControlLayer(serviceLayer, conf);
         controlLayer = cl;
         serviceLayer.init(controlLayer);
@@ -90,13 +89,15 @@ public class ReplicationManager implements LifeCycleListener {
     }
 
     /**
-     * Blocking call.
+     * Blocking call (for max. ReplicationConfig.REQUEST_TIMEOUT).
+     * 
+     * @param timeout - 0 for infinite blocking and < 0 for non-blocking.
      * 
      * @return the currently designated master.
      * @throws InterruptedException 
      */
-    public InetSocketAddress getMaster() throws InterruptedException {
-        return controlLayer.getLeaseHolder(0);
+    public InetSocketAddress getMaster(int timeout) throws InterruptedException {
+        return controlLayer.getLeaseHolder(timeout);
     }
     
     /**

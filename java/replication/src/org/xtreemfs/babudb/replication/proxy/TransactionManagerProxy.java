@@ -7,6 +7,7 @@
  */
 package org.xtreemfs.babudb.replication.proxy;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Map.Entry;
 
@@ -30,6 +31,7 @@ import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import static org.xtreemfs.babudb.log.LogEntry.*;
 import static org.xtreemfs.babudb.api.transaction.Operation.*;
 import static org.xtreemfs.babudb.api.dev.transaction.TransactionInternal.containsOperationType;
+import static org.xtreemfs.babudb.api.dev.transaction.TransactionInternal.deserialize;
 
 /**
  * This implementation of {@link TransactionManager} redirects makePersistent
@@ -38,7 +40,7 @@ import static org.xtreemfs.babudb.api.dev.transaction.TransactionInternal.contai
  * @author flangner
  * @since 11/04/2010
  */
-class TransactionManagerProxy extends TransactionManagerInternal {
+public class TransactionManagerProxy extends TransactionManagerInternal {
 
     private final ReplicationManager            replMan;
     private final TransactionManagerInternal    localTxnMan;
@@ -73,7 +75,7 @@ class TransactionManagerProxy extends TransactionManagerInternal {
         assert (serialized != null);
         
         try {
-            InetSocketAddress master = getServerToPerformAt(txn.aggregateOperationTypes());
+            InetSocketAddress master = getServerToPerformAt(txn.aggregateOperationTypes(), 0);
             if (master == null) {
                 executeLocallyAndReplicate(txn, serialized, future);
             } else {      
@@ -83,6 +85,34 @@ class TransactionManagerProxy extends TransactionManagerInternal {
             BufferPool.free(serialized);
             throw be;
         }
+    }
+    
+    // TODO ugly code! redesign!!
+    public void makePersistentNonBlocking(ReusableBuffer serialized, BabuDBRequestResultImpl<Object> future) 
+            throws BabuDBException {
+        assert (serialized != null);
+        
+        try {
+            // dezerialize the buffer
+            TransactionInternal txn = deserialize(serialized);
+            serialized.flip();
+            
+            InetSocketAddress master = getServerToPerformAt(txn.aggregateOperationTypes(), -1);
+            if (master == null) {
+                executeLocallyAndReplicate(txn, serialized, future);
+            } else {      
+                redirectToMaster(serialized, master, future);
+            }
+
+        } catch (BabuDBException be) {
+            BufferPool.free(serialized);
+            throw be;
+        }catch (IOException e) {
+            if (serialized != null) BufferPool.free(serialized);
+            throw new BabuDBException(ErrorCode.IO_ERROR, e.getMessage(), e);
+        }
+        
+
     }
     
     /**
@@ -146,16 +176,17 @@ class TransactionManagerProxy extends TransactionManagerInternal {
         
     /**
      * @param aggregatedType - of the request.
+     * @param timeout - 0 means infinitly and < 0 non blocking.
      * 
      * @return the host to perform the request at, or null, if it is permitted to perform the 
      *         request locally.
      * @throws BabuDBException if replication is currently not available.
      */
-    private InetSocketAddress getServerToPerformAt (byte aggregatedType) throws BabuDBException {
+    private InetSocketAddress getServerToPerformAt (byte aggregatedType, int timeout) throws BabuDBException {
         
         InetSocketAddress master;
         try {
-            master = replMan.getMaster();
+            master = replMan.getMaster(timeout);
         } catch (InterruptedException e) {
             throw new BabuDBException(ErrorCode.INTERRUPTED, 
                     "Waiting for a lease holder was interrupted.", e);
