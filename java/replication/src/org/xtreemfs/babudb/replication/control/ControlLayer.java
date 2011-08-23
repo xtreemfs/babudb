@@ -462,6 +462,9 @@ public class ControlLayer extends TopLayer {
             // if a new failover request arrives while synchronization is still waiting for a stable
             // state to be established (SyncListener), the listener will be marked as failed when
             // the new master address is set
+            
+            Logging.logMessage(Logging.LEVEL_INFO, this, "Failover succeeded! %s has become the new master.", 
+                    thisAddress.toString());
         }
         
         /**
