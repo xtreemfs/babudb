@@ -309,8 +309,7 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
             }
             
             // necessary to wake up the mechanism
-            if ((old.equals(DEFAULT) && q.isEmpty()) || 
-                (locked && old.equals(LOCKED))) {
+            if ((old.equals(DEFAULT) && q.isEmpty()) || (locked && old.equals(LOCKED))) {
                 notify();
             }
         }
@@ -355,9 +354,11 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                 public void synced(LSN lsn) {
                     try {
                         
-                        // always take a checkpoint
-                        lastOnView.set(babudb.checkpoint());
-                        pacemaker.updateLSN(babudb.getState());
+                        // only take a checkpoint if the master did so
+                        if (lastLSNOnView.getSequenceNo() != 0L) {
+                            lastOnView.set(babudb.checkpoint());
+                            pacemaker.updateLSN(babudb.getState());
+                        }
                         
                     } catch (BabuDBException e) {
                         
@@ -376,7 +377,18 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                     
                     Logging.logMessage(Logging.LEVEL_WARN, this, "Service could not establish a stable state as " +
                     		"requested by the master (%s) @LSN(%s), because %s.", master.toString(), 
-                    		lastLSNOnView.toString(), ex.toString()); 
+                    		lastLSNOnView.toString(), ex.toString());
+                    Logging.logError(Logging.LEVEL_INFO, this, ex);
+                    
+                    // manual load failed. retry if master has not changed meanwhile
+                    // ignore the failure otherwise
+                    try {
+                        if (master.equals(control.getLeaseHolder(1))) {
+                            createStableState(lastLSNOnView, master, control);
+                        }
+                    } catch (InterruptedException e) {
+                        /* ignored */
+                    } 
                 }
             }, lastLSNOnView);
         }

@@ -227,12 +227,18 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
     public void synchronize(SyncListener listener, int port) throws BabuDBException, 
             InterruptedException, IOException {
             
-        final int localSyncN = participantsStates.getLocalSyncN();
+        // synchronize with the most up-to-date slave, if necessary
+        replicationStage.lock();
+        LSN localState = babuDB.getState();
+        replicationStage.unlock();
+        
+        // get participants
+        int localSyncN = participantsStates.getLocalSyncN();
         List<ConditionClient> slaves = participantsStates.getConditionClients();
+        
+        // get the latest of all states
+        LSN latest = localState;
         if (localSyncN > 0) {
-            
-            // always get the latest available state of all servers
-            LSN latest = null;
             Map<ClientInterface ,LSN> states = getStates(slaves, true);
         
             // getting enough slaves has failed
@@ -246,18 +252,12 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
                 Collections.sort(values, Collections.reverseOrder());
                 latest = values.get(0);
             }
-        
-            // synchronize with the most up-to-date slave, if necessary
-            replicationStage.lock();
-            LSN localState = babuDB.getState();
-            replicationStage.unlock();
             
             if (localState.compareTo(latest) < 0) {
                 for (Entry<ClientInterface, LSN> entry : states.entrySet()) {
                     if (entry.getValue().equals(latest)) {   
                                 
-                        Logging.logMessage(Logging.LEVEL_INFO, this, 
-                                "Starting synchronization from '%s' to '%s'.", 
+                        Logging.logMessage(Logging.LEVEL_INFO, this, "Starting synchronization from '%s' to '%s'.", 
                                 localState.toString(), latest.toString());
                     
                         final AtomicBoolean ready = new AtomicBoolean(false);
@@ -305,20 +305,19 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         }
         
         // take a checkpoint on master-failover (inclusive viewId incrementation), if necessary
-        LSN beforeCP = lastOnView.get();
-        if (babuDB.getState().getSequenceNo() > 0L) {
+        LSN beforeCP = latest;
+        if (latest.getSequenceNo() > 0L) {
             Logging.logMessage(Logging.LEVEL_DEBUG, this, "taking a checkpoint");
             beforeCP = babuDB.checkpoint();
             lastOnView.set(beforeCP);
         }
-        Logging.logMessage(Logging.LEVEL_INFO, this, 
-                "Agreed to synchronize to %s before the next view.", beforeCP.toString());
+        Logging.logMessage(Logging.LEVEL_INFO, this, "Agreed to synchronize to %s before the next view.", 
+                beforeCP.toString());
         
         // wait for the slaves to recognize the master-change and for at least N servers to 
         // establish a stable state
         LSN syncState = babuDB.getState();
-        final ReplicateResponse result = new ReplicateResponse(syncState, listener,
-                slaves.size() - localSyncN);
+        final ReplicateResponse result = new ReplicateResponse(syncState, listener, slaves.size() - localSyncN);
         
         subscribeListener(result);
         
@@ -336,8 +335,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
             });
         }
         
-        Logging.logMessage(Logging.LEVEL_INFO, this, 
-                "The next view will start with %s.", syncState.toString());
+        Logging.logMessage(Logging.LEVEL_INFO, this, "The next view will start with %s.", syncState.toString());
     }
   
     /*
