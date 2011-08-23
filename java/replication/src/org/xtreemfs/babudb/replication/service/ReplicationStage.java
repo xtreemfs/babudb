@@ -294,7 +294,8 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
         } else {
         
             if (this.syncListener != null) {
-                this.syncListener.failed(new Exception("Listener was replaced due a new synchronization-request."));
+                this.syncListener.failed(
+                        new InterruptedException("Listener was replaced due a new synchronization-request."));
             }
             this.syncListener = syncListener;
             
@@ -380,15 +381,17 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                     		lastLSNOnView.toString(), ex.toString());
                     Logging.logError(Logging.LEVEL_INFO, this, ex);
                     
-                    // manual load failed. retry if master has not changed meanwhile
-                    // ignore the failure otherwise
-                    try {
-                        if (master.equals(control.getLeaseHolder(1))) {
-                            createStableState(lastLSNOnView, master, control);
-                        }
-                    } catch (InterruptedException e) {
-                        /* ignored */
-                    } 
+                    if (!(ex instanceof InterruptedException)) {
+                        // manual load failed. retry if master has not changed meanwhile
+                        // ignore the failure otherwise
+                        try {
+                            if (master.equals(control.getLeaseHolder(1))) {
+                                createStableState(lastLSNOnView, master, control);
+                            }
+                        } catch (InterruptedException e) {
+                            /* ignored */
+                        } 
+                    }
                 }
             }, lastLSNOnView);
         }
