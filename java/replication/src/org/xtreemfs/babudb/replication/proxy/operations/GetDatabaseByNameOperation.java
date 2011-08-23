@@ -68,7 +68,7 @@ public class GetDatabaseByNameOperation extends Operation {
             
             rq.sendSuccess(Database.newBuilder()
                     .setDatabaseName(dbName)
-                    .setDatabaseId(dbs.getDatabase(dbName).getLSMDB().getDatabaseId())
+                    .setDatabaseId(dbs.getDatabase(dbName).getID())
                     .build());
         } catch (BabuDBException e) {
             rq.sendSuccess(Database.newBuilder().setErrorCode(ErrorCode.mapUserError(

@@ -375,6 +375,10 @@ public class DatabaseProxy implements DatabaseInternal {
     public String getName() {
         return name;
     }
+    
+    public int getID() {
+        return id;
+    }
 
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.database.Database#createInsertGroup()

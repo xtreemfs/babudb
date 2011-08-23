@@ -77,8 +77,7 @@ public class PrefixLookupReverseOperation extends Operation {
         
         try {          
             dbs.getDatabase(req.getDatabaseName()).reversePrefixLookupNonblocking(req.getIndexId(), key, 
-                    null).registerListener(
-                                new DatabaseRequestListener<ResultSet<byte[], byte[]>>() {
+                    null).registerListener(new DatabaseRequestListener<ResultSet<byte[], byte[]>>() {
                 
                 @Override
                 public void finished(ResultSet<byte[], byte[]> result, Object context) {
