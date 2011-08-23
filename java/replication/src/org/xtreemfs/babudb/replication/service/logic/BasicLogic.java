@@ -79,7 +79,7 @@ public class BasicLogic extends Logic {
             Logging.logMessage(Logging.LEVEL_DEBUG, this, "BASIC: Entries until LSN(%s) missing @LSN(%s).", 
                     lsn.toString(), actual.toString());
             // we missed one or more entries
-            return new StageCondition(lsn);
+            return new StageCondition(new LSN(lsn.getViewId(), lsn.getSequenceNo() - 1L));
         } 
         
         // try to finish the request

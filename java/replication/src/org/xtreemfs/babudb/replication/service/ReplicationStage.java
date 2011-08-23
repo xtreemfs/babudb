@@ -281,26 +281,21 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
      * otherwise, if it was a load, the listener will be notified with false.
      * 
      * @param syncListener
-     * @param to
+     * @param end
      */
-    public synchronized void manualLoad(SyncListener syncListener, LSN to) {
+    public synchronized void manualLoad(SyncListener syncListener, LSN end) {
                 
         LSN start = babudb.getState();
         
-        if (start.equals(to)) {
+        if (start.equals(end)) {
             
-            syncListener.synced(to);
+            syncListener.synced(end);
         } else {
         
             if (this.syncListener != null) {
                 this.syncListener.failed(new Exception("Listener was replaced due a new synchronization-request."));
             }
             this.syncListener = syncListener;
-            LSN end = new LSN(
-                        // we have to assume, that there is an entry following the
-                        // state we would like to establish, because the request
-                        // logic will always exclude the 'end' of this range
-                        to.getViewId(), to.getSequenceNo() + 1L);
             
             // update local DB state
             StageCondition old = operatingCondition;
@@ -472,7 +467,7 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
          * User-defined LoopholeMarker.
          * 
          * @param logicID
-         * @param end
+         * @param end (inclusive)
          */
         public StageCondition(LogicID logicID, LSN end) {
             assert (logicID != null);

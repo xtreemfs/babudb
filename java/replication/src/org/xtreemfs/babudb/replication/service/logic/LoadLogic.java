@@ -76,7 +76,7 @@ public class LoadLogic extends Logic {
         assert (condition.logicID == LogicID.LOAD)  : "PROGRAMATICAL ERROR!";
         
         LSN actual = getState();
-        LSN until = (condition.end == null) ? new LSN(actual.getViewId() + 1,0L) : condition.end;
+        LSN until = (condition.end == null) ? new LSN(actual.getViewId() + 1, 0L) : condition.end;
                 
         MasterClient master = slaveView.getSynchronizationPartner(until);
         

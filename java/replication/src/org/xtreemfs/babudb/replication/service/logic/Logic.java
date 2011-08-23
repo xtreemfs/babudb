@@ -156,11 +156,10 @@ public abstract class Logic {
      */
     protected StageCondition finish(LSN end, boolean load) {
         LSN actual = getState();
-        LSN next = new LSN (actual.getViewId(), actual.getSequenceNo() + 1L);
            
         // we are still missing some entries
         // update the missing entries
-        if (end != null && next.compareTo(end) < 0) {
+        if (end != null && actual.compareTo(end) < 0) {
             if (load) {
                 Logging.logMessage(Logging.LEVEL_DEBUG, this, "LOAD to LSN(%s) @ LSN(%s).", 
                         end.toString(), actual.toString());

@@ -109,7 +109,7 @@ public class ReplicaOperation extends Operation {
         final LSN firstEntry = new LSN(start.getViewId(), 
                 start.getSequenceNo() + 1L);
         
-        assert (firstEntry.compareTo(end) < 0) : 
+        assert (firstEntry.compareTo(end) <= 0) : 
             "At least one LogEntry has to be requested!";
         
         DiskLogIterator it = null;
@@ -132,7 +132,7 @@ public class ReplicaOperation extends Operation {
                 while (it.hasNext() &&
                        result.getLogEntriesCount() < 
                        MAX_LOGENTRIES_PER_REQUEST && (le = it.next())
-                           .getLSN().compareTo(end) < 0) {
+                           .getLSN().compareTo(end) <= 0) {
                     
                     try {
                         // we are not at the right position yet -> skip
