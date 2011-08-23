@@ -71,16 +71,14 @@ public class LoadOperation extends Operation {
     @Override
     public void processRequest(Request rq) {
         LSN request = (LSN) rq.getRequestMessage();
+        org.xtreemfs.babudb.lsmdb.LSN lov = lastOnView.get();
         
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "LOAD from %s, by %s", 
-                request.toString(), rq.getSenderAddress().toString());
+        Logging.logMessage(Logging.LEVEL_DEBUG, this, "LOAD from LSN(%s), by %s (LastOnView: LSN(%s))", 
+                request.toString(), rq.getSenderAddress().toString(), lov.toString());
         
-        if (new org.xtreemfs.babudb.lsmdb.LSN(request.getViewId(), 
-                                              request.getSequenceNo())
-                .equals(this.lastOnView.get())) {
+        if (new org.xtreemfs.babudb.lsmdb.LSN(request.getViewId(), request.getSequenceNo()).equals(lov)) {
             
             rq.sendSuccess(DBFileMetaDatas.getDefaultInstance());
-            
         } else {
             DBFileMetaDatas.Builder result = DBFileMetaDatas.newBuilder();
             result.setMaxChunkSize(maxChunkSize);
