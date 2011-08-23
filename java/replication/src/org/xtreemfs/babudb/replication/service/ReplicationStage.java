@@ -32,6 +32,7 @@ import org.xtreemfs.babudb.replication.service.logic.RequestLogic;
 import org.xtreemfs.babudb.replication.transmission.FileIOInterface;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.foundation.LifeCycleThread;
+import org.xtreemfs.foundation.logging.Logging;
 
 import static org.xtreemfs.babudb.replication.service.logic.Logic.LogicID.*;
 import static org.xtreemfs.babudb.replication.service.ReplicationStage.StageCondition.*;
@@ -372,15 +373,10 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                 
                 @Override
                 public void failed(Exception ex) {
-                    // manual load failed. retry if master has not changed meanwhile
-                    // ignore the failure otherwise
-                    try {
-                        if (master.equals(control.getLeaseHolder(-1))) {
-                            createStableState(lastLSNOnView, master, control);
-                        }
-                    } catch (InterruptedException e) {
-                        /* ignored */
-                    } 
+                    
+                    Logging.logMessage(Logging.LEVEL_WARN, this, "Service could not establish a stable state as " +
+                    		"requested by the master (%s) @LSN(%s), because %s.", master.toString(), 
+                    		lastLSNOnView.toString(), ex.toString()); 
                 }
             }, lastLSNOnView);
         }
