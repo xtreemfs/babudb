@@ -28,8 +28,10 @@ import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.api.transaction.Transaction;
 import org.xtreemfs.babudb.api.transaction.TransactionListener;
+import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.replication.policy.Policy;
+import org.xtreemfs.babudb.replication.proxy.BabuDBProxy.RequestRerunner;
 import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter.ErrorCodeException;
 import org.xtreemfs.foundation.logging.Logging;
 
@@ -70,22 +72,38 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
      */
     @Override
     public DatabaseInternal getDatabase(String dbName) throws BabuDBException {
-        
-        InetSocketAddress master = getServerToPerformAt(0);
-        if (master == null) {
-            return new DatabaseProxy(localDBMan.getDatabase(dbName), this);
-        }
-        
-        try {
+       
+        BabuDBException be = null;
+        int tries = 0;
+        while (ReplicationConfig.PROXY_MAX_RETRIES == 0 || tries++ < ReplicationConfig.PROXY_MAX_RETRIES) {
             
-            int dbId = babuDBProxy.getClient().getDatabase(dbName, master).get();
-            return new DatabaseProxy(dbName, dbId, this);
+            InetSocketAddress master = getServerToPerformAt(0);
+            if (master == null) {
+                return new DatabaseProxy(localDBMan.getDatabase(dbName), this);
+            }
+            try {
+                
+                int dbId = babuDBProxy.getClient().getDatabase(dbName, master).get();
+                return new DatabaseProxy(dbName, dbId, this);
+                
+            } catch (ErrorCodeException ece) {
+                ErrorCode code = mapTransmissionError(ece.getCode());
+                be = new BabuDBException(code, ece.getMessage());
+                if (code != ErrorCode.REPLICATION_FAILURE) {
+                    throw be;
+                }
+            } catch (Exception e) {
+                be = new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
+            }
             
-        } catch (ErrorCodeException ece) {
-            throw new BabuDBException(mapTransmissionError(ece.getCode()),ece.getMessage());
-        } catch (Exception e) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
+            try {
+                Thread.sleep(ReplicationConfig.PROXY_RETRY_DELAY);
+            } catch (InterruptedException ie) {
+                throw new BabuDBException(ErrorCode.INTERRUPTED, ie.getMessage());
+            }
         }
+
+        throw be;
     }
     
     // TODO ugly code! redesign!!
@@ -114,29 +132,35 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
     @Override
     public Map<String, DatabaseInternal> getDatabasesInternal() {
         
-        try {
-            InetSocketAddress master = getServerToPerformAt(0);
-            
-            Map<String, DatabaseInternal> r = new HashMap<String, DatabaseInternal>();
-            if (master == null) {  
+        Exception ex = null;
+        int tries = 0;
+        while (ReplicationConfig.PROXY_MAX_RETRIES == 0 || tries++ < ReplicationConfig.PROXY_MAX_RETRIES) {
+            try {
+                InetSocketAddress master = getServerToPerformAt(0);
                 
-                for (Entry<String, DatabaseInternal> e : 
-                    localDBMan.getDatabasesInternal().entrySet()) {
+                Map<String, DatabaseInternal> r = new HashMap<String, DatabaseInternal>();
+                if (master == null) {  
                     
-                    r.put(e.getKey(), new DatabaseProxy(e.getValue(), this));
+                    for (Entry<String, DatabaseInternal> e : 
+                        localDBMan.getDatabasesInternal().entrySet()) {
+                        
+                        r.put(e.getKey(), new DatabaseProxy(e.getValue(), this));
+                    }
+                } else {
+                    for (Entry<String, Integer> e : 
+                        babuDBProxy.getClient().getDatabases(master).get().entrySet()) {
+                                        
+                        r.put(e.getKey(), new DatabaseProxy(e.getKey(), e.getValue(), this));
+                    }
                 }
-            } else {
-                for (Entry<String, Integer> e : 
-                    babuDBProxy.getClient().getDatabases(master).get().entrySet()) {
-                                    
-                    r.put(e.getKey(), new DatabaseProxy(e.getKey(), e.getValue(), this));
-                }
+                return r; 
+            } catch (Exception exc) {
+                ex = exc;
             }
-            return r; 
-        } catch (Exception e) {
-            Logging.logError(Logging.LEVEL_ERROR, this, e);
-            return new HashMap<String, DatabaseInternal>();
         }
+        
+        Logging.logError(Logging.LEVEL_ERROR, this, ex);
+        return new HashMap<String, DatabaseInternal>();
     }
     
     // TODO ugly code! redesign!!
@@ -275,6 +299,10 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
         return replicationManager;
     }
 
+    RequestRerunner getRequestRerunner() {
+        return babuDBProxy.getRequestRerunner();
+    }
+    
     /* (non-Javadoc)
      * @see org.xtreemfs.babudb.api.dev.DatabaseManagerInternal#getDatabaseList()
      */
@@ -317,19 +345,30 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
      */
     @Override
     public DatabaseInternal getDatabase(int dbId) throws BabuDBException {
-        InetSocketAddress master = getServerToPerformAt(0);
-        if (master == null) {
-            return new DatabaseProxy(localDBMan.getDatabase(dbId), this);
+        
+        BabuDBException be = null;
+        int tries = 0;
+        while (ReplicationConfig.PROXY_MAX_RETRIES == 0 || tries++ < ReplicationConfig.PROXY_MAX_RETRIES) {
+            InetSocketAddress master = getServerToPerformAt(0);
+            if (master == null) {
+                return new DatabaseProxy(localDBMan.getDatabase(dbId), this);
+            }
+    
+            try {
+                String dbName = babuDBProxy.getClient().getDatabase(dbId, master).get();
+                return new DatabaseProxy(dbName, dbId, this);
+            } catch (ErrorCodeException ece) {
+                ErrorCode code = mapTransmissionError(ece.getCode());
+                be = new BabuDBException(code, ece.getMessage());
+                if (code != ErrorCode.REPLICATION_FAILURE) {
+                    throw be;
+                }
+            } catch (Exception e) {
+                be = new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
+            }
         }
-
-        try {
-            String dbName = babuDBProxy.getClient().getDatabase(dbId, master).get();
-            return new DatabaseProxy(dbName, dbId, this);
-        } catch (ErrorCodeException ece) {
-            throw new BabuDBException(mapTransmissionError(ece.getCode()),ece.getMessage());
-        } catch (Exception e) {
-            throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
-        }
+        
+        throw be;
     }
     
     // TODO ugly code! redesign!!

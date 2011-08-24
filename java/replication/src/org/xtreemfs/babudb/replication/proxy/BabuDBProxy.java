@@ -7,8 +7,11 @@
  */
 package org.xtreemfs.babudb.replication.proxy;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import org.xtreemfs.babudb.api.BabuDB;
 import org.xtreemfs.babudb.api.StaticInitialization;
@@ -21,6 +24,7 @@ import org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.config.BabuDBConfig;
+import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.lsmdb.DBConfig;
 import org.xtreemfs.babudb.lsmdb.LSMDBWorker;
 import org.xtreemfs.babudb.lsmdb.LSN;
@@ -38,11 +42,49 @@ import org.xtreemfs.foundation.LifeCycleThread;
  */
 public class BabuDBProxy implements BabuDBInternal {
     
+    final static class RequestRerunner {
+        /** {@link Timer} to schedule the re-running-task at */
+        private final Timer timer;
+        
+        RequestRerunner() {
+            this.timer = new Timer("RequestRerunner", true);
+        }
+        
+        <T> void scheduleRequestRerun(ListenerWrapper<T> listener) {
+            this.timer.schedule(
+                    new RequestTask<T>(listener), 
+                    new Date(System.currentTimeMillis() + ReplicationConfig.PROXY_RETRY_DELAY)
+                    );
+        }
+        
+        void shutdown() {
+            this.timer.cancel();
+        }
+        
+        private final class RequestTask<T> extends TimerTask {
+
+            private final ListenerWrapper<T> listener;
+            
+            RequestTask(ListenerWrapper<T> listener) {
+                this.listener = listener;
+            }
+            
+            /* (non-Javadoc)
+             * @see java.util.TimerTask#run()
+             */
+            @Override
+            public void run() {
+                listener.tryAgain();
+            }
+        }
+    }
+    
     private final BabuDBInternal          localBabuDB;
     private final TransactionManagerProxy txnManProxy;
     private final DatabaseManagerInternal dbManProxy;
     private final ReplicationManager      replMan;
     private final ProxyAccessClient       client;
+    private final RequestRerunner         requestRerunner = new RequestRerunner();
     
     public BabuDBProxy(BabuDBInternal localDB, ReplicationManager replMan, Policy replicationPolicy, 
             BabuDBInterface dbInt) {    
@@ -98,6 +140,7 @@ public class BabuDBProxy implements BabuDBInternal {
     @Override
     public void shutdown(boolean graceful) throws BabuDBException {
         try {
+            requestRerunner.shutdown();
             replMan.shutdown();
         } catch (Exception e) {
             throw new BabuDBException(ErrorCode.REPLICATION_FAILURE, e.getMessage());
@@ -233,6 +276,10 @@ public class BabuDBProxy implements BabuDBInternal {
      */
     public ProxyAccessClient getClient() {
         return client;
+    }
+    
+    RequestRerunner getRequestRerunner() {
+        return requestRerunner;
     }
 
     /* (non-Javadoc)

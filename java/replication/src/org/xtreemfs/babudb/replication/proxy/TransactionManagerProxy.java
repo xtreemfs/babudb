@@ -24,6 +24,7 @@ import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.ReplicationManager;
 import org.xtreemfs.babudb.replication.policy.Policy;
+import org.xtreemfs.babudb.replication.proxy.ListenerWrapper.RequestOperation;
 import org.xtreemfs.babudb.replication.service.accounting.ReplicateResponse;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
@@ -111,8 +112,6 @@ public class TransactionManagerProxy extends TransactionManagerInternal {
             if (serialized != null) BufferPool.free(serialized);
             throw new BabuDBException(ErrorCode.IO_ERROR, e.getMessage(), e);
         }
-        
-
     }
     
     /**
@@ -168,10 +167,20 @@ public class TransactionManagerProxy extends TransactionManagerInternal {
      * @param future
      * @return the request response future.
      */
-    private void redirectToMaster(ReusableBuffer load, InetSocketAddress master, 
+    private void redirectToMaster(final ReusableBuffer load, final InetSocketAddress master, 
             BabuDBRequestResultImpl<Object> future) {
         
-        babuDBProxy.getClient().makePersistent(master, load).registerListener(new ListenerWrapper<Object>(future));
+        new ListenerWrapper<Object>(future, new RequestOperation<Object>() {
+            
+            /* (non-Javadoc)
+             * @see org.xtreemfs.babudb.replication.proxy.ListenerWrapper.RequestOperation#
+             *  execute(org.xtreemfs.babudb.replication.proxy.ListenerWrapper)
+             */
+            @Override
+            public void execute(ListenerWrapper<Object> listener) {
+                babuDBProxy.getClient().makePersistent(master, load).registerListener(listener);
+            }
+        }, babuDBProxy.getRequestRerunner());
     }
         
     /**

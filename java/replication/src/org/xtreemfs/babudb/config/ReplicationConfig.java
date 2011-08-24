@@ -102,6 +102,13 @@ public class ReplicationConfig extends PluginConfig {
      */
     public static final int          MAX_RETRIES            = 3;
     
+    /**
+     * Proxy retry parameters.
+     */
+    /** 0 means infinitely */
+    public static final int          PROXY_MAX_RETRIES      = 15;
+    public static final int          PROXY_RETRY_DELAY      = 10 * 1000;
+    
     public ReplicationConfig(Properties prop, BabuDBConfig babuConf) 
             throws IOException {
         super(prop);

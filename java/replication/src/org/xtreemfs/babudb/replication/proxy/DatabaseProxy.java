@@ -25,6 +25,7 @@ import org.xtreemfs.babudb.replication.policy.Policy;
 import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter.ErrorCodeException;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
+import org.xtreemfs.babudb.replication.proxy.ListenerWrapper.RequestOperation;
 
 import static org.xtreemfs.babudb.replication.transmission.ErrorCode.*;
 
@@ -66,27 +67,31 @@ public class DatabaseProxy implements DatabaseInternal {
      *          java.lang.Object)
      */
     @Override
-    public DatabaseRequestResult<byte[]> lookup(int indexId, byte[] key, Object context) {
+    public DatabaseRequestResult<byte[]> lookup(final int indexId, final byte[] key, final Object context) {
         
         assert (key != null);
         
-        InetSocketAddress master = null;
         BabuDBRequestResultImpl<byte[]> result = 
             new BabuDBRequestResultImpl<byte[]>(context, dbMan.getResponseManager());
         
-        try {
-            master = getServerToPerformAt(0);
-            
-            if (master == null) {
-                return localDB.lookup(indexId, key, context);
+        new ListenerWrapper<byte[]>(result, new RequestOperation<byte[]>() {
+
+            @Override
+            public void execute(ListenerWrapper<byte[]> listener) {
+                InetSocketAddress master = null;
+                try {
+                    master = getServerToPerformAt(0);
+                    
+                    if (master == null) {
+                        localDB.lookup(indexId, key, context).registerListener(listener);
+                    }
+                } catch (BabuDBException e) {
+                    listener.failed(e);
+                } 
+                
+                dbMan.getClient().lookup(name, indexId, ReusableBuffer.wrap(key), master).registerListener(listener);
             }
-        } catch (BabuDBException e) {
-            result.failed(e);
-            return result;
-        } 
-        
-        dbMan.getClient().lookup(name, indexId, ReusableBuffer.wrap(key), master).registerListener(
-                new ListenerWrapper<byte[]>(result));
+        }, dbMan.getRequestRerunner());
         
         return result;
     }
@@ -123,26 +128,34 @@ public class DatabaseProxy implements DatabaseInternal {
      */
     @Override
     public DatabaseRequestResult<ResultSet<byte[], byte[]>> prefixLookup(
-            int indexId, byte[] key, Object context) {
+            final int indexId, final byte[] key, final Object context) {
         
-        InetSocketAddress master = null;
+        
         BabuDBRequestResultImpl<ResultSet<byte[], byte[]>> result = 
             new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(context, dbMan.getResponseManager());
         
-        try {
-            master = getServerToPerformAt(0);
-            
-            if (master == null) {
-                return localDB.prefixLookup(indexId, key, context);
+        new ListenerWrapper<ResultSet<byte[], byte[]>>(result, new RequestOperation<ResultSet<byte[], byte[]>>() {
+
+            @Override
+            public void execute(ListenerWrapper<ResultSet<byte[], byte[]>> listener) {
+                
+                InetSocketAddress master = null;
+                try {
+                    master = getServerToPerformAt(0);
+                    
+                    if (master == null) {
+                        localDB.prefixLookup(indexId, key, context).registerListener(listener);
+                    }
+                } catch (BabuDBException e) {
+                    
+                    listener.failed(e);
+                }
+                
+                dbMan.getClient().prefixLookup(name, indexId, ReusableBuffer.wrap(key), master).registerListener(
+                        listener);
             }
-        } catch (BabuDBException e) {
-            
-            result.failed(e);
-            return result;
-        }
-        
-        dbMan.getClient().prefixLookup(name, indexId, ReusableBuffer.wrap(key), master).registerListener(
-                new ListenerWrapper<ResultSet<byte[], byte[]>>(result));
+        }, dbMan.getRequestRerunner());
+
         return result;
     }
     
@@ -177,24 +190,30 @@ public class DatabaseProxy implements DatabaseInternal {
      */
     @Override
     public DatabaseRequestResult<ResultSet<byte[], byte[]>> 
-            reversePrefixLookup(int indexId, byte[] key, Object context) {
+            reversePrefixLookup(final int indexId, final byte[] key, final Object context) {
         
-        InetSocketAddress master = null;
         BabuDBRequestResultImpl<ResultSet<byte[], byte[]>> result = 
             new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(context, dbMan.getResponseManager());
-        try {
-            master = getServerToPerformAt(0);
-            if (master == null) {
-                return localDB.reversePrefixLookup(indexId, key, context);
+       
+
+        new ListenerWrapper<ResultSet<byte[], byte[]>>(result, new RequestOperation<ResultSet<byte[], byte[]>>() {
+
+            @Override
+            public void execute(ListenerWrapper<ResultSet<byte[], byte[]>> listener) {
+                InetSocketAddress master = null;
+                try {
+                    master = getServerToPerformAt(0);
+                    if (master == null) {
+                        localDB.reversePrefixLookup(indexId, key, context).registerListener(listener);
+                    }
+                } catch (BabuDBException e) {
+                    listener.failed(e);
+                }
+                
+                dbMan.getClient().prefixLookupR(name, indexId, ReusableBuffer.wrap(key), master).registerListener(
+                        listener);
             }
-        } catch (BabuDBException e) {
-            
-            result.failed(e);
-            return result;
-        }
-        
-        dbMan.getClient().prefixLookupR(name, indexId, ReusableBuffer.wrap(key), master).registerListener(
-                new ListenerWrapper<ResultSet<byte[], byte[]>>(result));
+        }, dbMan.getRequestRerunner());
         return result;
     }
     
@@ -227,23 +246,30 @@ public class DatabaseProxy implements DatabaseInternal {
      */
     @Override
     public DatabaseRequestResult<ResultSet<byte[], byte[]>> rangeLookup(
-            int indexId, byte[] from, byte[] to, Object context) {
+            final int indexId, final byte[] from, final byte[] to, final Object context) {
         
-        InetSocketAddress master = null;
+        
         BabuDBRequestResultImpl<ResultSet<byte[], byte[]>> result = 
             new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(context, dbMan.getResponseManager());
-        try {
-            master = getServerToPerformAt(0);
-            if (master == null) {
-                return localDB.rangeLookup(indexId, from, to, context);
+       
+        new ListenerWrapper<ResultSet<byte[], byte[]>>(result, new RequestOperation<ResultSet<byte[], byte[]>>() {
+
+            @Override
+            public void execute(ListenerWrapper<ResultSet<byte[], byte[]>> listener) {
+                InetSocketAddress master = null;
+                try {
+                    master = getServerToPerformAt(0);
+                    if (master == null) {
+                        localDB.rangeLookup(indexId, from, to, context).registerListener(listener);
+                    }
+                } catch (BabuDBException e) {
+                    listener.failed(e);
+                }
+                
+                dbMan.getClient().rangeLookup(name, indexId, ReusableBuffer.wrap(from), ReusableBuffer.wrap(to), master)
+                                    .registerListener(listener);
             }
-        } catch (BabuDBException e) {
-            result.failed(e);
-            return result;
-        }
-        
-        dbMan.getClient().rangeLookup(name, indexId, ReusableBuffer.wrap(from), ReusableBuffer.wrap(to), master)
-                            .registerListener(new ListenerWrapper<ResultSet<byte[], byte[]>>(result));
+        }, dbMan.getRequestRerunner());
         
         return result;
     }
@@ -277,23 +303,30 @@ public class DatabaseProxy implements DatabaseInternal {
      */
     @Override
     public DatabaseRequestResult<ResultSet<byte[], byte[]>> 
-            reverseRangeLookup(int indexId, byte[] from, byte[] to, Object context) {
+            reverseRangeLookup(final int indexId, final byte[] from, final byte[] to, final Object context) {
         
-        InetSocketAddress master = null;
         BabuDBRequestResultImpl<ResultSet<byte[], byte[]>> result = 
             new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(context, dbMan.getResponseManager());
-        try {
-            master = getServerToPerformAt(0);
-            if (master == null) {
-                return localDB.reverseRangeLookup(indexId, from, to, context);
-            }
-        } catch (BabuDBException e) {
-            result.failed(e);
-            return result;
-        }
         
-        dbMan.getClient().rangeLookupR(name, indexId, ReusableBuffer.wrap(from), ReusableBuffer.wrap(to), master)
-                            .registerListener(new ListenerWrapper<ResultSet<byte[], byte[]>>(result));
+        new ListenerWrapper<ResultSet<byte[], byte[]>>(result, new RequestOperation<ResultSet<byte[], byte[]>>() {
+
+            @Override
+            public void execute(ListenerWrapper<ResultSet<byte[], byte[]>> listener) {
+                InetSocketAddress master = null;
+                try {
+                    master = getServerToPerformAt(0);
+                    if (master == null) {
+                        localDB.reverseRangeLookup(indexId, from, to, context).registerListener(listener);
+                    }
+                } catch (BabuDBException e) {
+                    listener.failed(e);
+                }
+                
+                dbMan.getClient().rangeLookupR(name, indexId, ReusableBuffer.wrap(from), ReusableBuffer.wrap(to), master)
+                                    .registerListener(listener);
+            }
+        }, dbMan.getRequestRerunner());
+        
         return result;
     }
     
@@ -304,6 +337,7 @@ public class DatabaseProxy implements DatabaseInternal {
         InetSocketAddress master = null;
         BabuDBRequestResultImpl<ResultSet<byte[], byte[]>> result = 
             new BabuDBRequestResultImpl<ResultSet<byte[], byte[]>>(context, dbMan.getResponseManager());
+        
         try {
             master = getServerToPerformAt(-1);
             if (master == null) {
