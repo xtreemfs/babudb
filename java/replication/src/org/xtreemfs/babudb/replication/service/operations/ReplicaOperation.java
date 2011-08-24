@@ -119,7 +119,7 @@ public class ReplicaOperation extends Operation {
                     
                     // incrementation of sequenceNumber is crucial, because of the DiskLogIterator filters files
                     // that contain LSNs less or equal the given one
-                    it = fileIO.getLogEntryIterator(lastInserted);
+                    it = fileIO.getLogEntryIterator(firstEntryNeeded);
                 } catch (LogEntryException exc) {
                     Logging.logMessage(Logging.LEVEL_DEBUG, this, "Entry-log since LSN(%s) is unavailable.", 
                             firstEntryNeeded.toString()); 
@@ -128,10 +128,9 @@ public class ReplicaOperation extends Operation {
                     rq.sendSuccess(result.setErrorCode(ErrorCode.LOG_UNAVAILABLE).build());
                     return;
                 }
-                while (it.hasNext() &&
-                       result.getLogEntriesCount() < 
-                       MAX_LOGENTRIES_PER_REQUEST && (le = it.next())
-                           .getLSN().compareTo(end) <= 0) {
+                while (it.hasNext() && result.getLogEntriesCount() < MAX_LOGENTRIES_PER_REQUEST) {
+                    
+                    le = it.next();
                     
                     try {
                         // we are not at the right position yet -> skip
@@ -141,11 +140,14 @@ public class ReplicaOperation extends Operation {
                         if (le.getLSN().compareTo(firstEntryNeeded) > 0 &&
                             result.getLogEntriesCount() == 0) {
                             break;
+                            
+                        // we exceeded the gap
+                        } else if (le.getLSN().compareTo(end) >= 0) {
+                            break;
                         }
                           
                         // add the logEntry to result list
-                        assert (le.getPayload().array().length > 0) : 
-                            "Empty log-entries are not allowed!";
+                        assert (le.getPayload().array().length > 0) : "Empty log-entries are not allowed!";
                         ReusableBuffer buf = le.serialize(checksum);
                         
                         result.addLogEntries(org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry

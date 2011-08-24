@@ -169,7 +169,6 @@ public class CheckpointerImpl extends CheckpointerInternal {
     @Override
     public LSN checkpoint(boolean incViewId) throws BabuDBException {
         
-        incrementViewId = incViewId;
         synchronized (checkpointComplete) {
             checkpointComplete.set(false);
         }
@@ -177,6 +176,7 @@ public class CheckpointerImpl extends CheckpointerInternal {
         // notify the checkpointing thread to immediately process all requests
         // in the processing queue
         synchronized (this) {
+            incrementViewId = incViewId;
             forceCheckpoint = true;
             notify();
         }
@@ -375,12 +375,7 @@ public class CheckpointerImpl extends CheckpointerInternal {
                 // checkpoints until it has been re-init()
                 synchronized (suspended) {
                     if (suspended.get()) {
-                        // clean-up checkpoint-request
-                        synchronized (checkpointComplete) {
-                            if (checkpointComplete.compareAndSet(false, true)) {
-                                checkpointComplete.notify();
-                            }
-                        }
+                        
                         // lock
                         suspended.notify();
                         synchronized (suspensionLock) {
@@ -445,6 +440,7 @@ public class CheckpointerImpl extends CheckpointerInternal {
      */
     @Override
     public void waitForCheckpoint() throws InterruptedException {
+        
         synchronized (checkpointComplete) {
             while (!checkpointComplete.get()) {
                 checkpointComplete.wait();

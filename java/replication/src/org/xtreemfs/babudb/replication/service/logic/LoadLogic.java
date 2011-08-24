@@ -271,6 +271,9 @@ public class LoadLogic extends Logic {
         try {
             babuDB.startBabuDB();
             fileIO.removeBackupFiles();
+            
+            assert (!actual.equals(babuDB.getState())) : "Loading the database had no effect!";
+            
             return finish(until);
         } catch (BabuDBException e) {
             // resetting the DBS failed -> retry

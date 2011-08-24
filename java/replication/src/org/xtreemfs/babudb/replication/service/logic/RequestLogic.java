@@ -72,8 +72,8 @@ public class RequestLogic extends Logic {
         LSN from = getState();
         LSN until = condition.end;
         
-        Logging.logMessage(Logging.LEVEL_INFO, this, "REQUEST: Replica-range is missing: from %s to %s", from.toString(), 
-                until.toString());
+        Logging.logMessage(Logging.LEVEL_INFO, this, "REQUEST: Replica-range is missing: from %s to %s", 
+                from.toString(), until.toString());
         
         // get the missing logEntries
         ReusableBuffer[] logEntries = null;

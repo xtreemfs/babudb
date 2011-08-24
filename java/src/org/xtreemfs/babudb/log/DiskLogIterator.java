@@ -57,7 +57,6 @@ public class DiskLogIterator implements Iterator<LogEntry> {
             
             // read list of logs and create a list ordered from min LSN to
             // max LSN
-            int count = -1;
             SortedSet<LSN> orderedLogList = new TreeSet<LSN>();
             Pattern p = Pattern.compile("(\\d+)\\.(\\d+)\\.dbl");
             for (File logFile : logFiles) {
@@ -68,23 +67,22 @@ public class DiskLogIterator implements Iterator<LogEntry> {
                 tmp = m.group(2);
                 int seqNo = Integer.valueOf(tmp);
                 orderedLogList.add(new LSN(viewId, seqNo));
-                count++;
             }
+                        
             LSN[] copy = orderedLogList.toArray(new LSN[orderedLogList.size()]);
-            LSN last = null;
-            LSN lastRemoved = null;
-            for (LSN lsn : copy) {
-                if (last == null)
-                    last = lsn;
-                else {
-                    if (from != null && lsn.compareTo(from) <= 0) {
-                        orderedLogList.remove(last);
-                        lastRemoved = last;
-                        last = lsn;
-                    } else
+            
+            int i = 0;
+            if (from != null) {
+                for (;i < (copy.length - 1); i++) {
+                    if (copy[i+1].compareTo(from) <= 0) {
+                        orderedLogList.remove(copy[i]);
+                    } else {
                         break;
+                    }
                 }
             }
+            LSN last = copy[i];
+            
             
             // TODO invalid since natural gaps from viewId incrementation have to be tolerated
             // check if log entries are missing
@@ -92,12 +90,7 @@ public class DiskLogIterator implements Iterator<LogEntry> {
                     && last.getSequenceNo() > from.getSequenceNo())
                 throw new LogEntryException("missing log entries: database ends at LSN " + from.toString()
                         + ", first log entry LSN is " + last.toString());
-            
-            // re-add the last removed log file, if there is a chance, that
-            // from is located there
-            if (lastRemoved != null && from.compareTo(last) < 0) {
-                orderedLogList.add(lastRemoved);
-            }
+
             logList = orderedLogList.iterator();
             
             findFirstEntry();

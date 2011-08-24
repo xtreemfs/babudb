@@ -257,6 +257,9 @@ public class DiskLogger extends LifeCycleThread {
         if (incrementViewId){
             int view = currentViewId.getAndIncrement();
             long seq = nextLogSequenceNo.getAndSet(1L) - 1L;
+            
+            assert (seq != 0) : "Checkpoint after checkpoint is not allowed!";
+            
             lastSyncedLSN = new LSN(view, seq);
         } else {
             lastSyncedLSN = new LSN(currentViewId.get(), nextLogSequenceNo.get() - 1L);
