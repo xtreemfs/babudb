@@ -84,20 +84,18 @@ public class ReplicaOperation extends Operation {
     public void processRequest(Request rq) {
         LSNRange request = (LSNRange) rq.getRequestMessage();
         
-        final LSN start = new LSN(request.getStart().getViewId(), 
-                                  request.getStart().getSequenceNo());
-        final LSN end = new LSN(request.getEnd().getViewId(), 
-                                request.getEnd().getSequenceNo());
+        LSN lastInserted = new LSN(request.getStart().getViewId(), request.getStart().getSequenceNo());
+        LSN end = new LSN(request.getEnd().getViewId(), request.getEnd().getSequenceNo());
         
         LogEntries.Builder result = LogEntries.newBuilder();
         ReusableBuffer resultPayLoad = BufferPool.allocate(0);
         
         Logging.logMessage(Logging.LEVEL_INFO, this, "REQUEST received " +
-                "(start: %s, end: %s) from %s", start.toString(), 
+                "(start: %s, end: %s) from %s", lastInserted.toString(), 
                 end.toString(), rq.getSenderAddress().toString());
         
         // enhancement to prevent slaves from loading the DB from the master unnecessarily
-        if (start.equals(lastOnView.get())) {
+        if (lastInserted.equals(lastOnView.get())) {
             
             Logging.logMessage(Logging.LEVEL_DEBUG, this, 
                    "REQUEST answer is empty (there has been a failover only).");
@@ -106,11 +104,9 @@ public class ReplicaOperation extends Operation {
             return;  
         }
         
-        final LSN firstEntry = new LSN(start.getViewId(), 
-                start.getSequenceNo() + 1L);
+        LSN firstEntryNeeded = new LSN(lastInserted.getViewId(), lastInserted.getSequenceNo() + 1L);
         
-        assert (firstEntry.compareTo(end) <= 0) : 
-            "At least one LogEntry has to be requested!";
+        assert (firstEntryNeeded.compareTo(end) <= 0) : "At least one LogEntry has to be requested!";
         
         DiskLogIterator it = null;
         LogEntry le = null;
@@ -120,10 +116,13 @@ public class ReplicaOperation extends Operation {
                 babuInterface.waitForCheckpoint();
                 
                 try {
-                    it = fileIO.getLogEntryIterator(firstEntry);
+                    
+                    // incrementation of sequenceNumber is crucial, because of the DiskLogIterator filters files
+                    // that contain LSNs less or equal the given one
+                    it = fileIO.getLogEntryIterator(lastInserted);
                 } catch (LogEntryException exc) {
-                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "LogEntryIterator for LSN(%s) is unavailable.", 
-                            firstEntry.toString()); 
+                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "Entry-log since LSN(%s) is unavailable.", 
+                            firstEntryNeeded.toString()); 
                     Logging.logError(Logging.LEVEL_DEBUG, this, exc); 
                     if (resultPayLoad != null) BufferPool.free(resultPayLoad);
                     rq.sendSuccess(result.setErrorCode(ErrorCode.LOG_UNAVAILABLE).build());
@@ -136,10 +135,10 @@ public class ReplicaOperation extends Operation {
                     
                     try {
                         // we are not at the right position yet -> skip
-                        if (le.getLSN().compareTo(firstEntry) < 0) continue;
+                        if (le.getLSN().compareTo(firstEntryNeeded) < 0) continue;
                     
                         // the first entry was not available ... bad
-                        if (le.getLSN().compareTo(firstEntry) > 0 &&
+                        if (le.getLSN().compareTo(firstEntryNeeded) > 0 &&
                             result.getLogEntriesCount() == 0) {
                             break;
                         }
@@ -149,8 +148,7 @@ public class ReplicaOperation extends Operation {
                             "Empty log-entries are not allowed!";
                         ReusableBuffer buf = le.serialize(checksum);
                         
-                        result.addLogEntries(
-                                org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry
+                        result.addLogEntries(org.xtreemfs.babudb.pbrpc.GlobalTypes.LogEntry
                                 .newBuilder().setLength(buf.remaining()));
                         
                         int newSize = resultPayLoad.position() + buf.remaining();
