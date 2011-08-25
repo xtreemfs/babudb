@@ -106,7 +106,7 @@ public class ReplicaOperation extends Operation {
         
         LSN firstEntryNeeded = new LSN(lastInserted.getViewId(), lastInserted.getSequenceNo() + 1L);
         
-        assert (firstEntryNeeded.compareTo(end) <= 0) : "At least one LogEntry has to be requested!";
+        assert (firstEntryNeeded.compareTo(end) < 0) : "At least one LogEntry has to be requested!";
         
         DiskLogIterator it = null;
         LogEntry le = null;

@@ -282,7 +282,7 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
      * otherwise, if it was a load, the listener will be notified with false.
      * 
      * @param syncListener
-     * @param end
+     * @param end - LSN to load to (inclusive)
      */
     public synchronized void manualLoad(SyncListener syncListener, LSN end) {
                 
@@ -299,14 +299,18 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
             }
             this.syncListener = syncListener;
             
+            // because the last entry of a requested ranged is assumed to be available, we have to conceive the 
+            // following rangeEnd to make the mechanism work
+            LSN rangeEnd = new LSN(end.getViewId(), end.getSequenceNo() + 1L);
+            
             // update local DB state
             StageCondition old = operatingCondition;
             if (start.compareTo(end) < 0) {
-                operatingCondition = new StageCondition(end);
+                operatingCondition = new StageCondition(rangeEnd);
                 
             // roll-back local DB state
             } else {
-                operatingCondition = new StageCondition(LOAD, end);
+                operatingCondition = new StageCondition(LOAD, rangeEnd);
             }
             
             // necessary to wake up the mechanism
