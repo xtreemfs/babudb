@@ -87,13 +87,13 @@ public class LoadOperation extends Operation {
                 synchronized (babuInterface.getCheckpointerLock()) {
                     
                     // add the DB-structure-file metadata
-                    result.addDbFileMetadatas(convert(
-                            this.fileIO.getConfigFileMetaData()));
+                    result.addDbFileMetadatas(convert(fileIO.getConfigFileMetaData()));
                     
                     // add the latest snapshot files for every DB,
                     // if available
-                    for (org.xtreemfs.babudb.lsmdb.LSMDatabase.DBFileMetaData md 
-                            : this.babuInterface.getAllSnapshotFiles()) {
+                    for (org.xtreemfs.babudb.lsmdb.LSMDatabase.DBFileMetaData md : 
+                        babuInterface.getAllSnapshotFiles()) {
+                        
                         result.addDbFileMetadatas(convert(md));
                     }
                 }

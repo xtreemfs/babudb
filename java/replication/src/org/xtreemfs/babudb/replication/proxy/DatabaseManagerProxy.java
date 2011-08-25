@@ -311,9 +311,11 @@ public class DatabaseManagerProxy implements DatabaseManagerInternal {
         return getDatabasesInternal().values();
     }
     
-    // TODO ugly code! redesign!
-    public Collection<DatabaseProxy> getDatabaseListNonblocking() {
-        return getDatabasesInternalNonblocking().values();
+    /**
+     * @return a list of local databases.
+     */
+    public Collection<DatabaseInternal> getLocalDatabaseList() {
+        return localDBMan.getDatabasesInternal().values();
     }
 
     /* (non-Javadoc)

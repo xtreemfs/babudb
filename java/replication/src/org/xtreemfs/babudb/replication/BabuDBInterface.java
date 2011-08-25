@@ -24,6 +24,7 @@ import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.api.database.DatabaseRequestListener;
 import org.xtreemfs.babudb.api.dev.BabuDBInternal;
 import org.xtreemfs.babudb.api.dev.CheckpointerInternal;
+import org.xtreemfs.babudb.api.dev.DatabaseInternal;
 import org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal;
 import org.xtreemfs.babudb.lsmdb.LSMDatabase.DBFileMetaData;
 import org.xtreemfs.babudb.lsmdb.LSN;
@@ -185,7 +186,7 @@ public class BabuDBInterface {
     public Collection<DBFileMetaData> getAllSnapshotFiles() {
         List<DBFileMetaData> result = new Vector<DBFileMetaData>(); 
         
-        for (DatabaseProxy db : dbMan.getDatabaseListNonblocking()) {
+        for (DatabaseInternal db : dbMan.getLocalDatabaseList()) {
             result.addAll(db.getLSMDB().getLastestSnapshotFiles());
         }
         
