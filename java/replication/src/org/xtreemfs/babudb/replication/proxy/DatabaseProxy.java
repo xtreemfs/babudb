@@ -84,12 +84,12 @@ public class DatabaseProxy implements DatabaseInternal {
                     
                     if (master == null) {
                         localDB.lookup(indexId, key, context).registerListener(listener);
+                    } else {
+                        dbMan.getClient().lookup(name, indexId, ReusableBuffer.wrap(key), master).registerListener(listener);
                     }
                 } catch (BabuDBException e) {
                     listener.failed(e);
-                } 
-                
-                dbMan.getClient().lookup(name, indexId, ReusableBuffer.wrap(key), master).registerListener(listener);
+                }
             }
         }, dbMan.getRequestRerunner());
         
@@ -145,14 +145,14 @@ public class DatabaseProxy implements DatabaseInternal {
                     
                     if (master == null) {
                         localDB.prefixLookup(indexId, key, context).registerListener(listener);
+                    } else {
+                        dbMan.getClient().prefixLookup(name, indexId, ReusableBuffer.wrap(key), master)
+                                .registerListener(listener);
                     }
                 } catch (BabuDBException e) {
                     
                     listener.failed(e);
                 }
-                
-                dbMan.getClient().prefixLookup(name, indexId, ReusableBuffer.wrap(key), master).registerListener(
-                        listener);
             }
         }, dbMan.getRequestRerunner());
 
@@ -205,13 +205,13 @@ public class DatabaseProxy implements DatabaseInternal {
                     master = getServerToPerformAt(0);
                     if (master == null) {
                         localDB.reversePrefixLookup(indexId, key, context).registerListener(listener);
+                    } else {
+                        dbMan.getClient().prefixLookupR(name, indexId, ReusableBuffer.wrap(key), master)
+                                .registerListener(listener);
                     }
                 } catch (BabuDBException e) {
                     listener.failed(e);
                 }
-                
-                dbMan.getClient().prefixLookupR(name, indexId, ReusableBuffer.wrap(key), master).registerListener(
-                        listener);
             }
         }, dbMan.getRequestRerunner());
         return result;
@@ -261,13 +261,13 @@ public class DatabaseProxy implements DatabaseInternal {
                     master = getServerToPerformAt(0);
                     if (master == null) {
                         localDB.rangeLookup(indexId, from, to, context).registerListener(listener);
+                    } else {
+                        dbMan.getClient().rangeLookup(name, indexId, ReusableBuffer.wrap(from), ReusableBuffer.wrap(to), 
+                                master).registerListener(listener);
                     }
                 } catch (BabuDBException e) {
                     listener.failed(e);
                 }
-                
-                dbMan.getClient().rangeLookup(name, indexId, ReusableBuffer.wrap(from), ReusableBuffer.wrap(to), master)
-                                    .registerListener(listener);
             }
         }, dbMan.getRequestRerunner());
         
@@ -317,13 +317,13 @@ public class DatabaseProxy implements DatabaseInternal {
                     master = getServerToPerformAt(0);
                     if (master == null) {
                         localDB.reverseRangeLookup(indexId, from, to, context).registerListener(listener);
+                    } else {
+                        dbMan.getClient().rangeLookupR(name, indexId, ReusableBuffer.wrap(from), 
+                                ReusableBuffer.wrap(to), master).registerListener(listener);
                     }
                 } catch (BabuDBException e) {
                     listener.failed(e);
                 }
-                
-                dbMan.getClient().rangeLookupR(name, indexId, ReusableBuffer.wrap(from), ReusableBuffer.wrap(to), 
-                                               master).registerListener(listener);
             }
         }, dbMan.getRequestRerunner());
         
