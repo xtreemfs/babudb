@@ -178,9 +178,9 @@ public class TransactionManagerProxy extends TransactionManagerInternal {
              */
             @Override
             public void execute(ListenerWrapper<Object> listener) {
-                babuDBProxy.getClient().makePersistent(master, load).registerListener(listener);
+                babuDBProxy.getClient().makePersistent(master, load.createViewBuffer()).registerListener(listener);
             }
-        }, babuDBProxy.getRequestRerunner());
+        }, babuDBProxy.getRequestRerunner(), load);
     }
         
     /**

@@ -19,6 +19,8 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.proxy.BabuDBProxy.RequestRerunner;
 import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.ClientResponseAvailableListener;
 import org.xtreemfs.babudb.replication.transmission.client.ReplicationClientAdapter.ErrorCodeException;
+import org.xtreemfs.foundation.buffer.BufferPool;
+import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
 
 /**
@@ -44,6 +46,7 @@ final class ListenerWrapper<T> implements ClientResponseAvailableListener<T>, Sy
     private int                              tries = 0;
     private final RequestOperation<T>        request;
     private final RequestRerunner            rerunner;
+    private final ReusableBuffer             payload;
 
     public ListenerWrapper(BabuDBRequestResultImpl<T> requestFuture) {
         this(requestFuture, null);
@@ -51,19 +54,25 @@ final class ListenerWrapper<T> implements ClientResponseAvailableListener<T>, Sy
     
     public ListenerWrapper(BabuDBRequestResultImpl<T> requestFuture, RequestOperation<T> request, 
             RequestRerunner rerunner) {
-        this(requestFuture, null, request, rerunner);
+        this(requestFuture, null, request, rerunner, null);
+    }
+    
+    public ListenerWrapper(BabuDBRequestResultImpl<T> requestFuture, RequestOperation<T> request, 
+            RequestRerunner rerunner, ReusableBuffer payload) {
+        this(requestFuture, null, request, rerunner, payload);
     }
     
     public ListenerWrapper(BabuDBRequestResultImpl<T> requestFuture, T result) {
-        this(requestFuture, result, null, null);
+        this(requestFuture, result, null, null, null);
     }
     
     public ListenerWrapper(BabuDBRequestResultImpl<T> requestFuture, T result, RequestOperation<T> request, 
-            RequestRerunner rerunner) {
+            RequestRerunner rerunner, ReusableBuffer payload) {
         this.requestFuture = requestFuture;
         this.result = result;
         this.rerunner = rerunner;
         this.request = request;
+        this.payload = payload;
         if (request != null) tryAgain();
     }
     
@@ -82,6 +91,7 @@ final class ListenerWrapper<T> implements ClientResponseAvailableListener<T>, Sy
      */
     @Override
     public void responseAvailable(T r) {
+        if (payload != null) BufferPool.free(payload);
         requestFuture.finished(r);
     }
 
@@ -100,6 +110,7 @@ final class ListenerWrapper<T> implements ClientResponseAvailableListener<T>, Sy
             if (code == ErrorCode.REPLICATION_FAILURE) {
                 checkForRetry(new BabuDBException(code, e.getMessage()));
             } else {
+                if (payload != null) BufferPool.free(payload);
                 requestFuture.failed(new BabuDBException(code, e.getMessage()));
             }
         } else {
@@ -117,6 +128,7 @@ final class ListenerWrapper<T> implements ClientResponseAvailableListener<T>, Sy
      */
     @Override
     public void synced(LSN lsn) {
+        if (payload != null) BufferPool.free(payload);
         requestFuture.finished(result, lsn);
     }
 
@@ -144,6 +156,7 @@ final class ListenerWrapper<T> implements ClientResponseAvailableListener<T>, Sy
         Logging.logMessage(Logging.LEVEL_INFO, this, "Local request failed, because %s.", e.getMessage());
         Logging.logError(Logging.LEVEL_DEBUG, this, e);
         
+        if (payload != null) BufferPool.free(payload);
         requestFuture.failed(e);
     }
 
@@ -152,6 +165,7 @@ final class ListenerWrapper<T> implements ClientResponseAvailableListener<T>, Sy
      */
     @Override
     public void finished(T r, Object context) {
+        if (payload != null) BufferPool.free(payload);
         requestFuture.finished(r);
     }
     
@@ -168,6 +182,7 @@ final class ListenerWrapper<T> implements ClientResponseAvailableListener<T>, Sy
             //handed-over this to RequestRerunner (sleeps for retry delay)
             rerunner.scheduleRequestRerun(this);
         } else {
+            if (payload != null) BufferPool.free(payload);
             requestFuture.failed(e);
         }
     }

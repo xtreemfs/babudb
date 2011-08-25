@@ -322,8 +322,8 @@ public class DatabaseProxy implements DatabaseInternal {
                     listener.failed(e);
                 }
                 
-                dbMan.getClient().rangeLookupR(name, indexId, ReusableBuffer.wrap(from), ReusableBuffer.wrap(to), master)
-                                    .registerListener(listener);
+                dbMan.getClient().rangeLookupR(name, indexId, ReusableBuffer.wrap(from), ReusableBuffer.wrap(to), 
+                                               master).registerListener(listener);
             }
         }, dbMan.getRequestRerunner());
         
