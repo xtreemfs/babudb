@@ -149,7 +149,7 @@ public abstract class Logic {
     /**
      * Method to decide which logic shall be used next.
      * 
-     * @param end
+     * @param end - (inclusive)
      * @param load
      * 
      * @return the {@link StageCondition} for the next step.

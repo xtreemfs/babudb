@@ -298,19 +298,15 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                         new InterruptedException("Listener was replaced due a new synchronization-request."));
             }
             this.syncListener = syncListener;
-            
-            // because the last entry of a requested ranged is assumed to be available, we have to conceive the 
-            // following rangeEnd to make the mechanism work
-            LSN rangeEnd = new LSN(end.getViewId(), end.getSequenceNo() + 1L);
-            
+                        
             // update local DB state
             StageCondition old = operatingCondition;
             if (start.compareTo(end) < 0) {
-                operatingCondition = new StageCondition(rangeEnd);
+                operatingCondition = new StageCondition(end);
                 
             // roll-back local DB state
             } else {
-                operatingCondition = new StageCondition(LOAD, rangeEnd);
+                operatingCondition = new StageCondition(LOAD, end);
             }
             
             // necessary to wake up the mechanism

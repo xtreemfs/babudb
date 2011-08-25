@@ -90,15 +90,13 @@ public class ReplicaOperation extends Operation {
         LogEntries.Builder result = LogEntries.newBuilder();
         ReusableBuffer resultPayLoad = BufferPool.allocate(0);
         
-        Logging.logMessage(Logging.LEVEL_INFO, this, "REQUEST received " +
-                "(start: %s, end: %s) from %s", lastInserted.toString(), 
-                end.toString(), rq.getSenderAddress().toString());
+        Logging.logMessage(Logging.LEVEL_INFO, this, "REQUEST received (start: %s, end: %s) from %s", 
+                lastInserted.toString(), end.toString(), rq.getSenderAddress().toString());
         
         // enhancement to prevent slaves from loading the DB from the master unnecessarily
         if (lastInserted.equals(lastOnView.get())) {
             
-            Logging.logMessage(Logging.LEVEL_DEBUG, this, 
-                   "REQUEST answer is empty (there has been a failover only).");
+            Logging.logMessage(Logging.LEVEL_DEBUG, this, "REQUEST answer is empty (there has been a failover only).");
             
             rq.sendSuccess(result.build());
             return;  
@@ -106,7 +104,7 @@ public class ReplicaOperation extends Operation {
         
         LSN firstEntryNeeded = new LSN(lastInserted.getViewId(), lastInserted.getSequenceNo() + 1L);
         
-        assert (firstEntryNeeded.compareTo(end) < 0) : "At least one LogEntry has to be requested!";
+        assert (firstEntryNeeded.compareTo(end) <= 0) : "At least one LogEntry has to be requested!";
         
         DiskLogIterator it = null;
         LogEntry le = null;
@@ -141,8 +139,8 @@ public class ReplicaOperation extends Operation {
                             result.getLogEntriesCount() == 0) {
                             break;
                             
-                        // we exceeded the gap
-                        } else if (le.getLSN().compareTo(end) >= 0) {
+                        // we exceeded the gap (its inclusive entry with LSN end)
+                        } else if (le.getLSN().compareTo(end) > 0) {
                             break;
                         }
                           
