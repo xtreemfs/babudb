@@ -302,6 +302,8 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
                     }
                 }
             }
+        } else {
+            latest = localState;
         }
         
         // take a checkpoint on master-failover (inclusive viewId incrementation), if necessary
