@@ -75,7 +75,7 @@ public class ProxyRequestHandler extends RequestHandler {
     
     @Override
     public void handleRequest(RPCServerRequest rq) {
-        if (control.isFailoverInProgress()) {
+        if (!control.isFailoverInProgress()) {
             super.handleRequest(rq);
         } else {
             rq.sendError(ErrorResponse.newBuilder()
