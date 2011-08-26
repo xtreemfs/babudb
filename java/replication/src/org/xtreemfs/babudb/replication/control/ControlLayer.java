@@ -263,6 +263,7 @@ public class ControlLayer extends TopLayer {
      */
     @Override
     public void updateLeaseHolder(InetSocketAddress newLeaseHolder) {
+        failoverInProgress = true;
         failoverTaskRunner.queueFailoverRequest(newLeaseHolder);
     }
     
@@ -367,8 +368,6 @@ public class ControlLayer extends TopLayer {
                         newLeaseHolder = failoverRequest.getAndSet(null);
                     }
                     
-                    failoverInProgress = true;
-                    
                     try {
                                                 
                         // only do a failover if one is required
@@ -394,6 +393,7 @@ public class ControlLayer extends TopLayer {
                             }
                         }
                         currentLeaseHolder = newLeaseHolder;
+                        failoverInProgress = false;
                     } catch (Exception e) {
                         if (!quit) {
                             Logging.logMessage(Logging.LEVEL_WARN, this, "Processing a failover " +
@@ -402,8 +402,6 @@ public class ControlLayer extends TopLayer {
                             leaseHolder.reset();                            
                         }
                     }
-                    
-                    failoverInProgress = false;
                 }
             } catch (InterruptedException e) {
                 if (!quit) {

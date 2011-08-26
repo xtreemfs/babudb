@@ -21,6 +21,8 @@ import org.xtreemfs.babudb.replication.proxy.operations.RangeLookupOperation;
 import org.xtreemfs.babudb.replication.proxy.operations.RangeLookupReverseOperation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestHandler;
+import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.ErrorType;
+import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.POSIXErrno;
 import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.RPCHeader.ErrorResponse;
 import org.xtreemfs.foundation.pbrpc.server.RPCServerRequest;
 
@@ -76,8 +78,10 @@ public class ProxyRequestHandler extends RequestHandler {
         if (control.isFailoverInProgress()) {
             super.handleRequest(rq);
         } else {
-            rq.sendError(ErrorResponse.newBuilder().setErrorMessage(
-                    "Currently there is a failover in progress. Please try again later.").build());
+            rq.sendError(ErrorResponse.newBuilder()
+                    .setErrorMessage("Currently there is a failover in progress. Please try again later.")
+                    .setErrorType(ErrorType.REDIRECT)
+                    .setPosixErrno(POSIXErrno.POSIX_ERROR_NONE).build());
         }
     }
     
