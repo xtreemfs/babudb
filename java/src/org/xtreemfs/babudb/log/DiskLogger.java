@@ -180,6 +180,15 @@ public class DiskLogger extends LifeCycleThread {
         channel.close();
         fos.close(); 
         
+        // delete invalid (because empty) database log on switch
+        if (currentLogFileName != null) {
+            File f = new File(currentLogFileName);
+            if (f.length() == 0L) {
+                boolean suc = f.delete();
+                assert (suc) : "An empty database log file could not have been deleted properly.";
+            }
+        }
+        
         channel = null;
         fos = null;
         currentLogFileName = null;
