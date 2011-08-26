@@ -261,6 +261,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
                                 localState.toString(), latest.toString());
                     
                         final AtomicBoolean ready = new AtomicBoolean(false);
+                        final AtomicReference<BabuDBException> exception = new AtomicReference<BabuDBException>(null);
                         
                         replicationStage.manualLoad(new SyncListener() {
                             
@@ -278,9 +279,9 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
                             
                             @Override
                             public void failed(Exception ex) {
-                                
-                                Logging.logMessage(Logging.LEVEL_WARN, this, "Loading a state manually failed, " +
-                                		"because %s.", ex.getMessage());
+                                                                
+                                exception.set(new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
+                                        "Loading a state manually failed, because" + ex.getMessage(), ex));
                                 
                                 synchronized (ready) {
                                     if (ready.compareAndSet(false, true))
@@ -294,10 +295,12 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
                             while (!ready.get()) ready.wait();
                         }
                     
-                        assert(latest.equals(babuDB.getState())) : 
-                            "Synchronization failed: (expected=" + 
-                            latest.toString() + ") != (acknowledged=" + 
-                            babuDB.getState() + ")";
+                        if (exception.get() != null) {
+                            throw exception.get();
+                        } else {
+                            assert(latest.equals(babuDB.getState())) : "Synchronization failed: (expected=" + 
+                                latest.toString() + ") != (acknowledged=" + babuDB.getState() + ")";
+                        }
                         break;
                     }
                 }
