@@ -67,10 +67,11 @@ public class ControlLayer extends TopLayer {
     /** services that have to be locked during failover */
     private LockableService                 replicationInterface;
         
-    private final AtomicBoolean initialFailoverObserved = new AtomicBoolean(false);
+    private final AtomicBoolean             initialFailoverObserved = new AtomicBoolean(false);
     
-    public ControlLayer(ServiceToControlInterface serviceLayer, ReplicationConfig config) 
-            throws IOException {
+    private volatile boolean                failoverInProgress = false;
+    
+    public ControlLayer(ServiceToControlInterface serviceLayer, ReplicationConfig config) throws IOException {
         
         // ----------------------------------
         // initialize the time drift detector
@@ -265,6 +266,14 @@ public class ControlLayer extends TopLayer {
         failoverTaskRunner.queueFailoverRequest(newLeaseHolder);
     }
     
+    /* (non-Javadoc)
+     * @see org.xtreemfs.babudb.replication.control.ControlLayerInterface#isFailoverInProgress()
+     */
+    @Override
+    public boolean isFailoverInProgress() {
+        return failoverInProgress;
+    }
+    
 /*
  * private methods
  */
@@ -358,6 +367,8 @@ public class ControlLayer extends TopLayer {
                         newLeaseHolder = failoverRequest.getAndSet(null);
                     }
                     
+                    failoverInProgress = true;
+                    
                     try {
                                                 
                         // only do a failover if one is required
@@ -388,9 +399,11 @@ public class ControlLayer extends TopLayer {
                             Logging.logMessage(Logging.LEVEL_WARN, this, "Processing a failover " +
                             		"did not succeed, because: ", e.getMessage());
                             Logging.logError(Logging.LEVEL_WARN, this, e);
-                            leaseHolder.reset();
+                            leaseHolder.reset();                            
                         }
                     }
+                    
+                    failoverInProgress = false;
                 }
             } catch (InterruptedException e) {
                 if (!quit) {

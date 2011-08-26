@@ -62,4 +62,9 @@ public interface ControlLayerInterface extends TimeDriftListener, FleaseMessageR
      * Unlocks the replication related services.
      */
     public void unlockReplication();
+    
+    /**
+     * @return true, if there is currently a failover in progress, false otherwise.
+     */
+    public boolean isFailoverInProgress();
 }
