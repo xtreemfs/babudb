@@ -417,6 +417,11 @@ public class BabuDBTest extends TestCase {
             assertNull(v2);
         }
         
+        db.singleInsert(0, "test".getBytes(), "test".getBytes(), null).get();
+        assertEquals("test", new String(db.lookup(0, "test".getBytes(), null).get()));
+        db.singleInsert(0, "test".getBytes(), null, null).get();
+        assertNull(db.lookup(0, "test".getBytes(), null).get());
+        
         database.shutdown();
     }
     
