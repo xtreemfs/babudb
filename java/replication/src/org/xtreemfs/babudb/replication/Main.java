@@ -74,7 +74,7 @@ public class Main extends PluginMain {
      */
     @Override
     public String compatibleBabuDBVersion() {
-        return PluginMain.buildCompatibleVersionString(0, 5, 0, 0, 5, 9);
+        return PluginMain.buildCompatibleVersionString(0, 5, 4, 0, 5, 9);
     }
 
     /* (non-Javadoc)

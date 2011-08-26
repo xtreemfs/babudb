@@ -7,7 +7,12 @@
   * bugfix: context objects are no longer lost on replicated db inserts
   * reduced logging output
   
-2011-06-06
+2011-06-06:
   * adopted plug-in to the latest BabuDB changes
   * bugfix: buffer finalization for transactions now works properly
   * bugfix: fixed issue that caused a sending of wrongly encoded responses on a proxy make persistent operation
+  
+2011-08-26:
+  * various bugfixes and robustness improvements
+  * added configurable retry mechanism to make temporary replication failures transparent to applications
+  * added information about the current replication master to monitoring interface

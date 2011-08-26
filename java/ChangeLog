@@ -58,4 +58,7 @@
 2011-07-15: release 0.5.3
   * fixed bug that could cause a NullPointerException to be thrown when freeing a result set
   * fixed bug that caused startup problems after having deleted a database
-  
+
+2011-08-26: release 0.5.4
+  * various minor bugfixes
+  * added monitoring interface that presents runtime information about the system (e.g. for debugging purposes)
