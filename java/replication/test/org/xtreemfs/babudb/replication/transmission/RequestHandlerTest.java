@@ -11,10 +11,7 @@ import static org.junit.Assert.*;
 import static org.xtreemfs.babudb.replication.TestParameters.*;
 import static org.xtreemfs.babudb.replication.transmission.TransmissionLayer.*;
 
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.junit.After;
@@ -27,14 +24,12 @@ import org.xtreemfs.babudb.mock.RequestHandlerMock;
 import org.xtreemfs.babudb.pbrpc.GlobalTypes.ErrorCodeResponse;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Operation;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.Request;
-import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestControl;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestDispatcher;
 import org.xtreemfs.babudb.replication.transmission.dispatcher.RequestHandler;
 import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.TimeSync;
 import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.foundation.logging.Logging.Category;
-import org.xtreemfs.foundation.pbrpc.client.PBRPCException;
 import org.xtreemfs.foundation.pbrpc.client.RPCNIOSocketClient;
 import org.xtreemfs.foundation.pbrpc.client.RPCResponse;
 
@@ -50,10 +45,10 @@ public class RequestHandlerTest implements LifeCycleListener {
 
     // test parameters
     // this delay has to be proportional to MAX_Q 
-    private final static int MESSAGE_RECEIVE_DELAY = 1000;
+    //private final static int MESSAGE_RECEIVE_DELAY = 1000;
     
     private RequestDispatcher dispatcher;
-    private RequestControl control;
+    //private RequestControl control;
     private RPCNIOSocketClient client;
     private ReplicationConfig config;
     
@@ -115,7 +110,7 @@ public class RequestHandlerTest implements LifeCycleListener {
         RequestHandler handler = new RequestHandlerMock(MAX_Q, interfaceId, testOps);
         dispatcher.addHandler(handler);
         
-        control = handler;
+        //control = handler;
         dispatcher.start();
         dispatcher.waitForStartup();
         
@@ -148,17 +143,16 @@ public class RequestHandlerTest implements LifeCycleListener {
         final int numMessagesToSend = MAX_Q + 10;
         
         for (int i = 0; i < numMessagesToSend; i++) {
-            assertEquals(i, send(
-                    ErrorCodeResponse.newBuilder().setErrorCode(i).build()).get().getErrorCode());
+            assertEquals(i, send(ErrorCodeResponse.newBuilder().setErrorCode(i).build()).get().getErrorCode());
         }
     }
 
     /** 
      * Tests message processing after queuing the messages for a while.
      * Tests also if messages are being dumped correctly if queue limit exceeds.
-     * 
+     * XXX queuing feature is unused and therefore may remain untested
      * @throws Exception
-     */
+     
     @Test
     public void testQueuing() throws Exception {
                 
@@ -196,13 +190,13 @@ public class RequestHandlerTest implements LifeCycleListener {
         for (int i = numMessagesToDump; i < numMessagesToSend; i++) {
             assertEquals(i, rps.get(i).get().getErrorCode());
         }
-    }
+    } */
     
     /** 
      * Half of the messages send used to be expired.
      * 
      * @throws Exception
-     */
+     * XXX queuing feature is unused and therefore may remain untested
     @Test
     public void testQueuedMessageExpiring() throws Exception {
         
@@ -245,7 +239,7 @@ public class RequestHandlerTest implements LifeCycleListener {
         for (int i = (numMessagesToSend / 2); i < numMessagesToSend; i++) {
             assertEquals(i, rps.get(i).get().getErrorCode());
         }
-    }
+    } */
     
     /**
      * Sends a message to the dispatcher.

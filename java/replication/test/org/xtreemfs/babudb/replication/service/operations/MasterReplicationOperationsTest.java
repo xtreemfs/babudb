@@ -25,6 +25,7 @@ import org.junit.Test;
 import org.xtreemfs.babudb.config.ReplicationConfig;
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.mock.BabuDBMock;
+import org.xtreemfs.babudb.mock.DatabaseManagerMock;
 import org.xtreemfs.babudb.replication.BabuDBInterface;
 import org.xtreemfs.babudb.replication.LockableService;
 import org.xtreemfs.babudb.replication.control.ControlLayerInterface;
@@ -141,6 +142,9 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
         
         client = new ReplicationClientAdapter(rpcClient, config.getInetSocketAddress());
         
+        BabuDBInterface babuI = new BabuDBInterface(new BabuDBMock("BabuDBMock", conf0, testLSN));
+        babuI.init(new DatabaseManagerMock());
+        
         RequestHandler rqHandler = new ReplicationRequestHandler(new StatesManipulation() {
             
             @Override
@@ -218,7 +222,7 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
                 // TODO Auto-generated method stub
                 return false;
             }
-        }, new BabuDBInterface(new BabuDBMock("BabuDBMock", conf0, testLSN)), new RequestManagement() {
+        }, babuI, new RequestManagement() {
                         
             @Override
             public void enqueueOperation(Object[] args) throws BusyServerException {
@@ -231,6 +235,8 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
                 assertEquals(testLSN, lastOnView);
                 assertEquals(testAddress, master);
             }
+            
+            
         }, lastOnView, config.getChunkSize(), new FileIO(config), MAX_Q);
         
         dispatcher = new RequestDispatcher(config);

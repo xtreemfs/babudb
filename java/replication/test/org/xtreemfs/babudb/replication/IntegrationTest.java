@@ -75,7 +75,7 @@ public class IntegrationTest extends TestCase {
                 try {
                     babu0 = BabuDBFactory.createBabuDB(conf0);
                 } catch (BabuDBException e) {
-                    fail();
+                    fail(e.getMessage());
                 }
             }
         });

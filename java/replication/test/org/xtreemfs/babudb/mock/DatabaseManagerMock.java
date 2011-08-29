@@ -23,6 +23,7 @@ import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.api.transaction.Transaction;
 import org.xtreemfs.babudb.api.transaction.TransactionListener;
 import org.xtreemfs.babudb.index.DefaultByteRangeComparator;
+import org.xtreemfs.babudb.replication.proxy.DatabaseManagerProxy;
 import org.xtreemfs.foundation.logging.Logging;
 
 /**
@@ -31,12 +32,178 @@ import org.xtreemfs.foundation.logging.Logging;
  * @since 02/23/2011
  */
 
-public class DatabaseManagerMock implements DatabaseManagerInternal {
+public class DatabaseManagerMock extends DatabaseManagerProxy implements DatabaseManagerInternal {
 
     private final Map<String, DatabaseInternal> dbsByName = new HashMap<String, DatabaseInternal>();
     private final Map<Integer, DatabaseInternal> dbsById = new HashMap<Integer, DatabaseInternal>();
     
     private final Map<String, DatabaseInternal> dbsOnDisk = new HashMap<String, DatabaseInternal>();
+    
+    
+    public DatabaseManagerMock() {
+        super(new DatabaseManagerInternal() {
+            
+            @Override
+            public void removeTransactionListener(TransactionListener listener) {
+                // TODO Auto-generated method stub
+                
+            }
+            
+            @Override
+            public Map<String, Database> getDatabases() {
+                // TODO Auto-generated method stub
+                return null;
+            }
+            
+            @Override
+            public void executeTransaction(Transaction txn) throws BabuDBException {
+                // TODO Auto-generated method stub
+                
+            }
+            
+            @Override
+            public void dumpAllDatabases(String destPath) throws BabuDBException,
+                    IOException, InterruptedException {
+                // TODO Auto-generated method stub
+                
+            }
+            
+            @Override
+            public void deleteDatabase(String databaseName) throws BabuDBException {
+                // TODO Auto-generated method stub
+                
+            }
+            
+            @Override
+            public void copyDatabase(String sourceDB, String destDB)
+                    throws BabuDBException {
+                // TODO Auto-generated method stub
+                
+            }
+            
+            @Override
+            public void addTransactionListener(TransactionListener listener) {
+                // TODO Auto-generated method stub
+                
+            }
+            
+            @Override
+            public void shutdown() throws BabuDBException {
+                // TODO Auto-generated method stub
+                
+            }
+            
+            @Override
+            public void setNextDBId(int id) {
+                // TODO Auto-generated method stub
+                
+            }
+            
+            @Override
+            public void reset() throws BabuDBException {
+                // TODO Auto-generated method stub
+                
+            }
+            
+            @Override
+            public void removeDatabaseById(int id) {
+                // TODO Auto-generated method stub
+                
+            }
+            
+            @Override
+            public void putDatabase(DatabaseInternal database) {
+                // TODO Auto-generated method stub
+                
+            }
+            
+            @Override
+            public Object getRuntimeState(String property) {
+                // TODO Auto-generated method stub
+                return null;
+            }
+            
+            @Override
+            public Map<String, Object> getRuntimeState() {
+                // TODO Auto-generated method stub
+                return null;
+            }
+            
+            @Override
+            public int getNextDBId() {
+                // TODO Auto-generated method stub
+                return 0;
+            }
+            
+            @Override
+            public Map<String, DatabaseInternal> getDatabasesInternal() {
+                return new HashMap<String, DatabaseInternal>();
+            }
+            
+            @Override
+            public Collection<DatabaseInternal> getDatabaseList() {
+                // TODO Auto-generated method stub
+                return null;
+            }
+            
+            @Override
+            public DatabaseInternal getDatabase(int dbId) throws BabuDBException {
+                // TODO Auto-generated method stub
+                return null;
+            }
+            
+            @Override
+            public DatabaseInternal getDatabase(String dbName) throws BabuDBException {
+                // TODO Auto-generated method stub
+                return null;
+            }
+            
+            @Override
+            public Object getDBModificationLock() {
+                // TODO Auto-generated method stub
+                return null;
+            }
+            
+            @Override
+            public Map<String, ByteRangeComparator> getComparatorInstances() {
+                // TODO Auto-generated method stub
+                return null;
+            }
+            
+            @Override
+            public Set<Integer> getAllDatabaseIds() {
+                // TODO Auto-generated method stub
+                return null;
+            }
+            
+            @Override
+            public void executeTransaction(TransactionInternal txn)
+                    throws BabuDBException {
+                // TODO Auto-generated method stub
+                
+            }
+            
+            @Override
+            public TransactionInternal createTransaction() {
+                // TODO Auto-generated method stub
+                return null;
+            }
+            
+            @Override
+            public DatabaseInternal createDatabase(String databaseName, int numIndices,
+                    ByteRangeComparator[] comparators) throws BabuDBException {
+                // TODO Auto-generated method stub
+                return null;
+            }
+            
+            @Override
+            public DatabaseInternal createDatabase(String databaseName, int numIndices)
+                    throws BabuDBException {
+                // TODO Auto-generated method stub
+                return null;
+            }
+        }, null, null, null, null, null);
+    }
     
     @Override
     public void copyDatabase(String sourceDB, String destDB)
