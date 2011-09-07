@@ -202,11 +202,10 @@ public class ReplicationClientAdapter extends ReplicationServiceClient
         InetSocketAddress sender = message.getSender();
         message.serialize(payload);
         payload.flip();
-        
+                
         try {
-            RPCResponse<ErrorCodeResponse> result = flease(null, AUTHENTICATION, 
-                        USER_CREDENTIALS, new String(sender.getAddress().getAddress()), 
-                        sender.getPort(), payload);
+            RPCResponse<ErrorCodeResponse> result = flease(null, AUTHENTICATION, USER_CREDENTIALS, 
+                    sender.getAddress().getHostAddress(), sender.getPort(), payload);
             
             return new ClientResponseFuture<Object,ErrorCodeResponse>(result) {
                 

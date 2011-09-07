@@ -76,9 +76,9 @@ public class FleaseOperation extends Operation {
             
             InetSocketAddress sender;
             try {
-                sender = new InetSocketAddress(InetAddress.getByAddress(rpcrq.getHost().getBytes()), 
-                                                                        rpcrq.getPort());
+                sender = new InetSocketAddress(InetAddress.getByName(rpcrq.getHost()), rpcrq.getPort());
             } catch (UnknownHostException e) {
+                
                 return ErrorResponse.newBuilder().setErrorMessage(e.getMessage())
                                                  .setErrorType(ErrorType.IO_ERROR)
                                                  .setDebugInfo(OutputUtils.stackTraceToString(e))
