@@ -81,7 +81,7 @@ import org.xtreemfs.foundation.logging.Logging;
      */
     void start() {
         
-        this.timer.schedule(new CheckTask(), DELAY_BETWEEN_CHECKS);
+        this.timer.schedule(new CheckTask(), 0L, DELAY_BETWEEN_CHECKS);
         if (this.lifeCyclelistener != null) {
             this.lifeCyclelistener.startupPerformed(); 
         }
