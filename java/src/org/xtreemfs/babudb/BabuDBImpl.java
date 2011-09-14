@@ -175,17 +175,17 @@ public class BabuDBImpl implements BabuDBInternal {
             // necessary to start with the smallest LSN found on disk
             LSN dbLsn = null;
             for (DatabaseInternal db : databaseManager.getDatabaseList()) {
-                if (dbLsn == null)
-                    dbLsn = db.getLSMDB().getOndiskLSN();
-                else {
-                    LSN onDiskLSN = db.getLSMDB().getOndiskLSN();
-                    if (!(LSMDatabase.NO_DB_LSN.equals(dbLsn) || LSMDatabase.NO_DB_LSN.equals(onDiskLSN)))
-                        dbLsn = dbLsn.compareTo(onDiskLSN) < 0 ? dbLsn : onDiskLSN;
-                }
+                
+                LSN onDiskLSN = db.getLSMDB().getOndiskLSN();
+                if (LSMDatabase.NO_DB_LSN.equals(onDiskLSN))
+                    continue;
+                
+                if (dbLsn == null || dbLsn.compareTo(onDiskLSN) > 0)
+                    dbLsn = onDiskLSN;
             }
             if (dbLsn == null) {
                 // empty database
-                dbLsn = new LSN(0, 0);
+                dbLsn = LSMDatabase.NO_DB_LSN;
             } else {
                 // need next LSN which is onDisk + 1
                 dbLsn = new LSN(dbLsn.getViewId() == 0 ? 1 : dbLsn.getViewId(), dbLsn.getSequenceNo() + 1);
