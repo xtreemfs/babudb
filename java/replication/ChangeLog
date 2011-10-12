@@ -16,3 +16,7 @@
   * various bugfixes and robustness improvements
   * added configurable retry mechanism to make temporary replication failures transparent to applications
   * added information about the current replication master to monitoring interface
+  
+2011-10-12:
+  * updated to latest Flease version
+  * fixed a bug with the encoding of flease messages

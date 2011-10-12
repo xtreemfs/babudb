@@ -62,3 +62,7 @@
 2011-08-26: release 0.5.4
   * various minor bugfixes
   * added monitoring interface that presents runtime information about the system (e.g. for debugging purposes)
+  
+2011-10-12: release 0.5.5
+  * fixed bug in log replay procedure that could cause start-up problems under certain circumstances
+  * fixed 'uninitialized TimeSync' problem that could occur on start-up
