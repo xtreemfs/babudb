@@ -114,6 +114,7 @@ public class LSMDBWorker extends LifeCycleThread {
                     // get a request
                     } else {
                         r = requests.poll();
+                        notify();
                     }
                 }
                                 

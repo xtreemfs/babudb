@@ -272,7 +272,8 @@ public class CheckpointerImpl extends CheckpointerInternal {
                 lastWrittenLSN = logger.switchLogFile(incrementViewId);
                 incrementViewId = false;
             } finally {
-                logger.unlock();
+                if (logger.hasLock())
+                    logger.unlock();
             }
             
             i = 0;

@@ -363,7 +363,8 @@ public class DiskLogger extends LifeCycleThread {
                     lock();
                     processLogEntries(entries);
                 } finally {
-                    unlock();
+                    if (hasLock())
+                        unlock();
                 }
             }
             
