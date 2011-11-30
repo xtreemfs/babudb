@@ -228,15 +228,14 @@ public class ControlLayer extends TopLayer {
     }
     
     /* (non-Javadoc)
-     * @see org.xtreemfs.babudb.replication.control.TimeDriftDetector.TimeDriftListener#
-     *          driftDetected()
+     * @see org.xtreemfs.babudb.replication.control.TimeDriftDetector.TimeDriftListener#driftDetected(java.lang.String)
      */
     @Override
-    public void driftDetected() {
+    public void driftDetected(String driftedParticipants) {
         listener.crashPerformed(new Exception("Illegal time-drift " +
                 "detected! The servers participating at the replication" +
                 " are not synchronized anymore. Mutual exclusion cannot" +
-                " be ensured. Replication is stopped immediately."));
+                " be ensured. Replication is stopped immediately.\n\n Details:\n" + driftedParticipants));
     }
 
     /* (non-Javadoc)

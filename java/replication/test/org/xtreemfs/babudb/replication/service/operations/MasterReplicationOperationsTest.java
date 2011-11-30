@@ -181,7 +181,7 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
             }
             
             @Override
-            public void driftDetected() {
+            public void driftDetected(String arg0) {
                 fail("Operation should not have been accessed by this test!");
             }
                         

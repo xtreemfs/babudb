@@ -7,6 +7,8 @@
  */
 package org.xtreemfs.babudb.replication.control;
 
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -108,8 +110,10 @@ import org.xtreemfs.foundation.logging.Logging;
         
         /**
          * This method is executed if an illegal time-drift was detected.
+         * 
+         * @param humanReadableDriftedParticipants - a human readable string describing detected drifted participants.
          */
-        void driftDetected();
+        void driftDetected(String humanReadableDriftedParticipants);
     }
     
     /**
@@ -127,27 +131,47 @@ import org.xtreemfs.foundation.logging.Logging;
         @Override
         public void run() {
             
+            final Calendar calendar = Calendar.getInstance();
+            final SimpleDateFormat format = new SimpleDateFormat("EEE MMM dd HH:mm:ss:SSS yyyy zzz");
+            
+            String humanReadableDriftedParticipants = "";
             long start;
             long end;
             long cTime;
             int numDriftedClients = 0;
             int numContactedClients = 0;
+            
             for (ConditionClient client : participants) {
+                
                 try {
                     start = TimeSync.getGlobalTime();
                     cTime = client.time().get();
                     end = TimeSync.getGlobalTime();
                     
                     numContactedClients++;
-                    if (cTime < (start - maxDrift) || 
-                        cTime > (end + maxDrift)) {
+                    
+                    //    cTime
+                    // |start ... end|
+                    final long drift = (cTime < start) ? start - cTime : cTime - end;
+                    if (drift > maxDrift) {
                         
+                        calendar.setTimeInMillis(cTime);
+                        String formattedCTime = format.format(calendar.getTime());
+                        calendar.setTimeInMillis(start);
+                        String formattedStartTime = format.format(calendar.getTime());
+                        calendar.setTimeInMillis(end);
+                        String formattedEndTime = format.format(calendar.getTime());
+                        
+                        humanReadableDriftedParticipants += "Participant '" + 
+                        client.getDefaultServerAddress().toString() + "' reported system time '" + formattedCTime + 
+                        "' between local time '" + formattedStartTime + "' and '" +formattedEndTime + 
+                        "', which implies a drift of at least " + drift + " ms.\n";
                         numDriftedClients++;
                         
                         // if the local time was overruled by 2 other clients, the local time seems
                         // to be wrong
                         if (numDriftedClients > 1) {
-                            listener.driftDetected();
+                            listener.driftDetected(humanReadableDriftedParticipants);
                             return;
                         }
                     }
@@ -161,7 +185,7 @@ import org.xtreemfs.foundation.logging.Logging;
             
             // if there is only one participant left, which also has drifted away 
             if (numDriftedClients == 1 && numContactedClients == 1) {
-                listener.driftDetected();
+                listener.driftDetected(humanReadableDriftedParticipants);
             }
         }
     }
