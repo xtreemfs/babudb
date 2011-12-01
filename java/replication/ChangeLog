@@ -20,3 +20,6 @@
 2011-10-12:
   * updated to latest Flease version
   * fixed a bug with the encoding of flease messages
+  
+2011-12-01:
+  * enhanced log-output for time-drift detection, such that the relevant participants are shown
