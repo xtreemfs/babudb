@@ -68,5 +68,5 @@
   * fixed 'uninitialized TimeSync' problem that could occur on start-up
   
 2011-12-01: release 0.5.6
-  * fixed bug that caused a blocking of external threads on full insertion queues
+  * fixed bug that caused an infinite blocking of external threads on full insertion queues
   * fixed bug that could cause an IllegalMonitorStateException to be raised when creating a checkpoint while manually shutting down a database
