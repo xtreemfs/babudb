@@ -40,6 +40,6 @@ TEST( DiskOperations, babudb )
 	{
 		try { DiskOperations::unlink( TEST_FILE_NAME ); } catch ( ... ) { }
 		try { DiskOperations::rmtree( TEST_DIR_NAME ); } catch ( ... ) { }
-		throw exc;
+		throw;
 	}
 };

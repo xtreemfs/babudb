@@ -26,10 +26,10 @@ TEST( FileConstructors, babudb )
 			File f( fd );
 		}
 	}
-	catch ( PlatformException& exc )
+	catch ( PlatformException& )
 	{
 		try { DiskOperations::unlink( TEST_FILE_NAME ); } catch ( ... ) { }
-		throw exc;
+		throw;
 	}
 };
 
@@ -50,9 +50,9 @@ TEST( FileReadWrite, babudb )
 			ASSERT_TRUE( strcmp( hello, "hello" ) == 0 );
 		}
 	}
-	catch ( PlatformException& exc )
+	catch ( PlatformException& )
 	{
 		try { DiskOperations::unlink( TEST_FILE_NAME ); } catch ( ... ) { }
-		throw exc;
+		throw;
 	}
 };

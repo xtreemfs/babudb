@@ -47,7 +47,7 @@ void ImmutableIndexWriter::Add(Buffer key, Buffer value) {
 }
 
 void ImmutableIndexWriter::FlushBuffer() {
-  if(record_buffer.size() == 0)
+  if(record_buffer.empty())
     return;
 
   vector<offset_t> value_offsets;
@@ -99,11 +99,11 @@ void* ImmutableIndexWriter::WriteData(Buffer data, char type) {
 void ImmutableIndexWriter::Finalize() {
   FlushBuffer();
 
-  if (index_offsets.size() > 0) {
+  if (!index_offsets.empty()) {
     WriteData(Buffer(&index_offsets[0],
         index_offsets.size() * sizeof(offset_t)), RECORD_TYPE_INDEX_OFFSETS);
 
-    for(vector<Buffer>::iterator i = index_keys.begin(); i != index_keys.end(); i++) {
+    for(vector<Buffer>::iterator i = index_keys.begin(); i != index_keys.end(); ++i) {
       WriteData(*i, RECORD_TYPE_INDEX_KEY);
     }
   } else {

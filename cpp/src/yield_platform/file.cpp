@@ -32,36 +32,6 @@ extern off64_t lseek64(int, off64_t, int);
 #endif
 #endif
 
-
-#ifdef YIELD_HAVE_DISK_AIO
-typedef struct
-{
-#if defined(_WIN32)
-  OVERLAPPED overlapped;
-#elif defined(YIELD_HAVE_POSIX_FILE_AIO)
-  struct aiocb aiocb;
-#else
-#error
-#endif
-  File::aio_read_completion_routine_t aio_read_completion_routine;
-  void* aio_read_completion_routine_context;
-} aio_read_operation_t;
-
-typedef struct
-{
-#if defined(_WIN32)
-  OVERLAPPED overlapped;
-#elif defined(YIELD_HAVE_POSIX_FILE_AIO)
-  struct aiocb aiocb;
-#else
-#error
-#endif
-  File::aio_write_completion_routine_t aio_write_completion_routine;
-  void* aio_write_completion_routine_context;
-} aio_write_operation_t;
-#endif
-
-
 File::File( const Path& path, unsigned long flags )
 : flags( flags )
 {
@@ -142,103 +112,6 @@ ssize_t File::write( const void* buf, size_t nbyte )
 #endif
 }
 
-#ifdef YIELD_HAVE_DISK_AIO
-int File::aio_read( void* buf, size_t nbyte, aio_read_completion_routine_t aio_read_completion_routine, void* aio_read_completion_routine_context )
-{
-  aio_read_operation_t* aio_read_op = new aio_read_operation_t;
-  memset( aio_read_op, 0, sizeof( *aio_read_op ) );
-  aio_read_op->aio_read_completion_routine = aio_read_completion_routine;
-  aio_read_op->aio_read_completion_routine_context = aio_read_completion_routine_context;
-
-#if defined(_WIN32)
-  if ( ( getFlags() & O_ASYNC ) != O_ASYNC )
-  {
-    SetLastError( ERROR_INVALID_HANDLE );
-    return -1;
-  }
-
-  if ( ReadFileEx( fd, buf, ( DWORD )nbyte, ( LPOVERLAPPED )aio_read_op, ( LPOVERLAPPED_COMPLETION_ROUTINE )overlapped_read_completion ) != 0 )
-    return 0;
-  else
-    return -1;
-#elif defined(YIELD_HAVE_POSIX_FILE_AIO)
-  aio_read_op->aiocb.aio_fildes = fd;
-  aio_read_op->aiocb.aio_buf = buf;
-  aio_read_op->aiocb.aio_nbytes = nbyte;
-  aio_read_op->aiocb.aio_offset = 0;
-  aio_read_op->aiocb.aio_sigevent.sigev_notify = SIGEV_THREAD;
-  aio_read_op->aiocb.aio_sigevent.sigev_notify_function = aio_read_notify;
-  aio_read_op->aiocb.aio_sigevent.sigev_value.sival_ptr = aio_read_op;
-  return ::aio_read( &aio_read_op->aiocb );
-#endif
-}
-
-int File::aio_write( const void* buf, size_t nbyte, aio_write_completion_routine_t aio_write_completion_routine, void* aio_write_completion_routine_context )
-{
-  aio_write_operation_t* aio_write_op = new aio_write_operation_t;
-  memset( aio_write_op, 0, sizeof( *aio_write_op ) );
-  aio_write_op->aio_write_completion_routine = aio_write_completion_routine;
-  aio_write_op->aio_write_completion_routine_context = aio_write_completion_routine_context;
-
-#if defined(_WIN32)
-  if ( ( getFlags() & O_ASYNC ) != O_ASYNC )
-  {
-    SetLastError( ERROR_INVALID_HANDLE );
-    return -1;
-  }
-
-  if ( WriteFileEx( fd, buf, ( DWORD )nbyte, ( LPOVERLAPPED )aio_write_op, ( LPOVERLAPPED_COMPLETION_ROUTINE )overlapped_write_completion ) != 0 )
-    return 0;
-  else
-    return -1;
-#elif defined(YIELD_HAVE_POSIX_FILE_AIO)
-  aio_write_op->aiocb.aio_fildes = fd;
-  aio_write_op->aiocb.aio_buf = ( void* )buf;
-  aio_write_op->aiocb.aio_nbytes = nbyte;
-  aio_write_op->aiocb.aio_offset = 0;
-  aio_write_op->aiocb.aio_sigevent.sigev_notify = SIGEV_THREAD;
-  aio_write_op->aiocb.aio_sigevent.sigev_notify_function = aio_write_notify;
-  aio_write_op->aiocb.aio_sigevent.sigev_value.sival_ptr = aio_write_op;
-  return ::aio_write( &aio_write_op->aiocb );
-#endif
-}
-
-#if defined(_WIN32)
-
-void __stdcall File::overlapped_read_completion( DWORD dwError, DWORD dwBytesTransferred, LPVOID lpOverlapped )
-{
-  aio_read_operation_t* aio_read_op = ( aio_read_operation_t* )lpOverlapped;
-  aio_read_op->aio_read_completion_routine( dwError, dwBytesTransferred, aio_read_op->aio_read_completion_routine_context );
-  delete aio_read_op;
-}
-
-void __stdcall File::overlapped_write_completion( DWORD dwError, DWORD dwBytesTransferred, LPVOID lpOverlapped )
-{
-  aio_write_operation_t* aio_write_op = ( aio_write_operation_t* )lpOverlapped;
-  aio_write_op->aio_write_completion_routine( dwError, dwBytesTransferred, aio_write_op->aio_write_completion_routine_context );
-  delete aio_write_op;
-}
-
-#elif defined(YIELD_HAVE_POSIX_FILE_AIO)
-
-void File::aio_read_notify( sigval_t sigval )
-{
-  aio_read_operation_t* aio_read_op = ( aio_read_operation_t* )sigval.sival_ptr;
-  aio_read_op->aio_read_completion_routine( ( unsigned long )aio_error( &aio_read_op->aiocb ), ( size_t )aio_return( &aio_read_op->aiocb ), aio_read_op->aio_read_completion_routine_context );
-  delete aio_read_op;
-}
-
-void File::aio_write_notify( sigval_t sigval )
-{
-  aio_write_operation_t* aio_write_op = ( aio_write_operation_t* )sigval.sival_ptr;
-  aio_write_op->aio_write_completion_routine( ( unsigned long )aio_error( &aio_write_op->aiocb ), ( size_t )aio_return( &aio_write_op->aiocb ), aio_write_op->aio_write_completion_routine_context );
-  delete aio_write_op;
-}
-
-#endif
-
-#endif
-
 bool File::close()
 {
   if ( fd != INVALID_HANDLE_VALUE )
@@ -257,18 +130,6 @@ bool File::isOpen()
   return fd != INVALID_HANDLE_VALUE;
 }
 
-/*
-uint64_t AIOFile::seek( uint64_t offset, unsigned char whence )
-{
-#ifdef _WIN32
-  return ( aioe.aiocb.Offset = ( ULONG )File::seek( offset, whence ) );
-#else
-  yield::DebugBreak();
-#endif
-}
-*/
-
-
 bool File::CopyFile(const std::string& from, const std::string& to) {
   File* source = File::open(from, O_RDONLY);
   if (source == NULL)
@@ -284,11 +145,12 @@ bool File::CopyFile(const std::string& from, const std::string& to) {
   while (read == buffer_size) {
     read = source->read(buffer, buffer_size);
     if (dest->write(buffer, (size_t)read) != read) {
+      delete [] buffer;
       return false;
     }
   }
 
-  delete buffer;
+  delete [] buffer;
   delete source;
   delete dest;
   return true;

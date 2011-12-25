@@ -77,7 +77,7 @@ void Log::Cleanup(lsn_t to_lsn, const string& obsolete_prefix) {
   DiskSections disk_sections = scanAvailableLogSections(name_prefix);  // sorted by LSN
 
   for (DiskSections::iterator i = disk_sections.begin(); i != disk_sections.end(); ++i) {
-    DiskSections::iterator next = i; next++;
+    DiskSections::iterator next = i; ++next;
 
     if (next != disk_sections.end() && next->second <= to_lsn) {
       pair<yield::Path,yield::Path> parts = i->first.split();
@@ -93,7 +93,7 @@ void Log::Open(lsn_t min_lsn) {
   DiskSections disk_sections = scanAvailableLogSections(name_prefix);  // sorted by LSN
 
   for (DiskSections::iterator i = disk_sections.begin(); i != disk_sections.end(); ++i) {
-    DiskSections::iterator next = i; next++;
+    DiskSections::iterator next = i; ++next;
 
     if(next == disk_sections.end() || (min_lsn + 1) < next->second) {
       LogStorage* file = PersistentLogStorage::OpenReadOnly(i->first);

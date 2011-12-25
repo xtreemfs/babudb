@@ -29,10 +29,10 @@ TEST( Stat, babudb )
 		ASSERT_EQUAL( dir_stat.getType(), Stat::Directory );
 		DiskOperations::rmdir( TEST_DIR_NAME );
 	}
-	catch ( std::exception& exc )
+	catch ( std::exception& )
 	{
 		try { DiskOperations::unlink( TEST_FILE_NAME ); } catch ( ... ) { }
 		try { DiskOperations::rmdir( TEST_DIR_NAME ); } catch ( ... ) { }
-		throw exc;
+		throw;
 	}
 }

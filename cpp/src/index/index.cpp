@@ -62,7 +62,7 @@ ImmutableIndexWriter* ImmutableIndex::Create(
 }
 
 ImmutableIndex::Tree::iterator ImmutableIndex::findChunk(const Buffer& key) {
-  if(index.size() == 0)
+  if(index.empty())
     return index.end();
 
   Tree::iterator cursor = index.lower_bound(key);
