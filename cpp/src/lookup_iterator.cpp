@@ -15,8 +15,9 @@
 
 #include <yield/platform/memory_mapped_file.h>
 #include <yield/platform/assert.h>
-using namespace yield;
 
+using namespace yield;
+using namespace std;
 using namespace babudb;
 
 /** LookupIterator implements a parallel lookup on all overlay LogIndices
@@ -115,7 +116,7 @@ LookupIterator::LookupIterator(const LookupIterator& o)
       end_key(o.end_key), logi(o.logi), iidx(o.iidx),
       iidx_it(NULL) {
   if (o.iidx_it != NULL) {
-    new ImmutableIndexIterator(*o.iidx_it);
+    iidx_it = new ImmutableIndexIterator(*o.iidx_it);
   }
 }
 
