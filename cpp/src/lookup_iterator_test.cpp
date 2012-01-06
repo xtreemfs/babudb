@@ -17,6 +17,7 @@ using std::pair;
 #include "yield/platform/memory_mapped_file.h"
 using namespace yield;
 using namespace babudb;
+using namespace std;
 
 #include "babudb/test.h"
 
