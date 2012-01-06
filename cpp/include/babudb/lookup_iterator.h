@@ -28,9 +28,15 @@ class ImmutableIndexIterator;
 
 class LookupIterator {
 public:
-  LookupIterator(const vector<LogIndex*>& idx, ImmutableIndex* iidx, const KeyOrder& order, const Buffer& start_key, const Buffer& end_key);
-  LookupIterator(const vector<LogIndex*>& idx, ImmutableIndex* iidx, const KeyOrder& order);
   explicit LookupIterator(const KeyOrder& order);
+  LookupIterator(
+      const vector<LogIndex*>& idx, ImmutableIndex* iidx,
+      const KeyOrder& order, const Buffer& start_key,
+      const Buffer& end_key);
+  LookupIterator(
+      const vector<LogIndex*>& idx, ImmutableIndex* iidx,
+      const KeyOrder& order);
+  LookupIterator(const LookupIterator& other);
 
   ~LookupIterator();
 

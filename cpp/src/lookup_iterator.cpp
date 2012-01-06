@@ -90,12 +90,14 @@ LookupIterator::LookupIterator(
 
   if(iidx) {
     ImmutableIndexIterator c = iidx->begin();
-    if(c != iidx->end())
+    if(c != iidx->end()) {
       iidx_it = new ImmutableIndexIterator(c);
+    }
   }
   
-  if(!hasMore())
+  if(!hasMore()) {
     return;
+  }
   
   // find the smallest iterator
   findMinimalIterator();
@@ -107,6 +109,15 @@ LookupIterator::LookupIterator(
 
 LookupIterator::LookupIterator(const KeyOrder& order)
     : order(order), iidx(NULL), iidx_it(NULL) {}
+
+LookupIterator::LookupIterator(const LookupIterator& o)
+    : current_depth(o.current_depth), logi_it(o.logi_it), order(o.order),
+      end_key(o.end_key), logi(o.logi), iidx(o.iidx),
+      iidx_it(NULL) {
+  if (o.iidx_it != NULL) {
+    new ImmutableIndexIterator(*o.iidx_it);
+  }
+}
 
 LookupIterator::~LookupIterator() {
   delete iidx_it;
@@ -293,4 +304,3 @@ std::pair<Buffer,Buffer> LookupIterator::operator * () {
 bool LookupIterator::hasMore() const {
   return logi_it.size() > 0 || iidx_it != NULL;
 }
-
