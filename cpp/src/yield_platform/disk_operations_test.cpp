@@ -36,7 +36,7 @@ TEST( DiskOperations, babudb )
 		DiskOperations::rmtree( TEST_DIR_NAME );
 		ASSERT_FALSE( DiskOperations::exists( TEST_DIR_NAME ) );
 	}
-	catch ( PlatformException& exc )
+	catch (PlatformException&)
 	{
 		try { DiskOperations::unlink( TEST_FILE_NAME ); } catch ( ... ) { }
 		try { DiskOperations::rmtree( TEST_DIR_NAME ); } catch ( ... ) { }

@@ -20,8 +20,7 @@ class RecordFrame;
 class Buffer;
 class SequentialFile;
 
-class RecordIterator
-{
+class RecordIterator {
 public:
 	RecordIterator(const RecordIterator& other);
 	RecordIterator();

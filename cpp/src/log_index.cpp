@@ -11,14 +11,17 @@ using std::pair;
 
 using namespace babudb;
 
+LogIndex::LogIndex(const KeyOrder& order, lsn_t first)
+    : order(order), latest_value(MapCompare(order)), first_lsn(first) {}
+
 Buffer LogIndex::lookup(const Buffer& search_key) {
 	Tree::iterator it = latest_value.find(search_key);
 
 	if(it != latest_value.end()) {
 		return it->second;
-	}
-	else
+	}	else {
 		return Buffer::Empty();
+  }
 }
 
 // Only add Buffer to the key. Removed keys are represented as Delete values because they

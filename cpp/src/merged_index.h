@@ -8,15 +8,12 @@
 
 // Bundles ImmutableIndices and LogIndices into one consistent index
 
-#ifndef MergedIndex_H
-#define MergedIndex_H
+#ifndef MERGEDINDEX_H
+#define MERGEDINDEX_H
 
-#include <memory>
-#include <utility>
 #include <map>
 #include <string>
 #include <vector>
-using namespace std;
 
 #include "babudb/buffer.h"
 #include "babudb/key.h"
@@ -36,28 +33,28 @@ public:
 
   lsn_t GetLastPersistentLSN();
   // Rename obsolete immutable indices
-  void Cleanup(const string& to);
+  void Cleanup(const std::string& to);
   void Snapshot(lsn_t current_lsn);
   LookupIterator GetSnapshot(lsn_t snapshot_lsn);
 
-  typedef map<Buffer,Buffer,SimpleMapCompare> ResultMap;
+  typedef std::map<Buffer, Buffer, SimpleMapCompare> ResultMap;
   Buffer Lookup(const Buffer& key);
   LookupIterator Lookup(const Buffer&, const Buffer&);
 
-  void Add(const Buffer&, const Buffer&);
-  void Remove(const Buffer&);
+  void Add(const Buffer& key, const Buffer& value);
+  void Remove(const Buffer& buffer);
 
   const KeyOrder& getOrder() { return order; }
   ImmutableIndex* GetBase()  { return immutable_index; }
 
 private:
   LogIndex* tail;
-  vector<LogIndex*> log_indices;  // we currently use only one overlay
+  std::vector<LogIndex*> log_indices;  // we currently use only one overlay
   ImmutableIndex* immutable_index;
-  string name_prefix;
+  std::string name_prefix;
   const KeyOrder& order;
 };
 
-};
+}  // namespace babudb
 
 #endif

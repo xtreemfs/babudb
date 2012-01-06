@@ -18,7 +18,7 @@
 
 namespace yield {
 class MemoryMappedFile;
-};
+}
 
 namespace babudb {
 
@@ -70,7 +70,7 @@ class PersistentLogStorage : public LogStorage {
 	virtual void WriteBack();
 	virtual void WriteBack(void* ptr, size_t length);
 
-  virtual void Resize(size_t new_size );
+  virtual void Resize(size_t new_size);
 	virtual bool Close();
   virtual bool IsWritable();
 protected:

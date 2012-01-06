@@ -18,12 +18,9 @@ class LogIndex;
 
 class LogIndex {
 public:
-  LogIndex(const KeyOrder& order, lsn_t first)
-      : order(order), latest_value(MapCompare(order)), first_lsn(first) {}
+  LogIndex(const KeyOrder& order, lsn_t first);
 
   Buffer lookup(const Buffer& key);
-  // not implemented, needs value comp. operator
-  //	vector<std::pair<Buffer,Buffer> > search(Buffer value);
 
   bool Add(const Buffer&, const Buffer&);
 
@@ -35,8 +32,7 @@ public:
   iterator begin() const { return latest_value.begin(); }
   iterator end() const  { return latest_value.end(); }
 
-  iterator find(const Buffer& key)
-  {
+  iterator find(const Buffer& key) {
     return latest_value.lower_bound(key);
   }
 
@@ -46,6 +42,6 @@ private:
   lsn_t first_lsn;
 };
 
-};
+}  // namespace babudb
 
 #endif
