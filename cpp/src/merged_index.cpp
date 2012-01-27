@@ -17,6 +17,8 @@
 using namespace babudb;
 
 #include <algorithm>
+#include <vector>
+using std::vector;
 
 #include <yield/platform/yunit.h>
 #include "yield/platform/path.h"

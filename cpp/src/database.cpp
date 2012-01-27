@@ -20,7 +20,11 @@
 using namespace babudb;
 
 #include <sstream>
+#include <vector>
+#include <map>
 using std::pair;
+using std::vector;
+using std::map;
 
 #include "yield/platform/memory_mapped_file.h"
 using namespace yield;
