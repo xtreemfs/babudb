@@ -290,7 +290,7 @@ void LookupIterator::assureNonDeletedCursor() {
   }
 }
 
-std::pair<Buffer,Buffer> LookupIterator::operator * () {
+std::pair<Buffer,Buffer> LookupIterator::operator * () const {
   if(current_depth != IMMUTABLE_INDEX) {
     ASSERT_TRUE(logi_it[current_depth] != logi[current_depth]->end());
     ASSERT_FALSE(logi_it[current_depth]->second.isDeleted());

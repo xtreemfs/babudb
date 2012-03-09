@@ -39,7 +39,7 @@ public:
   ~LookupIterator();
 
   void operator ++ ();
-  std::pair<Buffer,Buffer> operator * ();
+  std::pair<Buffer,Buffer> operator * () const;
 
   bool hasMore() const;
 
