@@ -13,6 +13,9 @@
 #include <string>
 
 namespace babudb {
+  
+const int MAX_LSN = 0xFFFFffff;
+typedef unsigned int lsn_t;
 
 // A reference to a piece of memory.
 // No automatic memory management.
@@ -62,20 +65,16 @@ public:
     return Buffer((void*)str.c_str(),str.size());
   }
 
-  /*
-  template <class T>
-  static Buffer createFrom(T data) {
-    Buffer result = create(sizeof(T));
-    memcpy(result.data,&data,sizeof(T));
-    return result;
-  }
-  */
-  int getAsInt() {
+  int getAsInt() const {
     return *(int*)data;
   }
 
-  unsigned long long getAsUInt64() {
+  unsigned long long getAsUInt64() const {
     return *(unsigned long long*)data;
+  }
+
+  std::string getAsString() const {
+    return std::string((const char*)data, size);
   }
 
   // Represents a deleted data item in overlay indices.
@@ -115,6 +114,8 @@ public:
   Buffer clone() const {
     if (isDeleted()) {
       return Deleted();
+    } else if (isNotExists()) {
+      return NotExists();
     } else if (isEmpty()) {
       return Empty();
     } else {
@@ -131,13 +132,10 @@ public:
   }
 
   bool operator == (const Buffer& s) const {
-    if(this->size != s.size) return false;
-
-    for(int i = 0; i < (int)this->size; ++i )
-      if( ((char*)this->data)[i] != ((char*)s.data)[i])
-        return false;
-
-    return true;
+    if (this->size != s.size) {
+      return false;
+    }
+    return memcmp(data, s.data, size) == 0;
   }
  
   void* data;
@@ -149,7 +147,7 @@ private:
 
   Buffer() : data(0), size(0) {}
 
-  friend class ScopedBuffer;
+  friend class Buffer;
 
   // Buffer::create* functions allocate memory and copy the data
   // must be .free()d later
@@ -170,35 +168,7 @@ private:
     return result;
   }
 
-  static Buffer createFrom(int data) {
-    Buffer result = create(sizeof(int));
-    memcpy(result.data,&data,sizeof(int));
-    return result;
-  }
 };
-
-class ScopedBuffer {
-public:
-  ScopedBuffer(const std::string& str)
-    : data(Buffer::createFrom(str)) {}
-
-  ~ScopedBuffer() {
-    data.free();
-  }
-
-  operator Buffer () const {
-    return data;
-  }
-
-  operator Buffer& () {
-    return data;
-  }
-
-  Buffer data;
-};
-
-const int MAX_LSN = 0xFFFFffff;
-typedef unsigned int lsn_t;
 
 }
 

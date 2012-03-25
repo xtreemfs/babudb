@@ -24,21 +24,21 @@ TEST_TMPDIR(LogIndex,babudb)
 
   StringSetOperation(1, "testidx", "Key1", "data1").ApplyTo(*db, 1);
 
-  Buffer result = db->Lookup("testidx", ScopedBuffer("Key1"));
+  Buffer result = db->Lookup("testidx", Buffer("Key1"));
   EXPECT_FALSE(result.isEmpty());
   EXPECT_TRUE(strncmp((char*)result.data,"data1",5) == 0);
 
-  result = db->Lookup("testidx",ScopedBuffer("Key2"));
+  result = db->Lookup("testidx",Buffer("Key2"));
   EXPECT_TRUE(result.isNotExists());
 
   StringSetOperation(2, "testidx", "Key2", "data2").ApplyTo(*db, 2);
-  result = db->Lookup("testidx", ScopedBuffer("Key2"));
+  result = db->Lookup("testidx", Buffer("Key2"));
   EXPECT_FALSE(result.isEmpty());
 
   // Overwrite
   StringSetOperation(3, "testidx", "Key1", "data3").ApplyTo(*db, 3);
 
-  result = db->Lookup("testidx", ScopedBuffer("Key1"));
+  result = db->Lookup("testidx", Buffer("Key1"));
   EXPECT_FALSE(result.isEmpty());
   EXPECT_TRUE(strncmp((char*)result.data,"data3",5) == 0);
 

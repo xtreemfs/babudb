@@ -22,8 +22,8 @@ TEST_TMPDIR(ImmutableIndex, babudb)
 {
   ImmutableIndexWriter* writer = ImmutableIndex::Create(
       testPath("testdb-testidx"), 4, 64 * 1024);
-  ScopedBuffer k1("key1"), v1("value1"), k2("key2"), v2("value2");
-  ScopedBuffer k3("key3"), v3("value3"), k4("key4"), v4("value4");
+  Buffer k1("key1"), v1("value1"), k2("key2"), v2("value2");
+  Buffer k3("key3"), v3("value3"), k4("key4"), v4("value4");
   writer->Add(k1,v1);
   writer->Add(k2,v2);
   writer->Add(k3,v3);
@@ -42,7 +42,7 @@ TEST_TMPDIR(ImmutableIndex, babudb)
   EXPECT_TRUE(index->Find(Buffer(k2)) != index->end());
   EXPECT_TRUE(index->Find(Buffer(k4)) != index->end());
 
-  ScopedBuffer prefix("ke");
+  Buffer prefix("ke");
   EXPECT_TRUE(index->Find(Buffer(prefix)) != index->end());
 
   // search keys directly
@@ -53,11 +53,11 @@ TEST_TMPDIR(ImmutableIndex, babudb)
   EXPECT_TRUE(!index->Lookup(k4).isEmpty());
 
   // not founds
-  ScopedBuffer before("a");
+  Buffer before("a");
   EXPECT_TRUE(index->Lookup(before).isNotExists());
-  ScopedBuffer middle("key21");
+  Buffer middle("key21");
   EXPECT_TRUE(index->Lookup(middle).isNotExists());
-  ScopedBuffer after("x");
+  Buffer after("x");
   EXPECT_TRUE(index->Lookup(after).isNotExists());
 
 
@@ -86,5 +86,5 @@ TEST_TMPDIR(ImmutableIndex, babudb)
   EXPECT_TRUE(pi != index->end());
   EXPECT_TRUE((*pi).first == "key1");
   EXPECT_TRUE(pi != index->end());
-  EXPECT_TRUE(index->Find(ScopedBuffer("kez")) == index->end() );
+  EXPECT_TRUE(index->Find(Buffer("kez")) == index->end() );
 }

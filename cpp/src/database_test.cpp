@@ -43,8 +43,8 @@ TEST_TMPDIR(Database_Migration,babudb)
   StringOrder myorder;
 
   IndexMerger* merger = new IndexMerger(testPath("test-testidx").getHostCharsetPath(), myorder);
-  merger->Add(1, ScopedBuffer("Key1"), ScopedBuffer("data1"));
-  merger->Add(2, ScopedBuffer("Key2"), ScopedBuffer("data2"));
+  merger->Add(1, Buffer("Key1"), Buffer("data1"));
+  merger->Add(2, Buffer("Key2"), Buffer("data2"));
   merger->Run();
   delete merger;
 

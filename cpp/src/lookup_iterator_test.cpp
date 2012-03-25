@@ -43,8 +43,8 @@ TEST_TMPDIR(LookupIteratorEmptyDb,babudb)
   StringOrder sorder;
   vector<LogIndex*> logi;
   
-  ScopedBuffer lower("no0");
-  ScopedBuffer upper("no1");
+  Buffer lower("no0");
+  Buffer upper("no1");
   LookupIterator it_empty(logi, NULL, sorder, lower, upper);
   
   LookupIterator it_empty2(logi, NULL, sorder);
@@ -60,8 +60,8 @@ TEST_TMPDIR(LookupIteratorEmptyIterator,babudb)
 TEST_TMPDIR(LookupIterator,babudb)
 {
   StringOrder sorder;
-  ScopedBuffer k1("key1"), v1("value1"), k2("key2"), v2("value2");
-  ScopedBuffer k3("key3"), v3("value3"), k4("key4"), v4("value4");
+  Buffer k1("key1"), v1("value1"), k2("key2"), v2("value2");
+  Buffer k3("key3"), v3("value3"), k4("key4"), v4("value4");
 
   {  // Create an ImmutableIndex
     IndexMerger* merger = new IndexMerger(testPath("testdb-testidx"), sorder);
@@ -83,8 +83,8 @@ TEST_TMPDIR(LookupIterator,babudb)
 
   vector<LogIndex*> logi; logi.push_back(&li1); logi.push_back(&li2); logi.push_back(&li3);
 
-  ScopedBuffer ovalue("overlayvalue");
-  ScopedBuffer k0("key0"), k5("key5");
+  Buffer ovalue("overlayvalue");
+  Buffer k0("key0"), k5("key5");
 
   li1.Add(k1, ovalue);
 
@@ -108,8 +108,8 @@ TEST_TMPDIR(LookupIterator,babudb)
   // key5                            ovalue
 
   {  // try empty iterator
-    ScopedBuffer lower("no0");
-    ScopedBuffer upper("no1");
+    Buffer lower("no0");
+    Buffer upper("no1");
 
     LookupIterator it_empty(logi, loadedindex, sorder, lower, upper);
     EXPECT_FALSE(it_empty.hasMore());
@@ -126,8 +126,8 @@ TEST_TMPDIR(LookupIterator,babudb)
   }
 
   {  // now for a range query
-    ScopedBuffer lower("key1x");
-    ScopedBuffer upper("key4x");
+    Buffer lower("key1x");
+    Buffer upper("key4x");
     LookupIterator it(logi, loadedindex, sorder, lower, upper);
 
     EXPECT_KEY_ADVANCE(it, k2, v2);
@@ -136,8 +136,8 @@ TEST_TMPDIR(LookupIterator,babudb)
   }
 
   {  // and another one that equals the whole range
-    ScopedBuffer lower2("key");
-    ScopedBuffer upper2("key5x");
+    Buffer lower2("key");
+    Buffer upper2("key5x");
     LookupIterator it(logi, loadedindex, sorder, lower2, upper2);
     
     EXPECT_KEY_ADVANCE(it, k1, ovalue);
@@ -166,8 +166,8 @@ TEST_TMPDIR(LookupIterator,babudb)
     li1.Add(k4,Buffer::Deleted());
     li1.Add(k5,Buffer::Deleted());
 
-    ScopedBuffer lower2("key");
-    ScopedBuffer upper2("key3");
+    Buffer lower2("key");
+    Buffer upper2("key3");
     LookupIterator it2(logi, loadedindex, sorder, lower2, upper2);
 
     EXPECT_FALSE(it2.hasMore());
