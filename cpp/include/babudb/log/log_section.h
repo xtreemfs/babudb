@@ -29,18 +29,18 @@ public:
 
 class LogSection : public SequentialFile {
 public:
-	LogSection(LogStorage*, lsn_t first);
+  LogSection(LogStorage*, lsn_t first);
 
-	lsn_t getFirstLSN() const;
+  lsn_t getFirstLSN() const;
 
   // Append entry, start a new transaction if necessary
-	void Append(const Serializable& entry);
+  void Append(const Serializable& entry);
   // Make the current transaction durable
-	void Commit();
+  void Commit();
   void Erase(const iterator& it);
 
 private:
-	lsn_t first_lsn; // the first lsn in this file
+  lsn_t first_lsn; // the first lsn in this file
 };
 
 }  // namespace babudb

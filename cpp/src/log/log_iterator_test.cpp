@@ -22,7 +22,7 @@ TEST_TMPDIR(LogIteratorEmptyLog,babudb)
   {
     Log log(testPath("testlog"));
 
-    std::auto_ptr<Log::iterator> i(log.First());	// try an empty log first
+    std::auto_ptr<Log::iterator> i(log.First());  // try an empty log first
     EXPECT_FALSE(i->IsValid());
     EXPECT_FALSE((bool)i->GetNext());
     EXPECT_FALSE((bool)i->GetNext());
@@ -139,15 +139,20 @@ TEST_TMPDIR(LogIteratorOneSectionAndErase,babudb)
   EXPECT_FALSE(i->IsValid());
   EXPECT_TRUE(i->GetNext());
   EXPECT_TRUE(i->IsValid());
+  EXPECT_TRUE(op.Deserialize(i->AsData()).value == 'A');
+
   EXPECT_TRUE(i->GetNext());
+  EXPECT_TRUE(i->IsValid());
   EXPECT_TRUE(op.Deserialize(i->AsData()).value == 'B');
 
   tail->Erase(i->GetRecordIterator());
   
   EXPECT_TRUE(i->GetNext());
+  EXPECT_TRUE(i->IsValid());
   EXPECT_TRUE(op.Deserialize(i->AsData()).value == 'C');
   
   EXPECT_TRUE(i->GetPrevious());
+  EXPECT_TRUE(i->IsValid());
   EXPECT_TRUE(op.Deserialize(i->AsData()).value == 'A');
   
   log.Close();

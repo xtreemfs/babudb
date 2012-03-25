@@ -26,14 +26,14 @@ TEST_TMPDIR(Database,babudb)
   indices.push_back(std::make_pair("testidx", &myorder));
   Database* db = Database::Open(testPath("test").getHostCharsetPath(), indices);
 
-  StringSetOperation(1, "testidx", "Key1","data1").ApplyTo(*db, 1);
-  StringSetOperation(2, "testidx", "Key2","data2").ApplyTo(*db, 2);
+  StringSetOperation(1, "testidx", "Key1", "data1").ApplyTo(*db, 1);
+  StringSetOperation(2, "testidx", "Key2", "data2").ApplyTo(*db, 2);
 
-  EXPECT_FALSE(db->Lookup("testidx",DataHolder("Key1")).isEmpty());
+  EXPECT_FALSE(db->Lookup("testidx", babudb::Buffer::wrap("Key1")).isEmpty());
 
   StringSetOperation(3, "testidx", "Key1").ApplyTo(*db, 3);
 
-  EXPECT_TRUE(db->Lookup("testidx",DataHolder("Key1")).isEmpty());
+  EXPECT_TRUE(db->Lookup("testidx", babudb::Buffer::wrap("Key1")).isNotExists());
 
   delete db;
 }
@@ -43,8 +43,8 @@ TEST_TMPDIR(Database_Migration,babudb)
   StringOrder myorder;
 
   IndexMerger* merger = new IndexMerger(testPath("test-testidx").getHostCharsetPath(), myorder);
-  merger->Add(1, DataHolder("Key1"), DataHolder("data1"));
-  merger->Add(2, DataHolder("Key2"), DataHolder("data2"));
+  merger->Add(1, ScopedBuffer("Key1"), ScopedBuffer("data1"));
+  merger->Add(2, ScopedBuffer("Key2"), ScopedBuffer("data2"));
   merger->Run();
   delete merger;
 
@@ -53,15 +53,15 @@ TEST_TMPDIR(Database_Migration,babudb)
   Database* db = Database::Open(testPath("test").getHostCharsetPath(), indices);
 
   EXPECT_EQUAL(db->GetMinimalPersistentLSN(), 2);
-	EXPECT_FALSE(db->Lookup("testidx",DataHolder("Key1")).isEmpty());
-	EXPECT_FALSE(db->Lookup("testidx",DataHolder("Key2")).isEmpty());
-	EXPECT_TRUE(db->Lookup("testidx",DataHolder("Key3")).isEmpty());
+  EXPECT_FALSE(db->Lookup("testidx", babudb::Buffer::wrap("Key1")).isEmpty());
+  EXPECT_FALSE(db->Lookup("testidx", babudb::Buffer::wrap("Key2")).isEmpty());
+  EXPECT_TRUE(db->Lookup("testidx", babudb::Buffer::wrap("Key3")).isNotExists());
 
   StringSetOperation(3, "testidx", "Key3").ApplyTo(*db, 3);
-	EXPECT_FALSE(db->Lookup("testidx",DataHolder("Key1")).isEmpty());
-	EXPECT_FALSE(db->Lookup("testidx",DataHolder("Key2")).isEmpty());
-	EXPECT_TRUE(db->Lookup("testidx",DataHolder("Key3")).isEmpty());
-	EXPECT_TRUE(db->Lookup("testidx",DataHolder("Key4")).isEmpty());
+  EXPECT_FALSE(db->Lookup("testidx", babudb::Buffer::wrap("Key1")).isEmpty());
+  EXPECT_FALSE(db->Lookup("testidx", babudb::Buffer::wrap("Key2")).isEmpty());
+  EXPECT_TRUE(db->Lookup("testidx", babudb::Buffer::wrap("Key3")).isNotExists());
+  EXPECT_TRUE(db->Lookup("testidx", babudb::Buffer::wrap("Key4")).isNotExists());
   delete db;
 }
 

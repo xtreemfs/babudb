@@ -41,7 +41,7 @@ class IndexCreator;
 class LookupIterator;
 class IndexMerger;
 
-typedef std::pair<string, const KeyOrder*> IndexDescriptor;
+typedef std::pair<std::string, const KeyOrder*> IndexDescriptor;
 
 class Database {
  public:
@@ -91,9 +91,9 @@ class Database {
   // Get latest versions (characterized by their lsn) of all immutable indices
   std::vector<std::pair<std::string, lsn_t> > GetIndexVersions();
   // Get paths of used indices
-  std::vector<std::pair<std::string, string> > GetIndexPaths();
+  std::vector<std::pair<std::string, std::string> > GetIndexPaths();
 
-  static string GetIndexFile(
+  static std::string GetIndexFile(
       const std::string& db_name, const std::string& index_name,
       lsn_t version);                           
 
@@ -110,7 +110,7 @@ private:
   void OpenIndices(const std::vector<IndexDescriptor>& index_list);
 
   std::map<std::string, MergedIndex*> indices;
-  string name;
+  std::string name;
 
   lsn_t latest_lsn;  // the latest known LSN in the Database state
   lsn_t minimal_persistent_lsn;  // the minimum persistent LSN in all indices

@@ -27,20 +27,20 @@ class LogStorage {
   LogStorage() : size(0), start(NULL) {}
   virtual ~LogStorage() {}
 
-	inline char* Start() { return start; }
-	inline char* End() { return start + size; }
+  inline char* Start() { return start; }
+  inline char* End() { return start + size; }
   inline size_t Size() { return size; }
 
-	virtual void WriteBack() = 0;
-	virtual void WriteBack(void* ptr, size_t length) = 0;
+  virtual void WriteBack() = 0;
+  virtual void WriteBack(void* ptr, size_t length) = 0;
 
   virtual void Resize(size_t new_size) = 0;
-	virtual bool Close() = 0;
+  virtual bool Close() = 0;
   virtual bool IsWritable() = 0;
 
  protected:
-	size_t size;
-	char* start;
+  size_t size;
+  char* start;
 };
 
 class VolatileLogStorage : public LogStorage {
@@ -67,15 +67,15 @@ class PersistentLogStorage : public LogStorage {
   static PersistentLogStorage* Open(const std::string& name);
   static PersistentLogStorage* OpenReadOnly(const std::string& name);
 
-	virtual void WriteBack();
-	virtual void WriteBack(void* ptr, size_t length);
+  virtual void WriteBack();
+  virtual void WriteBack(void* ptr, size_t length);
 
   virtual void Resize(size_t new_size);
-	virtual bool Close();
+  virtual bool Close();
   virtual bool IsWritable();
 protected:
   PersistentLogStorage(yield::MemoryMappedFile*);
-	std::auto_ptr<yield::MemoryMappedFile> memory;
+  std::auto_ptr<yield::MemoryMappedFile> memory;
 };
 
 }  // namespace babudb

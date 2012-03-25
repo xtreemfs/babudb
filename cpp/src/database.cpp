@@ -23,6 +23,7 @@ using namespace babudb;
 #include <vector>
 #include <map>
 using std::pair;
+using std::string;
 using std::vector;
 using std::map;
 
@@ -44,7 +45,7 @@ Database::~Database() {
 void Database::ReopenIndices() {
   vector<IndexDescriptor> descs;  
   for(map<string,MergedIndex*>::iterator i = indices.begin(); i != indices.end(); ++i) {
-	  descs.push_back(make_pair(i->first, &i->second->getOrder()));
+    descs.push_back(make_pair(i->first, &i->second->getOrder()));
   }
 
   CloseIndices();

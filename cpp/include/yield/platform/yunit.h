@@ -16,76 +16,76 @@
 
 namespace yield
 {
-	class TestCase;
+  class TestCase;
 
-	class TestSuite : public std::vector<TestCase*>
-	{
-	public:
-		void addTest( TestCase* test_case ) { push_back( test_case ); }
-	};
-
-
-	class TestCase
-	{
-	public:
-		TestCase( const char* short_description ) : __short_description( short_description ) { }
-		TestCase( const char* short_description, TestSuite& __test_suite ) : __short_description( short_description ) { __test_suite.addTest( this ); }
-
-		virtual void setUp() { }
-		virtual void runTest() = 0;
-		virtual void tearDown() { }
-		virtual const char* shortDescription() { return __short_description.c_str(); }
-
-	protected:
-		friend class TestRunner;
-		std::string __short_description;
-	};
+  class TestSuite : public std::vector<TestCase*>
+  {
+  public:
+    void addTest( TestCase* test_case ) { push_back( test_case ); }
+  };
 
 
-	class TestRunner
-	{
-	public:
-		int run( TestSuite& test_suite )
-		{
-			int ret_code = 0;
+  class TestCase
+  {
+  public:
+    TestCase( const char* short_description ) : __short_description( short_description ) { }
+    TestCase( const char* short_description, TestSuite& __test_suite ) : __short_description( short_description ) { __test_suite.addTest( this ); }
 
-			for ( TestSuite::iterator i = test_suite.begin(); i != test_suite.end(); i++ )
-			{
-				bool called_runTest = false, called_tearDown = false;
+    virtual void setUp() { }
+    virtual void runTest() = 0;
+    virtual void tearDown() { }
+    virtual const char* shortDescription() { return __short_description.c_str(); }
 
-				try
-				{
-					std::cerr << ( *i )->__short_description;
-					( *i )->setUp();
-					called_runTest = true;
-					( *i )->runTest();
-					called_tearDown = true;
-					( *i )->tearDown();
-					std::cerr << ": passed" << std::endl;
-					continue;
-				}
-				catch ( yield::AssertionException& exc )
-				{
-					std::cerr << " failed: " << exc.what() << std::endl;
-				}
-				catch ( std::exception& exc )
-				{
-					std::cerr << " threw unknown exception: " << exc.what() << std::endl;
-				}
-				catch ( ... )
-				{
-					std::cerr << " threw unknown non-exception" << std::endl;
-				}
+  protected:
+    friend class TestRunner;
+    std::string __short_description;
+  };
 
-				if ( called_runTest && !called_tearDown )
-					try { ( *i )->tearDown(); } catch ( ... ) { }
 
-				ret_code |= 1;
-			}
+  class TestRunner
+  {
+  public:
+    int run( TestSuite& test_suite )
+    {
+      int ret_code = 0;
 
-			return ret_code;
-		}
-	};
+      for ( TestSuite::iterator i = test_suite.begin(); i != test_suite.end(); i++ )
+      {
+        bool called_runTest = false, called_tearDown = false;
+
+        try
+        {
+          std::cerr << ( *i )->__short_description;
+          ( *i )->setUp();
+          called_runTest = true;
+          ( *i )->runTest();
+          called_tearDown = true;
+          ( *i )->tearDown();
+          std::cerr << ": passed" << std::endl;
+          continue;
+        }
+        catch ( yield::AssertionException& exc )
+        {
+          std::cerr << " failed: " << exc.what() << std::endl;
+        }
+        catch ( std::exception& exc )
+        {
+          std::cerr << " threw unknown exception: " << exc.what() << std::endl;
+        }
+        catch ( ... )
+        {
+          std::cerr << " threw unknown non-exception" << std::endl;
+        }
+
+        if ( called_runTest && !called_tearDown )
+          try { ( *i )->tearDown(); } catch ( ... ) { }
+
+        ret_code |= 1;
+      }
+
+      return ret_code;
+    }
+  };
 
 #define TEST_SUITE( TestSuiteName ) \
 yield::TestSuite& TestSuiteName##TestSuite() { static yield::TestSuite* ts = new yield::TestSuite(); return *ts; } \
@@ -100,7 +100,7 @@ extern yield::TestSuite& TestSuiteName##TestSuite(); \
 class TestCaseName##Test : public TestCaseParentClassName \
 { \
 public:\
-	TestCaseName##Test() : TestCaseParentClassName( #TestCaseName "Test", TestSuiteName##TestSuite() ) { }\
+  TestCaseName##Test() : TestCaseParentClassName( #TestCaseName "Test", TestSuiteName##TestSuite() ) { }\
   void runTest();\
 };\
 TestCaseName##Test TestCaseName##Test_inst;\
@@ -111,7 +111,7 @@ void TestCaseName##Test::runTest()
 
 #ifdef YIELD_BUILDING_STANDALONE_TEST
 #define TEST_MAIN( TestSuiteName ) \
-	int main( int argc, char** argv ) { return yield::TestRunner().run( TestSuiteName##TestSuite() ); }
+  int main( int argc, char** argv ) { return yield::TestRunner().run( TestSuiteName##TestSuite() ); }
 #else
 #define TEST_MAIN( TestSuiteName)
 #endif

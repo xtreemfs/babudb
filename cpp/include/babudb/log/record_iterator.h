@@ -22,40 +22,40 @@ class SequentialFile;
 
 class RecordIterator {
 public:
-	RecordIterator(const RecordIterator& other);
-	RecordIterator();
+  RecordIterator(const RecordIterator& other);
+  RecordIterator();
 
-	static RecordIterator First(void* start, size_t size);
-	static RecordIterator Last(void* start, size_t size);
+  static RecordIterator First(void* start, size_t size);
+  static RecordIterator Last(void* start, size_t size);
 
   RecordFrame* GetNext();
   RecordFrame* GetPrevious();
 
-	bool operator != (const RecordIterator& other) const;
-	bool operator == (const RecordIterator& other) const;
+  bool operator != (const RecordIterator& other) const;
+  bool operator == (const RecordIterator& other) const;
 
   // The following operations refer to the current record as
   // returned by GetNext/GetPrevious
-	void* operator * ()	const;
-	size_t GetSize() const;
-	RecordFrame* GetRecord() const;
-	Buffer AsData() const;
+  void* operator * ()  const;
+  size_t GetSize() const;
+  RecordFrame* GetRecord() const;
+  Buffer AsData() const;
   bool IsValid() const;
 
 protected:
   friend class SequentialFile;
-	RecordIterator(void* start, size_t size, RecordFrame* pos);
+  RecordIterator(void* start, size_t size, RecordFrame* pos);
 
-	RecordFrame* FindNextRecord(RecordFrame*) const;
-	RecordFrame* FindPreviousRecord(RecordFrame*) const;
+  RecordFrame* FindNextRecord(RecordFrame*) const;
+  RecordFrame* FindPreviousRecord(RecordFrame*) const;
 
   bool IsCompatible(const RecordIterator& other) const;
   bool IsValidPosition(RecordFrame* pos) const;
   char* RegionEnd() const;
 
-	RecordFrame* current;
-	void* region_start;
-	size_t region_size;
+  RecordFrame* current;
+  void* region_start;
+  size_t region_size;
 };
 
 }

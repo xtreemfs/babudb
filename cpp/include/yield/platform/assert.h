@@ -15,23 +15,23 @@
 
 namespace yield
 {
-	class AssertionException : public Exception
-	{
-	public:
-		AssertionException( const char* file_name, int line_number, const char* info = "" )
-		{
+  class AssertionException : public Exception
+  {
+  public:
+    AssertionException( const char* file_name, int line_number, const char* info = "" )
+    {
 #ifdef _WIN32
-			_snprintf_s( what_buffer, 1024, "line number %d in %s (%s)", line_number, file_name, info );
+      _snprintf_s( what_buffer, 1024, "line number %d in %s (%s)", line_number, file_name, info );
 #else
-			std::snprintf( what_buffer, 1024, "line number %d in %s (%s)", line_number, file_name, info );
+      std::snprintf( what_buffer, 1024, "line number %d in %s (%s)", line_number, file_name, info );
 #endif
-		}
+    }
 
-		virtual const char* what() const throw() { return what_buffer; }
+    virtual const char* what() const throw() { return what_buffer; }
 
-	private:
-		char what_buffer[1024];
-	};
+  private:
+    char what_buffer[1024];
+  };
 }
 
 

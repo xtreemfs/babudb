@@ -13,11 +13,16 @@ using namespace babudb;
 #include <yield/platform/memory_mapped_file.h>
 #include <yield/platform/yunit.h>
 
-IndexMerger::IndexMerger(const string& file_name, const KeyOrder& order) 
-    : file_name(file_name), order(order), base(NULL), last_lsn(0), diff(order, 0) {}
+IndexMerger::IndexMerger(const std::string& file_name,
+                         const KeyOrder& order) 
+    : file_name(file_name), order(order), base(NULL),
+      last_lsn(0), diff(order, 0) {}
 
-IndexMerger::IndexMerger(const string& file_name, const KeyOrder& order, ImmutableIndex* base)
-    : file_name(file_name), order(order), base(base), last_lsn(0), diff(order, 0) {}
+IndexMerger::IndexMerger(const std::string& file_name,
+                         const KeyOrder& order, 
+                         ImmutableIndex* base)
+    : file_name(file_name), order(order), base(base), 
+      last_lsn(0), diff(order, 0) {}
 
 IndexMerger::~IndexMerger() {}
 
@@ -47,68 +52,68 @@ static inline Buffer getKey(ImmutableIndex::iterator it) { return (*it).first; }
 
 void IndexMerger::Proceed(int n_steps) {
   if (!base) {
-	  for(int i = 0; i < n_steps; ++i) {
-		  if(IsFinished()) {
-			  destination->Finalize();
-			  break;
-		  }
-		  else {
-			  destination->Add(diff_it->first, diff_it->second);
-			  ++diff_it;
-			  continue;
-		  }
-	  }  
+    for(int i = 0; i < n_steps; ++i) {
+      if(IsFinished()) {
+        destination->Finalize();
+        break;
+      }
+      else {
+        destination->Add(diff_it->first, diff_it->second);
+        ++diff_it;
+        continue;
+      }
+    }  
   } else {
-	  for(int i = 0; i < n_steps; ++i) {
-		  if(IsFinished()) {
-			  destination->Finalize();
-			  break;
-		  }
-		  else if(*base_it == base->end()) {
-			  destination->Add(diff_it->first, diff_it->second);
-			  ++diff_it;
-			  continue;
-		  }
-		  else if(diff_it == diff.end()) {
-			  destination->Add((*(*base_it)).first,(*(*base_it)).second);
-			  ++(*base_it);
-			  continue;
-		  }
+    for(int i = 0; i < n_steps; ++i) {
+      if(IsFinished()) {
+        destination->Finalize();
+        break;
+      }
+      else if(*base_it == base->end()) {
+        destination->Add(diff_it->first, diff_it->second);
+        ++diff_it;
+        continue;
+      }
+      else if(diff_it == diff.end()) {
+        destination->Add((*(*base_it)).first,(*(*base_it)).second);
+        ++(*base_it);
+        continue;
+      }
 
-		  if (!order.less(getKey(*base_it), getKey(diff_it)) &&
-			    !order.less(getKey(diff_it), getKey(*base_it))) { // equal
+      if (!order.less(getKey(*base_it), getKey(diff_it)) &&
+          !order.less(getKey(diff_it), getKey(*base_it))) { // equal
 
-			  if(!getKey(diff_it).isDeleted()) 	// diff overwrites key
-				  destination->Add(diff_it->first, diff_it->second);
+        if(!getKey(diff_it).isDeleted())   // diff overwrites key
+          destination->Add(diff_it->first, diff_it->second);
 
-			  ++diff_it;
-			  ++(*base_it);
+        ++diff_it;
+        ++(*base_it);
 
-			  continue;
-		  }
+        continue;
+      }
 
-		  if(order.less(getKey(*base_it), getKey(diff_it))) {
-			  destination->Add((*(*base_it)).first,(*(*base_it)).second);
-			  ++(*base_it);
-			  continue;
-		  }
+      if(order.less(getKey(*base_it), getKey(diff_it))) {
+        destination->Add((*(*base_it)).first,(*(*base_it)).second);
+        ++(*base_it);
+        continue;
+      }
 
-		  if(order.less(getKey(diff_it), getKey(*base_it))) {
-			  destination->Add(diff_it->first, diff_it->second);
-			  ++diff_it;
-			  continue;
-		  }
+      if(order.less(getKey(diff_it), getKey(*base_it))) {
+        destination->Add(diff_it->first, diff_it->second);
+        ++diff_it;
+        continue;
+      }
 
-		  FAIL();
-	  }
+      FAIL();
+    }
 
   }
 }
 
 bool IndexMerger::IsFinished() {
   if (base) {
-  	return *base_it == base->end() && diff_it == diff.end();
+    return *base_it == base->end() && diff_it == diff.end();
   } else {
-  	return diff_it == diff.end();
+    return diff_it == diff.end();
   }
 }

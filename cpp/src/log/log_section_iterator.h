@@ -22,13 +22,13 @@ public:
   static LogSectionIterator* First(std::vector<LogSection*> const* sections);
   static LogSectionIterator* Last(std::vector<LogSection*> const* sections);
   
-	LogSection* GetNext();
-	LogSection* GetPrevious();
+  LogSection* GetNext();
+  LogSection* GetPrevious();
   bool IsValid() const;
-	bool operator != (const LogSectionIterator& other) const;
-	bool operator == (const LogSectionIterator& other) const;
+  bool operator != (const LogSectionIterator& other) const;
+  bool operator == (const LogSectionIterator& other) const;
 
-	LogSection* operator * ()	const;
+  LogSection* operator * ()  const;
 
 private:
   LogSectionIterator(std::vector<LogSection*> const* sections,

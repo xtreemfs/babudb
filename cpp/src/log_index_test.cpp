@@ -24,35 +24,35 @@ TEST_TMPDIR(LogIndex,babudb)
 
   StringSetOperation(1, "testidx", "Key1", "data1").ApplyTo(*db, 1);
 
-  Buffer result = db->Lookup("testidx", DataHolder("Key1"));
+  Buffer result = db->Lookup("testidx", ScopedBuffer("Key1"));
   EXPECT_FALSE(result.isEmpty());
   EXPECT_TRUE(strncmp((char*)result.data,"data1",5) == 0);
 
-  result = db->Lookup("testidx",DataHolder("Key2"));
-  EXPECT_TRUE(result.isEmpty());
+  result = db->Lookup("testidx",ScopedBuffer("Key2"));
+  EXPECT_TRUE(result.isNotExists());
 
   StringSetOperation(2, "testidx", "Key2", "data2").ApplyTo(*db, 2);
-  result = db->Lookup("testidx", DataHolder("Key2"));
+  result = db->Lookup("testidx", ScopedBuffer("Key2"));
   EXPECT_FALSE(result.isEmpty());
 
   // Overwrite
   StringSetOperation(3, "testidx", "Key1", "data3").ApplyTo(*db, 3);
 
-  result = db->Lookup("testidx", DataHolder("Key1"));
+  result = db->Lookup("testidx", ScopedBuffer("Key1"));
   EXPECT_FALSE(result.isEmpty());
   EXPECT_TRUE(strncmp((char*)result.data,"data3",5) == 0);
 
   // Prefix
   StringSetOperation(4, "testidx", "Ke4", "data4").ApplyTo(*db, 4);
 
-/*	vector<pair<Buffer,Buffer> > results = db->match("testidx",Buffer("Key2",4));
-	EXPECT_TRUE(results.size() == 1);
+/*  vector<pair<Buffer,Buffer> > results = db->match("testidx",Buffer("Key2",4));
+  EXPECT_TRUE(results.size() == 1);
 
-	results = db->match("testidx",Buffer("Key"));
-	EXPECT_TRUE(results.size() == 2);
+  results = db->match("testidx",Buffer("Key"));
+  EXPECT_TRUE(results.size() == 2);
 
-	results = db->match("testidx",Buffer("Ke"));
-	EXPECT_TRUE(results.size() == 3);
+  results = db->match("testidx",Buffer("Ke"));
+  EXPECT_TRUE(results.size() == 3);
 */
   delete db;
 }

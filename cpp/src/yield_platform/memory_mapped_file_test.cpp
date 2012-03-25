@@ -20,30 +20,30 @@ DECLARE_TEST_SUITE(babudb)
 class MemoryMappedFileTest : public TestCase
 {
 public:
-	MemoryMappedFileTest() : TestCase( "MemoryMappedFileTest", babudbTestSuite() ) { }
+  MemoryMappedFileTest() : TestCase( "MemoryMappedFileTest", babudbTestSuite() ) { }
 
-	void setUp()
-	{
-		tearDown();
-	}
+  void setUp()
+  {
+    tearDown();
+  }
 
-	void runTest()
-	{
-		{
-			MemoryMappedFile mmf( TEST_FILE_NAME, strlen( TESTSTRING ) + 1, O_CREAT|O_RDWR|O_SYNC );
-			memcpy( mmf.getRegionStart(), TESTSTRING, strlen( TESTSTRING ) + 1 );
-			mmf.writeBack();
-		}
+  void runTest()
+  {
+    {
+      MemoryMappedFile mmf( TEST_FILE_NAME, strlen( TESTSTRING ) + 1, O_CREAT|O_RDWR|O_SYNC );
+      memcpy( mmf.getRegionStart(), TESTSTRING, strlen( TESTSTRING ) + 1 );
+      mmf.writeBack();
+    }
 
-		MemoryMappedFile mmf( TEST_FILE_NAME, 0 );
-		ASSERT_EQUAL( mmf.getRegionSize(), strlen( TESTSTRING ) + 1 );
-		ASSERT_EQUAL( strcmp( mmf.getRegionStart(), TESTSTRING ), 0 );
-	}
+    MemoryMappedFile mmf( TEST_FILE_NAME, 0 );
+    ASSERT_EQUAL( mmf.getRegionSize(), strlen( TESTSTRING ) + 1 );
+    ASSERT_EQUAL( strcmp( mmf.getRegionStart(), TESTSTRING ), 0 );
+  }
 
-	void tearDown()
-	{
-		try { DiskOperations::unlink( TEST_FILE_NAME ); } catch( ... ) { }
-	}
+  void tearDown()
+  {
+    try { DiskOperations::unlink( TEST_FILE_NAME ); } catch( ... ) { }
+  }
 };
 
 MemoryMappedFileTest MemoryMappedFileTest_inst;

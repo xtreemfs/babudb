@@ -17,54 +17,54 @@ using namespace babudb;
 #include "babudb/test_helper.h"
 
 void WriteToLog(Log* log) {
-	LogSection* tail = log->GetTail(1);
+  LogSection* tail = log->GetTail(1);
 
-	tail->Append(DummyOperation(1)); 
+  tail->Append(DummyOperation(1)); 
   tail->Commit();
 
- 	log->AdvanceTail();
-	tail = log->GetTail(2);
-	tail->Append(DummyOperation(2)); 
+   log->AdvanceTail();
+  tail = log->GetTail(2);
+  tail->Append(DummyOperation(2)); 
   tail->Commit();
-	tail->Append(DummyOperation(3)); 
+  tail->Append(DummyOperation(3)); 
   tail->Commit();
 
-	log->AdvanceTail();
-	tail = log->GetTail(4);
-	tail->Append(DummyOperation(4)); tail->Commit();
-	tail->Append(DummyOperation(5)); tail->Commit();
-	tail->Append(DummyOperation(6)); tail->Commit();
+  log->AdvanceTail();
+  tail = log->GetTail(4);
+  tail->Append(DummyOperation(4)); tail->Commit();
+  tail->Append(DummyOperation(5)); tail->Commit();
+  tail->Append(DummyOperation(6)); tail->Commit();
 }
 
 TEST_TMPDIR(Log,babudb)
 {
   {
-	  Log log(testPath("testlog"));
+    Log log(testPath("testlog"));
     WriteToLog(&log);
-	  log.Close();
+    log.Close();
   }
   {
-	  Log log(testPath("testlog"));
-	  log.Open(0);
-	  EXPECT_EQUAL(log.NumberOfSections(), 3);
-	  log.Close();
+    Log log(testPath("testlog"));
+    log.Open(0);
+    EXPECT_EQUAL(log.NumberOfSections(), 3);
+    log.Close();
   }
   {
-	  Log log(testPath("testlog"));
-	  log.Open(1);
-	  EXPECT_EQUAL(log.NumberOfSections(), 2);
-	  log.Close();
+    Log log(testPath("testlog"));
+    log.Open(1);
+    EXPECT_EQUAL(log.NumberOfSections(), 2);
+    log.Close();
   }
   {
-	  Log log(testPath("testlog"));
-  	log.Open(2);
-  	EXPECT_EQUAL(log.NumberOfSections(), 2);
-  	log.Close();
+    Log log(testPath("testlog"));
+    log.Open(2);
+    EXPECT_EQUAL(log.NumberOfSections(), 2);
+    log.Close();
   }
 }
 
 TEST_TMPDIR(LogVolatile,babudb) {
   Buffer empty_buffer = Buffer::Empty();
-	Log log(empty_buffer);
+  Log log(empty_buffer);
   WriteToLog(&log);
 }

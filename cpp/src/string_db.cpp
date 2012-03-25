@@ -56,16 +56,18 @@ StringDB* StringDB::Open(const string& name, const std::vector<string>& indices)
   return db;
 }
 
-void StringDB::Add(const string& index_name, const string& key, const string& value) {
+void StringDB::Add(const std::string& index_name, const std::string& key,
+                   const std::string& value) {
   lsn_t lsn = db->GetCurrentLSN() + 1;
   log->GetTail(lsn)->Append(StringSetOperation(lsn, index_name, key, value));
-  db->Add(index_name, lsn, DataHolder(key), DataHolder(value));
+  db->Add(index_name, lsn, Buffer::wrap(key), Buffer::wrap(value));
 }
 
-void StringDB::Remove(const string& index_name, const string& key) {
+void StringDB::Remove(const std::string& index_name, 
+                      const std::string& key) {
   lsn_t lsn = db->GetCurrentLSN() + 1;
   log->GetTail(lsn)->Append(StringSetOperation(lsn, index_name, key));
-  db->Add(index_name, lsn, DataHolder(key), Buffer::Deleted());
+  db->Add(index_name, lsn, Buffer::wrap(key), Buffer::Deleted());
 }
 
 void StringDB::Commit() {
@@ -73,17 +75,21 @@ void StringDB::Commit() {
   log->GetTail(lsn)->Commit();
 }
 
-string StringDB::Lookup(const string& index, const string& key) {
-  Buffer result = db->Lookup(index, DataHolder(key));
+string StringDB::Lookup(const std::string& index,
+                        const std::string& key) {
+  Buffer result = db->Lookup(index, Buffer::wrap(key));
 
-  if (result.data)
-    return string(static_cast<char*>(result.data), result.size);
-  else
-    return string();
+  if (result.data) {
+    return std::string(static_cast<char*>(result.data), result.size);
+  } else {
+    return std::string();
+  }
 }
 
-LookupIterator StringDB::Lookup(const string& index, const string& lower, const string& upper) {
-  return db->Lookup(index, DataHolder(lower), DataHolder(upper));
+LookupIterator StringDB::Lookup(const std::string& index, 
+                                const std::string& lower,
+                                const std::string& upper) {
+  return db->Lookup(index, Buffer::wrap(lower), Buffer::wrap(upper));
 }
 
 void StringDB::Compact(const string& to) {

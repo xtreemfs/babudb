@@ -10,27 +10,27 @@ using namespace std;
 namespace babudb {
 
 bool matchFilename(const yield::Path& fullpath, const string& desired_prefix, const string& desired_ext, unsigned int& lsn) {
-	pair<yield::Path,yield::Path> parts = fullpath.split();
+  pair<yield::Path,yield::Path> parts = fullpath.split();
 
-	std::istringstream tokenizer(parts.second.getHostCharsetPath());
+  std::istringstream tokenizer(parts.second.getHostCharsetPath());
 
-	string name;
-	if(!std::getline(tokenizer,name,'_'))
-		return false;
+  string name;
+  if(!std::getline(tokenizer,name,'_'))
+    return false;
 
-	string lsn_str;
-	if(!std::getline(tokenizer,lsn_str,'.'))
-		return false;
+  string lsn_str;
+  if(!std::getline(tokenizer,lsn_str,'.'))
+    return false;
 
-	std::istringstream lsn_conv(lsn_str);
-	if(!(lsn_conv >> lsn))
-		return false;
+  std::istringstream lsn_conv(lsn_str);
+  if(!(lsn_conv >> lsn))
+    return false;
 
-	string ext;
-	if(!std::getline(tokenizer,ext))
-		return false;
+  string ext;
+  if(!std::getline(tokenizer,ext))
+    return false;
 
-	return ext == desired_ext && name == desired_prefix;
+  return ext == desired_ext && name == desired_prefix;
 }
 
 }

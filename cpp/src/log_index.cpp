@@ -15,33 +15,33 @@ LogIndex::LogIndex(const KeyOrder& order, lsn_t first)
     : order(order), latest_value(MapCompare(order)), first_lsn(first) {}
 
 Buffer LogIndex::lookup(const Buffer& search_key) {
-	Tree::iterator it = latest_value.find(search_key);
+  Tree::iterator it = latest_value.find(search_key);
 
-	if(it != latest_value.end()) {
-		return it->second;
-	}	else {
-		return Buffer::Empty();
+  if(it != latest_value.end()) {
+    return it->second;
+  }  else {
+    return Buffer::NotExists();
   }
 }
 
 // Only add Buffer to the key. Removed keys are represented as Delete values because they
 // act as an overlay to less significant indices.
 bool LogIndex::Add(const Buffer& new_key, const Buffer& new_value) {
-	Buffer tree_key = new_key.clone();
-	Buffer tree_value = new_value.clone();
-	// index in latest LogIndex
- 	pair<Tree::iterator,bool> old_entry = latest_value.insert(pair<Buffer,Buffer>(tree_key, tree_value));
+  Buffer tree_key = new_key.clone();
+  Buffer tree_value = new_value.clone();
+  // index in latest LogIndex
+   pair<Tree::iterator,bool> old_entry = latest_value.insert(pair<Buffer,Buffer>(tree_key, tree_value));
 
-	if(!old_entry.second) { // already existed
-		Buffer old_key((old_entry.first)->first), old_value((old_entry.first)->second);
+  if(!old_entry.second) { // already existed
+    Buffer old_key((old_entry.first)->first), old_value((old_entry.first)->second);
 
-		latest_value.erase(old_entry.first);	// remove and free it
-		old_key.free();
-		old_value.free();
+    latest_value.erase(old_entry.first);  // remove and free it
+    old_key.free();
+    old_value.free();
 
-		pair<Tree::iterator,bool> new_entry  = latest_value.insert(pair<Buffer,Buffer>(tree_key,tree_value));
-		ASSERT_TRUE(new_entry.second);
-	}
+    pair<Tree::iterator,bool> new_entry  = latest_value.insert(pair<Buffer,Buffer>(tree_key,tree_value));
+    ASSERT_TRUE(new_entry.second);
+  }
 
-	return !old_entry.second;
+  return !old_entry.second;
 }

@@ -34,31 +34,31 @@ LogIterator* LogIterator::Last(LogSectionIterator* last_section) {
   return it;
 }
 
-Buffer LogIterator::GetNext() {
+bool LogIterator::GetNext() {
   if (!record_iterator.GetNext()) {
     if (!current_section->GetNext()) {
-      return Buffer::Deleted();
+      return false;
     } else {
       record_iterator = (**current_section)->First();
       return GetNext();
     }
   } else {
     ASSERT_TRUE(record_iterator.IsValid());
-    return record_iterator.AsData();
+    return true;
   }
 }
 
-Buffer LogIterator::GetPrevious() {
+bool LogIterator::GetPrevious() {
   if (!record_iterator.GetPrevious()) {
     if (!current_section->GetPrevious()) {
-      return Buffer::Deleted();
+      return false;
     } else {
       record_iterator = (**current_section)->Last();
       return GetPrevious();
     }
   } else {
     ASSERT_TRUE(record_iterator.IsValid());
-    return record_iterator.AsData();
+    return true;
   }
 }
 

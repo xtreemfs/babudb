@@ -26,32 +26,32 @@ TEST_TMPDIR(ImmutableIndexWriter,babudb)
   StringOrder sorder;
   IndexMerger* merger = new IndexMerger(testPath("testdb-testidx"), sorder);
 
-  merger->Add(1, DataHolder("key1"), DataHolder("data1"));
-  merger->Add(2, DataHolder("key2"), DataHolder("data2"));
-  merger->Add(3, DataHolder("key3"), DataHolder("data3"));
-  merger->Add(4, DataHolder("key4"), DataHolder("data4"));
-	
+  merger->Add(1, ScopedBuffer("key1"), ScopedBuffer("data1"));
+  merger->Add(2, ScopedBuffer("key2"), ScopedBuffer("data2"));
+  merger->Add(3, ScopedBuffer("key3"), ScopedBuffer("data3"));
+  merger->Add(4, ScopedBuffer("key4"), ScopedBuffer("data4"));
+  
   merger->Run();
   delete merger;
 
-	// load it and check
+  // load it and check
   ImmutableIndex::DiskIndices indices = ImmutableIndex::FindIndices(
       testPath("testdb-testidx"));
   ImmutableIndex* loadedindex = ImmutableIndex::LoadLatestIntactIndex(indices, sorder);
   EXPECT_EQUAL(loadedindex->GetLastLSN(), 4);
-  EXPECT_TRUE(!loadedindex->Lookup(DataHolder("key1")).isEmpty());
-  EXPECT_TRUE(!loadedindex->Lookup(DataHolder("key2")).isEmpty());
-  EXPECT_TRUE(!loadedindex->Lookup(DataHolder("key3")).isEmpty());
-  EXPECT_TRUE(!loadedindex->Lookup(DataHolder("key4")).isEmpty());
+  EXPECT_TRUE(!loadedindex->Lookup(ScopedBuffer("key1")).isEmpty());
+  EXPECT_TRUE(!loadedindex->Lookup(ScopedBuffer("key2")).isEmpty());
+  EXPECT_TRUE(!loadedindex->Lookup(ScopedBuffer("key3")).isEmpty());
+  EXPECT_TRUE(!loadedindex->Lookup(ScopedBuffer("key4")).isEmpty());
 
-	// create another LogIndex
+  // create another LogIndex
   merger = new IndexMerger(testPath("testdb-testidx"), sorder, loadedindex);
 
-  merger->Add(5, DataHolder("key12"), DataHolder("data12"));
-  merger->Add(6, DataHolder("key22"), DataHolder("data22"));
-  merger->Add(7, DataHolder("key32"), DataHolder("data32"));
-  merger->Add(8, DataHolder("key42"), DataHolder("data42"));
-	
+  merger->Add(5, ScopedBuffer("key12"), ScopedBuffer("data12"));
+  merger->Add(6, ScopedBuffer("key22"), ScopedBuffer("data22"));
+  merger->Add(7, ScopedBuffer("key32"), ScopedBuffer("data32"));
+  merger->Add(8, ScopedBuffer("key42"), ScopedBuffer("data42"));
+  
   merger->Run();
   delete merger;
   delete loadedindex;
@@ -60,15 +60,15 @@ TEST_TMPDIR(ImmutableIndexWriter,babudb)
   indices = ImmutableIndex::FindIndices(testPath("testdb-testidx"));
   loadedindex = ImmutableIndex::LoadLatestIntactIndex(indices, sorder);
   EXPECT_EQUAL(loadedindex->GetLastLSN(), 8);
-  EXPECT_TRUE(!loadedindex->Lookup(DataHolder("key1")).isEmpty());
-  EXPECT_TRUE(!loadedindex->Lookup(DataHolder("key2")).isEmpty());
-  EXPECT_TRUE(!loadedindex->Lookup(DataHolder("key3")).isEmpty());
+  EXPECT_TRUE(!loadedindex->Lookup(ScopedBuffer("key1")).isEmpty());
+  EXPECT_TRUE(!loadedindex->Lookup(ScopedBuffer("key2")).isEmpty());
+  EXPECT_TRUE(!loadedindex->Lookup(ScopedBuffer("key3")).isEmpty());
 
-  EXPECT_TRUE(loadedindex->Lookup(DataHolder("key123")).isEmpty());
+  EXPECT_TRUE(loadedindex->Lookup(ScopedBuffer("key123")).isNotExists());
 
-  EXPECT_TRUE(!loadedindex->Lookup(DataHolder("key12")).isEmpty());
-  EXPECT_TRUE(!loadedindex->Lookup(DataHolder("key22")).isEmpty());
-  EXPECT_TRUE(!loadedindex->Lookup(DataHolder("key32")).isEmpty());
+  EXPECT_TRUE(!loadedindex->Lookup(ScopedBuffer("key12")).isEmpty());
+  EXPECT_TRUE(!loadedindex->Lookup(ScopedBuffer("key22")).isEmpty());
+  EXPECT_TRUE(!loadedindex->Lookup(ScopedBuffer("key32")).isEmpty());
 }
 
 TEST_TMPDIR(ImmutableIndexWriterEmpty,babudb)
@@ -85,5 +85,5 @@ TEST_TMPDIR(ImmutableIndexWriterEmpty,babudb)
       testPath("testdb-empty"));
   ImmutableIndex* loadedindex = ImmutableIndex::LoadLatestIntactIndex(indices, sorder);
   EXPECT_EQUAL(loadedindex->GetLastLSN(), 9);
-  EXPECT_TRUE(loadedindex->Lookup(DataHolder("key123")).isEmpty());
+  EXPECT_TRUE(loadedindex->Lookup(ScopedBuffer("key123")).isNotExists());
 }

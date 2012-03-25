@@ -18,11 +18,11 @@ LogSection::LogSection(LogStorage* mmfile, lsn_t first)
     : SequentialFile(mmfile), first_lsn(first) { }
 
 lsn_t LogSection::getFirstLSN() const {
-	return first_lsn;
+  return first_lsn;
 }
 
 void LogSection::Append(const Serializable& entry) {
-	void* write_location = getFreeSpace(RECORD_MAX_SIZE);
+  void* write_location = getFreeSpace(RECORD_MAX_SIZE);
   entry.Serialize(Buffer(write_location, RECORD_MAX_SIZE));
   unsigned int payload_size = entry.GetSize();
   ASSERT_TRUE(payload_size <= RECORD_MAX_SIZE);  // be paranoid
@@ -30,7 +30,7 @@ void LogSection::Append(const Serializable& entry) {
 }
 
 void LogSection::Commit() {
-	commit();
+  commit();
 }
 
 void LogSection::Erase(const iterator& it) {

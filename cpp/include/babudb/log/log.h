@@ -66,7 +66,7 @@ public:
 private:
   std::vector<LogSection*> sections;
   LogSection* tail;
-  string name_prefix;
+  std::string name_prefix;
 };
 
 }  // namespace babudb

@@ -40,7 +40,8 @@ void VolatileLogStorage::Resize(size_t new_size) {
  delete [] old_region;
 }
 
-PersistentLogStorage* PersistentLogStorage::Open(const string& name) {
+PersistentLogStorage* PersistentLogStorage::Open(
+    const std::string& name) {
   yield::MemoryMappedFile* mfile =
       new yield::MemoryMappedFile(name, 1024*1024, O_CREAT|O_RDWR|O_SYNC);
   if (mfile->isOpen()) {
@@ -51,7 +52,8 @@ PersistentLogStorage* PersistentLogStorage::Open(const string& name) {
   }
 }
 
-PersistentLogStorage* PersistentLogStorage::OpenReadOnly(const string& name) {
+PersistentLogStorage* PersistentLogStorage::OpenReadOnly(
+    const std::string& name) {
   yield::MemoryMappedFile* mfile =
       new yield::MemoryMappedFile(name, 4, O_RDONLY);
   if (mfile->isOpen()) {
@@ -79,7 +81,7 @@ bool PersistentLogStorage::Close() {
 }
 
 bool PersistentLogStorage::IsWritable() {
-	return (memory->getFlags() & O_RDWR) != 0;
+  return (memory->getFlags() & O_RDWR) != 0;
 }
 
 void PersistentLogStorage::WriteBack() {

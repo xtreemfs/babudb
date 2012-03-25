@@ -64,7 +64,7 @@ bool LogSectionIterator::operator == (const LogSectionIterator& other) const {
   return current_section == other.current_section;
 }
 
-LogSection* LogSectionIterator::operator * ()	const {
+LogSection* LogSectionIterator::operator * ()  const {
   if (current_section == sections->end()) {
     return NULL;
   } else {

@@ -43,7 +43,7 @@ public:
   }
 
 protected:
-  string file_name;
+  std::string file_name;
   const KeyOrder& order;
   ImmutableIndex* base; 
   lsn_t last_lsn;

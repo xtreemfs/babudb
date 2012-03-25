@@ -33,60 +33,60 @@ static const offset_t INVALID_OFFSET = 0xFFFFffffFFFFffffULL;
 class SequentialFile
 {
 public:
-	typedef class RecordFrame Record;
-	typedef class RecordIterator iterator;
+  typedef class RecordFrame Record;
+  typedef class RecordIterator iterator;
 
-	explicit SequentialFile(LogStorage*);
+  explicit SequentialFile(LogStorage*);
   ~SequentialFile();
 
-	void close();
-	unsigned short getVersion()				{ return database_version; }
-	void writeBack( Record* );
-	void writeBack();
+  void close();
+  unsigned short getVersion()        { return database_version; }
+  void writeBack( Record* );
+  void writeBack();
 
-	void* getFreeSpace(size_t);
-	void enlarge();
-	void truncate();
+  void* getFreeSpace(size_t);
+  void enlarge();
+  void truncate();
 
-	iterator First() const;
-	iterator Last() const;
-	iterator at(void* pointer) const;		// payload pointer
-	iterator at(Record* record) const;
-	iterator at(offset_t offset) const;
+  iterator First() const;
+  iterator Last() const;
+  iterator at(void* pointer) const;    // payload pointer
+  iterator at(Record* record) const;
+  iterator at(offset_t offset) const;
 
-	bool empty();
-	bool isWritable();
+  bool empty();
+  bool isWritable();
 
-	void frameData(void* location, size_t size);
-	void* append(size_t size);
+  void frameData(void* location, size_t size);
+  void* append(size_t size);
   void AppendRaw(void* data, size_t size);
-	void moveRecord( offset_t at, offset_t to );
-	void erase( offset_t );
+  void moveRecord( offset_t at, offset_t to );
+  void erase( offset_t );
 
-	void commit();
-	unsigned int rollback();
+  void commit();
+  unsigned int rollback();
 
-	void* offset2pointer( offset_t offset ) const;
-	offset_t pointer2offset( void* ) const;
+  void* offset2pointer( offset_t offset ) const;
+  offset_t pointer2offset( void* ) const;
 
-	Record* offset2record( offset_t offset ) const;
-	offset_t record2offset( Record* ) const;
+  Record* offset2record( offset_t offset ) const;
+  offset_t record2offset( Record* ) const;
 
-	bool isValid(Record* record);
-	void setFlush(bool do_flush);
-	void compact();
+  bool isValid(Record* record);
+  void setFlush(bool do_flush);
+  void compact();
 
 private:
-	int initialize();
-	offset_t findNextAllocatedWord(offset_t);
-	bool assertValidRecordChain( void* );
+  int initialize();
+  offset_t findNextAllocatedWord(offset_t);
+  bool assertValidRecordChain( void* );
 
-	void copyRecord( Record*, void* );
+  void copyRecord( Record*, void* );
 
-	std::auto_ptr<LogStorage> memory;
+  std::auto_ptr<LogStorage> memory;
 
-	offset_t next_write_offset;
-	unsigned short database_version;
+  offset_t next_write_offset;
+  unsigned short database_version;
 };
 
 }

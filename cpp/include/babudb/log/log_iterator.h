@@ -16,8 +16,8 @@ class LogIterator {
 public:
   ~LogIterator();
 
-  Buffer GetNext();
-  Buffer GetPrevious();
+  bool GetNext();
+  bool GetPrevious();
 
   bool operator != (const LogIterator&) const;
   bool operator == (const LogIterator&) const;

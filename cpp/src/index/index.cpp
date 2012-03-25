@@ -92,14 +92,15 @@ offset_t* ImmutableIndex::getOffsetTable(offset_t offset_rec_offset) {
 Buffer ImmutableIndex::Lookup(Buffer search_key) {
   ImmutableIndexIterator i = Find(search_key);
 
-  if(i != end()) { // i >= search_key
-    if(!order.less(search_key, (*i).first)) // ==
+  if (i != end()) { // i >= search_key
+    if (!order.less(search_key, (*i).first)) { // ==
       return (*i).second;
-    else
-      return Buffer::Empty();
+    } else {
+      return Buffer::NotExists();
+    }
+  } else {
+    return Buffer::NotExists();
   }
-  else
-    return Buffer::Empty();
 }
 
 ImmutableIndex::iterator ImmutableIndex::Find(Buffer search_key) {
@@ -119,7 +120,7 @@ ImmutableIndex::iterator ImmutableIndex::Find(Buffer search_key) {
 
     Buffer key(ImmutableIndexWriter::GetData(file_cursor));
 
-    if (!order.less(key, search_key)) { 		// found key >= search_key
+    if (!order.less(key, search_key)) {     // found key >= search_key
       return ImmutableIndex::iterator(storage,value_offsets,file_cursor,record_count);
     }
     record_count++;
@@ -129,11 +130,11 @@ ImmutableIndex::iterator ImmutableIndex::Find(Buffer search_key) {
 }
 
 ImmutableIndexIterator ImmutableIndex::begin() const {
-  return ImmutableIndexIterator(storage,false);
+  return ImmutableIndexIterator(storage, false);
 }
 
 ImmutableIndexIterator ImmutableIndex::end() const {
-  return ImmutableIndexIterator(storage,true);
+  return ImmutableIndexIterator(storage, true);
 }
 
 bool ImmutableIndex::LoadRoot() {
@@ -157,7 +158,7 @@ bool ImmutableIndex::LoadRoot() {
     size_t no_offsets = index_raw.size/sizeof(offset_t);
 
     size_t record_count = 0;
-    while (cursor.GetNext()) {	
+    while (cursor.GetNext()) {  
       if (ImmutableIndexWriter::GetType(cursor)!= RECORD_TYPE_FILE_FOOTER) {
         ASSERT_TRUE(ImmutableIndexWriter::GetType(cursor) == RECORD_TYPE_INDEX_KEY);
         ASSERT_TRUE(record_count < no_offsets);
