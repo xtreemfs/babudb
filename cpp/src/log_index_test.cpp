@@ -28,7 +28,7 @@ TEST_TMPDIR(LogIndex,babudb)
   EXPECT_FALSE(result.isEmpty());
   EXPECT_TRUE(strncmp((char*)result.data,"data1",5) == 0);
 
-  result = db->Lookup("testidx",Buffer("Key2"));
+  result = db->Lookup("testidx", Buffer("Key2"));
   EXPECT_TRUE(result.isNotExists());
 
   StringSetOperation(2, "testidx", "Key2", "data2").ApplyTo(*db, 2);

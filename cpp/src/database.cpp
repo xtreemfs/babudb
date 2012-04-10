@@ -17,7 +17,6 @@
 
 #include "babudb/log/log.h"
 #include "babudb/test.h"
-using namespace babudb;
 
 #include <sstream>
 #include <vector>
@@ -30,7 +29,9 @@ using std::map;
 #include "yield/platform/memory_mapped_file.h"
 using namespace yield;
 
-string GetIndexPrefix(const string& db_name,
+namespace babudb {
+
+static string GetIndexPrefix(const string& db_name,
                       const string& index_name) {
   return db_name + "-" + index_name;
 }
@@ -177,4 +178,6 @@ bool Database::ImportIndex(
   } else {
     return yield::File::CopyFile(filename, index_file);
   }
+}
+
 }

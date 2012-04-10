@@ -9,7 +9,7 @@
 #include <utility>
 using std::pair;
 
-using namespace babudb;
+namespace babudb {
 
 LogIndex::LogIndex(const KeyOrder& order, lsn_t first)
     : order(order), latest_value(MapCompare(order)), first_lsn(first) {}
@@ -44,4 +44,6 @@ bool LogIndex::Add(const Buffer& new_key, const Buffer& new_value) {
   }
 
   return !old_entry.second;
+}
+
 }

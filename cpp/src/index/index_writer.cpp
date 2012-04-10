@@ -8,14 +8,13 @@
 
 #include "index_writer.h"
 
-#include <yield/platform/assert.h>
-#include <yield/platform/memory_mapped_file.h>
+#include "yield/platform/assert.h"
+#include "yield/platform/memory_mapped_file.h"
 
 #include "log_index.h"
 #include "index.h"
 #include "babudb/key.h"
 
-using namespace babudb;
 using std::vector;
 
 /** Persistent immutable index. Contains key-value data pairs.
@@ -38,7 +37,11 @@ using std::vector;
       instead of the first in the range.
 */
 
+namespace babudb {
+
 void ImmutableIndexWriter::Add(Buffer key, Buffer value) {
+  ASSERT_TRUE(key.isValidData() && !key.isEmpty());
+  ASSERT_TRUE(value.isValidData());
   record_buffer.push_back(std::pair<Buffer,Buffer>(key,value));
   data_in_buffer++;
 
@@ -177,3 +180,5 @@ void ImmutableIndexIterator::findNextOffsetTable(SequentialFile::iterator it) {
     key_no = -1;
   }
 }
+
+}  // namespace babudb

@@ -6,21 +6,23 @@
 //
 // Author: Felix Hupfeld (felix@storagebox.org)
 
+#include "babudb/profiles/string_db.h"
+
 #include "babudb/log/log_iterator.h"
 #include "babudb/log/log.h"
 #include "babudb/log/log_section.h"
 #include "babudb/lookup_iterator.h"
-#include "babudb/profiles/string_db.h"
 #include "babudb/test.h"
 #include "babudb/key.h"
 #include "babudb/database.h"
 #include "index/merger.h"
 #include "util.h"
-using namespace babudb;
 
 #include <algorithm>
 #include <sstream>
 using namespace std;
+
+namespace babudb {
 
 StringDB::StringDB(const string& name) : name(name) { }
 
@@ -105,4 +107,6 @@ void StringDB::Compact(const string& to) {
   // does not know yet that there is a newer one. We would need to trigger a
   // reload of the last immutable index and then call cleanup.
   db->Cleanup(to);
+}
+
 }

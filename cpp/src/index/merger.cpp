@@ -8,10 +8,11 @@
 
 #include "index/merger.h"
 #include "index/index_writer.h"
-using namespace babudb;
 
 #include <yield/platform/memory_mapped_file.h>
 #include <yield/platform/yunit.h>
+
+namespace babudb {
 
 IndexMerger::IndexMerger(const std::string& file_name,
                          const KeyOrder& order) 
@@ -116,4 +117,6 @@ bool IndexMerger::IsFinished() {
   } else {
     return diff_it == diff.end();
   }
+}
+
 }

@@ -10,7 +10,6 @@
 
 #include "babudb/log/sequential_file.h"
 #include "babudb/log/log_storage.h"
-using namespace babudb;
 
 #include <new>
 #include <memory>
@@ -25,6 +24,7 @@ using namespace yield;
 #define FIRST_RECORD_OFFSET    8
 #define FIRST_RECORD_ADDRESS  (void*)((unsigned char*)memory->Start() + FIRST_RECORD_OFFSET)
 
+namespace babudb {
 
 SequentialFile::SequentialFile(LogStorage* m) : memory( m )
 {
@@ -385,4 +385,6 @@ SequentialFile::iterator SequentialFile::at( Record* record ) const {
 
 SequentialFile::iterator SequentialFile::at( offset_t offset ) const {
   return SequentialFile::iterator(ACTUAL_START, ACTUAL_SIZE, offset2record(offset));
+}
+
 }

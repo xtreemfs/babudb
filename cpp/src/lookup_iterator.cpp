@@ -18,7 +18,8 @@
 
 using namespace yield;
 using namespace std;
-using namespace babudb;
+
+namespace babudb {
 
 /** LookupIterator implements a parallel lookup on all overlay LogIndices
     and the current ImmutableIndex.
@@ -304,4 +305,6 @@ std::pair<Buffer,Buffer> LookupIterator::operator * () const {
 
 bool LookupIterator::hasMore() const {
   return logi_it.size() > 0 || iidx_it != NULL;
+}
+
 }

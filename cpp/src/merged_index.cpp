@@ -14,15 +14,16 @@
 #include "babudb/key.h"
 #include "log_index.h"
 #include "index/index.h"
-using namespace babudb;
 
 #include <algorithm>
 #include <vector>
 using std::vector;
 
-#include <yield/platform/yunit.h>
 #include "yield/platform/path.h"
+#include "yield/platform/assert.h"
 using namespace yield;
+
+namespace babudb {
 
 MergedIndex::MergedIndex(const std::string& name, const KeyOrder& order) 
     : tail(NULL), immutable_index(NULL), name_prefix(name), order(order)  {
@@ -48,11 +49,14 @@ lsn_t MergedIndex::GetLastPersistentLSN() {
 }
 
 void MergedIndex::Add(const Buffer& key, const Buffer& value) {
+  ASSERT_TRUE(key.isValidData() && !key.isEmpty());
+  ASSERT_TRUE(value.isValidData());
   tail->Add(key, value);
 }
 
 void MergedIndex::Remove(const Buffer& key) {
-  Add(key, Buffer::Deleted());
+  ASSERT_TRUE(key.isValidData() && !key.isEmpty());
+  tail->Add(key, Buffer::Deleted());
 }
 
 Buffer MergedIndex::Lookup(const Buffer& key) {
@@ -63,7 +67,7 @@ Buffer MergedIndex::Lookup(const Buffer& key) {
       continue;
     } else if (result.isDeleted()) {
       return Buffer::NotExists();
-    } else if (!result.isEmpty()) {
+    } else {
       return result;
     }
   }
@@ -111,4 +115,6 @@ LookupIterator MergedIndex::GetSnapshot(lsn_t snapshot_lsn) {
 
   return LookupIterator(
       indices_up_to_snapshot, immutable_index, order);
+}
+
 }

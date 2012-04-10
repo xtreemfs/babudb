@@ -12,7 +12,7 @@
 
 #include "yield/platform/assert.h"
 
-using namespace babudb;
+namespace babudb {
 
 LogSection::LogSection(LogStorage* mmfile, lsn_t first)
     : SequentialFile(mmfile), first_lsn(first) { }
@@ -35,4 +35,6 @@ void LogSection::Commit() {
 
 void LogSection::Erase(const iterator& it) {
   erase(record2offset(it.GetRecord()));
+}
+
 }

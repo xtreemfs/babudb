@@ -23,12 +23,23 @@ TEST_TMPDIR(MergedIndex,babudb)
   StringOrder sorder;
   MergedIndex index("test", sorder);
   index.Add(Buffer::wrap("key1"), Buffer::wrap("val1"));
+  index.Add(Buffer::wrap("key2"), Buffer::Empty());
+  {
+    Buffer value = index.Lookup(Buffer::wrap("key1"));
+    EXPECT_EQUAL(value, Buffer::wrap("val1"));
+    value = index.Lookup(Buffer::wrap("key2"));
+    EXPECT_TRUE(value.isEmpty());
+  }
 
   // Snapshot, then overwrite the value
   index.Snapshot(2);
   index.Add(Buffer::wrap("key1"), Buffer::wrap("val2"));
-  Buffer value = index.Lookup(Buffer::wrap("key1"));
-  EXPECT_EQUAL(value, Buffer::wrap("val2"));
+  {
+    Buffer value = index.Lookup(Buffer::wrap("key1"));
+    EXPECT_EQUAL(value, Buffer::wrap("val2"));
+    value = index.Lookup(Buffer::wrap("key2"));
+    EXPECT_TRUE(value.isEmpty());
+  }
 
   // Check the snapshot
   LookupIterator snapshot = index.GetSnapshot(2);

@@ -45,6 +45,7 @@ TEST_TMPDIR(ImmutableIndexWriter,babudb)
   EXPECT_TRUE(!loadedindex->Lookup(Buffer("key3")).isEmpty());
   EXPECT_TRUE(!loadedindex->Lookup(Buffer("key4")).isEmpty());
   EXPECT_TRUE(!loadedindex->Lookup(Buffer("key5")).isNotExists());
+  EXPECT_TRUE(loadedindex->Lookup(Buffer("key5")).isEmpty());
 
   // create another LogIndex
   merger = new IndexMerger(testPath("testdb-testidx"), sorder, loadedindex);
@@ -65,6 +66,7 @@ TEST_TMPDIR(ImmutableIndexWriter,babudb)
   EXPECT_TRUE(!loadedindex->Lookup(Buffer("key1")).isEmpty());
   EXPECT_TRUE(!loadedindex->Lookup(Buffer("key2")).isEmpty());
   EXPECT_TRUE(!loadedindex->Lookup(Buffer("key3")).isEmpty());
+  EXPECT_TRUE(loadedindex->Lookup(Buffer("key5")).isEmpty());
 
   EXPECT_TRUE(loadedindex->Lookup(Buffer("key123")).isNotExists());
 

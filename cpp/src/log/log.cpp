@@ -16,14 +16,14 @@
 #include "util.h"
 #include "log/log_section_iterator.h"
 
-using namespace babudb;
-
 #include <algorithm>
 #include <sstream>
 using namespace std;
 
 #include "yield/platform/directory_walker.h"
 using namespace yield;
+
+namespace babudb {
 
 Log::Log(Buffer data) : tail(NULL), name_prefix("") {  // volatile in-memory
   LogStorage* storage = new VolatileLogStorage(data);
@@ -145,4 +145,6 @@ Log::iterator* Log::First() const {
 
 Log::iterator* Log::Last() const {
   return LogIterator::Last(LogSectionIterator::Last(&sections));
+}
+
 }

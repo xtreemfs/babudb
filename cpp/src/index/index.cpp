@@ -25,7 +25,8 @@
 #include <fcntl.h>
 
 using namespace std;
-using namespace babudb;
+
+namespace babudb {
 
 ImmutableIndex::ImmutableIndex(LogStorage* mm,
                                const KeyOrder& order, lsn_t lsn)
@@ -231,3 +232,5 @@ int ImmutableIndex::Read(int offset, char* buffer, int bytes) {
   return remaining_bytes;
 }
 */
+
+}

@@ -6,14 +6,15 @@
 //
 // Author: Felix Hupfeld (felix@storagebox.org)
 
-
 #include "babudb/log/record_iterator.h"
+
 #include "babudb/buffer.h"
 #include "babudb/log/record_frame.h"
 
 #include <yield/platform/assert.h>
 using namespace yield;
-using namespace babudb;
+
+namespace babudb {
 
 RecordIterator::RecordIterator()
     : current(NULL), region_start(NULL),
@@ -147,4 +148,6 @@ RecordFrame* RecordIterator::FindPreviousRecord(RecordFrame* record) const {
   ASSERT_TRUE(IsValidPosition(record));
   ASSERT_TRUE(record->isValid());
   return record;
+}
+
 }

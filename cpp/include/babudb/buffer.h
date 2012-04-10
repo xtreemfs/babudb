@@ -91,7 +91,7 @@ public:
   }
   bool isEmpty() const {
 //    ASSERT_TRUE(size >= 0); // usually a bug
-    return data == 0 && size == 0;
+    return size == 0;
   }
 
   // A not-existing piece of data. For lookup results.
@@ -100,6 +100,10 @@ public:
   }
   bool isNotExists() const {
     return data == 0 && size == kNotExists;
+  }
+
+  bool isValidData() const {
+    return size >= 0;
   }
 
   void* operator * () {

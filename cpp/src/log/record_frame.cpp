@@ -11,7 +11,8 @@
 
 #include <yield/platform/assert.h>
 using namespace yield;
-using namespace babudb;
+
+namespace babudb {
 
 void* RecordFrame::getPayload()  const { 
   return (char*)this + RECORD_FRAME_SIZE_BYTES; 
@@ -31,4 +32,6 @@ RecordFrame::RecordFrame(size_t size_in_bytes ) {
   ASSERT_TRUE(ISALIGNED((&header_data), RECORD_FRAME_ALIGNMENT));
   ASSERT_TRUE(header_data.plain_header == 0);
   setLength(size_in_bytes);            // ASSERT: memory was prev. filled with 0s
+}
+
 }
