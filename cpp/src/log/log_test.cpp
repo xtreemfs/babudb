@@ -61,6 +61,14 @@ TEST_TMPDIR(Log,babudb)
     EXPECT_EQUAL(log.NumberOfSections(), 2);
     log.Close();
   }
+  { // Reopen
+    Log log(testPath("testlog"));
+    log.Open(2);
+    EXPECT_EQUAL(log.NumberOfSections(), 2);
+    log.Close();
+    log.Open(0);
+    EXPECT_EQUAL(log.NumberOfSections(), 3);
+  }
 }
 
 TEST_TMPDIR(Cleanup,babudb)

@@ -34,16 +34,15 @@ Log::Log(Buffer data) : tail(NULL), name_prefix("") {  // volatile in-memory
 Log::Log(const string& name_prefix) : tail(NULL), name_prefix(name_prefix) {}
 
 Log::~Log() {
-  if (tail != NULL) {
-    Close();
-  }
-  for(vector<LogSection*>::iterator i = sections.begin(); i != sections.end(); ++i) {
-    delete *i;
-  }
+  Close();
 }
 
 void Log::Close() {
   AdvanceTail();
+  for(vector<LogSection*>::iterator i = sections.begin(); i != sections.end(); ++i) {
+    delete *i;
+  }
+  sections.clear();
 }
 
 class LSNBefore {
@@ -127,8 +126,8 @@ LogSection* Log::GetTail(babudb::lsn_t next_lsn) {
 }
 
 void Log::AdvanceTail() {
-  if(tail) {
-    if(tail->isWritable()) {
+  if (tail) {
+    if (tail->isWritable()) {
       tail->truncate();
     }
   }
