@@ -63,6 +63,32 @@ TEST_TMPDIR(Log,babudb)
   }
 }
 
+TEST_TMPDIR(Cleanup,babudb)
+{
+  {
+    Log log(testPath("testlog"));
+    WriteToLog(&log);
+    log.Close();
+  }
+  {
+    Log log(testPath("testlog"));
+    log.Open(0);
+    EXPECT_EQUAL(log.NumberOfSections(), 3);
+    log.Close();
+  }
+  {
+    Log log(testPath("testlog"));
+    log.Open(3);
+    log.Cleanup(2, testPath("obsolete_"));
+  }
+  {
+    Log log(testPath("testlog"));
+    log.Open(0);
+    EXPECT_EQUAL(log.NumberOfSections(), 2);
+    log.Close();
+  }
+}
+
 TEST_TMPDIR(LogVolatile,babudb) {
   Buffer empty_buffer = Buffer::Empty();
   Log log(empty_buffer);
