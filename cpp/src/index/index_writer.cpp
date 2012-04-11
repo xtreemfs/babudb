@@ -116,6 +116,7 @@ void ImmutableIndexWriter::Finalize() {
   WriteData(Buffer::Empty(), RECORD_TYPE_FILE_FOOTER);
 
   storage.commit();
+  storage.truncate();
   storage.close();
 }
 
