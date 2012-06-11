@@ -84,7 +84,7 @@ public class PBRPCTest implements LifeCycleListener {
         dispatcher = new RequestDispatcher(config);
         dispatcher.setLifeCycleListener(this);
         
-        client = new RPCNIOSocketClient(config.getSSLOptions(), RQ_TIMEOUT, CON_TIMEOUT);
+        client = new RPCNIOSocketClient(config.getSSLOptions(), RQ_TIMEOUT, CON_TIMEOUT, "BabuDB Replication Unittest");
         client.start();
         client.waitForStartup();
     }

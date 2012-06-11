@@ -76,7 +76,7 @@ public class TransmissionLayer extends Layer implements ClientFactory,
         InetSocketAddress bindPoint = config.getAddress() != null ? new InetSocketAddress(config.getAddress(), 0)
                 : null;
         rpcClient = new RPCNIOSocketClient(config.getSSLOptions(), ReplicationConfig.REQUEST_TIMEOUT,
-                ReplicationConfig.CONNECTION_TIMEOUT, -1, -1, bindPoint);
+                ReplicationConfig.CONNECTION_TIMEOUT, -1, -1, bindPoint, "BabuDB Transmission Layer");
         
         // ---------------------------------
         // initialize the RequestDispatcher

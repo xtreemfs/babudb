@@ -114,7 +114,7 @@ public class RequestHandlerTest implements LifeCycleListener {
         dispatcher.start();
         dispatcher.waitForStartup();
         
-        client = new RPCNIOSocketClient(config.getSSLOptions(), RQ_TIMEOUT, CON_TIMEOUT);
+        client = new RPCNIOSocketClient(config.getSSLOptions(), RQ_TIMEOUT, CON_TIMEOUT, "BabuDB Replication Unittest");
         client.start();
         client.waitForStartup();
     }

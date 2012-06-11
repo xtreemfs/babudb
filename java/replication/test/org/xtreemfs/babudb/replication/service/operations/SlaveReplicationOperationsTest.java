@@ -76,7 +76,7 @@ public class SlaveReplicationOperationsTest implements LifeCycleListener {
         
         config = new ReplicationConfig("config/replication_server0.test", conf0);
         
-        rpcClient = new RPCNIOSocketClient(config.getSSLOptions(), RQ_TIMEOUT, CON_TIMEOUT);
+        rpcClient = new RPCNIOSocketClient(config.getSSLOptions(), RQ_TIMEOUT, CON_TIMEOUT, "BabuDB Replication Unittest");
         rpcClient.start();
         rpcClient.waitForStartup();
         testEntry.assignId(testLSN.getViewId(), testLSN.getSequenceNo());

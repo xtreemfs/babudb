@@ -95,7 +95,7 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
         FSUtils.delTree(new File(config.getBabuDBConfig().getDbLogDir()));
         FSUtils.delTree(new File(config.getTempDir()));
         
-        rpcClient = new RPCNIOSocketClient(config.getSSLOptions(), RQ_TIMEOUT, CON_TIMEOUT);
+        rpcClient = new RPCNIOSocketClient(config.getSSLOptions(), RQ_TIMEOUT, CON_TIMEOUT, "BabuDB Replication Unittest");
         rpcClient.start();
         rpcClient.waitForStartup();
         
