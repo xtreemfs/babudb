@@ -159,7 +159,7 @@ public class ControlLayer extends TopLayer {
         
         try {
             fleaseStage.waitForStartup();
-        } catch (Exception e) {
+        } catch (Throwable e) {
             listener.crashPerformed(e);
         }
         
@@ -195,7 +195,7 @@ public class ControlLayer extends TopLayer {
         
         try {
             fleaseStage.waitForShutdown();
-        } catch (Exception e) {
+        } catch (Throwable e) {
             listener.crashPerformed(e);
         }
         failoverTaskRunner.shutdown();

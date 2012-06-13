@@ -412,7 +412,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
             heartbeatThread.start(latest);
             heartbeatThread.waitForStartup();
             replicationStage.waitForStartup();
-        } catch (Exception e) {
+        } catch (Throwable e) {
             listener.crashPerformed(e);
         }
     }
@@ -437,7 +437,7 @@ public class ServiceLayer extends Layer implements  ServiceToControlInterface, S
         try {
             this.heartbeatThread.waitForShutdown();
             this.replicationStage.waitForShutdown();
-        } catch (Exception e) {
+        } catch (Throwable e) {
             this.listener.crashPerformed(e);
         }
     }
