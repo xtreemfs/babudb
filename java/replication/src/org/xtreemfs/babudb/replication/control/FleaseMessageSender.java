@@ -62,7 +62,7 @@ class FleaseMessageSender implements FleaseMessageSenderInterface {
                 public void requestFailed(Exception e) {
                     // Flease does not care about failures on sending messages!
                     Logging.logMessage(Logging.LEVEL_INFO, this, 
-                            "%s could not be send to '%s', because %s.", 
+                            "%s could not be sent to '%s', because %s.", 
                             message.toString(), recipient.toString(), e.getMessage());
                     if (e.getMessage() == null) {
                         Logging.logError(Logging.LEVEL_INFO, this, e);

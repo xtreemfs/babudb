@@ -129,7 +129,7 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
                 public void requestFailed(Exception e) {
                    
                     Logging.logMessage(Logging.LEVEL_INFO, this, 
-                            "Heartbeat could not be send to %s, because %s", 
+                            "Heartbeat could not be sent to %s, because %s", 
                             c.toString(), e.getMessage());
                     Logging.logError(Logging.LEVEL_DEBUG, this, e);
                 }
