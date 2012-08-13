@@ -28,7 +28,7 @@ import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
 
 /**
- * Internal interface for BabuDB's lightwight transactions.
+ * Internal interface for BabuDB's lightweight transactions.
  * 
  * @author flangner
  * @since 05/06/2011
