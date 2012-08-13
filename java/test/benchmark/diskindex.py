@@ -110,8 +110,8 @@ if __name__ == '__main__':
         'num_scans': 1,
         'base_dir': base_path,
         'compression': '',
-#        'input': 'random',
-        'input': '/home/mikael/lab/babudb/test/benchmark/all_home.dat',
+        'input': 'random',
+#        'input': '/home/mikael/lab/babudb/test/benchmark/all_home.dat',
         'seed': 0
         }
 
