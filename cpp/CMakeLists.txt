@@ -13,14 +13,14 @@ file(GLOB ALL_FILES
      src/*.cpp
      src/log/*.cpp
      src/index/*.cpp 
-     src/YIELD_platform/*.cpp
+     src/yield_platform/*.cpp
      src/*.h
      src/log/*.h
      src/index/*.h 
-     src/YIELD_platform/*.h
+     src/yield_platform/*.h
      include/babudb/log/*.h
      include/babudb/index/*.h
-     include/babudb/YIELD_platform/*.h)
+     include/babudb/yield_platform/*.h)
 
 # Separate code and tests
 set(SRC_FILES "")

@@ -4,7 +4,7 @@
 #ifndef YIELD_PLATFORM_DEBUG_H
 #define YIELD_PLATFORM_DEBUG_H
 
-namespace YIELD
+namespace yield
 {
 #ifdef _WIN32
   extern "C"
