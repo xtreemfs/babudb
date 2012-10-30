@@ -18,6 +18,7 @@ import org.xtreemfs.babudb.replication.service.clients.ConditionClient;
 import org.xtreemfs.foundation.LifeCycleListener;
 import org.xtreemfs.foundation.TimeSync;
 import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging.Category;
 
 /**
  * Component that checks regularly the time-drift of all available replication
@@ -28,6 +29,13 @@ import org.xtreemfs.foundation.logging.Logging;
  */
  class TimeDriftDetector {
     
+    /**
+     * The maximum round trip time for a time().get() message between
+     * this and another replica. If the round trip time of a
+     * time().get() message exceeds this value, the message will be ignored.
+     */
+    private static final int MAX_RTT = 1000;
+     
     /** listener to inform about an illegal time-drift */
     private final TimeDriftListener     listener;
     
@@ -62,7 +70,8 @@ import org.xtreemfs.foundation.logging.Logging;
                     
         this.timer = new Timer("TimeDriftDetector", true);
         
-        this.DELAY_BETWEEN_CHECKS = participants.size() * ReplicationConfig.REQUEST_TIMEOUT;
+        // Check at most every minute if the replica's clock are still in sync.
+        this.DELAY_BETWEEN_CHECKS = Math.max(60000, participants.size() * ReplicationConfig.REQUEST_TIMEOUT);
         
         this.maxDrift = dMax;
     }
@@ -139,7 +148,6 @@ import org.xtreemfs.foundation.logging.Logging;
             long end;
             long cTime;
             int numDriftedClients = 0;
-            int numContactedClients = 0;
             
             for (ConditionClient client : participants) {
                 
@@ -148,11 +156,17 @@ import org.xtreemfs.foundation.logging.Logging;
                     cTime = client.time().get();
                     end = TimeSync.getGlobalTime();
                     
-                    numContactedClients++;
+                    int rtt = (int)(end - start);
+                    if (rtt > MAX_RTT) {
+                        Logging.logMessage(Logging.LEVEL_INFO, Category.misc, this,
+                                "Ignored time drift detection message since the probed replica (%s) took too long to respond (%d ms)",
+                                client.getDefaultServerAddress().toString(),
+                                rtt);
+                        continue;
+                    }
                     
-                    //    cTime
-                    // |start ... end|
-                    final long drift = (cTime < start) ? start - cTime : cTime - end;
+                    final long estimatedRemoteTime = cTime + rtt / 2;
+                    final long drift = Math.abs(end - estimatedRemoteTime);
                     if (drift > maxDrift) {
                         
                         calendar.setTimeInMillis(cTime);
@@ -162,15 +176,14 @@ import org.xtreemfs.foundation.logging.Logging;
                         calendar.setTimeInMillis(end);
                         String formattedEndTime = format.format(calendar.getTime());
                         
-                        humanReadableDriftedParticipants += "Participant '" + 
+                        humanReadableDriftedParticipants += "Saw a drift of at least " + drift + " ms as participant '" + 
                         client.getDefaultServerAddress().toString() + "' reported system time '" + formattedCTime + 
-                        "' between local time '" + formattedStartTime + "' and '" +formattedEndTime + 
-                        "', which implies a drift of at least " + drift + " ms.\n";
+                        "' between local time '" + formattedStartTime + "' and '" +formattedEndTime + "'. ";
                         numDriftedClients++;
                         
-                        // if the local time was overruled by 2 other clients, the local time seems
+                        // if the local time was overruled by at least 2 OR all other clients, the local time seems
                         // to be wrong
-                        if (numDriftedClients > 1) {
+                        if (numDriftedClients > 1 || numDriftedClients == participants.size()) {
                             listener.driftDetected(humanReadableDriftedParticipants);
                             return;
                         }
@@ -181,11 +194,6 @@ import org.xtreemfs.foundation.logging.Logging;
                             "Local time of '%s' could not be fetched.", 
                             client.toString());
                 } 
-            }
-            
-            // if there is only one participant left, which also has drifted away 
-            if (numDriftedClients == 1 && numContactedClients == 1) {
-                listener.driftDetected(humanReadableDriftedParticipants);
             }
         }
     }
