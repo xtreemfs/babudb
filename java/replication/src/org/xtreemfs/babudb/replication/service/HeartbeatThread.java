@@ -7,7 +7,9 @@
  */
 package org.xtreemfs.babudb.replication.service;
 
-import org.xtreemfs.babudb.config.ReplicationConfig;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
 import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.replication.service.accounting.ParticipantsOverview;
 import org.xtreemfs.babudb.replication.service.clients.ClientResponseFuture.ClientResponseAvailableListener;
@@ -24,8 +26,7 @@ import org.xtreemfs.foundation.logging.Logging;
 
 public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
     
-    public final static long            MAX_DELAY_BETWEEN_HEARTBEATS = 
-        ReplicationConfig.MESSAGE_TIMEOUT; 
+    public final static long            MAX_DELAY_BETWEEN_HEARTBEATS = 5 * 1000; 
     
     /** approach to get the master to send the heartbeat messages to */
     private final ParticipantsOverview  pOverview;
@@ -42,6 +43,12 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
     /** port that identifies the local service */
     private final int                   localPort;
     
+    /** Set which contains all clients which could not reach their slave recently.
+     * 
+     * Used to avoid flooding the log output. The key is currently unused.
+     */
+    private final ConcurrentMap<ConditionClient, Long> unavailableSlaves;
+    
     /**
      * Default constructor with the initial values.
      * 
@@ -52,6 +59,7 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
         super("HeartbeatThread");
         this.pOverview = pOverview;
         this.localPort = localPort;
+        this.unavailableSlaves = new ConcurrentHashMap<ConditionClient, Long>();
     }
     
     /* (non-Javadoc)
@@ -109,6 +117,16 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
         
         notifyStopped();
     }
+    
+    /** Returns true if c was marked as unavailable before. */
+    public boolean markSlaveAsAvailable(ConditionClient c) {
+        return unavailableSlaves.remove(c) != null;
+    }
+
+    /** Returns true if c was not marked as unavailable yet. */
+    public boolean markSlaveAsUnavailable(ConditionClient c) {
+        return unavailableSlaves.putIfAbsent(c, 0l) == null;
+    }
 
     /**
      * Sends a heartbeat message to all available servers.
@@ -120,17 +138,26 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
               
                 @Override
                 public void responseAvailable(Object r) { 
-                    
-                    Logging.logMessage(Logging.LEVEL_DEBUG, this, 
-                            "Heartbeat successfully send.");
+                    if (markSlaveAsAvailable(c)) {
+                        Logging.logMessage(Logging.LEVEL_INFO, this, 
+                                "Heartbeat was successuflly sent to %s after previous failures.", c.toString());
+                    } else {
+                        Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                                "Heartbeat successfully send.");
+                    }
                 }
 
                 @Override
                 public void requestFailed(Exception e) {
-                   
-                    Logging.logMessage(Logging.LEVEL_INFO, this, 
-                            "Heartbeat could not be sent to %s, because %s", 
-                            c.toString(), e.getMessage());
+                    if (markSlaveAsUnavailable(c)) {
+                        Logging.logMessage(Logging.LEVEL_INFO, this, 
+                                "Heartbeat could not be sent to %s, because %s. Further messages of these type will not be logged until the slave can be contacted again.", 
+                                c.toString(), e.getMessage());
+                    } else {
+                        Logging.logMessage(Logging.LEVEL_DEBUG, this, 
+                                "Heartbeat could not be sent to %s, because %s", 
+                                c.toString(), e.getMessage());
+                    }
                     Logging.logError(Logging.LEVEL_DEBUG, this, e);
                 }
             });
@@ -158,6 +185,7 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
     public synchronized void reanimate() {
         if (hasInfarct) {
             hasInfarct = false;
+            unavailableSlaves.clear();
             notify();
         }
     }
