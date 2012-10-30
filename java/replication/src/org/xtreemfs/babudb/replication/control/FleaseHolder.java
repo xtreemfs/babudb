@@ -86,6 +86,7 @@ public class FleaseHolder implements FleaseStatusListener {
         
         synchronized (this) {
             lease = Flease.EMPTY_LEASE;
+            notifyAll();
         }
     }
 
