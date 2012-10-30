@@ -87,7 +87,7 @@ public class MasterReplicationOperationsTest implements LifeCycleListener {
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
         Logging.start(Logging.LEVEL_ERROR, Category.all);
-        TimeSync.initializeLocal(TIMESYNC_GLOBAL, TIMESYNC_LOCAL);
+        TimeSync.initializeLocal(TIMESYNC_LOCAL);
         
         config = new ReplicationConfig("config/replication_server0.test", conf0);
         

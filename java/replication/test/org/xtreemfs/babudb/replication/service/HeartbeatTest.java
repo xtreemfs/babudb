@@ -77,7 +77,7 @@ public class HeartbeatTest implements LifeCycleListener {
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
         Logging.start(Logging.LEVEL_ERROR, Category.all);
-        TimeSync.initializeLocal(TIMESYNC_GLOBAL, TIMESYNC_LOCAL);
+        TimeSync.initializeLocal(TIMESYNC_LOCAL);
     }
     
     /**
