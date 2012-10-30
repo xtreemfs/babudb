@@ -339,7 +339,7 @@ public class ParticipantsStates implements ParticipantsOverview, StatesManipulat
             final State old = stateTable.get(getUID(participant));
             if (old != null) { 
                 
-                // got a prove of life
+                // got a proof of life
                 old.lastUpdate = receiveTime;
                 if (old.dead) {
                     
