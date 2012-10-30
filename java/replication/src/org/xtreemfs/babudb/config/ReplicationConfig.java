@@ -22,6 +22,7 @@ import org.xtreemfs.babudb.replication.control.FleaseHolder;
 import org.xtreemfs.babudb.replication.policy.Policy;
 import org.xtreemfs.foundation.SSLOptions;
 import org.xtreemfs.foundation.flease.FleaseConfig;
+import org.xtreemfs.foundation.logging.Logging;
 
 /**
  * Reading configurations from the replication-config-file.
@@ -48,27 +49,34 @@ public class ReplicationConfig extends PluginConfig {
     
     protected int                    localTimeRenew;
     
-    protected int                    timeSyncInterval;
-    
     protected final FleaseConfig     fleaseConfig;
     
     protected String                 policyName;
     protected final Policy           replicationPolicy;
     
     /** 
-     * longest duration a message can live on the wire, before it becomes void (one-way)
-     */
-    public static final int         MESSAGE_TIMEOUT        = 5 * 1000;
-    
-    /** 
      * longest duration a connection can be established without getting closed 
      */
-    public static final int          LEASE_TIMEOUT          = 60 * 1000;
+    public static final int          FLEASE_LEASE_TIMEOUT_MS          = 60 * 1000;
         
+    /**
+     * Maximum assumed drift between two server clocks. If the drift is higher, the system may not function
+     * properly.
+     */
+    public static final int         FLEASE_DMAX_MS        = 1000;
+    
+    /** 
+     * longest duration a message can live on the wire, before it becomes void (one-way)
+     */
+    public static final int         FLEASE_MESSAGE_TO_MS        = 500;
+    
+    /** Maximal retries per failure. */
+    public static final int          FLEASE_RETRIES            = 3;
+    
     /** 
      * longest duration before an RPC-Call is timed out for the client (RTT) 
      */
-    public static final int          REQUEST_TIMEOUT        = 2 * MESSAGE_TIMEOUT;
+    public static final int          REQUEST_TIMEOUT        = 2 * FLEASE_MESSAGE_TO_MS;
     
     /** 
      * longest duration before an idle connection is closed 
@@ -97,11 +105,6 @@ public class ReplicationConfig extends PluginConfig {
     
     protected boolean                redirect = false;
         
-    /** 
-     * maximal retries per failure 
-     */
-    public static final int          MAX_RETRIES            = 3;
-    
     /**
      * Proxy retry parameters.
      */
@@ -115,9 +118,7 @@ public class ReplicationConfig extends PluginConfig {
         this.babuDBConfig = babuConf;
         read();
         
-        this.fleaseConfig = new FleaseConfig(LEASE_TIMEOUT, this.localTimeRenew, 
-                MESSAGE_TIMEOUT, this.address, 
-                FleaseHolder.getIdentity(this.address), MAX_RETRIES);
+        this.fleaseConfig = createFleaseConfig();
         
         // get the replication policy
         try {
@@ -129,6 +130,11 @@ public class ReplicationConfig extends PluginConfig {
             		"instantiated, because: " + e.getMessage());
         }
     }
+
+    private FleaseConfig createFleaseConfig() {
+        return new FleaseConfig(FLEASE_LEASE_TIMEOUT_MS, FLEASE_DMAX_MS, FLEASE_MESSAGE_TO_MS, this.address,
+                FleaseHolder.getIdentity(this.address), FLEASE_RETRIES);
+    }
     
     public ReplicationConfig(String filename, BabuDBConfig babuConf) 
             throws IOException {
@@ -136,9 +142,7 @@ public class ReplicationConfig extends PluginConfig {
         this.babuDBConfig = babuConf;
         read();
         
-        this.fleaseConfig = new FleaseConfig(LEASE_TIMEOUT, this.localTimeRenew,
-                MESSAGE_TIMEOUT, this.address,
-                FleaseHolder.getIdentity(this.address), MAX_RETRIES);
+        this.fleaseConfig = createFleaseConfig();
         
         // get the replication policy
         try {
@@ -156,41 +160,20 @@ public class ReplicationConfig extends PluginConfig {
             String tempDir, BabuDBConfig babuConf, boolean redirect) throws IOException {
         
         this.babuDBConfig = babuConf;
+        // All replicas except this node.
         this.participants = new HashSet<InetSocketAddress>();
         this.localTimeRenew = localTimeRenew;
         this.redirect = redirect;
-        Socket s;
-        for (InetSocketAddress participant : participants) {
-            s = new Socket();
-            try {
-                s.bind(participant);
-                if (address == null) {
-                    address = participant;
-                } else if (!address.equals(participant)) {
-                    participants.add(participant);
-                }
-            } catch (Exception e) {
-                participants.add(participant);
-            } finally {
-                try {
-                    s.close();
-                } catch (IOException e) { /* ignored */
-                }
-            }
-        }
         
         this.sslOptions = sslOptions;
         this.syncN = syncN;
         this.chunkSize = DEFAULT_MAX_CHUNK_SIZE;
         this.backupDir = tempDir;
                 
-        this.fleaseConfig = new FleaseConfig(LEASE_TIMEOUT, this.localTimeRenew,
-                MESSAGE_TIMEOUT, address, 
-                FleaseHolder.getIdentity(address), MAX_RETRIES);
+        this.fleaseConfig = createFleaseConfig();
         
-        checkArgs(babuDBConfig, address, sslOptions, participants, 
-                localTimeRenew, timeSyncInterval, syncN, chunkSize, 
-                this.backupDir, policyName);
+        parseParticipants();
+        checkArgs();
         
         // get the replication policy
         try {
@@ -201,6 +184,37 @@ public class ReplicationConfig extends PluginConfig {
             throw new IOException("ReplicationPolicy could not be " +
                         "instantiated, because: " + e.getMessage());
         }
+    }
+
+    private void parseParticipants() {
+        Set<InetSocketAddress> finalParticipants = new HashSet<InetSocketAddress>();
+        // Find myself from the list of participants, set as address and remove me.
+        for (InetSocketAddress participant : participants) {
+            if (address == null) {
+                Socket s = new Socket();
+                try {
+                    s.setReuseAddress(true);
+                    s.bind(participant);
+                    
+                    // Can listen to this IP/Port - found myself.
+                    address = participant;
+                } catch (Exception e) {
+                    // Another host.
+                    finalParticipants.add(participant);
+                } finally {
+                    try {
+                        s.close();
+                    } catch (IOException e) { /* ignored */
+                    }
+                }
+            } else if (address.equals(participant)) {
+                // Participants do not include the local node.
+            } else {
+                finalParticipants.add(participant);
+            }
+        }
+        
+        participants = finalParticipants;
     }
     
     private void read() throws IOException {
@@ -216,9 +230,8 @@ public class ReplicationConfig extends PluginConfig {
             backupDir = tempDir + File.separator;
         }
         
-        this.localTimeRenew = this.readOptionalInt("babudb.localTimeRenew", 3000);
+        this.localTimeRenew = this.readOptionalInt("babudb.localTimeRenew", 0);
         this.redirect = readOptionalBoolean("babudb.repl.redirectIsVisible", false);
-        this.timeSyncInterval = this.readOptionalInt("babudb.timeSync", 20000);
         
         if (this.readOptionalBoolean("babudb.ssl.enabled", false)) {
             this.sslOptions = new SSLOptions(new FileInputStream(this
@@ -246,36 +259,18 @@ public class ReplicationConfig extends PluginConfig {
                 "babudb.repl.localport", null);
         
         int number = 0;
-        Socket s;
         InetSocketAddress addrs;
         while ((addrs = readOptionalInetSocketAddr("babudb.repl.participant." + number,
-                        "babudb.repl.participant." + number + ".port", null)) != null) {
-            
-            if (address == null) {
-                s = new Socket();
-                try {
-                    s.bind(addrs);
-                    address = addrs;
-                } catch (Throwable t) {
-                    // even if a participant's address is not reachable, or cannot
-                    // be resolved, it never will be ignored completely, because
-                    // it may become available later
-                    participants.add(addrs);
-                } finally {
-                    try {
-                        s.close();
-                    } catch (IOException e) { /* ignored */ }
-                }
-            } else if (!address.equals(addrs)) {
-                participants.add(addrs);
-            }
+                                                   "babudb.repl.participant." + number + ".port", null)) != null) {
+            participants.add(addrs);
             number++;
         }
         
+        parseParticipants();
+        
         policyName = readOptionalString("babudb.repl.policy", "MasterOnly");
         
-        checkArgs(babuDBConfig, address, sslOptions, participants, localTimeRenew, timeSyncInterval, 
-                  syncN, chunkSize, backupDir, policyName);
+        checkArgs();
     }
     
     public InetSocketAddress getInetSocketAddress() {
@@ -304,10 +299,6 @@ public class ReplicationConfig extends PluginConfig {
     
     public int getLocalTimeRenew() {
         return localTimeRenew;
-    }
-    
-    public int getTimeSyncInterval() {
-        return timeSyncInterval;
     }
     
     public boolean redirectIsVisible() {
@@ -356,39 +347,41 @@ public class ReplicationConfig extends PluginConfig {
         buf.append("#        sync N: " + syncN + "\n");
         buf.append("#        policy: " + policyName + "\n");
         buf.append("#        local time renew: " + localTimeRenew + "\n");
-        buf.append("#        time sync interval: " + timeSyncInterval + "\n");
         buf.append("#        temporary directory: " + backupDir + "\n");
         buf.append("#        chunk size: " + chunkSize + "\n");
         return buf.toString();
     }
     
-    private static void checkArgs(BabuDBConfig conf, InetSocketAddress address, 
+    private void checkArgs(
+            /*BabuDBConfig conf, InetSocketAddress address, 
             SSLOptions options, Set<InetSocketAddress> participants, 
-            int localTimeRenew, int timeSyncInterval, int syncN, int chunkSize, 
-            String tempDir, String policyName) {
+            int localTimeRenew, int syncN, int chunkSize, 
+            String tempDir, String policyName*/
+            ) {
         
-        File base = new File(conf.getBaseDir());
-        File log = new File(conf.getDbLogDir());
+        File base = new File(babuDBConfig.getBaseDir());
+        File log = new File(babuDBConfig.getDbLogDir());
+        int numberOfReplicas = participants.size() + 1;
         
-        if (conf.getSyncMode() == SyncMode.ASYNC) {
+        if (babuDBConfig.getSyncMode() == SyncMode.ASYNC) {
             throw new IllegalArgumentException("Replication will not work properly if BabuDB " +
             		"instances run in ASYNC mode. Please change the SyncMode of your BabuDB " +
-            		"setup.");
+            		"setup e.g., to FSYNCDATA.");
         }
         
         if (log.equals(base)) {
             throw new IllegalArgumentException("It is not permitted by the replication plugin to" +
-            		" stored log and base files within the same directory. Please move either" +
-            		"log (" + conf.getDbLogDir() + ") or base (" + conf.getBaseDir() + ").");
+            		" store log and base files within the same directory. Please move either" +
+            		"log (" + babuDBConfig.getDbLogDir() + ") or base (" + babuDBConfig.getBaseDir() + ").");
         }
         
-        File tmp = new File(tempDir);
+        File tmp = new File(backupDir);
         while (tmp != null) {
             if (tmp.equals(base) || tmp.equals(log)) {
-                throw new IllegalArgumentException("The backup-directory (" + tempDir 
-                        + ") may not be a sub-directory of the dbLog-directory (" 
-                        + conf.getDbLogDir() + ") and the base-directory (" + conf.getBaseDir() 
-                        + ")!");
+                throw new IllegalArgumentException("The backup-directory (" + backupDir 
+                        + ") must not be a sub-directory of the dbLog-directory (" 
+                        + babuDBConfig.getDbLogDir() + ") or the base-directory (" + babuDBConfig.getBaseDir() 
+                        + ").");
             }
             
             tmp = tmp.getParentFile();
@@ -396,19 +389,8 @@ public class ReplicationConfig extends PluginConfig {
         
         if (address == null)
             throw new IllegalArgumentException(
-                    "None of the given participants described the localhost!");
+                    "None of the given participants described the local node or the configured port is used by another application.");
         
-        if (syncN < 0 || syncN > (participants.size() + 1))
-            throw new IllegalArgumentException(
-                    "Wrong Sync-N! It has to be at least 0 and #of " +
-                    "participants ("+(participants.size() + 1)+") at the maximum!");
-        
-        if (syncN != 0 && syncN <= participants.size() / 2)
-            throw new IllegalArgumentException(
-                    "The requested N-sync-mode (N=" + syncN + ") may cause " +
-                    "inconsistent behavior, because there are '" + 
-                    participants.size() + "' participants. The sync-N " + 
-                    "has to be at least '" + (participants.size() / 2) + "'!");
         
         if (policyName != null && policyName != "") {
             try {
@@ -420,8 +402,26 @@ public class ReplicationConfig extends PluginConfig {
             }
         } else {
             throw new IllegalArgumentException("It is not possible to use " +
-            		"replication without replication policy. The policy " +
-            		"has at least to be set to default (MasterOnly)!");
+                        "replication without replication policy. The policy " +
+                        "has at least to be set to default (MasterOnly).");
+        }
+        
+        if (syncN < 0 || syncN > numberOfReplicas) {
+            throw new IllegalArgumentException(
+                "Wrong Sync-N. It has to be at least 0 and #of " +
+                "participants ("+ numberOfReplicas +") at the maximum.");
+        }
+        if (policyName == "WriteRestriction" && syncN != numberOfReplicas) {
+            Logging.logMessage(Logging.LEVEL_INFO, null,
+                    "If you set the policy to 'WriteRestriction', clients will be able to read stale data" +
+                    " unless babudb.repl.sync.n equals the number of replicas (currently set to: %d).", numberOfReplicas);
+        }
+        if (policyName == "MasterOnly" && syncN < (numberOfReplicas + 1) / 2) {
+            throw new IllegalArgumentException(
+                    "The requested N-sync-mode (N=" + syncN + ") may cause " +
+                    "inconsistent behavior, because at least a majority of replicas has to be updated." +
+                    " As there are " + numberOfReplicas + " replicas, the babudb.repl.sync.n parameter has to be set at least to: " + ((numberOfReplicas + 1) / 2) +
+                    " Alternatively, use another policy then 'MasterOnly' which do not provide strong consistenty.");
         }
     }
 }
