@@ -2,7 +2,7 @@
 # BabuDB replication configuration								   								#
 #####################################################################
 
-plugin.jar = ../dist/replication/replication.jar
+plugin.jar = ../dist/replication/BabuDB_replication_plugin.jar
 
 # paths to libraries this plugin depends on
 babudb.repl.dependency.0 = lib/PBRPC.jar
