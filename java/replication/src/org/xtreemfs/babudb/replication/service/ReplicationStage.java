@@ -204,12 +204,12 @@ public class ReplicationStage extends LifeCycleThread implements RequestManageme
                         currentCondition.equals(operatingCondition)) {
                         
                         // -> clean restart
-                        if (++tries < ReplicationConfig.MAX_RETRIES) {
+                        if (++tries < ReplicationConfig.FLEASE_RETRIES) {
                             
                             // cancel syncListener
                             if (syncListener != null) {
                                 syncListener.failed(new BabuDBException(ErrorCode.REPLICATION_FAILURE, 
-                                        "Synchronization was canceled after " + ReplicationConfig.MAX_RETRIES + 
+                                        "Synchronization was canceled after " + ReplicationConfig.FLEASE_RETRIES + 
                                         " retries."));
                                 syncListener = null;
                             }
