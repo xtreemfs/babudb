@@ -56,8 +56,7 @@ public class ReplicationManager implements LifeCycleListener {
     public ReplicationManager(ReplicationConfig conf, BabuDBInterface dbs) throws Exception {
         
         redirectIsVisible = conf.redirectIsVisible();
-        TimeSync.initializeLocal(conf.getTimeSyncInterval(), 
-                                 conf.getLocalTimeRenew()).setLifeCycleListener(this);
+        TimeSync.initializeLocal(conf.getLocalTimeRenew()).setLifeCycleListener(this);
 
         transmissionLayer = new TransmissionLayer(conf);
         serviceLayer = new ServiceLayer(conf, dbs, transmissionLayer);
