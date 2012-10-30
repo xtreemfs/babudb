@@ -69,16 +69,18 @@ public class ControlLayer extends TopLayer {
         
     private final AtomicBoolean             initialFailoverObserved = new AtomicBoolean(false);
     
-    private volatile boolean                failoverInProgress = false;
+    /** Used by ProxyRequestHandler to find out if it should reject requests in the first place since a failover is in progress. */
+    private volatile boolean                failoverInProgress = true;
     
     public ControlLayer(ServiceToControlInterface serviceLayer, ReplicationConfig config) throws IOException {
         
         // ----------------------------------
         // initialize the time drift detector
         // ----------------------------------
-        timeDriftDetector = new TimeDriftDetector(this, 
+        timeDriftDetector = new TimeDriftDetector(
+                this,
                 serviceLayer.getParticipantOverview().getConditionClients(), 
-                config.getLocalTimeRenew());
+                config.getFleaseConfig().getDMax());
         
         // ----------------------------------
         // initialize the replication 
@@ -225,6 +227,10 @@ public class ControlLayer extends TopLayer {
         failoverTaskRunner.shutdown();
         timeDriftDetector.shutdown();
         fleaseStage.shutdown();
+        
+        synchronized (initialFailoverObserved) {
+            initialFailoverObserved.notify();
+        }
     }
     
     /* (non-Javadoc)
@@ -232,10 +238,8 @@ public class ControlLayer extends TopLayer {
      */
     @Override
     public void driftDetected(String driftedParticipants) {
-        listener.crashPerformed(new Exception("Illegal time-drift " +
-                "detected! The servers participating at the replication" +
-                " are not synchronized anymore. Mutual exclusion cannot" +
-                " be ensured. Replication is stopped immediately.\n\n Details:\n" + driftedParticipants));
+        Logging.logMessage(Logging.LEVEL_WARN, Logging.Category.replication, this,
+                "Clock skew between replicas is too high. This can result in inconsistent replicas. Please make sure that the local clocks are regularly synchronized e.g., by running a NTP daemon on each machine. Details: %s", driftedParticipants);
     }
 
     /* (non-Javadoc)
