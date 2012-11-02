@@ -85,7 +85,7 @@ public class ReplicationClientAdapter extends ReplicationServiceClient
      */
     @Override
     public String toString() {
-        return "RPC-Client for server " + defaultServer.toString() + ".";
+        return "RPC-Client for server " + defaultServer.toString();
     }
 /*
  * ConditionClient:

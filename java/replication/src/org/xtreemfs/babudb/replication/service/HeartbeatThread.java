@@ -140,7 +140,7 @@ public class HeartbeatThread extends LifeCycleThread implements Pacemaker {
                 public void responseAvailable(Object r) { 
                     if (markSlaveAsAvailable(c)) {
                         Logging.logMessage(Logging.LEVEL_INFO, this, 
-                                "Heartbeat was successuflly sent to %s after previous failures.", c.toString());
+                                "Heartbeat was successfully sent to %s after previous failures.", c.toString());
                     } else {
                         Logging.logMessage(Logging.LEVEL_DEBUG, this, 
                                 "Heartbeat successfully send.");
