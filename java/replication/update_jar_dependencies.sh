@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2012 Michael Berlin, Zuse Institute Berlin
+# Copyright (c) 2012-2014 Michael Berlin, Zuse Institute Berlin
 # Licensed under the BSD License, see LICENSE file for details.
 
 set -e
@@ -18,13 +18,13 @@ replication_dir_in_babudb_trunk="$(dirname "$0")"
 cat <<EOF
 This script updates the binary .jar files which are required for the BabuDB replication plugin.
 
-The required files Foundation.jar (or PBRPC.jar) and Flease.jar are compiled from a SVN checkout of the XtreemFS trunk.
+The required files Foundation.jar (or PBRPC.jar) and Flease.jar are compiled from a Git clone of the XtreemFS master branch.
 
 EOF
 
 if [ -z "$XTREEMFS" ]
 then
-  known_xtreemfs_dirs="../../../../googlecode-svn/trunk"
+  known_xtreemfs_dirs="../../../../googlecode-git"
   for dir in $known_xtreemfs_dirs
   do
     if [ -d "$dir" ]
