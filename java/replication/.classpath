@@ -8,7 +8,7 @@
 	<classpathentry kind="lib" path="extlib/protobuf-java-2.3.0.jar" sourcepath="extlib/protobuf-java-2.3.0.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/BabuDB_trunk"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/xtreemfs_trunk_foundation"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/xtreemfs_trunk_flease"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/xtreemfs_flease"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/xtreemfs_foundation"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
