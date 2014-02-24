@@ -244,7 +244,9 @@ public class ReplicationConfig extends PluginConfig {
                     .readRequiredString("babudb.ssl.trusted_certs.container"), 
                             this
                     .readRequiredBoolean(
-                            "babudb.ssl.authenticationWithoutEncryption"));
+                            "babudb.ssl.authenticationWithoutEncryption"),
+                            false /* use Grid SSL */,
+                            null /* TrustManager*/);
         }
         
         this.chunkSize = this.readOptionalInt("babudb.repl.chunkSize", 
