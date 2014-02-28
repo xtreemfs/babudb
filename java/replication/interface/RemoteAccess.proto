@@ -1,0 +1,56 @@
+package org.xtreemfs.pbrpc;
+option java_package = "org.xtreemfs.babudb.pbrpc";
+import "interface/GlobalTypes.proto";
+import "share/foundation/include/Common.proto";
+import "share/foundation/include/PBRPC.proto";
+
+service RemoteAccessService {
+  option(interface_id)=10001;
+
+  rpc makePersistent(emptyRequest) returns(Database) {
+    option(proc_id)=1;
+    option(data_in)=true;
+  };
+  
+  rpc getDatabaseByName(DatabaseName) returns(Database) {
+    option(proc_id)=2;
+  };
+  
+  rpc getDatabaseById(DatabaseId) returns(Database) {
+    option(proc_id)=3;
+  };
+  
+  rpc getDatabases(emptyRequest) returns(Databases) {
+    option(proc_id)=4;
+  };
+  
+  rpc lookup(Lookup) returns(ErrorCodeResponse) {
+    option(proc_id)=5;
+    option(data_in)=true;
+    option(data_out)=true;
+  };
+  
+  rpc plookup(Lookup) returns(EntryMap) {
+    option(proc_id)=6;
+    option(data_in)=true;
+    option(data_out)=true;
+  };
+  
+  rpc plookupReverse(Lookup) returns(EntryMap) {
+    option(proc_id)=7;
+    option(data_in)=true;
+    option(data_out)=true;
+  };
+  
+  rpc rlookup(RangeLookup) returns(EntryMap) {
+    option(proc_id)=8;
+    option(data_in)=true;
+    option(data_out)=true;
+  };
+  
+  rpc rlookupReverse(RangeLookup) returns(EntryMap) {
+    option(proc_id)=9;
+    option(data_in)=true;
+    option(data_out)=true;
+  };
+}

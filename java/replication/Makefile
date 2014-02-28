@@ -1,4 +1,4 @@
-PROTOC=/usr/bin/protoc
+PROTOC=/usr/local/bin/protoc
 
 PBRPC_PLUGIN=share/protoc-gen-pbrpc
 

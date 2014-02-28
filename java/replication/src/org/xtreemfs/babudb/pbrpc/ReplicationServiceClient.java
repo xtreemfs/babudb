@@ -1,5 +1,5 @@
-//automatically generated from replication.proto at Wed May 25 14:23:31 CEST 2011
-//(c) 2011. See LICENSE file for details.
+//automatically generated from Replication.proto at Fri Feb 28 10:43:32 CET 2014
+//(c) 2014. See LICENSE file for details.
 
 package org.xtreemfs.babudb.pbrpc;
 
@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.List;
 import java.net.InetSocketAddress;
 import com.google.protobuf.Message;
+import com.google.protobuf.ByteString;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.Auth;
 import org.xtreemfs.foundation.pbrpc.generatedinterfaces.RPC.UserCredentials;
