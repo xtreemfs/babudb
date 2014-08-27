@@ -21,10 +21,12 @@
 
 	<target name="init">
 		<mkdir dir="${distparentdir}/repl-bin" />
+		<mkdir dir="${distparentdir}/repl-test" />
 	</target>
 
 	<target name="clean">
 		<delete dir="${distparentdir}/repl-bin" />
+		<delete dir="${distparentdir}/repl-test" />
 	</target>
 
 	<target name="distclean" depends="clean">
@@ -69,5 +71,33 @@
 		<zip destfile="${releasetarget}" basedir="${distparentdir}" includes="replication/**" />
 
 	</target>
+	
+	<path id="classpath.test">
+		<pathelement location="../lib/junit-4.11.jar" />
+		<pathelement location="../lib/hamcrest-core-1.3.jar" />
+		<pathelement location="${distparentdir}/repl-test" />
+		<path refid="BabuDB-replication.classpath" />
+	</path>
+
+	<target name="build-test" depends="build,jar">
+		<echo message="${ant.project.name}: ${ant.file}" />
+		<javac debug="true" debuglevel="${debuglevel}" destdir="${distparentdir}/repl-test" source="${source}" target="${target}">
+			<src path="test" />
+			<classpath refid="classpath.test" />
+		</javac>
+	</target>
+	
+	<target name="test" depends="build-test">
+		<junit printsummary="on" haltonfailure="yes" fork="true">
+			<classpath>
+				<path refid="classpath.test" />
+			</classpath>
+			<formatter type="brief" usefile="false" />
+			<batchtest>
+				<fileset dir="test" includes="**/*Test.java" />
+			</batchtest>
+		</junit>
+	</target>
+	
 
 </project>
