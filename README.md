@@ -13,3 +13,5 @@ Much of the simplicity and efficiency of the BabuDB design comes from the use of
 BabuDB is used as the database engine in the replicated metadata server of the XtreemFS file system.
 
 You can contact the BabuDB developers at: babudb@googlegroups.com
+
+[![Build Status](https://travis-ci.org/xtreemfs/babudb.svg?branch=master)](https://travis-ci.org/xtreemfs/babudb)
