@@ -12,7 +12,7 @@
 	<property name="distdir-singlejar" value="${distparentdir}/BabuDB-singlejar" />
 	<property name="docdir" value="${distparentdir}/doc" />
 	<property name="doctarget" value="${distparentdir}/javadoc.zip" />
-
+	
 	<path id="BabuDB.classpath">
 		<pathelement location="${distparentdir}/bin" />
 		<pathelement location="lib/Foundation.jar" />
@@ -20,10 +20,12 @@
 
 	<target name="init">
 		<mkdir dir="${distparentdir}/bin" />
+		<mkdir dir="${distparentdir}/test" />
 	</target>
 
 	<target name="clean">
 		<delete dir="${distparentdir}/bin" />
+		<delete dir="${distparentdir}/test" />
 	</target>
 
 	<target name="distclean" depends="clean">
@@ -108,10 +110,38 @@
 		<!-- copy single-jar BabuDB release -->
 		<copy todir="${distparentdir}" file="${distdir-singlejar}/BabuDB.jar" />
 		<move tofile="${releasetarget-singlejar}" file="${distparentdir}/BabuDB.jar"/>
-		
+
 		<!-- package documentation -->
 		<zip destfile="${doctarget}" basedir="${docdir}" />
 
+	</target>
+
+
+	<path id="classpath.test">
+		<pathelement location="lib/junit-4.11.jar" />
+		<pathelement location="lib/hamcrest-core-1.3.jar" />
+		<pathelement location="${distparentdir}/test" />
+		<path refid="BabuDB.classpath" />
+	</path>
+
+	<target name="build-test" depends="build">
+		<echo message="${ant.project.name}: ${ant.file}" />
+		<javac debug="true" debuglevel="${debuglevel}" destdir="${distparentdir}/test" source="${source}" target="${target}">
+			<src path="test" />
+			<classpath refid="classpath.test" />
+		</javac>
+	</target>
+	
+	<target name="test" depends="build-test">
+		<junit printsummary="on" haltonfailure="yes" fork="true">
+			<classpath>
+				<path refid="classpath.test" />
+			</classpath>
+			<formatter type="brief" usefile="false" />
+			<batchtest>
+				<fileset dir="test" includes="**/*Test.java" />
+			</batchtest>
+		</junit>
 	</target>
 
 </project>

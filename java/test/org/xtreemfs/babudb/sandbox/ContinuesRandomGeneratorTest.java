@@ -7,12 +7,12 @@
  */
 package org.xtreemfs.babudb.sandbox;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import java.util.Random;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
-import org.xtreemfs.babudb.sandbox.ContinuesRandomGenerator;
 import org.xtreemfs.foundation.logging.Logging;
 
 /**
@@ -25,9 +25,13 @@ public class ContinuesRandomGeneratorTest {
 	public static int NO_TESTS_PER_CASE = 100;
 	public static int MAX_SEQ = 1000;
 	
+        @BeforeClass
+        public static void initializeTest() throws Exception {
+            Logging.start(Logging.LEVEL_DEBUG);
+        }
+
 	@Test
 	public void testInitialize() {
-		Logging.start(Logging.LEVEL_DEBUG);
 		Random random = new Random();
 
 		for (int i=0;i<NO_TESTS_PER_CASE;i++){
