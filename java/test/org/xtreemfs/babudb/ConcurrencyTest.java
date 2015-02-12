@@ -42,7 +42,13 @@ public class ConcurrencyTest extends TestCase {
     private static final int    maxNumRecs       = 16;
     
     private static final int    maxBlockFileSize = 1024 * 1024 * 512;
-    
+
+    public static final boolean MMAP = false;
+
+    public static final boolean COMPRESSION = false;
+
+    public static final int     LOG_LEVEL = Logging.LEVEL_ERROR;
+
     private BabuDB              database;
     
     public ConcurrencyTest() {
@@ -137,7 +143,45 @@ public class ConcurrencyTest extends TestCase {
         System.out.println(BufferPool.getStatus());
         
     }
-    
+        private static void insertSome(Database db, int start, int count)
+    {
+        int i = 0;
+        while (i < count)
+        {
+            byte key[] = String.format("%09d", start + i).getBytes();
+            db.singleInsert(0, key, key, null);
+            i++;
+        }
+    }
+
+    @Test
+    public void testConcurrentRangeLookup() throws Exception
+    {
+        BabuDBConfig cfg = new BabuDBConfig(baseDir, baseDir, 4, 0, 0, SyncMode.ASYNC, 0, 0, COMPRESSION, maxNumRecs,
+                maxBlockFileSize, !MMAP, -1, LOG_LEVEL);
+        database = BabuDBFactory.createBabuDB(cfg);
+        final Database db = database.getDatabaseManager().createDatabase("test", 3);
+        final int preInsertCount = 10;
+        insertSome(db, 0, preInsertCount);
+        Thread t = new Thread(new Runnable()
+        {
+            @Override
+            public void run()
+            {
+                insertSome(db, preInsertCount, 10);
+            }
+        });
+        t.start();
+
+        String keyStart = String.format("%09d", 0);
+        String keyEnd = String.format("%09d", 9999);
+        Iterator<Entry<byte[], byte[]>> it = db.rangeLookup(0, keyStart.getBytes(), keyEnd.getBytes(), null).get();
+        while (it.hasNext())
+            System.out.println("Found " + new String(it.next().getKey()));
+        t.join();
+        database.shutdown();
+    }
+
     private void assertEquals(byte[] b1, byte[] b2) {
         assertEquals(b1.length, b2.length);
         for (int i = 0; i < b1.length; i++)

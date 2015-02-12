@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentSkipListMap;
 
 import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.index.OverlayMergeIterator;
@@ -31,11 +32,11 @@ public class MultiOverlayTree<K, V> {
     
     static class OverlayTreeList<K, V> {
         
-        public TreeMap<K, V>         tree;
-        
+        public ConcurrentSkipListMap<K, V> tree;
+
         public OverlayTreeList<K, V> next;
         
-        public OverlayTreeList(TreeMap<K, V> tree, OverlayTreeList<K, V> next) {
+        public OverlayTreeList(ConcurrentSkipListMap<K, V> tree, OverlayTreeList<K, V> next) {
             this.tree = tree;
             this.next = next;
         }
@@ -101,7 +102,7 @@ public class MultiOverlayTree<K, V> {
         } else
             this.comparator = comparator;
         
-        treeList = new OverlayTreeList<K, V>(new TreeMap<K, V>(comparator), null);
+        treeList = new OverlayTreeList<K, V>(new ConcurrentSkipListMap<K, V>(comparator), null);
         overlayMap = Collections.synchronizedMap(new HashMap<Integer, OverlayTreeList<K, V>>());
         
         this.nullValue = nullValue;
@@ -114,7 +115,7 @@ public class MultiOverlayTree<K, V> {
      */
     public int newOverlay() {
         overlayMap.put(overlayId, treeList);
-        treeList = new OverlayTreeList<K, V>(new TreeMap<K, V>(comparator), treeList);
+        treeList = new OverlayTreeList<K, V>(new ConcurrentSkipListMap<K, V>(comparator), treeList);
         return overlayId++;
     }
     
