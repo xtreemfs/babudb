@@ -7,6 +7,7 @@
 package org.xtreemfs.babudb.config;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -55,7 +56,7 @@ public class ConfigBuilder {
      * @return a reference to this object
      */
     public ConfigBuilder addPlugin(String configPath) {
-        assert (configPath != null && configPath != "");
+        assert (configPath != null && !configPath.equals(""));
         
         changes.put("babudb.plugin." + numOfRegisteredPlugins, configPath);
         numOfRegisteredPlugins++;
@@ -131,7 +132,9 @@ public class ConfigBuilder {
         Properties props = new Properties();
         BabuDBConfig cfg = null;
         try {
-            props.load(ConfigBuilder.class.getResourceAsStream("default-config.properties"));
+            InputStream configFileInputStream = ConfigBuilder.class.getResourceAsStream("default-config.properties");
+            props.load(configFileInputStream);
+            configFileInputStream.close();
             props.put("babudb.disableMmap", !"x86_64".equals(System.getProperty("os.arch")));
             props.put("babudb.mmapLimit", "x86_64".equals(System.getProperty("os.arch")) ? -1 : 200);
             
