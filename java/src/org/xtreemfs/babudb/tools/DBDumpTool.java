@@ -146,6 +146,7 @@ public class DBDumpTool {
         };
         
         dumpDB(dbDir, logDir, false, formatter, out);
+        out.close();
     }
     
 }
