@@ -246,6 +246,8 @@ public class ReplicationConfig extends PluginConfig {
                     .readRequiredBoolean(
                             "babudb.ssl.authenticationWithoutEncryption"),
                             false /* use Grid SSL */,
+                            this
+                    .readOptionalString("babudb.ssl.protocol", null),
                             null /* TrustManager*/);
         }
 
