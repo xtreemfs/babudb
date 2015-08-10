@@ -104,7 +104,7 @@ public class LSMDBWorker extends LifeCycleThread {
                 
                 // wait for a request
                 synchronized (this) {
-                    if (requests.isEmpty()) {
+                    if (requests.isEmpty() && !quit) {
                         wait();
                     }
                     
@@ -130,7 +130,7 @@ public class LSMDBWorker extends LifeCycleThread {
         
         // process pending requests on shutdown if graceful flag has not been reset
         if (graceful) {
-            synchronized (requests) {
+            synchronized (this) {
                 for (LSMDBRequest<?> rq : requests) {
                     processRequest(rq);
                 }
