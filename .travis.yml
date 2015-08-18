@@ -1,9 +1,13 @@
 language: java
 jdk: openjdk6
+sudo: false
 
-before_install:
-- sudo apt-get update -qq
-- sudo apt-get install -y make cmake 
+addons: 
+  apt:
+    packages:
+      - make
+      - cmake
+
 
 install:
   - ant -f java/build.xml jar
