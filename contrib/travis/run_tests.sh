@@ -15,14 +15,6 @@ JUNIT_BABUDB_RESULT=$?
 )
 JUNIT_REPLICATION_RESULT=$?
 
-# Run the CPP unit tests
-(
-  cd $BABUDB_DIR/cpp/build
-  ./babudb_tests
-)
-CPP_BABUDB_RESULT=$?
-
-
 if [[ $JUNIT_BABUDB_RESULT -eq 0 ]] && [[ $JUNIT_REPLICATION_RESULT -eq 0 ]] && [[ $CPP_BABUDB_RESULT -eq 0 ]]; then
   return 0
 else
