@@ -2,17 +2,9 @@ language: java
 jdk: openjdk6
 sudo: false
 
-addons: 
-  apt:
-    packages:
-      - make
-      - cmake
-
-
 install:
   - ant -f java/build.xml jar
   - ant -f java/replication/build.xml jar
-  - ./contrib/travis/make_cpp_tests.sh
 
 script:
   - source contrib/travis/run_tests.sh
