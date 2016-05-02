@@ -33,6 +33,7 @@ import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging.Category;
 import org.xtreemfs.foundation.util.OutputUtils;
 
 /**
@@ -219,8 +220,9 @@ public class CheckpointerImpl extends CheckpointerInternal {
                 break;
             
             if (Logging.isDebug())
-                Logging.logMessage(Logging.LEVEL_DEBUG, this, "snapshot materialization request found for database '"
-                        + rq.dbName + "', snapshot: '" + rq.snap.getName() + "'");
+                Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this,
+                        "snapshot materialization request found for database '" + rq.dbName + "', snapshot: '"
+                                + rq.snap.getName() + "'");
             
             SnapshotManagerInternal snapMan = dbs.getSnapshotManager();
             
@@ -232,7 +234,7 @@ public class CheckpointerImpl extends CheckpointerInternal {
             // of the snapshot
             snapMan.snapshotComplete(rq.dbName, rq.snap);
             
-            Logging.logMessage(Logging.LEVEL_DEBUG, this, "snapshot materialization complete");
+            Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, "snapshot materialization complete");
         }
     }
     
@@ -255,7 +257,7 @@ public class CheckpointerImpl extends CheckpointerInternal {
      * @throws InterruptedException
      */
     private void createCheckpoint() throws BabuDBException, InterruptedException {
-        Logging.logMessage(Logging.LEVEL_INFO, this, "initiating database checkpoint...");
+        Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this, "initiating database checkpoint...");
         
         Collection<DatabaseInternal> databases = dbs.getDatabaseManager().getDatabaseList();
         
@@ -301,18 +303,19 @@ public class CheckpointerImpl extends CheckpointerInternal {
                     int seqNo = Integer.valueOf(tmp);
                     LSN logLSN = new LSN(viewId, seqNo);
                     if (logLSN.compareTo(lastWrittenLSN) <= 0) {
-                        Logging.logMessage(Logging.LEVEL_DEBUG, this, "deleting old db log file: " + log);
+                        Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this,
+                                "deleting old db log file: " + log);
                         f = new File(dbs.getConfig().getDbLogDir() + log);
                         if (!f.delete())
-                            Logging.logMessage(Logging.LEVEL_WARN, this, "could not delete log file: %s",
-                                    f.getAbsolutePath());
+                            Logging.logMessage(Logging.LEVEL_WARN, Category.babudb, this,
+                                    "could not delete log file: %s", f.getAbsolutePath());
                     }
                 }
             }
         } catch (IOException ex) {
             throw new BabuDBException(ErrorCode.IO_ERROR, "cannot create checkpoint", ex);
         }
-        Logging.logMessage(Logging.LEVEL_INFO, this, "checkpoint complete");
+        Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this, "checkpoint complete");
     }
     
     /*
@@ -357,7 +360,7 @@ public class CheckpointerImpl extends CheckpointerInternal {
     }
     
     public void run() {
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "operational");
+        Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, "operational");
         
         boolean manualCheckpoint = false;
         notifyStarted();
@@ -389,10 +392,11 @@ public class CheckpointerImpl extends CheckpointerInternal {
                 if (manualCheckpoint || lfsize > maxLogLength) {
                     
                     if (!manualCheckpoint) {
-                        Logging.logMessage(Logging.LEVEL_INFO, this, "database operation log has exceeded threshold "
-                                + "size of " + maxLogLength + " (" + lfsize + ")");
+                        Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this,
+                                "database operation log has exceeded threshold " + "size of " + maxLogLength + " ("
+                                        + lfsize + ")");
                     } else {
-                        Logging.logMessage(Logging.LEVEL_INFO, this, "triggered manual checkpoint");
+                        Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this, "triggered manual checkpoint");
                     }
                     
                     synchronized (dbs.getDatabaseManager().getDBModificationLock()) {
@@ -412,14 +416,15 @@ public class CheckpointerImpl extends CheckpointerInternal {
                 if (quit)
                     break;
                 else
-                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "CHECKPOINT WAS ABORTED!");
+                    Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, "CHECKPOINT WAS ABORTED!");
             } catch (Throwable ex) {
                 if (ex instanceof BabuDBException
                         && ((BabuDBException) ex).getCause() instanceof ClosedByInterruptException) {
-                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "CHECKPOINT WAS ABORTED!");
+                    Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, "CHECKPOINT WAS ABORTED!");
                 } else {
-                    Logging.logMessage(Logging.LEVEL_ERROR, this, "DATABASE CHECKPOINT CREATION FAILURE!");
-                    Logging.logMessage(Logging.LEVEL_ERROR, this, OutputUtils.stackTraceToString(ex));
+                    Logging.logMessage(Logging.LEVEL_ERROR, Category.babudb, this,
+                            "DATABASE CHECKPOINT CREATION FAILURE!");
+                    Logging.logMessage(Logging.LEVEL_ERROR, Category.babudb, this, OutputUtils.stackTraceToString(ex));
                 }
             } finally {
                 synchronized (checkpointComplete) {
@@ -429,7 +434,7 @@ public class CheckpointerImpl extends CheckpointerInternal {
             }
         }
         
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "checkpointer shut down " + "successfully");
+        Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, "checkpointer shut down " + "successfully");
         notifyStopped();
     }
     

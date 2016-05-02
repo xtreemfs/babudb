@@ -15,7 +15,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.xtreemfs.babudb.api.database.DatabaseRequestResult;
-import org.xtreemfs.babudb.api.dev.transaction.OperationInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.api.transaction.Operation;
@@ -26,6 +25,7 @@ import org.xtreemfs.babudb.lsmdb.LSMDatabase;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging.Category;
 
 /**
  * Internal interface for BabuDB's lightweight transactions.
@@ -184,8 +184,8 @@ public abstract class TransactionInternal extends LinkedList<OperationInternal>
                         workerLock.notify();
                     }
                 } catch (BabuDBException be) {
-                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "The worker lock could not have" +
-                    		" been acquired for unlock.");
+                    Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this,
+                            "The worker lock could not have been acquired for unlock.");
                 }
             }
         }

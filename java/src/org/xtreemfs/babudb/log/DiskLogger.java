@@ -30,6 +30,7 @@ import org.xtreemfs.foundation.LifeCycleThread;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging.Category;
 
 /**
  * Writes entries to the on disc operations log and syncs after blocks of MAX_ENTRIES_PER_BLOCK.
@@ -163,8 +164,8 @@ public class DiskLogger extends LifeCycleThread {
         }
 
         if (pseudoSyncWait > 0 && syncMode == SyncMode.ASYNC) {
-            Logging.logMessage(Logging.LEVEL_WARN, this, "When pseudoSyncWait is enabled (> 0)"
-                    + " make sure that SyncMode is not ASYNC");
+            Logging.logMessage(Logging.LEVEL_WARN, Category.babudb, this,
+                    "When pseudoSyncWait is enabled (> 0) make sure that SyncMode is not ASYNC");
         }
 
         this.pseudoSyncWait = pseudoSyncWait;
@@ -304,7 +305,7 @@ public class DiskLogger extends LifeCycleThread {
     public void run() {
         List<LogEntry> tmpE = new ArrayList<LogEntry>(MAX_ENTRIES_PER_BLOCK);
 
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "operational");
+        Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, "operational");
 
         notifyStarted();
 
@@ -375,7 +376,7 @@ public class DiskLogger extends LifeCycleThread {
             }
 
             cleanUp();
-            Logging.logMessage(Logging.LEVEL_DEBUG, this, "disk logger shut down successfully");
+            Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, "disk logger shut down successfully");
             notifyStopped();
         } catch (Exception e) {
             notifyCrashed(e);
@@ -514,7 +515,7 @@ public class DiskLogger extends LifeCycleThread {
             try {
                 buffer = le.serialize(csumAlgo);
 
-                Logging.logMessage(Logging.LEVEL_DEBUG, this,
+                Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this,
                         "Writing entry LSN(%d:%d) with %d bytes payload [%s] to log. " + "[serialized %d bytes]",
                         viewID, seqNo, le.getPayload().remaining(), new String(le.getPayload().array()),
                         buffer.remaining());

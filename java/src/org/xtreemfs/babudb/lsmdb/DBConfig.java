@@ -7,6 +7,8 @@
  */
 package org.xtreemfs.babudb.lsmdb;
 
+import static org.xtreemfs.babudb.BabuDBFactory.BABUDB_DB_FORMAT_VERSION;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -24,8 +26,7 @@ import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.foundation.logging.Logging;
-
-import static org.xtreemfs.babudb.BabuDBFactory.*;
+import org.xtreemfs.foundation.logging.Logging.Category;
 
 /**
  * <p>
@@ -76,7 +77,7 @@ public class DBConfig {
                 final int numDB = ois.readInt();
                 dbman.setNextDBId(ois.readInt());
                 for (int i = 0; i < numDB; i++) {
-                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "loading DB...");
+                    Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, "loading DB...");
                     final String dbName = (String) ois.readObject();
                     final int dbId = ois.readInt();
                     final int numIndex = ois.readInt();
@@ -119,8 +120,8 @@ public class DBConfig {
                         dbman.putDatabase(db);
                     }
                     
-                    Logging.logMessage(Logging.LEVEL_INFO, this, "loaded DB %s" + " successfully. [LSN %s]",
-                        dbName, db.getLSMDB().getOndiskLSN());
+                    Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this,
+                            "loaded DB %s" + " successfully. [LSN %s]", dbName, db.getLSMDB().getOndiskLSN());
                 }
             }
             
@@ -174,7 +175,7 @@ public class DBConfig {
                 final int numDB = ois.readInt();
                 dbman.setNextDBId(ois.readInt());
                 for (int i = 0; i < numDB; i++) {
-                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "loading DB...");
+                    Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, "loading DB...");
                     final String dbName = (String) ois.readObject();
                     final int dbId = ois.readInt();
                     final int numIndex = ois.readInt();
@@ -200,8 +201,8 @@ public class DBConfig {
                                 dbs.getConfig().getMaxBlockFileSize(), dbs.getConfig().getDisableMMap(),
                                 dbs.getConfig().getMMapLimit()));
                         dbman.putDatabase(db);
-                        Logging.logMessage(Logging.LEVEL_DEBUG, this, "loaded DB " + dbName
-                            + "(" + dbId + ") successfully.");
+                        Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this,
+                                "loaded DB " + dbName + "(" + dbId + ") successfully.");
                     }
                 }
             }

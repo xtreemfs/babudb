@@ -21,6 +21,7 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging.Category;
 
 /**
  * Interface for reading on-disk operation logs.
@@ -106,11 +107,11 @@ public class DiskLogFile {
         } catch (LogEntryException ex) {
             
             // in case of an invalid log entry ...
-            Logging.logMessage(Logging.LEVEL_ERROR, this, "***** INVALID LOG ENTRY *****");
-            Logging.logMessage(Logging.LEVEL_ERROR, this,
+            Logging.logMessage(Logging.LEVEL_ERROR, Category.babudb, this, "***** INVALID LOG ENTRY *****");
+            Logging.logMessage(Logging.LEVEL_ERROR, Category.babudb, this,
                 "the log contains an invalid log entry at offset %d, file will be truncated at offset %d",
                 offset, offset);
-            Logging.logMessage(Logging.LEVEL_ERROR, this, ex.getMessage());
+            Logging.logMessage(Logging.LEVEL_ERROR, Category.babudb, this, ex.getMessage());
             
             // trucate the log at the end of the previous entry
             try {
@@ -137,7 +138,7 @@ public class DiskLogFile {
             
         } catch (IOException ex) {
             
-            Logging.logMessage(Logging.LEVEL_DEBUG, this, ex.getMessage());
+            Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, ex.getMessage());
             throw new LogEntryException("Cannot read log entry: " + ex);
             
         } finally {

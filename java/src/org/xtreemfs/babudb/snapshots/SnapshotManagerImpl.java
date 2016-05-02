@@ -14,8 +14,8 @@ import java.io.ObjectInputStream;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.xtreemfs.babudb.BabuDBRequestResultImpl;
 import org.xtreemfs.babudb.api.database.DatabaseRO;
@@ -31,6 +31,7 @@ import org.xtreemfs.babudb.lsmdb.BabuDBTransaction;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging.Category;
 import org.xtreemfs.foundation.util.FSUtils;
 
 public class SnapshotManagerImpl implements SnapshotManagerInternal {
@@ -81,7 +82,7 @@ public class SnapshotManagerImpl implements SnapshotManagerInternal {
         for (Map<String, Snapshot> snapshots : snapshotDBs.values())
             for (Snapshot snapshot : snapshots.values())
                 snapshot.shutdown();
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "snapshot manager shut down successfully");
+        Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, "snapshot manager shut down successfully");
     }
     
     @Override

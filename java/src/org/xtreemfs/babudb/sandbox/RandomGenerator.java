@@ -7,17 +7,21 @@
  */
 
 package org.xtreemfs.babudb.sandbox;
+import static org.xtreemfs.babudb.sandbox.ContinuesRandomGenerator.Operation.copy;
+import static org.xtreemfs.babudb.sandbox.ContinuesRandomGenerator.Operation.create;
+import static org.xtreemfs.babudb.sandbox.ContinuesRandomGenerator.Operation.delete;
+
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import org.xtreemfs.babudb.api.database.DatabaseInsertGroup;
 import org.xtreemfs.babudb.lsmdb.LSN;
-import org.xtreemfs.foundation.logging.Logging;
 import org.xtreemfs.babudb.sandbox.ContinuesRandomGenerator.Operation;
-
-import static org.xtreemfs.babudb.sandbox.ContinuesRandomGenerator.Operation.*;
+import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging.Category;
 
 /**
  * <p>If two instances of {@link Random} are created with the same seed, 
@@ -166,7 +170,7 @@ public class RandomGenerator {
     		operationsScenario.put(i, opsAtView);
     	}
     	
-    	Logging.logMessage(Logging.LEVEL_DEBUG, this, "%s", this.toString());
+        Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, "%s", this.toString());
     	
     	return operationsScenario;
     }
