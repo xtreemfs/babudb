@@ -3,15 +3,15 @@ BABUDB_DIR=$PWD
 
 # Run BabuDB JUnit tests
 (
-  cd $BABUDB_DIR/java
-  ant test
+  cd $BABUDB_DIR/java/babudb-core
+  mvn test
 )
 JUNIT_BABUDB_RESULT=$?
 
 # Run BabuDB replication plugin JUNIT tests
 (
-  cd $BABUDB_DIR/java/replication
-  ant test
+  cd $BABUDB_DIR/java/babudb-replication
+  mvn test
 )
 JUNIT_REPLICATION_RESULT=$?
 
