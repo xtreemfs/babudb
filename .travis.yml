@@ -24,7 +24,7 @@ before_script: |
           </repository>
           <repository>
             <id>xtreemfs-repository</id>
-            <url>https://robert-schmidtke.github.io/xtreemfs/maven</url>
+            <url>https://$(dirname $TRAVIS_REPO_SLUG).io/xtreemfs/maven</url>
             <snapshots>
               <enabled>true</enabled>
             </snapshots>
@@ -34,7 +34,8 @@ before_script: |
     </profiles>
   </settings>
   EOF
+  cat settings.xml
 
 script:
-  - mvn --settings ./settings.xml --file java/pom.xml -Dprotoc.bin=/usr/bin/protoc -Dprotoc.src=/usr/include install -DskipTests
-  - mvn --settings ./settings.xml --file java/pom.xml -Dprotoc.bin=/usr/bin/protoc -Dprotoc.src=/usr/include test
+  - mvn --settings settings.xml --file java/pom.xml -Dprotoc.bin=/usr/bin/protoc -Dprotoc.src=/usr/include install -DskipTests
+  - mvn --settings settings.xml --file java/pom.xml -Dprotoc.bin=/usr/bin/protoc -Dprotoc.src=/usr/include test
