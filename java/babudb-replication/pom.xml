@@ -191,6 +191,7 @@
               </filters>
               <artifactSet>
                 <excludes>
+                  <exclude>org.xtreemfs:babudb-core</exclude>
                   <exclude>commons-codec:commons-codec</exclude>
                 </excludes>
               </artifactSet>
