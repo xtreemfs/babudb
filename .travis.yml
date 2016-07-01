@@ -10,7 +10,7 @@ addons:
       - libprotobuf-dev
 
 before_script: |
-  echo > settings.xml << EOF
+  cat > $HOME/settings.xml << EOSX
     <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
               xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
@@ -33,9 +33,8 @@ before_script: |
       </profile>
     </profiles>
   </settings>
-  EOF
-  cat settings.xml
+  EOSX
 
 script:
-  - mvn --settings settings.xml --file java/pom.xml -Dprotoc.bin=/usr/bin/protoc -Dprotoc.src=/usr/include install -DskipTests
-  - mvn --settings settings.xml --file java/pom.xml -Dprotoc.bin=/usr/bin/protoc -Dprotoc.src=/usr/include test
+  - mvn --settings $HOME/settings.xml --file java/pom.xml -Dprotoc.bin=/usr/bin/protoc -Dprotoc.src=/usr/include install -DskipTests
+  - mvn --settings $HOME/settings.xml --file java/pom.xml -Dprotoc.bin=/usr/bin/protoc -Dprotoc.src=/usr/include test
