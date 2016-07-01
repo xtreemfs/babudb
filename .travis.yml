@@ -6,7 +6,7 @@ sudo: false
 addons:
   apt:
     packages:
-      - build-essential
+      - make
       - cmake
 
 before_script:
