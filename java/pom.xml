@@ -20,9 +20,9 @@
   </licenses>
 
   <scm>
-    <url>https://github.com/xtreemfs/babudb</url>
-    <connection>git@github.com:xtreemfs/babudb.git</connection>
-    <developerConnection>scm:git:https://github.com/xtreemfs/babudb.git</developerConnection>
+    <url>https://github.com/${github.site.repositoryOwner}/babudb</url>
+    <connection>git@github.com:${github.site.repositoryOwner}/babudb.git</connection>
+    <developerConnection>scm:git:https://github.com/${github.site.repositoryOwner}/babudb.git</developerConnection>
   </scm>
 
   <modules>
