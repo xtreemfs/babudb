@@ -6,6 +6,8 @@ sudo: false
 addons:
   apt:
     packages:
+      - make
+      - cmake
       - protobuf-compiler
       - libprotobuf-dev
 
@@ -31,7 +33,10 @@ before_script:
   - echo "    </profile>"                                                                     >> $HOME/settings.xml
   - echo "  </profiles>"                                                                      >> $HOME/settings.xml
   - echo "</settings>"                                                                        >> $HOME/settings.xml
+  - mvn --settings $HOME/settings.xml --activate-profiles babudb-dev --file java/pom.xml -Dprotoc.bin=/usr/bin/protoc -Dprotoc.src=/usr/include install -DskipTests
+  - mkdir -p cpp/build
+  - cd cpp/build && cmake .. && make && cd ..
 
 script:
-  - mvn --settings $HOME/settings.xml --activate-profiles babudb-dev --file java/pom.xml -Dprotoc.bin=/usr/bin/protoc -Dprotoc.src=/usr/include install -DskipTests
   - mvn --settings $HOME/settings.xml --activate-profiles babudb-dev --file java/pom.xml -Dprotoc.bin=/usr/bin/protoc -Dprotoc.src=/usr/include test
+  - cd cpp/build && ./babudb_tests & cd ..
