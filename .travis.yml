@@ -33,9 +33,9 @@ before_script: |
       </profile>
     </profiles>
   </settings>
-  EOSX
+EOSX
 
 script:
   - cat $HOME/settings.xml
-  - mvn --settings $HOME/settings.xml --file java/pom.xml -Dprotoc.bin=/usr/bin/protoc -Dprotoc.src=/usr/include install -DskipTests
-  - mvn --settings $HOME/settings.xml --file java/pom.xml -Dprotoc.bin=/usr/bin/protoc -Dprotoc.src=/usr/include test
+  - mvn --settings $HOME/settings.xml --activate-profiles babudb-dev --file java/pom.xml -Dprotoc.bin=/usr/bin/protoc -Dprotoc.src=/usr/include install -DskipTests
+  - mvn --settings $HOME/settings.xml --activate-profiles babudb-dev --file java/pom.xml -Dprotoc.bin=/usr/bin/protoc -Dprotoc.src=/usr/include test
