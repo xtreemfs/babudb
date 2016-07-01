@@ -8,10 +8,18 @@ addons:
     packages:
       - make
       - cmake
-      - protobuf-compiler
-      - libprotobuf-dev
 
 before_script:
+  # get and build protobuf 2.5.0
+  - wget --output-document $HOME/protobuf-2.5.0.tar.gz https://github.com/google/protobuf/releases/download/v2.5.0/protobuf-2.5.0.tar.gz
+  - cd $HOME
+  - tar xf protobuf-2.5.0.tar.gz
+  - cd protobuf-2.5.0
+  - ./configure
+  - make -j2
+  - cd $TRAVIS_BUILD_DIR
+
+  # configure maven repositories
   - echo "<settings xmlns=\"http://maven.apache.org/SETTINGS/1.0.0\""                         >  $HOME/settings.xml
   - echo "  xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\""                          >> $HOME/settings.xml
   - echo "  xsi:schemaLocation=\"http://maven.apache.org/SETTINGS/1.0.0"                      >> $HOME/settings.xml
@@ -33,9 +41,11 @@ before_script:
   - echo "    </profile>"                                                                     >> $HOME/settings.xml
   - echo "  </profiles>"                                                                      >> $HOME/settings.xml
   - echo "</settings>"                                                                        >> $HOME/settings.xml
-  - PROTOC_VERSION=$(protoc --version)
-  - export PROTOC_VERSION=${PROTOC_VERSION#libprotoc }
-  - mvn --settings $HOME/settings.xml --activate-profiles babudb-dev --file $TRAVIS_BUILD_DIR/java/pom.xml -Dprotoc.bin=/usr/bin/protoc -Dprotobuf-java.version=$PROTOC_VERSION -Dprotoc.src=/usr/include install -DskipTests
+
+  # build jars without tests, as they depend on the built jars
+  - mvn --settings $HOME/settings.xml --activate-profiles babudb-dev --file $TRAVIS_BUILD_DIR/java/pom.xml -Dprotoc.bin=$HOME/protobuf-2.5.0/src/protoc -Dprotoc.src=$HOME/protobuf-2.5.0/src -DskipTests install
+
+  # build C++ tests
   - mkdir -p $TRAVIS_BUILD_DIR/cpp/build
   - cd $TRAVIS_BUILD_DIR/cpp/build
   - cmake ..
@@ -43,7 +53,10 @@ before_script:
   - cd $TRAVIS_BUILD_DIR
 
 script:
-  - mvn --settings $HOME/settings.xml --activate-profiles babudb-dev --file $TRAVIS_BUILD_DIR/java/pom.xml -Dprotoc.bin=/usr/bin/protoc -Dprotobuf-java.version=$PROTOC_VERSION -Dprotoc.src=/usr/include test
+  # run Java tests
+  - mvn --settings $HOME/settings.xml --activate-profiles babudb-dev --file $TRAVIS_BUILD_DIR/java/pom.xml -Dprotoc.bin=$HOME/protobuf-2.5.0/src/protoc -Dprotoc.src=$HOME/protobuf-2.5.0/src test
+
+  # run C++ tests
   - cd $TRAVIS_BUILD_DIR/cpp/build
   - ./babudb_tests
   - cd $TRAVIS_BUILD_DIR
