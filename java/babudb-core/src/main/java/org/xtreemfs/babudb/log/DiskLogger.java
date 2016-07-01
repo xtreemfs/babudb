@@ -18,7 +18,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
@@ -31,9 +30,11 @@ import org.xtreemfs.foundation.LifeCycleThread;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging.Category;
 
 /**
  * Writes entries to the on disc operations log and syncs after blocks of MAX_ENTRIES_PER_BLOCK.
+ * 
  * @author bjko
  * @author flangner
  */
@@ -54,17 +55,15 @@ public class DiskLogger extends LifeCycleThread {
 
         FDATASYNC,
         /**
-         * synchronously writes the log entry to disk before ack. Does not
-         * update the metadata.
+         * synchronously writes the log entry to disk before ack. Does not update the metadata.
          */
         SYNC_WRITE,
         /**
-         * synchronously writes the log entry to disk and updates
-         * the metadata before ack.
+         * synchronously writes the log entry to disk and updates the metadata before ack.
          */
         SYNC_WRITE_METADATA
     };
-    
+
     /**
      * Max number of LogEntries to write before sync.
      */
@@ -75,81 +74,86 @@ public class DiskLogger extends LifeCycleThread {
     /**
      * NIO FileChannel used to write ByteBuffers directly to file.
      */
-    private FileChannel                 channel;
+    private FileChannel                channel;
 
     /**
      * Stream used to obtain the FileChannel and to flush file.
      */
-    private RandomAccessFile            fos;
+    private RandomAccessFile           fos;
 
     /**
      * Used to sync file.
      */
-    private FileDescriptor              fdes;
+    private FileDescriptor             fdes;
 
     /**
      * The LogEntries to be written to disk.
      */
-    private final LinkedList<LogEntry>  entries = new LinkedList<LogEntry>();
+    private final LinkedList<LogEntry> entries                           = new LinkedList<LogEntry>();
 
     /**
      * If set to true the thread will shutdown.
      */
-    private volatile boolean            quit = true;
-    private boolean                     graceful;
+    private volatile boolean           quit                              = true;
+    private boolean                    graceful;
 
     /**
      * log file directory name
      */
-    private final String                logfileDir;
+    private final String               logfileDir;
 
     /**
      * log sequence number to assign to assign to next log entry
      */
-    private final AtomicLong            nextLogSequenceNo = new AtomicLong();
+    private final AtomicLong           nextLogSequenceNo                 = new AtomicLong();
 
     /**
      * view Id to assign to entries
      */
-    private final AtomicInteger         currentViewId = new AtomicInteger();
+    private final AtomicInteger        currentViewId                     = new AtomicInteger();
 
     /**
      * current log file name
      */
-    private volatile String             currentLogFileName;
+    private volatile String            currentLogFileName;
 
     /**
      * Lock for switching log files atomically.
      */
-    private final ReentrantLock         sync = new ReentrantLock();
+    private final ReentrantLock        sync                              = new ReentrantLock();
 
-    private final SyncMode              syncMode;
+    private final SyncMode             syncMode;
 
-    private final Integer               pseudoSyncWait;
-    
-    private final CRC32                 csumAlgo = new CRC32();
-        
-    private final int                   maxQ;
-    
-    private AtomicInteger              _processedLogEntries  = new AtomicInteger();
-    
+    private final int                  pseudoSyncWait;
+
+    private final Object               pseudoSyncWaitMonitor             = new Object();
+
+    private final CRC32                csumAlgo                          = new CRC32();
+
+    private final int                  maxQ;
+
+    private AtomicInteger              _processedLogEntries              = new AtomicInteger();
 
     /**
      * Creates a new instance of DiskLogger
-     * @param logfile Name and path of file to use for append log.
+     * 
+     * @param logfile
+     *            Name and path of file to use for append log.
      * @param initLSN
      * @param syncMode
      * @param pseudoSyncWait
      * @param maxQ
      * 
-     * @throws java.io.FileNotFoundException If that file cannot be created.
-     * @throws java.io.IOException If that file cannot be created.
+     * @throws java.io.FileNotFoundException
+     *             If that file cannot be created.
+     * @throws java.io.IOException
+     *             If that file cannot be created.
      */
-    public DiskLogger(String logfileDir, LSN initLSN, SyncMode syncMode, int pseudoSyncWait, 
-            int maxQ) throws IOException {
+    public DiskLogger(String logfileDir, LSN initLSN, SyncMode syncMode, int pseudoSyncWait, int maxQ)
+            throws IOException {
 
         super("DiskLogger");
-        
+
         if (logfileDir == null) {
             throw new RuntimeException("expected a non-null log file directory name!");
         }
@@ -159,18 +163,18 @@ public class DiskLogger extends LifeCycleThread {
             this.logfileDir = logfileDir + "/";
         }
 
-        if(pseudoSyncWait > 0 && syncMode == SyncMode.ASYNC) {
-            Logging.logMessage(Logging.LEVEL_WARN, this,"When pseudoSyncWait is enabled (> 0)" +
-                            " make sure that SyncMode is not ASYNC");
+        if (pseudoSyncWait > 0 && syncMode == SyncMode.ASYNC) {
+            Logging.logMessage(Logging.LEVEL_WARN, Category.babudb, this,
+                    "When pseudoSyncWait is enabled (> 0) make sure that SyncMode is not ASYNC");
         }
-        
+
         this.pseudoSyncWait = pseudoSyncWait;
         this.syncMode = syncMode;
         this.maxQ = maxQ;
-        
+
         loadLogFile(initLSN);
     }
-    
+
     /**
      * Method to drop the current log file and wait for a new one to become available.
      * 
@@ -178,8 +182,8 @@ public class DiskLogger extends LifeCycleThread {
      */
     public void dropLogFile() throws IOException {
         channel.close();
-        fos.close(); 
-        
+        fos.close();
+
         // delete invalid (because empty) database log on switch
         if (currentLogFileName != null) {
             File f = new File(currentLogFileName);
@@ -188,27 +192,27 @@ public class DiskLogger extends LifeCycleThread {
                 assert (suc) : "An empty database log file could not have been deleted properly.";
             }
         }
-        
+
         channel = null;
         fos = null;
         currentLogFileName = null;
     }
-    
+
     /**
      * Method to load the log file after dropping.
      * 
      * @param initLSN
-     * @throws IOException 
+     * @throws IOException
      */
     public void loadLogFile(LSN initLSN) throws IOException {
-        
+
         // update disk-log LSN
         if (initLSN != null) {
             this.currentViewId.set(initLSN.getViewId());
             assert (initLSN.getSequenceNo() > 0);
             this.nextLogSequenceNo.set(initLSN.getSequenceNo());
         }
-        
+
         loadLogFile();
     }
 
@@ -217,41 +221,42 @@ public class DiskLogger extends LifeCycleThread {
     }
 
     /**
-     * Appends an entry to the write queue. Is maxQ is set an reached this method blocks until
-     * queue space becomes available. The entry will be freed by the logger.
+     * Appends an entry to the write queue. Is maxQ is set an reached this method blocks until queue space becomes
+     * available. The entry will be freed by the logger.
      * 
-     * @param entry to write.
-     * @throws InterruptedException if the entry could not be appended. 
+     * @param entry
+     *            to write.
+     * @throws InterruptedException
+     *             if the entry could not be appended.
      */
-    public synchronized void append(LogEntry entry) throws InterruptedException, 
-            IllegalStateException {
-        
+    public synchronized void append(LogEntry entry) throws InterruptedException, IllegalStateException {
+
         assert (entry != null);
-        
+
         // wait for queue space to become available
         if (!quit && maxQ > 0 && entries.size() >= maxQ) {
             wait();
         }
-        
+
         if (!quit) {
             assert (maxQ == 0 || entries.size() < maxQ);
-            
+
             entries.add(entry);
             notifyAll();
         } else {
-            throw new InterruptedException("Appending the LogEntry to the DiskLogger's " +
-            		"queue was interrupted, due DiskLogger shutdown.");
+            throw new InterruptedException("Appending the LogEntry to the DiskLogger's "
+                    + "queue was interrupted, due DiskLogger shutdown.");
         }
     }
 
     public void lock() throws InterruptedException {
         sync.lockInterruptibly();
     }
-    
+
     public boolean hasLock() {
         return sync.isHeldByCurrentThread();
     }
-    
+
     public void unlock() {
         sync.unlock();
     }
@@ -260,34 +265,36 @@ public class DiskLogger extends LifeCycleThread {
         if (!hasLock()) {
             throw new IllegalStateException("the lock is held by another thread or the logger is not locked.");
         }
-        
+
         // get last synchronized LSN and increment the viewId if needed
         LSN lastSyncedLSN = null;
-        if (incrementViewId){
+        if (incrementViewId) {
             int view = currentViewId.getAndIncrement();
             long seq = nextLogSequenceNo.getAndSet(1L) - 1L;
-            
+
             assert (seq != 0) : "Checkpoint after checkpoint is not allowed!";
-            
+
             lastSyncedLSN = new LSN(view, seq);
         } else {
             lastSyncedLSN = new LSN(currentViewId.get(), nextLogSequenceNo.get() - 1L);
         }
-        
-        dropLogFile();   
+
+        dropLogFile();
         loadLogFile();
-        
+
         return lastSyncedLSN;
     }
-    
-    /* (non-Javadoc)
+
+    /*
+     * (non-Javadoc)
+     * 
      * @see java.lang.Thread#start()
      */
     @Override
     public synchronized void start() {
-        
+
         assert (quit);
-        
+
         quit = false;
         super.start();
     }
@@ -297,14 +304,14 @@ public class DiskLogger extends LifeCycleThread {
      */
     public void run() {
         List<LogEntry> tmpE = new ArrayList<LogEntry>(MAX_ENTRIES_PER_BLOCK);
-                
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "operational");
+
+        Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, "operational");
 
         notifyStarted();
-        
+
         while (!quit) {
             try {
-                
+
                 // wait for an entry
                 synchronized (this) {
 
@@ -314,13 +321,12 @@ public class DiskLogger extends LifeCycleThread {
 
                     if (quit) {
                         break;
-                        
-                    // get some entries from the queue
+
+                        // get some entries from the queue
                     } else {
-                        
+
                         LogEntry tmp = null;
-                        while (tmpE.size() < MAX_ENTRIES_PER_BLOCK - 1 && 
-                              (tmp = entries.poll()) != null) {
+                        while (tmpE.size() < MAX_ENTRIES_PER_BLOCK - 1 && (tmp = entries.poll()) != null) {
 
                             tmpE.add(tmp);
                         }
@@ -328,13 +334,13 @@ public class DiskLogger extends LifeCycleThread {
                         lock();
                     }
                 }
-                
+
                 processLogEntries(tmpE);
-                
+
             } catch (IOException ex) {
-                
+
                 Logging.logError(Logging.LEVEL_ERROR, this, ex);
-       
+
                 for (LogEntry le : tmpE) {
                     le.free();
                     le.getListener().failed(ex);
@@ -351,12 +357,13 @@ public class DiskLogger extends LifeCycleThread {
                     return;
                 }
             } finally {
-                if (hasLock()) unlock();
+                if (hasLock())
+                    unlock();
             }
         }
-        
+
         try {
-            
+
             // process pending requests on shutdown if graceful flag has not been reset
             if (graceful) {
                 try {
@@ -367,9 +374,9 @@ public class DiskLogger extends LifeCycleThread {
                         unlock();
                 }
             }
-            
+
             cleanUp();
-            Logging.logMessage(Logging.LEVEL_DEBUG, this, "disk logger shut down successfully");
+            Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, "disk logger shut down successfully");
             notifyStopped();
         } catch (Exception e) {
             notifyCrashed(e);
@@ -382,30 +389,31 @@ public class DiskLogger extends LifeCycleThread {
     public void shutdown() throws InterruptedException {
         shutdown(true);
     }
-    
+
     /**
-     * method to shutdown the logger without ensuring all pending log entries to be written to the 
-     * on disk log. may cause inconsistency. use shutdown by default.
+     * method to shutdown the logger without ensuring all pending log entries to be written to the on disk log. may
+     * cause inconsistency. use shutdown by default.
      * 
-     * @param graceful - flag to determine, if shutdown should process gracefully, or not.
-     * @throws InterruptedException 
+     * @param graceful
+     *            - flag to determine, if shutdown should process gracefully, or not.
+     * @throws InterruptedException
      */
     public synchronized void shutdown(boolean graceful) throws InterruptedException {
-                
+
         lock();
         this.graceful = graceful;
         quit = true;
         notifyAll();
-        
+
         // stop pseudoSyncWait, if shutdown is ungraceful
         if (!graceful && pseudoSyncWait > 0) {
-            synchronized (pseudoSyncWait) {
-                pseudoSyncWait.notify();
+            synchronized (pseudoSyncWaitMonitor) {
+                pseudoSyncWaitMonitor.notify();
             }
         }
         unlock();
     }
-    
+
     /**
      * NEVER USE THIS EXCEPT FOR UNIT TESTS! Kills the logger.
      */
@@ -422,125 +430,126 @@ public class DiskLogger extends LifeCycleThread {
             /* ignored */
         }
     }
-    
+
     /**
-     * <p>Function is used by the Replication.</p>
+     * <p>
+     * Function is used by the Replication.
+     * </p>
      * 
      * @return the LSN of the latest inserted {@link LogEntry}.
      */
-    public LSN getLatestLSN(){
+    public LSN getLatestLSN() {
         return new LSN(currentViewId.get(), nextLogSequenceNo.get() - 1L);
     }
-    
+
     public Object getRuntimeState(String property) {
         if (RUNTIME_STATE_PROCESSEDLOGENTRIES.equals(property))
             return _processedLogEntries.get();
         return null;
     }
-    
+
     public Map<String, Object> getRuntimeState() {
         Map<String, Object> map = new HashMap<String, Object>();
         map.put(RUNTIME_STATE_PROCESSEDLOGENTRIES, _processedLogEntries.get());
         return map;
     }
-    
+
     private String createLogFileName() {
         return logfileDir + createLogFileName(currentViewId.get(), nextLogSequenceNo.get());
     }
-    
+
     /**
      * Closes the log-file. And frees remaining entries.
      * 
      * @throws IOException
      */
-    private void cleanUp() throws IOException {    
-        
+    private void cleanUp() throws IOException {
+
         try {
             fdes.sync();
         } finally {
             try {
                 fos.close();
             } finally {
-            
+
                 synchronized (this) {
                     assert (graceful || entries.size() == 0);
-                    
+
                     // clear pending requests, if available
                     for (LogEntry le : entries) {
                         le.free();
-                        le.getListener().failed(new BabuDBException(
-                                ErrorCode.INTERRUPTED, "DiskLogger was shut down, before the " +
-                                "entry could be written to the log-file"));
+                        le.getListener().failed(
+                                new BabuDBException(ErrorCode.INTERRUPTED, "DiskLogger was shut down, before the "
+                                        + "entry could be written to the log-file"));
                     }
                 }
             }
         }
     }
-    
+
     /**
      * Writes a list of log entries to the disk log.
      * 
      * @param entries
-     * @throws IOException 
-     * @throws InterruptedException 
+     * @throws IOException
+     * @throws InterruptedException
      */
     private final void processLogEntries(List<LogEntry> entries) throws IOException, InterruptedException {
 
-        assert(hasLock());
-        
+        assert (hasLock());
+
         for (LogEntry le : entries) {
             assert (le != null) : "Entry must not be null";
             int viewID = currentViewId.get();
             long seqNo = nextLogSequenceNo.getAndIncrement();
 
-            if (le.getLSN() != null &&
-               (le.getLSN().getSequenceNo() != seqNo || le.getLSN().getViewId() != viewID)) { 
-                
-                throw new IOException("LogEntry (" + le.getPayloadType() + ") had unexpected LSN: " + le.getLSN() + 
-                        "\n" + viewID + ":" + seqNo + " was expected instead.");
+            if (le.getLSN() != null && (le.getLSN().getSequenceNo() != seqNo || le.getLSN().getViewId() != viewID)) {
+
+                throw new IOException("LogEntry (" + le.getPayloadType() + ") had unexpected LSN: " + le.getLSN()
+                        + "\n" + viewID + ":" + seqNo + " was expected instead.");
             }
-            
+
             le.assignId(viewID, seqNo);
-            
+
             ReusableBuffer buffer = null;
             try {
                 buffer = le.serialize(csumAlgo);
-                    
-                Logging.logMessage(Logging.LEVEL_DEBUG, this, 
-                        "Writing entry LSN(%d:%d) with %d bytes payload [%s] to log. " +
-                        "[serialized %d bytes]", viewID, seqNo, 
-                        le.getPayload().remaining(), new String(le.getPayload().array()), 
+
+                Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this,
+                        "Writing entry LSN(%d:%d) with %d bytes payload [%s] to log. " + "[serialized %d bytes]",
+                        viewID, seqNo, le.getPayload().remaining(), new String(le.getPayload().array()),
                         buffer.remaining());
-                
+
                 // write the LogEntry to the local disk
                 channel.write(buffer.getBuffer());
-                
+
             } finally {
                 csumAlgo.reset();
-                if (buffer != null) BufferPool.free(buffer);
+                if (buffer != null)
+                    BufferPool.free(buffer);
             }
-            
+
             _processedLogEntries.incrementAndGet();
         }
-        
+
         if (syncMode == SyncMode.FSYNC) {
             channel.force(true);
         } else if (this.syncMode == SyncMode.FDATASYNC) {
             channel.force(false);
         }
-        for (LogEntry le : entries) { 
+        for (LogEntry le : entries) {
             le.free();
-            le.getListener().synced(le.getLSN()); 
-        }  
+            le.getListener().synced(le.getLSN());
+        }
         entries.clear();
 
         if (pseudoSyncWait > 0) {
-            synchronized (pseudoSyncWait) {
-                pseudoSyncWait.wait(pseudoSyncWait);
+            synchronized (pseudoSyncWaitMonitor) {
+                pseudoSyncWaitMonitor.wait(pseudoSyncWait);
             }
         }
     }
-    
+
     /**
      * Method to generate log-file names.
      * 
@@ -551,7 +560,7 @@ public class DiskLogger extends LifeCycleThread {
     final static String createLogFileName(int viewId, long sequenceNo) {
         return viewId + "." + sequenceNo + ".dbl";
     }
-    
+
     /**
      * Method to retrieve LSN from a log-file name.
      * 
@@ -561,20 +570,19 @@ public class DiskLogger extends LifeCycleThread {
     final static LSN disassembleLogFileName(String name) {
         String[] parts = name.split(".");
         assert (parts.length == 3);
-        
-        return new LSN(Integer.parseInt(parts[0]),Long.parseLong(parts[1]));
+
+        return new LSN(Integer.parseInt(parts[0]), Long.parseLong(parts[1]));
     }
-    
+
     /**
-     * Method to load the log file after dropping using the latest local LSN for file-name 
-     * generation.
+     * Method to load the log file after dropping using the latest local LSN for file-name generation.
      * 
-     * @throws IOException 
+     * @throws IOException
      */
     private void loadLogFile() throws IOException {
-        
+
         assert (channel == null && fos == null);
-        
+
         // get the current log-file's name
         this.currentLogFileName = createLogFileName();
 
@@ -583,14 +591,23 @@ public class DiskLogger extends LifeCycleThread {
         if (!lf.getParentFile().exists() && !lf.getParentFile().mkdirs()) {
             throw new IOException("could not create parent directory for database log file");
         }
-        
+
         String openMode = "";
         switch (syncMode) {
-            case ASYNC:
-            case FSYNC:
-            case FDATASYNC: {openMode = "rw"; break;}
-            case SYNC_WRITE : {openMode = "rwd"; break;}
-            case SYNC_WRITE_METADATA : {openMode = "rws"; break;}
+        case ASYNC:
+        case FSYNC:
+        case FDATASYNC: {
+            openMode = "rw";
+            break;
+        }
+        case SYNC_WRITE: {
+            openMode = "rwd";
+            break;
+        }
+        case SYNC_WRITE_METADATA: {
+            openMode = "rws";
+            break;
+        }
         }
         fos = new RandomAccessFile(lf, openMode);
         fos.setLength(0);

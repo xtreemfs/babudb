@@ -26,6 +26,7 @@ import org.xtreemfs.babudb.index.reader.InternalMergeIterator;
 import org.xtreemfs.babudb.index.writer.DiskIndexWriter;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging.Category;
 import org.xtreemfs.foundation.util.OutputUtils;
 
 public class LSMTree {
@@ -567,7 +568,8 @@ public class LSMTree {
     }
     
     private boolean useMmap() {
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "DB size: " + OutputUtils.formatBytes(totalOnDiskSize));
+        Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this,
+                "DB size: " + OutputUtils.formatBytes(totalOnDiskSize));
         return useMMap && (mmapLimitBytes < 0 || totalOnDiskSize < mmapLimitBytes);
     }
     

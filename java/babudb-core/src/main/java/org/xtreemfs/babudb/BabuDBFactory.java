@@ -74,8 +74,8 @@ public final class BabuDBFactory {
          * allocate and preload BabuDB
          */
         BabuDBInternal babuDB = new BabuDBImpl(configuration);
-        Logging.logMessage(Logging.LEVEL_INFO, babuDB, "BabuDB %s", BABUDB_VERSION);
-        Logging.logMessage(Logging.LEVEL_INFO, babuDB, "\n%s", configuration.toString());
+        Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, babuDB, "BabuDB %s", BABUDB_VERSION);
+        Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, babuDB, "\n%s", configuration.toString());
         
         /*
          * run automatic database conversion if necessary

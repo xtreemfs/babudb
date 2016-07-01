@@ -54,6 +54,7 @@ import org.xtreemfs.babudb.snapshots.SnapshotManagerImpl;
 import org.xtreemfs.foundation.LifeCycleThread;
 import org.xtreemfs.foundation.VersionManagement;
 import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging.Category;
 
 /**
  * BabuDB main class.
@@ -191,12 +192,12 @@ public class BabuDBImpl implements BabuDBInternal {
                 dbLsn = new LSN(dbLsn.getViewId() == 0 ? 1 : dbLsn.getViewId(), dbLsn.getSequenceNo() + 1);
             }
             
-            Logging.logMessage(Logging.LEVEL_INFO, this, "starting log replay at LSN %s", dbLsn);
+            Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this, "starting log replay at LSN %s", dbLsn);
             LSN nextLSN = replayLogs(dbLsn);
             if (dbLsn.compareTo(nextLSN) > 0) {
                 nextLSN = dbLsn;
             }
-            Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done, using LSN: " + nextLSN);
+            Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this, "log replay done, using LSN: " + nextLSN);
             
             // set up and start the disk logger
             try {
@@ -235,17 +236,19 @@ public class BabuDBImpl implements BabuDBInternal {
             
             final LSN firstLSN = new LSN(1, 1L);
             if (staticInit != null && nextLSN.equals(firstLSN)) {
-                Logging.logMessage(Logging.LEVEL_DEBUG, this, "Running initialization script...");
+                Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, "Running initialization script...");
                 staticInit.initialize(databaseManager, snapshotManager);
-                Logging.logMessage(Logging.LEVEL_DEBUG, this, "... initialization script finished successfully.");
+                Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this,
+                        "... initialization script finished successfully.");
             } else if (staticInit != null) {
-                Logging.logMessage(Logging.LEVEL_INFO, this, "Static initialization was ignored, "
+                Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this, "Static initialization was ignored, "
                     + "because database is not empty.");
             }
             
             this.stopped.set(false);
             
-            Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is running " + "(version "
+            Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this,
+                    "BabuDB for Java is running " + "(version "
                 + BABUDB_VERSION + ")");
         }
     }
@@ -287,12 +290,12 @@ public class BabuDBImpl implements BabuDBInternal {
                         w.waitForShutdown();
                 
             } catch (Exception ex) {
-                Logging.logMessage(Logging.LEVEL_ERROR, this, "BabuDB could"
-                    + " not be stopped, because '%s'.", ex.getMessage());
+                Logging.logMessage(Logging.LEVEL_ERROR, Category.babudb, this,
+                        "BabuDB could" + " not be stopped, because '%s'.", ex.getMessage());
                 Logging.logError(Logging.LEVEL_ERROR, this, ex);
             }
             stopped.set(true);
-            Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB has been " + "stopped.");
+            Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this, "BabuDB has been " + "stopped.");
             
         }
     }
@@ -335,11 +338,12 @@ public class BabuDBImpl implements BabuDBInternal {
                 dbLsn = new LSN(dbLsn.getViewId(), dbLsn.getSequenceNo() + 1);
             }
             
-            Logging.logMessage(Logging.LEVEL_INFO, this, "starting log replay");
+            Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this, "starting log replay");
             LSN nextLSN = replayLogs(dbLsn);
             if (dbLsn.compareTo(nextLSN) > 0)
                 nextLSN = dbLsn;
-            Logging.logMessage(Logging.LEVEL_INFO, this, "log replay done, " + "using LSN: " + nextLSN);
+            Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this,
+                    "log replay done, " + "using LSN: " + nextLSN);
             
             try {
                 logger = new DiskLogger(configuration.getDbLogDir(), nextLSN, configuration.getSyncMode(),
@@ -372,8 +376,8 @@ public class BabuDBImpl implements BabuDBInternal {
             // restart the checkpointer
             this.dbCheckptr.init(logger, configuration.getCheckInterval(), configuration.getMaxLogfileSize());
             
-            Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB for Java is " + "running (version "
-                + BABUDB_VERSION + ")");
+            Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this,
+                    "BabuDB for Java is " + "running (version " + BABUDB_VERSION + ")");
             
             this.stopped.set(false);
             return new LSN(nextLSN.getViewId(), nextLSN.getSequenceNo() - 1L);
@@ -393,7 +397,7 @@ public class BabuDBImpl implements BabuDBInternal {
     @Override
     public void shutdown(boolean graceful) throws BabuDBException {
         
-        Logging.logMessage(Logging.LEVEL_INFO, this, "shutting down ...");
+        Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this, "shutting down ...");
         
         if (worker != null) {
             for (LSMDBWorker w : worker) {
@@ -444,8 +448,8 @@ public class BabuDBImpl implements BabuDBInternal {
                 }
             }
             
-            Logging.logMessage(Logging.LEVEL_DEBUG, this, "%d worker threads shut down " + "successfully",
-                worker.length);
+            Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this,
+                    "%d worker threads shut down " + "successfully", worker.length);
         }
         
         try {
@@ -457,8 +461,8 @@ public class BabuDBImpl implements BabuDBInternal {
         if (exc != null) {
             throw exc;
         }
-        
-        Logging.logMessage(Logging.LEVEL_INFO, this, "BabuDB shutdown complete.");
+
+        Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this, "BabuDB shutdown complete.");
     }
     
     /**
@@ -655,7 +659,7 @@ public class BabuDBImpl implements BabuDBInternal {
                     le = it.next();
                     byte type = le.getPayloadType();
                     
-                    Logging.logMessage(Logging.LEVEL_DEBUG, this,
+                    Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this,
                         "Reading entry LSN(%s) of type (%d) with %d bytes payload from log.", le.getLSN()
                                 .toString(), (int) type, le.getPayload().remaining());
                     
@@ -757,7 +761,7 @@ public class BabuDBImpl implements BabuDBInternal {
      */
     @Override
     public void startupPerformed() {
-        Logging.logMessage(Logging.LEVEL_INFO, this, "has been successfully started.");
+        Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this, "has been successfully started.");
     }
     
     /*
@@ -767,7 +771,7 @@ public class BabuDBImpl implements BabuDBInternal {
      */
     @Override
     public void shutdownPerformed() {
-        Logging.logMessage(Logging.LEVEL_INFO, this, "has been successfully stopped.");
+        Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this, "has been successfully stopped.");
     }
     
     /*
@@ -782,8 +786,10 @@ public class BabuDBImpl implements BabuDBInternal {
         try {
             shutdown();
         } catch (BabuDBException e) {
-            Logging.logMessage(Logging.LEVEL_WARN, this, "BabuDB could not have been terminated "
-                + "gracefully after plugin crash. " + "Because: %s", e.getMessage());
+            Logging.logMessage(Logging.LEVEL_WARN, Category.babudb, this,
+                    "BabuDB could not have been terminated " + 
+                    "gracefully after plugin crash. " + 
+                    "Because: %s", e.getMessage());
             e.printStackTrace();
         }
     }

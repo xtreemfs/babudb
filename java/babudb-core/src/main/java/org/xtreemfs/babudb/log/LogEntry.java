@@ -10,11 +10,12 @@ package org.xtreemfs.babudb.log;
 
 import java.util.zip.Checksum;
 
-import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.babudb.lsmdb.LSMDBRequest;
+import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging.Category;
 
 /**
  * 
@@ -148,7 +149,7 @@ public class LogEntry {
         
         if ((length1 - Integer.SIZE / 8) > data.remaining()) {
             data.position(cPos);
-            Logging.logMessage(Logging.LEVEL_DEBUG, null, "not long enough");
+            Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, (Object) null, "not long enough");
             throw new LogEntryException("The log entry is incomplete. " +
             		"The length indicated in the header exceeds the " +
             		"available data.");

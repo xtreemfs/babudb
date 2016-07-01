@@ -21,6 +21,7 @@ import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
 import org.xtreemfs.foundation.LifeCycleThread;
 import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging.Category;
 
 /**
  * @author bjko
@@ -94,7 +95,7 @@ public class LSMDBWorker extends LifeCycleThread {
     @Override
     public void run() {
         
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "operational");
+        Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, "operational");
 
         notifyStarted();
         
@@ -104,7 +105,7 @@ public class LSMDBWorker extends LifeCycleThread {
                 
                 // wait for a request
                 synchronized (this) {
-                    if (requests.isEmpty()) {
+                    if (requests.isEmpty() && !quit) {
                         wait();
                     }
                     
@@ -130,13 +131,13 @@ public class LSMDBWorker extends LifeCycleThread {
         
         // process pending requests on shutdown if graceful flag has not been reset
         if (graceful) {
-            synchronized (requests) {
+            synchronized (this) {
                 for (LSMDBRequest<?> rq : requests) {
                     processRequest(rq);
                 }
             }
         }
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "worker shutdown complete");
+        Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, "worker shutdown complete");
         notifyStopped();
     }
     

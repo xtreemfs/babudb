@@ -19,8 +19,8 @@ import org.xtreemfs.babudb.api.dev.transaction.TransactionInternal;
 import org.xtreemfs.babudb.api.dev.transaction.TransactionManagerInternal;
 import org.xtreemfs.babudb.api.exception.BabuDBException;
 import org.xtreemfs.babudb.api.exception.BabuDBException.ErrorCode;
-import org.xtreemfs.babudb.api.transaction.TransactionListener;
 import org.xtreemfs.babudb.api.transaction.Operation;
+import org.xtreemfs.babudb.api.transaction.TransactionListener;
 import org.xtreemfs.babudb.log.DiskLogger;
 import org.xtreemfs.babudb.log.LogEntry;
 import org.xtreemfs.babudb.log.SyncListener;
@@ -28,6 +28,7 @@ import org.xtreemfs.babudb.lsmdb.LSN;
 import org.xtreemfs.foundation.buffer.BufferPool;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging.Category;
 
 /**
  * Default implementation of the {@link TransactionManagerInternal} interface using
@@ -88,7 +89,7 @@ class TransactionManagerImpl extends TransactionManagerInternal {
     public void makePersistent(final TransactionInternal txn, ReusableBuffer payload, 
             BabuDBRequestResultImpl<Object> future) throws BabuDBException {
 
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "Trying to perform transaction %s ...", 
+        Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, "Trying to perform transaction %s ...",
                 txn.toString());
         
         try {
@@ -152,7 +153,7 @@ class TransactionManagerImpl extends TransactionManagerInternal {
                     }
                 } finally {
                     
-                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "... transaction %s finished.", 
+                    Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, "... transaction %s finished.",
                             txn.toString());
                     
                     // notify listeners (sync)

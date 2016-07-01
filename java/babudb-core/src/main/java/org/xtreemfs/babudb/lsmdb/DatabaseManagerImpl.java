@@ -39,6 +39,7 @@ import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.lsmdb.InsertRecordGroup.InsertRecord;
 import org.xtreemfs.foundation.buffer.ReusableBuffer;
 import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging.Category;
 import org.xtreemfs.foundation.util.FSUtils;
 
 public class DatabaseManagerImpl implements DatabaseManagerInternal {
@@ -249,7 +250,7 @@ public class DatabaseManagerImpl implements DatabaseManagerInternal {
     public void shutdown() throws BabuDBException {
         for (Database db : dbsById.values())
             db.shutdown();
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "DB manager shut down successfully");
+        Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, "DB manager shut down successfully");
     }
     
     /*

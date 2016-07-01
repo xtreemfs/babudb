@@ -22,6 +22,7 @@ import org.xtreemfs.babudb.api.database.ResultSet;
 import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.ByteRange;
 import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging.Category;
 
 public class DiskIndex {
     
@@ -52,7 +53,7 @@ public class DiskIndex {
         this.comp = comp;
         this.compressed = compressed;
         this.mmaped = mmaped;
-        Logging.logMessage(Logging.LEVEL_INFO, this, "loading index ...");
+        Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this, "loading index ...");
         
         // First, read the block index into a buffer. For performance reasons,
         // the block index has to remain in memory all the time, so it cannot be
@@ -95,8 +96,8 @@ public class DiskIndex {
                 if (mmaped) {
                     dbFiles[blockIndexId] = dbFileChannels[blockIndexId].map(MapMode.READ_ONLY, 0, blockFile
                             .length());
-                    Logging.logMessage(Logging.LEVEL_INFO, this, "block file index size: "
-                        + blockFile.length());
+                    Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this,
+                            "block file index size: " + blockFile.length());
                     dbFileChannels[blockIndexId].close();
                 }
                 

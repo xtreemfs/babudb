@@ -23,6 +23,7 @@ import org.xtreemfs.babudb.api.index.ByteRangeComparator;
 import org.xtreemfs.babudb.index.LSMTree;
 import org.xtreemfs.babudb.snapshots.SnapshotConfig;
 import org.xtreemfs.foundation.logging.Logging;
+import org.xtreemfs.foundation.logging.Logging.Category;
 import org.xtreemfs.foundation.util.FSUtils;
 
 /**
@@ -186,7 +187,7 @@ public class LSMDatabase {
      *             if the on-disk data cannot be read
      */
     private void loadFromDisk(int numIndices) throws BabuDBException {
-        Logging.logMessage(Logging.LEVEL_DEBUG, this, "loading database " + this.databaseName
+        Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, "loading database " + this.databaseName
             + " from disk...");
         for (int index = 0; index < numIndices; index++) {
             trees.add(null);
@@ -210,7 +211,7 @@ public class LSMDatabase {
             for (String fname : files) {
                 Matcher m = p.matcher(fname);
                 m.matches();
-                Logging.logMessage(Logging.LEVEL_DEBUG, this, "inspecting snapshot: " + fname);
+                Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, "inspecting snapshot: " + fname);
                 
                 int view = Integer.valueOf(m.group(2));
                 long seq = Long.valueOf(m.group(3));
@@ -225,9 +226,9 @@ public class LSMDatabase {
             // load max
             try {
                 if (maxView > -1) {
-                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "loading database " + this.databaseName
-                        + " from latest snapshot:" + databaseDir + File.separator + "IX" + index + "V"
-                        + maxView + "SEQ" + maxSeq);
+                    Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this,
+                            "loading database " + this.databaseName + " from latest snapshot:" + databaseDir
+                                    + File.separator + "IX" + index + "V" + maxView + "SEQ" + maxSeq);
                     assert (comparators[index] != null);
                     trees.set(index, new LSMTree(databaseDir + File.separator
                         + getSnapshotFilename(index, maxView, maxSeq), comparators[index], this.compression,
@@ -235,7 +236,7 @@ public class LSMDatabase {
                     ondiskLSN = new LSN(maxView, maxSeq);
                 } else {
                     ondiskLSN = NO_DB_LSN;
-                    Logging.logMessage(Logging.LEVEL_DEBUG, this, "no snapshot for database "
+                    Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, "no snapshot for database "
                         + this.databaseName);
                     assert (comparators[index] != null);
                     trees.set(index, new LSMTree(null, comparators[index], this.compression,
@@ -321,21 +322,22 @@ public class LSMDatabase {
      */
     public void writeSnapshot(int viewId, long sequenceNo, int[] snapIds) throws IOException {
         
-        Logging.logMessage(Logging.LEVEL_INFO, this, "writing snapshot, database = " + databaseName + "...");
+        Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this,
+                "writing snapshot, database = " + databaseName + "...");
         for (int index = 0; index < trees.size(); index++) {
             
             final LSMTree tree = trees.get(index);
             
             if (Logging.isInfo())
-                Logging.logMessage(Logging.LEVEL_INFO, this, "snapshotting index " + index + "(dbName = "
-                    + databaseName + ")...");
+                Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this,
+                        "snapshotting index " + index + "(dbName = " + databaseName + ")...");
             
             File tmpDir = new File(databaseDir, ".currentSnapshot");
             File targetDir = new File(databaseDir, getSnapshotFilename(index, viewId, sequenceNo));
             
             if (targetDir.exists()) {
-                Logging.logMessage(Logging.LEVEL_DEBUG, this, "skipping index'" + index
-                    + ", as a valid checkpoint (" + targetDir + ") exists already");
+                Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this,
+                        "skipping index'" + index + ", as a valid checkpoint (" + targetDir + ") exists already");
                 continue;
             }
             
@@ -349,11 +351,12 @@ public class LSMDatabase {
                 throw new IOException("could not rename '" + tmpDir + "' to " + targetDir);
             
             if (Logging.isInfo())
-                Logging.logMessage(Logging.LEVEL_INFO, this, "... done (index = " + index + ", dbName = "
-                    + databaseName + ")");
+                Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this,
+                        "... done (index = " + index + ", dbName = " + databaseName + ")");
         }
         if (Logging.isInfo())
-            Logging.logMessage(Logging.LEVEL_INFO, this, "snapshot written, database = " + databaseName);
+            Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this,
+                    "snapshot written, database = " + databaseName);
     }
     
     public void writeSnapshot(String directory, int[] snapIds, int viewId, long sequenceNumber)
@@ -400,9 +403,10 @@ public class LSMDatabase {
             
             final LSMTree tree = trees.get(index);
             
-            Logging.logMessage(Logging.LEVEL_INFO, this, "linking to snapshot " + databaseDir
-                + File.separator + getSnapshotFilename(index, viewId, sequenceNo) + ", dbName="
-                + databaseName + ", index=" + index);
+            Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this,
+                    "linking to snapshot " + databaseDir + File.separator
+                            + getSnapshotFilename(index, viewId, sequenceNo) + ", dbName=" + databaseName + ", index="
+                            + index);
             
             // catch any I/O exception that may occur while re-linking the
             // snapshot; this is done to ensure that old checkpoints are
@@ -418,7 +422,7 @@ public class LSMDatabase {
                 Logging.logError(Logging.LEVEL_ERROR, this, exc);
                 exception = exc;
             }
-            Logging.logMessage(Logging.LEVEL_INFO, this, "...done");
+            Logging.logMessage(Logging.LEVEL_INFO, Category.babudb, this, "...done");
             
             ondiskLSN = new LSN(viewId, sequenceNo);
             
@@ -506,7 +510,7 @@ public class LSMDatabase {
             for (String fname : files) {
                 Matcher m = p.matcher(fname);
                 m.matches();
-                Logging.logMessage(Logging.LEVEL_DEBUG, this, "inspecting snapshot: " + fname);
+                Logging.logMessage(Logging.LEVEL_DEBUG, Category.babudb, this, "inspecting snapshot: " + fname);
                 
                 int view = Integer.valueOf(m.group(2));
                 int seq = Integer.valueOf(m.group(3));
