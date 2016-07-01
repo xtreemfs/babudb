@@ -95,7 +95,7 @@
                 <echo file="${project.build.directory}/protoc-gen-pbrpc" message="#!/bin/bash${line.separator}" />
                 <echo file="${project.build.directory}/protoc-gen-pbrpc" append="true" message="java -cp" />
                 <!-- ${maven.dependency.groupId.artifactId.jar.path} is only available in maven-antrun-plugin -->
-                <echo file="${project.build.directory}/protoc-gen-pbrpc" append="true" message=" ${maven.dependency.org.xtreemfs.xtreemfs-pbrpcgen.jar.path}" />
+                <echo file="${project.build.directory}/protoc-gen-pbrpc" append="true" message=" ${maven.dependency.org.xtreemfs.xtreemfs.xtreemfs-pbrpcgen.jar.path}" />
                 <echo file="${project.build.directory}/protoc-gen-pbrpc" append="true" message=":${maven.dependency.com.google.protobuf.protobuf-java.jar.path}" />
                 <echo file="${project.build.directory}/protoc-gen-pbrpc" append="true" message=" org.xtreemfs.pbrpcgen.RPCSourceGenerator${line.separator}" />
                 <chmod file="${project.build.directory}/protoc-gen-pbrpc" perm="a+x" />
