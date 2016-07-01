@@ -101,7 +101,7 @@ public class RequestHandlerTest implements LifeCycleListener {
      */
     @Before
     public void setUp() throws Exception {
-        config = new ReplicationConfig("config/replication_server0.test", conf0);
+        config = new ReplicationConfig(RequestHandlerTest.class.getResource("/config/replication_server0.test").getPath(), conf0);
         dispatcher = new RequestDispatcher(config);
         dispatcher.setLifeCycleListener(this);
         

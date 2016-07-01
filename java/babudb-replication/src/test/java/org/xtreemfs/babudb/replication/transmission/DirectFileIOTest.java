@@ -48,7 +48,7 @@ public class DirectFileIOTest {
             
     @Before
     public void setUpBefore() throws Exception {   
-        conf = new ReplicationConfig("config/replication_server0.test", TestParameters.conf0);
+        conf = new ReplicationConfig(DirectFileIOTest.class.getResource("/config/replication_server0.test").getPath(), TestParameters.conf0);
         FSUtils.delTree(new File(conf.getBabuDBConfig().getBaseDir()));
         FSUtils.delTree(new File(conf.getBabuDBConfig().getDbLogDir()));
         FSUtils.delTree(new File(conf.getTempDir()));

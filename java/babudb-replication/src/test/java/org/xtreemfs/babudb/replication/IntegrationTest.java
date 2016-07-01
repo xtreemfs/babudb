@@ -53,11 +53,11 @@ public class IntegrationTest extends TestCase {
         FSUtils.delTree(new File(conf2.getDbLogDir()));
         
         FSUtils.delTree(new File(
-                new ReplicationConfig("config/replication_server0.test", conf0).getTempDir()));
+                new ReplicationConfig(IntegrationTest.class.getResource("/config/replication_server0.test").getPath(), conf0).getTempDir()));
         FSUtils.delTree(new File(
-                new ReplicationConfig("config/replication_server1.test", conf1).getTempDir()));
+                new ReplicationConfig(IntegrationTest.class.getResource("/config/replication_server1.test").getPath(), conf1).getTempDir()));
         FSUtils.delTree(new File(
-                new ReplicationConfig("config/replication_server2.test", conf2).getTempDir()));
+                new ReplicationConfig(IntegrationTest.class.getResource("/config/replication_server2.test").getPath(), conf2).getTempDir()));
     }
     
     /**
