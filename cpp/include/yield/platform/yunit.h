@@ -11,6 +11,11 @@
 #include <iostream>
 #include <exception>
 
+// for backtrace on segfault
+#include <signal.h>
+#include <execinfo.h>
+#include <unistd.h>
+
 #include "yield/platform/debug.h" // Should be last to get DebugBreak on Windows
 
 
@@ -111,7 +116,8 @@ void TestCaseName##Test::runTest()
 
 #ifdef YIELD_BUILDING_STANDALONE_TEST
 #define TEST_MAIN( TestSuiteName ) \
-  int main( int argc, char** argv ) { return yield::TestRunner().run( TestSuiteName##TestSuite() ); }
+  void handler(int sig) { void *array[10]; size_t size = backtrace(array, 10); fprintf(stderr, "Error: signal %d:\n", sig); backtrace_symbols_fd(array, size, STDERR_FILENO); exit(1); } \
+  int main( int argc, char** argv ) { signal(SIGSEGV, handler); return yield::TestRunner().run( TestSuiteName##TestSuite() ); }
 #else
 #define TEST_MAIN( TestSuiteName)
 #endif

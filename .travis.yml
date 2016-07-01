@@ -48,7 +48,7 @@ before_script:
   # build C++ tests
   - mkdir -p $TRAVIS_BUILD_DIR/cpp/build
   - cd $TRAVIS_BUILD_DIR/cpp/build
-  - cmake ..
+  - cmake -DCMAKE_BUILD_TYPE=Debug ..
   - make -j2
   - cd $TRAVIS_BUILD_DIR
 
