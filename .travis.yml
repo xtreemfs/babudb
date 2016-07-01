@@ -33,10 +33,15 @@ before_script:
   - echo "    </profile>"                                                                     >> $HOME/settings.xml
   - echo "  </profiles>"                                                                      >> $HOME/settings.xml
   - echo "</settings>"                                                                        >> $HOME/settings.xml
-  - mvn --settings $HOME/settings.xml --activate-profiles babudb-dev --file java/pom.xml -Dprotoc.bin=/usr/bin/protoc -Dprotoc.src=/usr/include install -DskipTests
-  - mkdir -p cpp/build
-  - cd cpp/build && cmake .. && make && cd ..
+  - mvn --settings $HOME/settings.xml --activate-profiles babudb-dev --file $TRAVIS_BUILD_DIR/java/pom.xml -Dprotoc.bin=/usr/bin/protoc -Dprotoc.src=/usr/include install -DskipTests
+  - mkdir -p $TRAVIS_BUILD_DIR/cpp/build
+  - cd $TRAVIS_BUILD_DIR/cpp/build
+  - cmake ..
+  - make -j2
+  - cd $TRAVIS_BUILD_DIR
 
 script:
-  - mvn --settings $HOME/settings.xml --activate-profiles babudb-dev --file java/pom.xml -Dprotoc.bin=/usr/bin/protoc -Dprotoc.src=/usr/include test
-  - cd cpp/build && ./babudb_tests & cd ..
+  - mvn --settings $HOME/settings.xml --activate-profiles babudb-dev --file $TRAVIS_BUILD_DIR/java/pom.xml -Dprotoc.bin=/usr/bin/protoc -Dprotoc.src=/usr/include test
+  - cd $TRAVIS_BUILD_DIR/cpp/build
+  - ./babudb_tests
+  - cd $TRAVIS_BUILD_DIR
