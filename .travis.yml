@@ -12,8 +12,6 @@ addons:
       - cmake
 
 before_script:
-  - cmake --version
-
   # get and build protobuf 2.5.0
   - wget --output-document $HOME/protobuf-2.5.0.tar.gz https://github.com/google/protobuf/releases/download/v2.5.0/protobuf-2.5.0.tar.gz
   - cd $HOME
