@@ -9,31 +9,32 @@ addons:
       - protobuf-compiler
       - libprotobuf-dev
 
-before_script: |
-  cat > $HOME/settings.xml << EOSX
+before_script:
+  - |
+    cat > $HOME/settings.xml << EOSX
     <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
               xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
       <profiles>
         <profile>
-        <id>babudb-dev</id>
-        <repositories>
-          <repository>
-            <id>central</id>
-            <url>http://repo.maven.apache.org/maven2</url>
-          </repository>
-          <repository>
-            <id>xtreemfs-repository</id>
-            <url>https://$(dirname $TRAVIS_REPO_SLUG).io/xtreemfs/maven</url>
-            <snapshots>
-              <enabled>true</enabled>
-            </snapshots>
-          </repository>
-        </repositories>
-      </profile>
-    </profiles>
-  </settings>
-EOSX
+          <id>babudb-dev</id>
+          <repositories>
+            <repository>
+              <id>central</id>
+              <url>http://repo.maven.apache.org/maven2</url>
+            </repository>
+            <repository>
+              <id>xtreemfs-repository</id>
+              <url>https://$(dirname $TRAVIS_REPO_SLUG).io/xtreemfs/maven</url>
+              <snapshots>
+                <enabled>true</enabled>
+              </snapshots>
+             </repository>
+          </repositories>
+        </profile>
+      </profiles>
+    </settings>
+    EOSX
 
 script:
   - cat $HOME/settings.xml
