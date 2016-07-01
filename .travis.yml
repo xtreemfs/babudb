@@ -5,8 +5,10 @@ sudo: false
 
 addons:
   apt:
+    sources:
+      - ubuntu-toolchain-r-test
     packages:
-      - build-essential
+      - g++-4.8
       - cmake
 
 before_script:
