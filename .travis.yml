@@ -50,7 +50,7 @@ before_script:
   # build C++ tests
   - mkdir -p $TRAVIS_BUILD_DIR/cpp/build
   - cd $TRAVIS_BUILD_DIR/cpp/build
-  - cmake -DCMAKE_BUILD_TYPE=Debug ..
+  - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=gcc-4.8 -DCMAKE_CXX_COMPILER=g++-4.8 ..
   - make -j2
   - cd $TRAVIS_BUILD_DIR
 
