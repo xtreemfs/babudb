@@ -1,0 +1,5 @@
+target/
+
+# protobuf generated code
+babudb-replication/src/main/java/com/
+babudb-replication/src/main/java/org/xtreemfs/babudb/pbrpc/
