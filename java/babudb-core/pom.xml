@@ -66,12 +66,12 @@
               </artifactSet>
               <transformers>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
-                  <resource>AUTHORS</resource>
                   <file>${basedir}/AUTHORS</file>
+                  <resource>AUTHORS</resource>
                 </transformer>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
-                  <resource>LICENSE</resource>
                   <file>${basedir}/LICENSE</file>
+                  <resource>LICENSE</resource>
                 </transformer>
               </transformers>
             </configuration>
