@@ -18,7 +18,6 @@
     <maven-clean-plugin.version>3.0.0</maven-clean-plugin.version>
     <exec-maven-plugin.version>1.5.0</exec-maven-plugin.version>
     <maven-antrun-plugin.version>1.8</maven-antrun-plugin.version>
-    <maven-shade-plugin.version>2.4.3</maven-shade-plugin.version>
     <protobuf-java.version>2.5.0</protobuf-java.version>
     <protoc.bin>/usr/bin/protoc</protoc.bin>
     <protoc.include>/usr/include</protoc.include>
@@ -172,7 +171,6 @@
             <configuration combine.self="override">
               <createDependencyReducedPom>false</createDependencyReducedPom>
               <shadedArtifactAttached>false</shadedArtifactAttached>
-              <finalName>${project.artifactId}</finalName>
               <filters>
                 <filter>
                   <artifact>*</artifact>
@@ -181,18 +179,33 @@
                   </excludes>
                 </filter>
                 <filter>
-                  <artifact>org.xtreemfs.xtreemfs:xtreemfs-foundation</artifact>
-                  <includes>
-                    <include>org/xtreemfs/foundation/pbrpc/**</include>
-                  </includes>
+                  <artifact>com.google.protobuf:protobuf-java</artifact>
+                  <excludes>
+                    <exclude>com/google/protobuf/DescriptorProtos*</exclude>
+                  </excludes>
                 </filter>
               </filters>
               <artifactSet>
                 <excludes>
                   <exclude>org.xtreemfs.babudb:babudb-core</exclude>
+                  <exclude>org.xtreemfs.xtreemfs:xtreemfs-foundation</exclude>
                   <exclude>commons-codec:commons-codec</exclude>
                 </excludes>
               </artifactSet>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
+                  <resource>AUTHORS</resource>
+                  <file>${basedir}/AUTHORS</file>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
+                  <resource>LICENSE</resource>
+                  <file>${basedir}/LICENSE</file>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
+                  <resource>README</resource>
+                  <file>${basedir}/README</file>
+                </transformer>
+              </transformers>
             </configuration>
           </execution>
         </executions>
