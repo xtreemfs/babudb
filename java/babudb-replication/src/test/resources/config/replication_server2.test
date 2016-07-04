@@ -2,7 +2,7 @@
 # BabuDB replication configuration								   								#
 #####################################################################
 
-plugin.jar = target/babudb-replication.jar
+plugin.jar = target/babudb-replication-0.6.0-SNAPSHOT-shaded.jar
 
 # DB backup directory - needed for the initial loading of the BabuDB from the 
 # master in replication context

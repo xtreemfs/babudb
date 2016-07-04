@@ -169,8 +169,7 @@
               <goal>shade</goal>
             </goals>
             <configuration combine.self="override">
-              <createDependencyReducedPom>false</createDependencyReducedPom>
-              <shadedArtifactAttached>false</shadedArtifactAttached>
+              <shadedArtifactAttached>true</shadedArtifactAttached>
               <filters>
                 <filter>
                   <artifact>*</artifact>
