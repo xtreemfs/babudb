@@ -37,6 +37,7 @@
     <junit.version>4.12</junit.version>
     <maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
     <site-maven-plugin.version>0.12</site-maven-plugin.version>
+    <maven-shade-plugin.version>2.4.3</maven-shade-plugin.version>
     <github.global.server>github</github.global.server>
   </properties>
 
