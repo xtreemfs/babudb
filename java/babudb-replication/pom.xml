@@ -20,10 +20,8 @@
     <maven-antrun-plugin.version>1.8</maven-antrun-plugin.version>
     <maven-shade-plugin.version>2.4.3</maven-shade-plugin.version>
     <protobuf-java.version>2.5.0</protobuf-java.version>
-    <!-- Specify -Dxtreemfs.home=/path/to/xtreemfs in Maven invocation, -->
-    <!-- or specify protoc.bin and protoc.src separately.               -->
-    <protoc.bin>${xtreemfs.home}/cpp/thirdparty/protobuf-${protobuf-java.version}/src/protoc</protoc.bin>
-    <protoc.src>${xtreemfs.home}/cpp/thirdparty/protobuf-${protobuf-java.version}/src</protoc.src>
+    <protoc.bin>/usr/bin/protoc</protoc.bin>
+    <protoc.include>/usr/include</protoc.include>
   </properties>
 
   <dependencies>
@@ -122,9 +120,9 @@
               <workingDirectory>${project.basedir}</workingDirectory>
               <arguments>
                 <argument>--proto_path=${project.basedir}/src/main/interface</argument>
-                <argument>--proto_path=${protoc.src}</argument>
+                <argument>--proto_path=${protoc.include}</argument>
                 <argument>--java_out=${project.basedir}/src/main/java</argument>
-                <argument>${protoc.src}/google/protobuf/descriptor.proto</argument>
+                <argument>${protoc.include}/google/protobuf/descriptor.proto</argument>
                 <argument>${project.basedir}/src/main/interface/Common.proto</argument>
                 <argument>${project.basedir}/src/main/interface/GlobalTypes.proto</argument>
                 <argument>${project.basedir}/src/main/interface/PBRPC.proto</argument>
@@ -146,10 +144,10 @@
               <workingDirectory>${project.basedir}</workingDirectory>
               <arguments>
                 <argument>--proto_path=${project.basedir}/src/main/interface</argument>
-                <argument>--proto_path=${protoc.src}</argument>
+                <argument>--proto_path=${protoc.include}</argument>
                 <argument>--pbrpc_out=${project.basedir}/src/main/java</argument>
                 <argument>--plugin=${project.build.directory}/protoc-gen-pbrpc</argument>
-                <argument>${protoc.src}/google/protobuf/descriptor.proto</argument>
+                <argument>${protoc.include}/google/protobuf/descriptor.proto</argument>
                 <argument>${project.basedir}/src/main/interface/Common.proto</argument>
                 <argument>${project.basedir}/src/main/interface/GlobalTypes.proto</argument>
                 <argument>${project.basedir}/src/main/interface/PBRPC.proto</argument>
