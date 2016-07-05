@@ -23,11 +23,9 @@ BabuDB - Java Components
     <groupId>org.xtreemfs.babudb</groupId>
     <artifactId>babudb-core</artifactId>
     <version>0.6.0-SNAPSHOT</version>
-    <!-- The shaded version bundles:                          -->
-    <!-- - org.xtreemfs.xtreemfs:xtreemfs-pbrpcgen            -->
-    <!-- and excludes the org.xtreemfs.babudb.sandbox package -->
-    <!-- and includes applicable licenses.                    -->
-    <!-- <classifier>shaded</classifier>                      -->
+    <!-- The shaded version excludes the org.xtreemfs.babudb.sandbox -->
+    <!-- package and includes applicable licenses.                   -->
+    <!-- <classifier>shaded</classifier>                             -->
   </dependency>
   
   <dependency>
