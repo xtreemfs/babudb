@@ -62,6 +62,7 @@
                   <exclude>com.google.protobuf:protobuf-java</exclude>
                   <exclude>commons-codec:commons-codec</exclude>
                   <exclude>org.xtreemfs.xtreemfs:xtreemfs-foundation</exclude>
+                  <exclude>org.xtreemfs.xtreemfs:xtreemfs-pbrpcgen</exclude>
                 </excludes>
               </artifactSet>
               <transformers>
