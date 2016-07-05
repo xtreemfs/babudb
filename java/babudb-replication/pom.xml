@@ -176,12 +176,23 @@
                     <exclude>META-INF/maven/**</exclude>
                   </excludes>
                 </filter>
+                <filter>
+                  <artifact>com.google.protobuf:protobuf-java</artifact>
+                  <excludes>
+                    <exclude>com/google/protobuf/compiler/**</exclude>
+                  </excludes>
+                </filter>
+                <filter>
+                  <artifact>org.xtreemfs.xtreemfs:xtreemfs-foundation</artifact>
+                  <includes>
+                    <include>org/xtreemfs/foundation/pbrpc/**</include>
+                  </includes>
+                </filter>
               </filters>
               <artifactSet>
                 <excludes>
                   <exclude>commons-codec:commons-codec</exclude>
                   <exclude>org.xtreemfs.babudb:babudb-core</exclude>
-                  <exclude>org.xtreemfs.xtreemfs:xtreemfs-foundation</exclude>
                 </excludes>
               </artifactSet>
               <transformers>
