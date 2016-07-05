@@ -32,12 +32,12 @@ BabuDB - Java Components
     <groupId>org.xtreemfs.babudb</groupId>
     <artifactId>babudb-replication</artifactId>
     <version>0.6.0-SNAPSHOT</version>
-    <!-- The shaded version bundles:               -->
-    <!-- - com.google.protobuf:protobuf-java       -->
-    <!-- - org.xtreemfs.xtreemfs:xtreemfs-flease   -->
-    <!-- - org.xtreemfs.xtreemfs:xtreemfs-pbrpcgen -->
-    <!-- and includes applicable licenses.         -->
-    <!-- <classifier>shaded</classifier>           -->
+    <!-- The shaded version bundles:                                                 -->
+    <!-- - com.google.protobuf:protobuf-java                                         -->
+    <!-- - org.xtreemfs.xtreemfs:xtreemfs-flease                                     -->
+    <!-- - org.xtreemfs.xtreemfs:xtreemfs-foundation/org.xtreemfs.foundation.pbrpc.* -->
+    <!-- and includes applicable licenses.                                           -->
+    <!-- <classifier>shaded</classifier>                                             -->
   </dependency>
 </dependencies>
 ```
