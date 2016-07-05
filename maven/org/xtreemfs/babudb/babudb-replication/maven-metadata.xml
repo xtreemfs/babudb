@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>org.xtreemfs.babudb</groupId>
+  <artifactId>babudb-replication</artifactId>
+  <versioning>
+    <versions>
+      <version>0.6.0-SNAPSHOT</version>
+    </versions>
+    <lastUpdated>20160705154434</lastUpdated>
+  </versioning>
+</metadata>
