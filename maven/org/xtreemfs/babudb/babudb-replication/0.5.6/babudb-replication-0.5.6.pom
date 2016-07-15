@@ -1,0 +1,218 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.xtreemfs.babudb</groupId>
+    <artifactId>babudb-parent</artifactId>
+    <version>0.5.6</version>
+    <relativePath>..</relativePath>
+  </parent>
+
+  <artifactId>babudb-replication</artifactId>
+  <name>babudb-replication</name>
+
+  <packaging>jar</packaging>
+
+  <properties>
+    <!-- Plugin configurations. -->
+    <exec-maven-plugin.version>1.5.0</exec-maven-plugin.version>
+    <maven-antrun-plugin.version>1.8</maven-antrun-plugin.version>
+    <maven-clean-plugin.version>3.0.0</maven-clean-plugin.version>
+    <protobuf-java.version>2.5.0</protobuf-java.version>
+    <protoc.bin>/usr/bin/protoc</protoc.bin>
+    <protoc.include>/usr/include</protoc.include>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.xtreemfs.babudb</groupId>
+      <artifactId>babudb-core</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.xtreemfs.xtreemfs</groupId>
+      <artifactId>xtreemfs-flease</artifactId>
+      <version>${xtreemfs.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- The following dependencies must be specified because they are needed during protoc plugin execution. -->
+    <dependency>
+      <groupId>org.xtreemfs.xtreemfs</groupId>
+      <artifactId>xtreemfs-pbrpcgen</artifactId>
+      <version>${xtreemfs.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>${protobuf-java.version}</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <!-- Clean up generated code during mvn clean. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-clean-plugin</artifactId>
+        <version>${maven-clean-plugin.version}</version>
+        <configuration>
+          <filesets>
+            <fileset>
+              <directory>src/main/java/org/xtreemfs/babudb/pbrpc</directory>
+            </fileset>
+            <fileset>
+              <directory>src/main/java/com</directory>
+            </fileset>
+          </filesets>
+        </configuration>
+      </plugin>
+
+      <!-- Create plugin for protoc. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <version>${maven-antrun-plugin.version}</version>
+        <executions>
+          <execution>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <echo file="${project.build.directory}/protoc-gen-pbrpc" message="#!/bin/bash${line.separator}" />
+                <echo file="${project.build.directory}/protoc-gen-pbrpc" append="true" message="java -cp" />
+                <!-- ${maven.dependency.groupId.artifactId.jar.path} is only available in maven-antrun-plugin -->
+                <echo file="${project.build.directory}/protoc-gen-pbrpc" append="true" message=" ${maven.dependency.org.xtreemfs.xtreemfs.xtreemfs-pbrpcgen.jar.path}" />
+                <echo file="${project.build.directory}/protoc-gen-pbrpc" append="true" message=":${maven.dependency.com.google.protobuf.protobuf-java.jar.path}" />
+                <echo file="${project.build.directory}/protoc-gen-pbrpc" append="true" message=" org.xtreemfs.pbrpcgen.RPCSourceGenerator${line.separator}" />
+                <chmod file="${project.build.directory}/protoc-gen-pbrpc" perm="a+x" />
+              </target>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>${exec-maven-plugin.version}</version>
+        <executions>
+          <!-- Invoke protoc to generate Java source. -->
+          <execution>
+            <id>generate-java</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <executable>${protoc.bin}</executable>
+              <workingDirectory>${project.basedir}</workingDirectory>
+              <arguments>
+                <argument>--proto_path=${project.basedir}/src/main/interface</argument>
+                <argument>--proto_path=${protoc.include}</argument>
+                <argument>--java_out=${project.basedir}/src/main/java</argument>
+                <argument>${project.basedir}/src/main/interface/Common.proto</argument>
+                <argument>${project.basedir}/src/main/interface/GlobalTypes.proto</argument>
+                <argument>${project.basedir}/src/main/interface/PBRPC.proto</argument>
+                <argument>${project.basedir}/src/main/interface/RemoteAccess.proto</argument>
+                <argument>${project.basedir}/src/main/interface/Replication.proto</argument>
+              </arguments>
+            </configuration>
+          </execution>
+
+          <!-- Invoke protoc again, this time with our plugin to generate custom classes. -->
+          <execution>
+            <id>generate-pbrpc</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <executable>${protoc.bin}</executable>
+              <workingDirectory>${project.basedir}</workingDirectory>
+              <arguments>
+                <argument>--proto_path=${project.basedir}/src/main/interface</argument>
+                <argument>--proto_path=${protoc.include}</argument>
+                <argument>--pbrpc_out=${project.basedir}/src/main/java</argument>
+                <argument>--plugin=${project.build.directory}/protoc-gen-pbrpc</argument>
+                <argument>${project.basedir}/src/main/interface/Common.proto</argument>
+                <argument>${project.basedir}/src/main/interface/GlobalTypes.proto</argument>
+                <argument>${project.basedir}/src/main/interface/PBRPC.proto</argument>
+                <argument>${project.basedir}/src/main/interface/RemoteAccess.proto</argument>
+                <argument>${project.basedir}/src/main/interface/Replication.proto</argument>
+              </arguments>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>${maven-shade-plugin.version}</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration combine.self="override">
+              <shadedArtifactAttached>true</shadedArtifactAttached>
+              <filters>
+                <filter>
+                  <artifact>*</artifact>
+                  <excludes>
+                    <exclude>META-INF/maven/**</exclude>
+                  </excludes>
+                </filter>
+                <filter>
+                  <artifact>com.google.protobuf:protobuf-java</artifact>
+                  <excludes>
+                    <exclude>com/google/protobuf/compiler/**</exclude>
+                  </excludes>
+                </filter>
+                <filter>
+                  <artifact>org.xtreemfs.xtreemfs:xtreemfs-foundation</artifact>
+                  <includes>
+                    <include>org/xtreemfs/foundation/pbrpc/**</include>
+                  </includes>
+                </filter>
+              </filters>
+              <artifactSet>
+                <excludes>
+                  <exclude>commons-codec:commons-codec</exclude>
+                  <exclude>org.xtreemfs.babudb:babudb-core</exclude>
+                </excludes>
+              </artifactSet>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
+                  <file>${basedir}/AUTHORS</file>
+                  <resource>AUTHORS</resource>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
+                  <file>${basedir}/LICENSE</file>
+                  <resource>LICENSE</resource>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
+                  <file>${basedir}/README</file>
+                  <resource>README</resource>
+                </transformer>
+              </transformers>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>
