@@ -14,27 +14,27 @@ before_script:
   - cd $TRAVIS_BUILD_DIR
 
   # configure maven repositories
-  - echo "<settings xmlns=\"http://maven.apache.org/SETTINGS/1.0.0\""                         >  $HOME/settings.xml
-  - echo "  xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\""                          >> $HOME/settings.xml
-  - echo "  xsi:schemaLocation=\"http://maven.apache.org/SETTINGS/1.0.0"                      >> $HOME/settings.xml
-  - echo "  https://maven.apache.org/xsd/settings-1.0.0.xsd\">"                               >> $HOME/settings.xml
-  - echo "  <profiles>"                                                                       >> $HOME/settings.xml
-  - echo "    <profile>"                                                                      >> $HOME/settings.xml
-  - echo "      <id>babudb-dev</id>"                                                          >> $HOME/settings.xml
-  - echo "      <repositories>"                                                               >> $HOME/settings.xml
-  - echo "        <repository>"                                                               >> $HOME/settings.xml
-  - echo "          <id>central</id>"                                                         >> $HOME/settings.xml
-  - echo "          <url>http://repo.maven.apache.org/maven2</url>"                           >> $HOME/settings.xml
-  - echo "        </repository>"                                                              >> $HOME/settings.xml
-  - echo "        <repository>"                                                               >> $HOME/settings.xml
-  - echo "          <id>xtreemfs-repository</id>"                                             >> $HOME/settings.xml
-  - echo "          <url>https://$(dirname $TRAVIS_REPO_SLUG).github.io/xtreemfs/maven</url>" >> $HOME/settings.xml
-  - echo "          <snapshots><enabled>true</enabled></snapshots>"                           >> $HOME/settings.xml
-  - echo "        </repository>"                                                              >> $HOME/settings.xml
-  - echo "      </repositories>"                                                              >> $HOME/settings.xml
-  - echo "    </profile>"                                                                     >> $HOME/settings.xml
-  - echo "  </profiles>"                                                                      >> $HOME/settings.xml
-  - echo "</settings>"                                                                        >> $HOME/settings.xml
+  - echo "<settings xmlns=\"http://maven.apache.org/SETTINGS/1.0.0\""             >  $HOME/settings.xml
+  - echo "  xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\""              >> $HOME/settings.xml
+  - echo "  xsi:schemaLocation=\"http://maven.apache.org/SETTINGS/1.0.0"          >> $HOME/settings.xml
+  - echo "  https://maven.apache.org/xsd/settings-1.0.0.xsd\">"                   >> $HOME/settings.xml
+  - echo "  <profiles>"                                                           >> $HOME/settings.xml
+  - echo "    <profile>"                                                          >> $HOME/settings.xml
+  - echo "      <id>babudb-dev</id>"                                              >> $HOME/settings.xml
+  - echo "      <repositories>"                                                   >> $HOME/settings.xml
+  - echo "        <repository>"                                                   >> $HOME/settings.xml
+  - echo "          <id>central</id>"                                             >> $HOME/settings.xml
+  - echo "          <url>http://repo.maven.apache.org/maven2</url>"               >> $HOME/settings.xml
+  - echo "        </repository>"                                                  >> $HOME/settings.xml
+  - echo "        <repository>"                                                   >> $HOME/settings.xml
+  - echo "          <id>xtreemfs-repository</id>"                                 >> $HOME/settings.xml
+  - echo "          <url>https://robert-schmidtke.github.io/xtreemfs/maven</url>" >> $HOME/settings.xml
+  - echo "          <snapshots><enabled>true</enabled></snapshots>"               >> $HOME/settings.xml
+  - echo "        </repository>"                                                  >> $HOME/settings.xml
+  - echo "      </repositories>"                                                  >> $HOME/settings.xml
+  - echo "    </profile>"                                                         >> $HOME/settings.xml
+  - echo "  </profiles>"                                                          >> $HOME/settings.xml
+  - echo "</settings>"                                                            >> $HOME/settings.xml
 
   # build jars without tests, as they depend on the built jars
   - mvn --settings $HOME/settings.xml --activate-profiles babudb-dev --file $TRAVIS_BUILD_DIR/java/pom.xml -Dprotoc.bin=$HOME/protobuf-2.5.0/src/protoc -Dprotoc.include=$HOME/protobuf-2.5.0/src -DskipTests install
