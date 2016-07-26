@@ -1,0 +1,115 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>org.xtreemfs.babudb</groupId>
+  <artifactId>babudb-parent</artifactId>
+  <version>0.5.6</version>
+
+  <name>babudb</name>
+  <packaging>pom</packaging>
+  <url>http://www.zib.de/projects/babudb-embedded-key-value-store</url>
+  <inceptionYear>2008</inceptionYear>
+
+  <licenses>
+    <license>
+      <name>The New BSD License</name>
+      <url>https://raw.githubusercontent.com/xtreemfs/babudb/master/java/LICENSE</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <scm>
+    <url>https://github.com/xtreemfs/babudb</url>
+    <connection>git@github.com:xtreemfs/babudb.git</connection>
+    <developerConnection>scm:git:https://github.com/xtreemfs/babudb.git</developerConnection>
+  </scm>
+
+  <modules>
+    <module>babudb-core</module>
+    <module>babudb-replication</module>
+  </modules>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+    <!-- Compile dependencies. -->
+    <commons-codec.version>1.3</commons-codec.version>
+    <protobuf-java.version>2.5.0</protobuf-java.version>
+    <xtreemfs.version>1.5.1-SNAPSHOT</xtreemfs.version>
+
+    <!-- Test dependencies. -->
+    <junit.version>4.12</junit.version>
+
+    <!-- Plugin configurations. -->
+    <github.global.server>github</github.global.server>
+    <maven-compiler-plugin.version>3.5.1</maven-compiler-plugin.version>
+    <maven-deploy-plugin.version>2.8.2</maven-deploy-plugin.version>
+    <maven-shade-plugin.version>2.4.3</maven-shade-plugin.version>
+    <maven-surefire-plugin.version>2.19.1</maven-surefire-plugin.version>
+    <site-maven-plugin.version>0.12</site-maven-plugin.version>
+  </properties>
+
+  <distributionManagement>
+    <repository>
+      <id>babudb-repository</id>
+      <url>file://${project.build.directory}/babudb-repository</url>
+    </repository>
+  </distributionManagement>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-deploy-plugin</artifactId>
+        <version>${maven-deploy-plugin.version}</version>
+        <configuration>
+          <altDeploymentRepository>babudb-repository::default::file://${project.build.directory}/babudb-repository/maven</altDeploymentRepository>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>${maven-compiler-plugin.version}</version>
+        <configuration>
+          <source>1.6</source>
+          <target>1.6</target>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>com.github.github</groupId>
+        <artifactId>site-maven-plugin</artifactId>
+        <version>${site-maven-plugin.version}</version>
+        <executions>
+          <execution>
+            <phase>deploy</phase>
+            <goals>
+              <goal>site</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <merge>true</merge>
+          <message>Maven artifacts for ${project.name}/${project.version}</message>
+          <noJekyll>true</noJekyll>
+          <outputDirectory>${project.build.directory}/babudb-repository</outputDirectory>
+          <repositoryName>babudb</repositoryName>
+          <repositoryOwner>xtreemfs</repositoryOwner>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${maven-surefire-plugin.version}</version>
+        <configuration>
+          <argLine>-Xms1024m -Xmx2048m</argLine>
+          <reuseForks>false</reuseForks>
+          <forkCount>1</forkCount>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>
