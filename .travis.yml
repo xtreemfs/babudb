@@ -44,7 +44,10 @@ env:
    - secure: "IknyImZ30I6yQifaPyhZDkMkFDzjkq9AoPzpcIExKWg/+krE416MuWJbMY7kLmjgNlv6rn1F326bouH5BxCz4yW2UOSYZFjkL60mXZWUSG5Ol2qXEGa0ku4SVwQi8eGk1gzP7P0GXrnrA7PkteioK93uqvS06GSNncuSDDHgpfM="
 
 before_install:
-  - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
+  - echo -n | openssl s_client -connect scan.coverity.com:443 2>./openssl-connect.stderr | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
+  - echo "OpenSSL connect stderr:"
+  - cat ./openssl-connect.stderr
+  - rm ./openssl-connect.stderr
 
 addons:
   coverity_scan:
