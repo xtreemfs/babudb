@@ -8,8 +8,11 @@
 
 package org.xtreemfs.babudb.index;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.lang.management.ManagementFactory;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Random;
@@ -134,6 +137,8 @@ public class DiskIndexTest extends TestCase {
             assertEquals(0, COMP.compare(entry, diskIndex.lookup(entry)));
         assertEquals(entries.length, diskIndex.numKeys());
         diskIndex.destroy();
+
+        assertNoBlockfiles();
     }
     
     public void testCompleteLookup() throws Exception {
@@ -171,6 +176,8 @@ public class DiskIndexTest extends TestCase {
         // System.out.println(count * 1000 / time + " lookups/s");
         
         diskIndex.destroy();
+
+        assertNoBlockfiles();
     }
     
     public void testPrefixLookup() throws Exception {
@@ -241,6 +248,8 @@ public class DiskIndexTest extends TestCase {
         assertFalse(it.hasNext());
         
         diskIndex.destroy();
+
+        assertNoBlockfiles();
     }
     
     public void testDescendingPrefixLookup() throws Exception {
@@ -311,6 +320,8 @@ public class DiskIndexTest extends TestCase {
         assertFalse(it.hasNext());
         
         diskIndex.destroy();
+
+        assertNoBlockfiles();
     }
     
     public void testLargeScalePrefixLookup() throws Exception {
@@ -399,6 +410,7 @@ public class DiskIndexTest extends TestCase {
         
         diskIndex.destroy();
         
+        assertNoBlockfiles();
     }
     
     public void testLargeScaleDescendingPrefixLookup() throws Exception {
@@ -499,6 +511,7 @@ public class DiskIndexTest extends TestCase {
         
         diskIndex.destroy();
         
+        assertNoBlockfiles();
     }
     
     private static String createRandomString(int minLength, int maxLength) {
@@ -608,6 +621,25 @@ public class DiskIndexTest extends TestCase {
         assertFalse(it.hasNext());
     }
     
+    private static void assertNoBlockfiles() {
+        int blockfiles = 0;
+        int pid = Integer.parseInt(ManagementFactory.getRuntimeMXBean().getName().split("@")[0]);
+        try {
+            Process p = Runtime.getRuntime().exec(new String[] { "lsof", "-p", Integer.toString(pid) });
+            BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
+            String line;
+            while((line = reader.readLine()) != null) {
+                if (line.contains("blockfile_")) {
+                    ++blockfiles;
+                }
+            }
+            reader.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        assertEquals("Got " + blockfiles + " remaining blockfiles.", 0, blockfiles);
+    }
+
     public static void main(String[] args) {
         TestRunner.run(DiskIndexTest.class);
     }

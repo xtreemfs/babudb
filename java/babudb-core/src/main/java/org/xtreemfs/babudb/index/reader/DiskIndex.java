@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
@@ -247,6 +248,28 @@ public class DiskIndex {
         blockIndex.free();
         for (FileChannel c : dbFileChannels) {
             c.close();
+        }
+
+        if (mmaped) {
+            // This is what should happen during GC of dbFiles, however there may be leaks (e.g. in iterators)
+            // that prevent the cleaner from running. Hence, upon destroy, run the cleaner ourselves.
+            // Any references will become invalid, and accessing them will result in undefined behavior.
+            try {
+                // private static void sun.nio.ch.FileChannelImpl.unmap(MappedByteBuffer bb)
+                Method unmapMethod = sun.nio.ch.FileChannelImpl.class.getDeclaredMethod("unmap",
+                        MappedByteBuffer.class);
+                unmapMethod.setAccessible(true);
+                for (MappedByteBuffer mbb : dbFiles) {
+                    unmapMethod.invoke(null, mbb);
+                }
+            } catch (Throwable t) {
+                Logging.logMessage(Logging.LEVEL_WARN, Category.babudb, this,
+                        "Could not free memory mapped files (%s). This may cause disk space leaks.",
+                        t.getMessage());
+            }
+
+            // this is what should be sufficient to trigger cleaning, however it may not always do so
+            dbFiles = null;
         }
     }
     
