@@ -4,11 +4,12 @@ jdk: openjdk8
 sudo: false
 
 before_script:
-  # get and build protobuf 2.5.0
-  - wget --output-document $HOME/protobuf-2.5.0.tar.gz https://github.com/google/protobuf/releases/download/v2.5.0/protobuf-2.5.0.tar.gz
+  # get and build protobuf
+  - export PROTOBUF_VERSION=2.6.1
+  - wget --output-document $HOME/protobuf-$PROTOBUF_VERSION.tar.gz https://github.com/google/protobuf/releases/download/v$PROTOBUF_VERSION/protobuf-$PROTOBUF_VERSION.tar.gz
   - cd $HOME
-  - tar xf protobuf-2.5.0.tar.gz
-  - cd protobuf-2.5.0
+  - tar xf protobuf-$PROTOBUF_VERSION.tar.gz
+  - cd protobuf-$PROTOBUF_VERSION
   - ./configure
   - make -j2
   - cd $TRAVIS_BUILD_DIR
@@ -37,7 +38,7 @@ before_script:
   - echo "</settings>"                                                    >> $HOME/settings.xml
 
   # build jars without tests, as they depend on the built jars
-  - mvn --settings $HOME/settings.xml --activate-profiles babudb-dev --file $TRAVIS_BUILD_DIR/java/pom.xml -Dprotoc.bin=$HOME/protobuf-2.5.0/src/protoc -Dprotoc.include=$HOME/protobuf-2.5.0/src -DskipTests install
+  - mvn --settings $HOME/settings.xml --activate-profiles babudb-dev --file $TRAVIS_BUILD_DIR/java/pom.xml -Dprotoc.bin=$HOME/protobuf-$PROTOBUF_VERSION/src/protoc -Dprotoc.include=$HOME/protobuf-$PROTOBUF_VERSION/src -DskipTests install
 
   # build C++ tests
   - mkdir -p $TRAVIS_BUILD_DIR/cpp/build
@@ -48,7 +49,7 @@ before_script:
 
 script:
   # run Java tests
-  - mvn --settings $HOME/settings.xml --activate-profiles babudb-dev --file $TRAVIS_BUILD_DIR/java/pom.xml -Dprotoc.bin=$HOME/protobuf-2.5.0/src/protoc -Dprotoc.include=$HOME/protobuf-2.5.0/src test
+  - mvn --settings $HOME/settings.xml --activate-profiles babudb-dev --file $TRAVIS_BUILD_DIR/java/pom.xml -Dprotoc.bin=$HOME/protobuf-$PROTOBUF_VERSION/src/protoc -Dprotoc.include=$HOME/protobuf-$PROTOBUF_VERSION/src test
 
   # FIXME: run C++ tests
   # - cd $TRAVIS_BUILD_DIR/cpp/build
