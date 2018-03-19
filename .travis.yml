@@ -37,21 +37,23 @@ before_script:
   - echo "  </profiles>"                                                  >> $HOME/settings.xml
   - echo "</settings>"                                                    >> $HOME/settings.xml
 
-  # build jars without tests, as they depend on the built jars
-  - mvn --settings $HOME/settings.xml --activate-profiles babudb-dev --file $TRAVIS_BUILD_DIR/java/pom.xml -Dprotoc.bin=$HOME/protobuf-$PROTOBUF_VERSION/src/protoc -Dprotoc.include=$HOME/protobuf-$PROTOBUF_VERSION/src -DskipTests install
+env:
+  global:
+   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "IknyImZ30I6yQifaPyhZDkMkFDzjkq9AoPzpcIExKWg/+krE416MuWJbMY7kLmjgNlv6rn1F326bouH5BxCz4yW2UOSYZFjkL60mXZWUSG5Ol2qXEGa0ku4SVwQi8eGk1gzP7P0GXrnrA7PkteioK93uqvS06GSNncuSDDHgpfM="
 
-  # build C++ tests
-  - mkdir -p $TRAVIS_BUILD_DIR/cpp/build
-  - cd $TRAVIS_BUILD_DIR/cpp/build
-  - cmake ..
-  - make -j2
-  - cd $TRAVIS_BUILD_DIR
+before_install:
+  - echo -n | openssl s_client -connect https://scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
+
+addons:
+  coverity_scan:
+    project:
+      name: "xtreemfs/babudb"
+      description: "An embedded non-relational database for Java and C++"
+    notification_email: xtreemfs-test@googlegroups.com
+    build_command: mvn --settings $HOME/settings.xml --activate-profiles babudb-dev --file $TRAVIS_BUILD_DIR/java/pom.xml -Dprotoc.bin=$HOME/protobuf-$PROTOBUF_VERSION/src/protoc -Dprotoc.include=$HOME/protobuf-$PROTOBUF_VERSION/src -DskipTests install
+    branch_pattern: coverity_scan
 
 script:
-  # run Java tests
-  - mvn --settings $HOME/settings.xml --activate-profiles babudb-dev --file $TRAVIS_BUILD_DIR/java/pom.xml -Dprotoc.bin=$HOME/protobuf-$PROTOBUF_VERSION/src/protoc -Dprotoc.include=$HOME/protobuf-$PROTOBUF_VERSION/src test
-
-  # FIXME: run C++ tests
-  # - cd $TRAVIS_BUILD_DIR/cpp/build
-  # - ./babudb_tests
-  # - cd $TRAVIS_BUILD_DIR
+  - true
