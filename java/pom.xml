@@ -4,7 +4,7 @@
 
   <groupId>org.xtreemfs.babudb</groupId>
   <artifactId>babudb-parent</artifactId>
-  <version>0.5.6</version>
+  <version>0.6.0</version>
 
   <name>babudb</name>
   <packaging>pom</packaging>
@@ -35,8 +35,7 @@
 
     <!-- Compile dependencies. -->
     <commons-codec.version>1.3</commons-codec.version>
-    <protobuf-java.version>2.5.0</protobuf-java.version>
-    <xtreemfs.version>1.5.1-SNAPSHOT</xtreemfs.version>
+    <xtreemfs.version>1.6.0-SNAPSHOT</xtreemfs.version>
 
     <!-- Test dependencies. -->
     <junit.version>4.12</junit.version>

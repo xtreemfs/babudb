@@ -42,7 +42,7 @@ In your `pom.xml` add:
     <dependency>
       <groupId>org.xtreemfs.babudb</groupId>
       <artifactId>babudb-core</artifactId>
-      <version>0.5.6</version>
+      <version>0.6.0</version>
       <!-- The shaded version excludes the org.xtreemfs.babudb.sandbox -->
       <!-- package and includes applicable licenses.                   -->
       <!-- <classifier>shaded</classifier>                             -->
@@ -51,7 +51,7 @@ In your `pom.xml` add:
     <dependency>
       <groupId>org.xtreemfs.babudb</groupId>
       <artifactId>babudb-replication</artifactId>
-      <version>0.5.6</version>
+      <version>0.6.0</version>
       <!-- The shaded version bundles:                                                 -->
       <!-- - com.google.protobuf:protobuf-java                                         -->
       <!-- - org.xtreemfs.xtreemfs:xtreemfs-flease                                     -->

@@ -86,14 +86,18 @@ public abstract class PluginMain {
         int[] babu = new int[] { Integer.parseInt(b[0]), Integer.parseInt(b[1]),
                                  Integer.parseInt(b[2])};
         
-        for (int i = 0; i < 3; i++) {
-            if (babu[i] > to[i] || babu[i] < from[i]) {
+        boolean checkFrom = true, checkTo = true;
+        for (int i = 0; i < 3 && (checkFrom || checkTo); i++) {
+            if ((checkTo && babu[i] > to[i]) || (checkFrom && babu[i] < from[i])) {
                 throw new BabuDBException(ErrorCode.BROKEN_PLUGIN, "This " +
                 		"BabuDB ("+BabuDBFactory.BABUDB_VERSION+") " +
                 	        "is not compatible with this plugin (" + 
                 	        getClass().getName() + "), which requires " +
                 	        "BabuDB to meet " + compatibleBabuDBVersion());
             }
+            // only continue checking if necessary
+            checkTo &= babu[i] == to[i];
+            checkFrom &= babu[i] == from[i];
         }
         return start(babuDB, configPath);
     }
