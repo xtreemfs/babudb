@@ -1,7 +1,8 @@
 language: java
 jdk: openjdk8
 
-sudo: false
+sudo: required
+dist: trusty
 
 before_script:
   # get and build protobuf
@@ -55,6 +56,7 @@ addons:
       name: "xtreemfs/babudb"
       description: "An embedded non-relational database for Java and C++"
     notification_email: xtreemfs-test@googlegroups.com
+    build_command_prepend: mvn --settings $HOME/settings.xml --activate-profiles babudb-dev --file $TRAVIS_BUILD_DIR/java/pom.xml clean
     build_command: mvn --settings $HOME/settings.xml --activate-profiles babudb-dev --file $TRAVIS_BUILD_DIR/java/pom.xml -Dprotoc.bin=$HOME/protobuf-$PROTOBUF_VERSION/src/protoc -Dprotoc.include=$HOME/protobuf-$PROTOBUF_VERSION/src -DskipTests install
     branch_pattern: coverity_scan
 
